@@ -1,0 +1,31 @@
+{
+  "name": "acquiring-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:admin": "npm --workspace @acquiring/admin-system run dev",
+    "dev:merchant": "npm --workspace @acquiring/merchant-portal run dev",
+    "dev:cashier": "npm --workspace @acquiring/cashier run dev",
+    "build": "npm run build --workspaces --if-present",
+    "build:admin": "npm --workspace @acquiring/admin-system run build",
+    "build:merchant": "npm --workspace @acquiring/merchant-portal run build",
+    "build:cashier": "npm --workspace @acquiring/cashier run build",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,vue,css,md,json}\""
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.2",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "vue-tsc": "^3.1.8"
+  }
+}
