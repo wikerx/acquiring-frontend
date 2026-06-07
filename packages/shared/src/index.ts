@@ -61,6 +61,8 @@ export interface LoginRequest {
     loginAccount: string;
     password: string;
     merchantId?: string;
+    verifyCodeId?: string;
+    verifyCode?: string;
 }
 
 export interface AuthSession {
