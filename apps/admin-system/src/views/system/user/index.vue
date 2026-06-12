@@ -11,7 +11,7 @@
                 <el-button type="primary" @click="openCreate">新增</el-button>
                 <el-button @click="loadData">刷新</el-button>
             </div>
-            <span class="security-note">登录账号创建后暂不支持改名；角色分配将在角色授权阶段开放。</span>
+            <span class="security-note">登录账号创建后暂不支持改名；角色变更后账号需重新登录生效。</span>
         </div>
 
         <div class="table-panel">
@@ -47,10 +47,11 @@
                         <BaseDateTime :value="row.createdAt" />
                     </template>
                 </el-table-column>
-                <el-table-column label="操作" width="260" fixed="right">
+                <el-table-column label="操作" width="310" fixed="right">
                     <template #default="{ row }">
                         <el-button link type="primary" @click="openDetail(row)">查看</el-button>
                         <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+                        <el-button link type="primary" @click="openRoleAuth(row)">角色</el-button>
                         <el-button link type="warning" @click="openResetPassword(row)">重置密码</el-button>
                         <el-button
                             link
@@ -135,20 +136,52 @@
                 </el-descriptions-item>
             </el-descriptions>
         </BaseDialog>
+
+        <BaseDialog
+            v-model="roleAuthVisible"
+            title="分配角色"
+            width="820px"
+            @confirm="submitRoleAuth"
+        >
+            <el-table
+                ref="roleTableRef"
+                v-loading="roleAuthLoading"
+                :data="roleRows"
+                border
+                stripe
+                row-key="roleId"
+                max-height="480"
+                @selection-change="handleRoleSelection"
+            >
+                <el-table-column type="selection" width="48" />
+                <el-table-column prop="roleCode" label="角色编码" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="roleName" label="角色名称" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="roleType" label="类型" width="110" />
+                <el-table-column prop="dataScope" label="数据范围" width="120" />
+                <el-table-column label="状态" width="90">
+                    <template #default="{ row }">
+                        <BaseStatusTag :value="row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled" />
+                    </template>
+                </el-table-column>
+            </el-table>
+        </BaseDialog>
     </PageContainer>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableInstance } from 'element-plus';
 import {
     createUser,
+    getUserRoles,
+    grantUserRoles,
     resetUserPassword,
     searchUsers,
     updateUser,
     updateUserStatus,
     type SysUserAccount,
 } from '@/api/system/user';
+import type { SysRole } from '@/api/system/role';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseDialog from '@/components/BaseDialog/index.vue';
 import BaseSearch from '@/components/BaseSearch/index.vue';
@@ -191,10 +224,16 @@ const pageSize = ref(10);
 const detailVisible = ref(false);
 const userDialogVisible = ref(false);
 const resetDialogVisible = ref(false);
+const roleAuthVisible = ref(false);
+const roleAuthLoading = ref(false);
+const roleAuthSaving = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<UserRow | null>(null);
 const userFormRef = ref<FormInstance>();
 const resetFormRef = ref<FormInstance>();
+const roleTableRef = ref<TableInstance>();
+const roleRows = ref<SysRole[]>([]);
+const selectedRoleIds = ref<number[]>([]);
 
 const userForm = reactive<UserForm>({
     loginAccount: '',
@@ -375,6 +414,48 @@ async function toggleStatus(row: UserRow) {
     }
 }
 
+async function openRoleAuth(row: UserRow) {
+    activeRow.value = row;
+    roleAuthVisible.value = true;
+    roleAuthLoading.value = true;
+    try {
+        const result = await getUserRoles({ accountId: row.accountId });
+        roleRows.value = result.roles;
+        selectedRoleIds.value = result.checkedRoleIds || [];
+        await nextTick();
+        applyRoleSelection();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : '角色授权加载失败');
+        roleAuthVisible.value = false;
+    } finally {
+        roleAuthLoading.value = false;
+    }
+}
+
+function handleRoleSelection(selection: SysRole[]) {
+    selectedRoleIds.value = selection.map((item) => item.roleId);
+}
+
+async function submitRoleAuth() {
+    if (!activeRow.value || roleAuthSaving.value) {
+        return;
+    }
+    roleAuthSaving.value = true;
+    try {
+        await grantUserRoles({
+            accountId: activeRow.value.accountId,
+            roleIds: selectedRoleIds.value,
+        });
+        ElMessage.success('角色分配已保存');
+        roleAuthVisible.value = false;
+        loadData();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : '角色分配保存失败');
+    } finally {
+        roleAuthSaving.value = false;
+    }
+}
+
 function keyword() {
     return String(query.loginAccount || '').trim() || undefined;
 }
@@ -393,5 +474,12 @@ function normalizeRow(row: SysUserAccount): UserRow {
 
 function trimOptional(value: string) {
     return value.trim() || undefined;
+}
+
+function applyRoleSelection() {
+    const checkedIdSet = new Set(selectedRoleIds.value);
+    roleRows.value.forEach((row) => {
+        roleTableRef.value?.toggleRowSelection(row, checkedIdSet.has(row.roleId));
+    });
 }
 </script>

@@ -8,12 +8,10 @@
 
         <div class="toolbar">
             <div class="toolbar-left">
-                <el-button type="primary" @click="loadData">刷新</el-button>
-                <el-button disabled>新增</el-button>
-                <el-button disabled>编辑</el-button>
-                <el-button disabled>删除</el-button>
+                <el-button type="primary" @click="openCreate">新增</el-button>
+                <el-button @click="loadData">刷新</el-button>
             </div>
-            <span class="security-note">菜单写操作待动态路由、权限码和初始化 SQL 同步策略确认后开放。</span>
+            <span class="security-note">菜单编码创建后暂不支持改名；删除能力暂不开放。</span>
         </div>
 
         <div class="table-panel">
@@ -42,9 +40,17 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="sortNo" label="排序" width="90" />
-                <el-table-column label="操作" width="140" fixed="right">
+                <el-table-column label="操作" width="210" fixed="right">
                     <template #default="{ row }">
                         <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+                        <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+                        <el-button
+                            link
+                            :type="row.statusValue === 1 ? 'danger' : 'success'"
+                            @click="toggleStatus(row)"
+                        >
+                            {{ row.statusValue === 1 ? '停用' : '启用' }}
+                        </el-button>
                     </template>
                 </el-table-column>
             </el-table>
@@ -69,13 +75,84 @@
                 <el-descriptions-item label="排序">{{ activeRow?.sortNo ?? '-' }}</el-descriptions-item>
             </el-descriptions>
         </BaseDialog>
+
+        <BaseDialog
+            v-model="menuDialogVisible"
+            :title="formMode === 'create' ? '新增菜单' : '编辑菜单'"
+            width="760px"
+            @confirm="submitMenuForm"
+        >
+            <el-form ref="menuFormRef" :model="menuForm" :rules="menuFormRules" label-width="110px">
+                <el-form-item label="父级菜单" prop="parentId">
+                    <el-select v-model="menuForm.parentId" filterable>
+                        <el-option :value="0" label="根目录" />
+                        <el-option
+                            v-for="item in parentOptions"
+                            :key="item.menuId"
+                            :value="item.menuId"
+                            :label="item.label"
+                            :disabled="formMode === 'edit' && item.menuId === menuForm.menuId"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="菜单编码" prop="menuCode">
+                    <el-input v-model="menuForm.menuCode" :disabled="formMode === 'edit'" maxlength="100" />
+                </el-form-item>
+                <el-form-item label="菜单名称" prop="menuName">
+                    <el-input v-model="menuForm.menuName" maxlength="100" />
+                </el-form-item>
+                <el-form-item label="菜单类型" prop="menuType">
+                    <el-select v-model="menuForm.menuType">
+                        <el-option v-for="item in menuTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="路由路径" prop="routePath">
+                    <el-input v-model="menuForm.routePath" maxlength="255" />
+                </el-form-item>
+                <el-form-item label="组件路径" prop="componentPath">
+                    <el-input v-model="menuForm.componentPath" maxlength="255" />
+                </el-form-item>
+                <el-form-item label="权限标识" prop="permissionCode">
+                    <el-input v-model="menuForm.permissionCode" maxlength="150" />
+                </el-form-item>
+                <el-form-item label="图标" prop="icon">
+                    <el-input v-model="menuForm.icon" maxlength="80" />
+                </el-form-item>
+                <el-form-item label="重定向" prop="redirect">
+                    <el-input v-model="menuForm.redirect" maxlength="255" />
+                </el-form-item>
+                <el-form-item label="排序" prop="sortNo">
+                    <el-input-number v-model="menuForm.sortNo" :min="0" :max="9999" />
+                </el-form-item>
+                <el-form-item label="状态" prop="status">
+                    <el-select v-model="menuForm.status">
+                        <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="显示">
+                    <el-switch v-model="menuForm.visible" :active-value="1" :inactive-value="0" />
+                </el-form-item>
+                <el-form-item label="缓存">
+                    <el-switch v-model="menuForm.keepAlive" :active-value="1" :inactive-value="0" />
+                </el-form-item>
+                <el-form-item label="外链">
+                    <el-switch v-model="menuForm.externalLink" :active-value="1" :inactive-value="0" />
+                </el-form-item>
+            </el-form>
+        </BaseDialog>
     </PageContainer>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { treeMenus, type SysMenu } from '@/api/system/menu';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import {
+    createMenu,
+    treeMenus,
+    updateMenu,
+    updateMenuStatus,
+    type SysMenu,
+} from '@/api/system/menu';
 import BaseDialog from '@/components/BaseDialog/index.vue';
 import BaseSearch from '@/components/BaseSearch/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
@@ -85,11 +162,35 @@ import type { CrudSearchField } from '@/types/admin';
 
 interface SysMenuRow extends Omit<SysMenu, 'children' | 'status'> {
     status: CommonStatus;
+    statusValue: number;
     menuTypeText: string;
     visibleText: string;
     keepAliveText: string;
     externalLinkText: string;
     children?: SysMenuRow[];
+}
+
+interface ParentOption {
+    menuId: number;
+    label: string;
+}
+
+interface MenuForm {
+    menuId?: number;
+    parentId: number;
+    menuCode: string;
+    menuName: string;
+    menuType: string;
+    routePath: string;
+    componentPath: string;
+    permissionCode: string;
+    icon: string;
+    redirect: string;
+    visible: number;
+    keepAlive: number;
+    externalLink: number;
+    sortNo: number;
+    status: number;
 }
 
 const menuTypeOptions = [
@@ -121,7 +222,40 @@ const loading = ref(false);
 const rows = ref<SysMenuRow[]>([]);
 const total = ref(0);
 const detailVisible = ref(false);
+const menuDialogVisible = ref(false);
+const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<SysMenuRow | null>(null);
+const menuFormRef = ref<FormInstance>();
+
+const menuForm = reactive<MenuForm>({
+    parentId: 0,
+    menuCode: '',
+    menuName: '',
+    menuType: 'MENU',
+    routePath: '',
+    componentPath: '',
+    permissionCode: '',
+    icon: '',
+    redirect: '',
+    visible: 1,
+    keepAlive: 0,
+    externalLink: 0,
+    sortNo: 100,
+    status: 1,
+});
+
+const menuFormRules: FormRules = {
+    parentId: [{ required: true, message: '请选择父级菜单', trigger: 'change' }],
+    menuCode: [{ required: true, message: '请输入菜单编码', trigger: 'blur' }],
+    menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
+    menuType: [{ required: true, message: '请选择菜单类型', trigger: 'change' }],
+};
+
+const parentOptions = computed<ParentOption[]>(() => {
+    const options: ParentOption[] = [];
+    flattenMenus(rows.value, options);
+    return options;
+});
 
 onMounted(() => {
     loadData();
@@ -159,6 +293,112 @@ function openDetail(row: SysMenuRow) {
     detailVisible.value = true;
 }
 
+function openCreate() {
+    formMode.value = 'create';
+    activeRow.value = null;
+    Object.assign(menuForm, {
+        menuId: undefined,
+        parentId: 0,
+        menuCode: '',
+        menuName: '',
+        menuType: 'MENU',
+        routePath: '',
+        componentPath: '',
+        permissionCode: '',
+        icon: '',
+        redirect: '',
+        visible: 1,
+        keepAlive: 0,
+        externalLink: 0,
+        sortNo: 100,
+        status: 1,
+    });
+    menuDialogVisible.value = true;
+    nextTick(() => menuFormRef.value?.clearValidate());
+}
+
+function openEdit(row: SysMenuRow) {
+    formMode.value = 'edit';
+    activeRow.value = row;
+    Object.assign(menuForm, {
+        menuId: row.menuId,
+        parentId: row.parentId,
+        menuCode: row.menuCode,
+        menuName: row.menuName,
+        menuType: row.menuType,
+        routePath: row.routePath || '',
+        componentPath: row.componentPath || '',
+        permissionCode: row.permissionCode || '',
+        icon: row.icon || '',
+        redirect: row.redirect || '',
+        visible: row.visible ?? 1,
+        keepAlive: row.keepAlive ?? 0,
+        externalLink: row.externalLink ?? 0,
+        sortNo: row.sortNo ?? 100,
+        status: row.statusValue,
+    });
+    menuDialogVisible.value = true;
+    nextTick(() => menuFormRef.value?.clearValidate());
+}
+
+async function submitMenuForm() {
+    const valid = await menuFormRef.value?.validate().catch(() => false);
+    if (!valid) {
+        return;
+    }
+    try {
+        const payload = {
+            parentId: menuForm.parentId,
+            menuName: menuForm.menuName.trim(),
+            menuType: menuForm.menuType,
+            routePath: trimOptional(menuForm.routePath),
+            componentPath: trimOptional(menuForm.componentPath),
+            permissionCode: trimOptional(menuForm.permissionCode),
+            icon: trimOptional(menuForm.icon),
+            redirect: trimOptional(menuForm.redirect),
+            visible: menuForm.visible,
+            keepAlive: menuForm.keepAlive,
+            externalLink: menuForm.externalLink,
+            sortNo: menuForm.sortNo,
+            status: menuForm.status,
+        };
+        if (formMode.value === 'create') {
+            await createMenu({
+                ...payload,
+                menuCode: menuForm.menuCode.trim(),
+            });
+            ElMessage.success('菜单已新增');
+        } else if (menuForm.menuId) {
+            await updateMenu({
+                ...payload,
+                menuId: menuForm.menuId,
+            });
+            ElMessage.success('菜单已更新');
+        }
+        menuDialogVisible.value = false;
+        loadData();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : '菜单保存失败');
+    }
+}
+
+async function toggleStatus(row: SysMenuRow) {
+    const nextStatus = row.statusValue === 1 ? 0 : 1;
+    const actionText = nextStatus === 1 ? '启用' : '停用';
+    try {
+        await ElMessageBox.confirm(`确定${actionText}菜单 ${row.menuName}？`, `${actionText}菜单`, {
+            type: nextStatus === 1 ? 'success' : 'warning',
+        });
+        await updateMenuStatus({ menuId: row.menuId, status: nextStatus });
+        ElMessage.success(`菜单已${actionText}`);
+        loadData();
+    } catch (error) {
+        if (error instanceof Error) {
+            ElMessage.error(error.message);
+        }
+    }
+}
+
 function textValue(value: unknown) {
     return String(value || '').trim() || undefined;
 }
@@ -171,6 +411,7 @@ function normalizeRow(menu: SysMenu): SysMenuRow {
     return {
         ...menu,
         status: menu.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled,
+        statusValue: menu.status ?? 0,
         menuTypeText: typeLabel(menu.menuType),
         visibleText: yesNo(menu.visible),
         keepAliveText: yesNo(menu.keepAlive),
@@ -195,6 +436,20 @@ function yesNo(value: number | undefined) {
 
 function countNodes(menus: SysMenuRow[]): number {
     return menus.reduce((count, menu) => count + 1 + countNodes(menu.children || []), 0);
+}
+
+function flattenMenus(menus: SysMenuRow[], options: ParentOption[], level = 0) {
+    menus.forEach((menu) => {
+        options.push({
+            menuId: menu.menuId,
+            label: `${'  '.repeat(level)}${menu.menuName}`,
+        });
+        flattenMenus(menu.children || [], options, level + 1);
+    });
+}
+
+function trimOptional(value: string) {
+    return value.trim() || undefined;
 }
 </script>
 
