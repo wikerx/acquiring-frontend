@@ -50,37 +50,15 @@ export interface SysRoleDeleteRequest {
     roleId: number;
 }
 
-export interface SysPermission {
-    permissionId: number;
-    permissionCode: string;
-    permissionName: string;
-    resourceType?: string;
-    resourcePath?: string;
-    httpMethod?: string;
-    description?: string;
-    status?: number;
-}
-
 export interface SysRoleMenuAuth {
     roleId: number;
     menus: SysMenu[];
     checkedMenuIds: number[];
 }
 
-export interface SysRolePermissionAuth {
-    roleId: number;
-    permissions: SysPermission[];
-    checkedPermissionIds: number[];
-}
-
 export interface SysRoleMenuGrantRequest {
     roleId: number;
     menuIds: number[];
-}
-
-export interface SysRolePermissionGrantRequest {
-    roleId: number;
-    permissionIds: number[];
 }
 
 export async function searchRoles(requestBody: SysRoleQuery) {
@@ -134,22 +112,6 @@ export async function getRoleMenus(requestBody: { roleId: number }) {
 export async function grantRoleMenus(requestBody: SysRoleMenuGrantRequest) {
     const result = await request.post<CommonResult<void>>(
         '/admin/system/roles/menus/grant',
-        requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
-}
-
-export async function getRolePermissions(requestBody: { roleId: number }) {
-    const result = await request.post<CommonResult<SysRolePermissionAuth>>(
-        '/admin/system/roles/permissions',
-        requestBody,
-    ) as unknown as CommonResult<SysRolePermissionAuth>;
-    return unwrapResult(result);
-}
-
-export async function grantRolePermissions(requestBody: SysRolePermissionGrantRequest) {
-    const result = await request.post<CommonResult<void>>(
-        '/admin/system/roles/permissions/grant',
         requestBody,
     ) as unknown as CommonResult<void>;
     return unwrapResult(result);

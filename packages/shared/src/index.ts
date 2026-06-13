@@ -54,6 +54,7 @@ export interface AuthLoginResponse {
     expireAt: string;
     account: AuthAccount;
     menus: AuthMenu[];
+    roles?: string[];
     permissions: string[];
 }
 
@@ -69,6 +70,7 @@ export interface AuthSession {
     token: string;
     account: AuthAccount;
     menus: AuthMenu[];
+    roles?: string[];
     permissions: string[];
 }
 

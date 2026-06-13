@@ -40,6 +40,7 @@ export interface CrudModuleConfig {
 
 export interface AdminMenuItem {
     title: string;
+    titleKey?: string;
     path?: string;
     icon: string;
     permission?: string;

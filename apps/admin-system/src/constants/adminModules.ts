@@ -119,8 +119,8 @@ export const crudModules: CrudModuleConfig[] = [
 
     {
         key: 'merchant.info',
-        title: '商户信息',
-        menuTitle: '商户信息',
+        title: '商户信息管理',
+        menuTitle: '商户信息管理',
         category: '商户管理',
         path: '/merchant/info',
         routeName: 'MerchantInfo',
@@ -144,7 +144,7 @@ export const crudModules: CrudModuleConfig[] = [
 
     createCommonModule('base.country', '国家/地区', '基础数据', '/base/country', 'BaseCountry', 'Location', 'base:country:list', 'base/country', 'base_iso_country', '维护 ISO 3166 国家地区基础字典和启用状态。'),
     createCommonModule('base.currency', '币种管理', '基础数据', '/base/currency', 'BaseCurrency', 'Coin', 'base:currency:list', 'base/currency', 'base_iso_currency', '维护 ISO 4217 币种基础字典、小数位和启用状态。'),
-    createCommonModule('base.regionCurrency', '地区币种配置', '基础数据', '/base/region-currency', 'BaseRegionCurrency', 'Connection', 'base:region-currency:list', 'base/region-currency', 'base_iso_country / base_iso_currency', '维护国家地区与支持币种之间的启用关系。'),
+    createCommonModule('base.regionCurrency', '地区币种配置', '基础数据', '/base/region-currency', 'BaseRegionCurrency', 'Connection', 'base:countryCurrency:list', 'base/region-currency', 'base_iso_country / base_iso_currency', '维护国家地区与支持币种之间的启用关系。'),
 
     createCommonModule('permission.app', '应用权限', '权限中心', '/permission/app', 'PermissionApp', 'Key', 'permission:app:list', 'permission/app', 'sys_app / sys_permission', '维护应用、资源权限和角色授权入口。'),
     createCommonModule('permission.dataScope', '数据权限', '权限中心', '/permission/data-scope', 'PermissionDataScope', 'Connection', 'permission:data-scope:list', 'permission/data-scope', 'sys_role_data_scope', '维护角色数据范围和后续数据隔离策略。'),
@@ -194,7 +194,7 @@ export const crudModules: CrudModuleConfig[] = [
 export const moduleMap = new Map(crudModules.map((module) => [module.key, module]));
 
 export const adminMenus: AdminMenuItem[] = [
-    { title: '首页', path: '/dashboard', icon: 'House', permission: 'dashboard:view' },
+    { title: '首页', path: '/dashboard', icon: 'House' },
     ...['系统管理', '商户管理', '基础数据', '权限中心', '安全中心'].map((category) => ({
         title: category,
         icon: categoryIcon(category),

@@ -1,181 +1,74 @@
 <template>
-    <PageContainer title="日志管理" category="系统管理" description="整合登录日志和操作日志查询，读取 service-admin 真实接口。">
-        <template #extra>
-            <el-tag type="success" effect="plain">接口已接入</el-tag>
-        </template>
-
-        <el-tabs v-model="activeTab" class="admin-tabs">
-            <el-tab-pane label="登录日志" name="login" />
-            <el-tab-pane label="操作日志" name="oper" />
+    <div class="app-container">
+        <div class="page-header"><div><h1>{{ $t('system.log.title') }}</h1></div><el-tag type="success" size="small">{{ $t('system.config.apiConnected') }}</el-tag></div>
+        <el-tabs v-model="activeTab" style="margin-bottom:4px">
+            <el-tab-pane :label="$t('system.log.loginLog')" name="login" />
+            <el-tab-pane :label="$t('system.log.operLog')" name="oper" />
         </el-tabs>
-
-        <BaseSearch :model="query" :fields="searchFields" @search="handleSearch" @reset="handleReset" />
-
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <el-button type="primary" @click="loadData">刷新</el-button>
-                <el-button disabled>查看详情</el-button>
-                <el-button disabled>导出</el-button>
-            </div>
-            <span class="security-note">日志只提供查询视图，导出待审计策略确认后开放。</span>
-        </div>
-
-        <BaseTable
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            :loading="loading"
-            :rows="rows"
-            :columns="columns"
-            :total="total"
-            @selection-change="selectedRows = $event"
-            @view="openDetail"
-            @edit="openDetail"
-            @delete="openDetail"
-        />
-
-        <BaseDialog v-model="detailVisible" :title="`${activeTitle}详情`" width="820px">
-            <el-descriptions :column="2" border class="dialog-descriptions">
-                <el-descriptions-item v-for="column in columns" :key="column.prop" :label="column.label">
-                    {{ activeRow?.[column.prop] ?? '-' }}
-                </el-descriptions-item>
-            </el-descriptions>
-        </BaseDialog>
-    </PageContainer>
+        <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
+            <el-form-item :label="activeTab === 'login' ? $t('system.log.loginAccount') : $t('system.log.module')" prop="keyword"><el-input v-model="query.keyword" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" /></el-form-item>
+            <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable><el-option :label="$t('common.enable')" :value="1" /><el-option :label="$t('common.disable')" :value="0" /></el-select></el-form-item>
+            <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handleQuery">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button></el-form-item>
+        </el-form>
+        <el-row :gutter="10" class="mb8">
+            <el-col :span="1.5"><el-button type="primary" plain :icon="Refresh" size="small" @click="loadData">{{ $t('common.refresh') }}</el-button></el-col>
+            <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
+            <el-col :span="24"><span class="security-note">{{ $t('system.log.logReadOnly') }}</span></el-col>
+        </el-row>
+        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+            <el-table-column type="selection" width="50" align="center" />
+            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('common.operation')" align="center" width="80" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button></template></el-table-column>
+        </el-table>
+        <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
+        <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="800px" append-to-body destroy-on-close>
+            <el-descriptions :column="2" border size="small"><el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">{{ activeRow?.[col.prop] ?? '-' }}</el-descriptions-item></el-descriptions>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+        </el-dialog>
+    </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Search, Refresh, View } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
+import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchLoginLogs } from '@/api/audit/login-log';
 import { searchOperLogs } from '@/api/audit/oper-log';
-import BaseDialog from '@/components/BaseDialog/index.vue';
-import BaseSearch from '@/components/BaseSearch/index.vue';
-import BaseTable from '@/components/BaseTable/index.vue';
-import PageContainer from '@/components/PageContainer/index.vue';
-import type { CrudSearchField, CrudTableColumn } from '@/types/admin';
+import type { CrudTableColumn } from '@/types/admin';
 import { LoginStatus } from '@/enums/status';
 
+const { t } = useI18n();
 type LogTab = 'login' | 'oper';
-
-const statusOptions = [
-    { label: '成功', value: 1 },
-    { label: '失败', value: 0 },
-];
-
-const activeTab = ref<LogTab>('login');
-const query = reactive<Record<string, unknown>>({});
-const loading = ref(false);
-const rows = ref<Array<Record<string, unknown>>>([]);
-const selectedRows = ref<Array<Record<string, unknown>>>([]);
-const total = ref(0);
-const page = ref(1);
-const pageSize = ref(10);
-const detailVisible = ref(false);
-const activeRow = ref<Record<string, unknown> | null>(null);
-
-const activeTitle = computed(() => (activeTab.value === 'login' ? '登录日志' : '操作日志'));
-
-const searchFields = computed<CrudSearchField[]>(() => [
-    {
-        prop: 'keyword',
-        label: activeTab.value === 'login' ? '登录账号' : '模块名称',
-        placeholder: activeTab.value === 'login' ? '请输入登录账号' : '请输入模块名称',
-    },
-    { prop: 'status', label: '状态', type: 'select', options: statusOptions },
-]);
+const showSearch = ref(true); const activeTab = ref<LogTab>('login');
+const query = reactive<Record<string, unknown>>({}); const loading = ref(false);
+const rows = ref<Array<Record<string, unknown>>>([]); const selectedRows = ref<Array<Record<string, unknown>>>([]);
+const total = ref(0); const page = ref(1); const pageSize = ref(10);
+const detailVisible = ref(false); const activeRow = ref<Record<string, unknown> | null>(null);
+const activeTitle = computed(() => activeTab.value === 'login' ? t('system.log.loginLog') : t('system.log.operLog'));
 
 const loginColumns: CrudTableColumn[] = [
-    { prop: 'loginAccount', label: '登录账号', minWidth: 150 },
-    { prop: 'loginIp', label: '登录 IP', minWidth: 140 },
-    { prop: 'merchantId', label: '商户号', minWidth: 150 },
-    { prop: 'status', label: '状态', type: 'status', width: 100 },
-    { prop: 'failReason', label: '失败原因', minWidth: 180 },
-    { prop: 'loginAt', label: '登录时间', type: 'datetime', minWidth: 180 },
+    { prop: 'loginAccount', label: t('system.log.loginAccount'), minWidth: 150 }, { prop: 'loginIp', label: t('system.log.loginIp'), minWidth: 140 },
+    { prop: 'merchantId', label: t('system.log.merchantId'), minWidth: 150 }, { prop: 'status', label: t('common.status'), width: 100 },
+    { prop: 'failReason', label: t('system.log.failReason'), minWidth: 180 }, { prop: 'loginAt', label: t('system.log.loginTime'), minWidth: 180 },
 ];
-
 const operColumns: CrudTableColumn[] = [
-    { prop: 'moduleName', label: '模块', minWidth: 140 },
-    { prop: 'operatorName', label: '操作人', minWidth: 140 },
-    { prop: 'requestMethod', label: '方法', width: 90 },
-    { prop: 'operUrl', label: '请求 URL', minWidth: 220 },
-    { prop: 'operIp', label: '操作 IP', minWidth: 140 },
-    { prop: 'costTimeText', label: '耗时', width: 100 },
-    { prop: 'status', label: '状态', type: 'status', width: 100 },
-    { prop: 'operatedAt', label: '操作时间', type: 'datetime', minWidth: 180 },
+    { prop: 'moduleName', label: t('system.log.module'), minWidth: 140 }, { prop: 'operatorName', label: t('system.log.operator'), minWidth: 140 },
+    { prop: 'requestMethod', label: t('system.log.method'), width: 90 }, { prop: 'operUrl', label: t('system.log.requestUrl'), minWidth: 220 },
+    { prop: 'operIp', label: t('system.log.operIp'), minWidth: 140 }, { prop: 'costTimeText', label: t('system.log.costTime'), width: 100 },
+    { prop: 'status', label: t('common.status'), width: 100 }, { prop: 'operatedAt', label: t('system.log.operTime'), minWidth: 180 },
 ];
+const columns = computed(() => activeTab.value === 'login' ? loginColumns : operColumns);
 
-const columns = computed(() => (activeTab.value === 'login' ? loginColumns : operColumns));
+watch([activeTab, page, pageSize], () => { selectedRows.value = []; loadData(); });
+onMounted(() => loadData());
 
-watch([activeTab, page, pageSize], () => {
-    selectedRows.value = [];
-    loadData();
-});
-
-onMounted(() => {
-    loadData();
-});
-
-async function loadData() {
-    loading.value = true;
-    try {
-        const result = activeTab.value === 'login'
-            ? await searchLoginLogs({
-                pageNo: page.value,
-                pageSize: pageSize.value,
-                loginAccount: keyword(),
-                loginStatus: numericStatus(),
-            })
-            : await searchOperLogs({
-                pageNo: page.value,
-                pageSize: pageSize.value,
-                moduleName: keyword(),
-                status: numericStatus(),
-            });
-        rows.value = result.records.map((item) => normalizeRow(item as unknown as Record<string, unknown>));
-        total.value = result.total;
-    } catch (error) {
-        rows.value = [];
-        total.value = 0;
-        ElMessage.error(error instanceof Error ? error.message : '日志加载失败');
-    } finally {
-        loading.value = false;
-    }
-}
-
-function handleSearch() {
-    if (page.value === 1) {
-        loadData();
-        return;
-    }
-    page.value = 1;
-}
-
-function handleReset() {
-    Object.keys(query).forEach((key) => {
-        query[key] = '';
-    });
-    handleSearch();
-}
-
-function openDetail(row: Record<string, unknown>) {
-    activeRow.value = row;
-    detailVisible.value = true;
-}
-
-function keyword() {
-    return String(query.keyword || '').trim() || undefined;
-}
-
-function numericStatus() {
-    return typeof query.status === 'number' ? query.status : undefined;
-}
-
-function normalizeRow(row: Record<string, unknown>) {
-    const status = row.loginStatus ?? row.status;
-    return {
-        ...row,
-        status: status === 1 ? LoginStatus.Success : LoginStatus.Failed,
-        costTimeText: typeof row.costTime === 'number' ? `${row.costTime} ms` : '-',
-    };
-}
+async function loadData() { loading.value = true; try { const r = activeTab.value === 'login' ? await searchLoginLogs({ pageNo: page.value, pageSize: pageSize.value, loginAccount: kw(), loginStatus: ns() }) : await searchOperLogs({ pageNo: page.value, pageSize: pageSize.value, moduleName: kw(), status: ns() }); rows.value = r.records.map((i: unknown) => nr(i as Record<string, unknown>)); total.value = r.total; } catch (e) { rows.value = []; total.value = 0; ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } finally { loading.value = false; } }
+function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
+function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
+function openDetail(row: Record<string, unknown>) { activeRow.value = row; detailVisible.value = true; }
+function kw() { return String(query.keyword || '').trim() || undefined; }
+function ns() { return typeof query.status === 'number' ? query.status : undefined; }
+function nr(row: Record<string, unknown>) { const s = row.loginStatus ?? row.status; return { ...row, status: s === 1 ? LoginStatus.Success : LoginStatus.Failed, costTimeText: typeof row.costTime === 'number' ? `${row.costTime} ms` : '-' }; }
 </script>

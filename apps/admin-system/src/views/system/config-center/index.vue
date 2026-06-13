@@ -1,187 +1,76 @@
 <template>
-    <PageContainer title="字典参数" category="系统管理" description="整合字典类型和系统参数配置，读取 service-admin 真实接口。">
-        <template #extra>
-            <el-tag type="success" effect="plain">接口已接入</el-tag>
-        </template>
-
-        <el-tabs v-model="activeTab" class="admin-tabs">
-            <el-tab-pane label="字典管理" name="dict" />
-            <el-tab-pane label="参数设置" name="config" />
+    <div class="app-container">
+        <div class="page-header"><div><h1>{{ $t('system.config.title') }}</h1></div><el-tag type="success" size="small">{{ $t('system.config.apiConnected') }}</el-tag></div>
+        <el-tabs v-model="activeTab" style="margin-bottom:4px">
+            <el-tab-pane :label="$t('system.config.dict')" name="dict" />
+            <el-tab-pane :label="$t('system.config.config')" name="config" />
         </el-tabs>
-
-        <BaseSearch :model="query" :fields="searchFields" @search="handleSearch" @reset="handleReset" />
-
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <el-button type="primary" @click="loadData">刷新</el-button>
-                <el-button disabled>新增</el-button>
-                <el-button disabled>编辑</el-button>
-                <el-button disabled type="danger" plain>删除</el-button>
-            </div>
-            <span class="security-note">写操作入口保留，待表单校验和审计确认后开放。</span>
-        </div>
-
-        <BaseTable
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            :loading="loading"
-            :rows="rows"
-            :columns="columns"
-            :total="total"
-            @selection-change="selectedRows = $event"
-            @view="openDetail"
-            @edit="openDetail"
-            @delete="openDetail"
-        />
-
-        <BaseDialog v-model="detailVisible" :title="`${activeTitle}详情`" width="760px">
-            <el-descriptions :column="2" border class="dialog-descriptions">
-                <el-descriptions-item v-for="column in columns" :key="column.prop" :label="column.label">
-                    {{ activeRow?.[column.prop] ?? '-' }}
-                </el-descriptions-item>
-            </el-descriptions>
-        </BaseDialog>
-    </PageContainer>
+        <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
+            <el-form-item :label="activeTab === 'dict' ? $t('system.config.dictName') : $t('system.config.configName')" prop="keyword"><el-input v-model="query.keyword" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" /></el-form-item>
+            <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable><el-option :label="$t('common.enable')" :value="1" /><el-option :label="$t('common.disable')" :value="0" /></el-select></el-form-item>
+            <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handleQuery">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button></el-form-item>
+        </el-form>
+        <el-row :gutter="10" class="mb8">
+            <el-col :span="1.5"><el-button type="primary" plain :icon="Refresh" size="small" @click="loadData">{{ $t('common.refresh') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="success" plain :icon="Plus" size="small" v-hasPermi="'system:config:add'">{{ $t('common.add') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Edit" size="small" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button></el-col>
+            <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
+            <el-col :span="24"><span class="security-note">{{ $t('system.config.writeNote') }}</span></el-col>
+        </el-row>
+        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+            <el-table-column type="selection" width="50" align="center" />
+            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button></template></el-table-column>
+        </el-table>
+        <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
+        <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="700px" append-to-body destroy-on-close>
+            <el-descriptions :column="2" border size="small"><el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">{{ activeRow?.[col.prop] ?? '-' }}</el-descriptions-item></el-descriptions>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+        </el-dialog>
+    </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Search, Refresh, Plus, Edit, View } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
+import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchConfigs } from '@/api/system/config';
 import { searchDictTypes } from '@/api/system/dict';
-import BaseDialog from '@/components/BaseDialog/index.vue';
-import BaseSearch from '@/components/BaseSearch/index.vue';
-import BaseTable from '@/components/BaseTable/index.vue';
-import PageContainer from '@/components/PageContainer/index.vue';
-import type { CrudSearchField, CrudTableColumn } from '@/types/admin';
+import type { CrudTableColumn } from '@/types/admin';
 import { CommonStatus } from '@/enums/status';
 
+const { t } = useI18n();
 type ConfigCenterTab = 'dict' | 'config';
-
-const statusOptions = [
-    { label: '启用', value: 1 },
-    { label: '停用', value: 0 },
-];
-
-const activeTab = ref<ConfigCenterTab>('dict');
-const query = reactive<Record<string, unknown>>({});
-const loading = ref(false);
-const rows = ref<Array<Record<string, unknown>>>([]);
-const selectedRows = ref<Array<Record<string, unknown>>>([]);
-const total = ref(0);
-const page = ref(1);
-const pageSize = ref(10);
-const detailVisible = ref(false);
-const activeRow = ref<Record<string, unknown> | null>(null);
-
-const activeTitle = computed(() => (activeTab.value === 'dict' ? '字典类型' : '系统参数'));
-
-const searchFields = computed<CrudSearchField[]>(() => [
-    {
-        prop: 'keyword',
-        label: activeTab.value === 'dict' ? '字典名称' : '参数名称',
-        placeholder: activeTab.value === 'dict' ? '请输入字典名称' : '请输入参数名称',
-    },
-    { prop: 'status', label: '状态', type: 'select', options: statusOptions },
-]);
+const showSearch = ref(true); const activeTab = ref<ConfigCenterTab>('dict');
+const query = reactive<Record<string, unknown>>({}); const loading = ref(false);
+const rows = ref<Array<Record<string, unknown>>>([]); const selectedRows = ref<Array<Record<string, unknown>>>([]);
+const total = ref(0); const page = ref(1); const pageSize = ref(10);
+const detailVisible = ref(false); const activeRow = ref<Record<string, unknown> | null>(null);
+const activeTitle = computed(() => activeTab.value === 'dict' ? t('system.config.dictType') : t('system.config.configKey'));
 
 const dictColumns: CrudTableColumn[] = [
-    { prop: 'dictType', label: '字典类型', minWidth: 180 },
-    { prop: 'dictName', label: '字典名称', minWidth: 180 },
-    { prop: 'bizDomain', label: '业务域', minWidth: 140 },
-    { prop: 'status', label: '状态', type: 'status', width: 100 },
-    { prop: 'updatedAt', label: '更新时间', type: 'datetime', minWidth: 180 },
+    { prop: 'dictType', label: t('system.config.dictType'), minWidth: 180 }, { prop: 'dictName', label: t('system.config.dictName'), minWidth: 180 },
+    { prop: 'bizDomain', label: t('system.config.bizDomain'), minWidth: 140 }, { prop: 'status', label: t('common.status'), width: 100 },
+    { prop: 'updatedAt', label: t('common.updateTime'), minWidth: 180 },
 ];
-
 const configColumns: CrudTableColumn[] = [
-    { prop: 'configKey', label: '参数键名', minWidth: 220 },
-    { prop: 'configName', label: '参数名称', minWidth: 180 },
-    { prop: 'configGroup', label: '配置分组', minWidth: 140 },
-    { prop: 'valueTypeText', label: '值类型', width: 110 },
-    { prop: 'status', label: '状态', type: 'status', width: 100 },
-    { prop: 'updatedAt', label: '更新时间', type: 'datetime', minWidth: 180 },
+    { prop: 'configKey', label: t('system.config.configKey'), minWidth: 220 }, { prop: 'configName', label: t('system.config.configName'), minWidth: 180 },
+    { prop: 'configGroup', label: t('system.config.configGroup'), minWidth: 140 }, { prop: 'valueTypeText', label: t('system.config.valueType'), width: 110 },
+    { prop: 'status', label: t('common.status'), width: 100 }, { prop: 'updatedAt', label: t('common.updateTime'), minWidth: 180 },
 ];
+const columns = computed(() => activeTab.value === 'dict' ? dictColumns : configColumns);
 
-const columns = computed(() => (activeTab.value === 'dict' ? dictColumns : configColumns));
+watch([activeTab, page, pageSize], () => { selectedRows.value = []; loadData(); });
+onMounted(() => loadData());
 
-watch([activeTab, page, pageSize], () => {
-    selectedRows.value = [];
-    loadData();
-});
-
-onMounted(() => {
-    loadData();
-});
-
-async function loadData() {
-    loading.value = true;
-    try {
-        const result = activeTab.value === 'dict'
-            ? await searchDictTypes({
-                pageNo: page.value,
-                pageSize: pageSize.value,
-                dictName: keyword(),
-                status: numericStatus(),
-            })
-            : await searchConfigs({
-                pageNo: page.value,
-                pageSize: pageSize.value,
-                configName: keyword(),
-                status: numericStatus(),
-            });
-        rows.value = result.records.map((item) => normalizeRow(item as unknown as Record<string, unknown>));
-        total.value = result.total;
-    } catch (error) {
-        rows.value = [];
-        total.value = 0;
-        ElMessage.error(error instanceof Error ? error.message : '列表加载失败');
-    } finally {
-        loading.value = false;
-    }
-}
-
-function handleSearch() {
-    if (page.value === 1) {
-        loadData();
-        return;
-    }
-    page.value = 1;
-}
-
-function handleReset() {
-    Object.keys(query).forEach((key) => {
-        query[key] = '';
-    });
-    handleSearch();
-}
-
-function openDetail(row: Record<string, unknown>) {
-    activeRow.value = row;
-    detailVisible.value = true;
-}
-
-function keyword() {
-    return String(query.keyword || '').trim() || undefined;
-}
-
-function numericStatus() {
-    return typeof query.status === 'number' ? query.status : undefined;
-}
-
-function normalizeRow(row: Record<string, unknown>) {
-    return {
-        ...row,
-        status: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled,
-        valueTypeText: valueTypeText(row.valueType),
-    };
-}
-
-function valueTypeText(value: unknown) {
-    return ({
-        1: '字符串',
-        2: '数字',
-        3: '布尔',
-        4: 'JSON',
-    } as Record<number, string>)[Number(value)] || '-';
-}
+async function loadData() { loading.value = true; try { const r = activeTab.value === 'dict' ? await searchDictTypes({ pageNo: page.value, pageSize: pageSize.value, dictName: kw(), status: ns() }) : await searchConfigs({ pageNo: page.value, pageSize: pageSize.value, configName: kw(), status: ns() }); rows.value = r.records.map((i: unknown) => nr(i as Record<string, unknown>)); total.value = r.total; } catch (e) { rows.value = []; total.value = 0; ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } finally { loading.value = false; } }
+function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
+function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
+function openDetail(row: Record<string, unknown>) { activeRow.value = row; detailVisible.value = true; }
+function kw() { return String(query.keyword || '').trim() || undefined; }
+function ns() { return typeof query.status === 'number' ? query.status : undefined; }
+function nr(row: Record<string, unknown>) { return { ...row, status: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled, valueTypeText: vt(row.valueType) }; }
+function vt(v: unknown) { return ({ 1: 'String', 2: 'Number', 3: 'Boolean', 4: 'JSON' } as Record<number, string>)[Number(v)] || '-'; }
 </script>

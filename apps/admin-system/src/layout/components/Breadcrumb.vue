@@ -1,8 +1,8 @@
 <template>
     <el-breadcrumb separator="/">
-        <el-breadcrumb-item>管理后台</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ $t('layout.adminConsole') }}</el-breadcrumb-item>
         <el-breadcrumb-item v-for="item in matched" :key="item.path">
-            {{ item.meta.title }}
+            {{ $te('route.' + item.meta.titleKey) ? $t('route.' + item.meta.titleKey) : item.meta.title }}
         </el-breadcrumb-item>
     </el-breadcrumb>
 </template>

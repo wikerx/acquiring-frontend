@@ -16,18 +16,18 @@ export enum KeyStatus {
 }
 
 export const commonStatusOptions = [
-    { label: '启用', value: CommonStatus.Enabled },
-    { label: '停用', value: CommonStatus.Disabled },
-    { label: '锁定', value: CommonStatus.Locked },
+    { label: 'status.enabled', value: CommonStatus.Enabled },
+    { label: 'status.disabled', value: CommonStatus.Disabled },
+    { label: 'status.locked', value: CommonStatus.Locked },
 ];
 
 export const loginStatusOptions = [
-    { label: '成功', value: LoginStatus.Success },
-    { label: '失败', value: LoginStatus.Failed },
+    { label: 'status.success', value: LoginStatus.Success },
+    { label: 'status.failed', value: LoginStatus.Failed },
 ];
 
 export const keyStatusOptions = [
-    { label: '生效中', value: KeyStatus.Active },
-    { label: '未生效', value: KeyStatus.Inactive },
-    { label: '轮换中', value: KeyStatus.Rotating },
+    { label: 'status.active', value: KeyStatus.Active },
+    { label: 'status.inactive', value: KeyStatus.Inactive },
+    { label: 'status.rotating', value: KeyStatus.Rotating },
 ];

@@ -48,6 +48,14 @@ export async function saveConfig(requestBody: SysConfigSaveRequest) {
     return unwrapResult(result);
 }
 
+export async function updateConfig(configKey: string, requestBody: SysConfigSaveRequest) {
+    const result = await request.put<CommonResult<SysConfig>>(
+        `/admin/system/configs/${encodeURIComponent(configKey)}`,
+        requestBody,
+    ) as unknown as CommonResult<SysConfig>;
+    return unwrapResult(result);
+}
+
 export async function getConfig(configKey: string) {
     const result = await request.get<CommonResult<SysConfig>>(
         `/admin/system/configs/${encodeURIComponent(configKey)}`,
@@ -59,5 +67,18 @@ export async function deleteConfig(configKey: string) {
     const result = await request.delete<CommonResult<void>>(
         `/admin/system/configs/${encodeURIComponent(configKey)}`,
     ) as unknown as CommonResult<void>;
+    return unwrapResult(result);
+}
+
+export async function exportConfigs(requestBody: SysConfigQuery) {
+    const result = await request.post<CommonResult<PageResult<SysConfig>>>(
+        '/admin/system/configs/export',
+        requestBody,
+    ) as unknown as CommonResult<PageResult<SysConfig>>;
+    return unwrapResult(result);
+}
+
+export async function refreshConfigCache() {
+    const result = await request.post<CommonResult<void>>('/admin/system/configs/refresh-cache') as unknown as CommonResult<void>;
     return unwrapResult(result);
 }

@@ -8,6 +8,7 @@ import { useUserStore } from '@/store';
 declare module 'vue-router' {
     interface RouteMeta {
         title?: string;
+        titleKey?: string;
         icon?: string;
         permission?: string;
         configuredComponent?: string;
@@ -21,12 +22,9 @@ const missingView = () => import('@/views/_fallback/MissingView.vue');
 const legacyRedirects: Record<string, string> = {
     '/system/department': '/system/org',
     '/system/departments': '/system/org',
-    '/system/post': '/system/org',
-    '/system/posts': '/system/org',
-    '/system/dict': '/system/config-center',
-    '/system/dicts': '/system/config-center',
-    '/system/config': '/system/config-center',
-    '/system/configs': '/system/config-center',
+    '/system/dicts': '/system/dict',
+    '/system/configs': '/system/config',
+    '/system/config-center': '/system/dict',
     '/system/login-log': '/system/log',
     '/system/login-logs': '/system/log',
     '/system/oper-log': '/system/log',
@@ -70,13 +68,13 @@ export const routes: RouteRecordRaw[] = [
         path: '/login',
         name: 'Login',
         component: () => import('@/views/login/index.vue'),
-        meta: { title: '登录' },
+        meta: { title: '登录', titleKey: 'Login' },
     },
     {
         path: '/403',
         name: 'Forbidden',
         component: () => import('@/views/error/Forbidden.vue'),
-        meta: { title: '403' },
+        meta: { title: '403', titleKey: 'Forbidden' },
     },
     ...redirectRoutes,
     {
@@ -89,7 +87,7 @@ export const routes: RouteRecordRaw[] = [
                 path: 'dashboard',
                 name: 'Dashboard',
                 component: () => import('@/views/dashboard/index.vue'),
-                meta: { title: '工作台', icon: 'House', permission: 'dashboard:view' },
+                meta: { title: '工作台', titleKey: 'Dashboard', icon: 'House' },
             },
         ],
     },
@@ -102,7 +100,7 @@ export const routes: RouteRecordRaw[] = [
                 path: '',
                 name: 'RouteMissing',
                 component: missingView,
-                meta: { title: '页面未实现' },
+                meta: { title: '页面未实现', titleKey: 'RouteMissing' },
             },
         ],
     },
@@ -163,6 +161,7 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
                 component: resolveViewComponent(menu.routePath, menu.componentPath),
                 meta: {
                     title: menu.menuName,
+                    titleKey: menu.menuCode,
                     icon: menu.icon,
                     permission: menu.permissionCode,
                     configuredComponent: menu.componentPath,

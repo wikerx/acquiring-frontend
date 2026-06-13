@@ -23,6 +23,7 @@ interface UserSessionCache {
     token: string;
     account: AuthAccount | null;
     menus: AuthMenu[];
+    roles: string[];
     permissions: string[];
 }
 
@@ -54,7 +55,7 @@ export const useUserStore = defineStore('user', {
         token: getToken() || cachedSession?.token || '',
         account: cachedSession?.account || null,
         userInfo: toUserInfo(cachedSession?.account || null),
-        roles: [] as string[],
+        roles: cachedSession?.roles || ([] as string[]),
         permissions: cachedSession?.permissions || ([] as string[]),
         menus: cachedSession?.menus || ([] as AuthMenu[]),
         hydrated: false,
@@ -68,6 +69,7 @@ export const useUserStore = defineStore('user', {
                 token: state.token,
                 account: state.account,
                 menus: state.menus,
+                roles: state.roles,
                 permissions: state.permissions,
             };
         },
@@ -102,7 +104,7 @@ export const useUserStore = defineStore('user', {
             this.token = token;
             this.account = response.account;
             this.userInfo = toUserInfo(response.account);
-            this.roles = [];
+            this.roles = response.roles || [];
             this.permissions = response.permissions || [];
             this.menus = response.menus || [];
             this.hydrated = true;
@@ -133,9 +135,16 @@ export const useUserStore = defineStore('user', {
                     token: this.token,
                     account: this.account,
                     menus: this.menus,
+                    roles: this.roles,
                     permissions: this.permissions,
                 }),
             );
+        },
+        hasRole(role?: string) {
+            if (!role) {
+                return true;
+            }
+            return this.roles.includes(role);
         },
     },
 });

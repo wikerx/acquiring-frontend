@@ -14,6 +14,7 @@ apps/**/dist/
 packages/**/dist/
 .vite/
 apps/**/.vite/
+.playwright-cli/
 coverage/
 reports/
 

@@ -3,28 +3,39 @@ import { defineStore } from 'pinia';
 export interface VisitedView {
     path: string;
     title: string;
+    titleKey?: string;
+    icon?: string;
 }
 
 export const useTagsViewStore = defineStore('tagsView', {
     state: () => ({
-        visitedViews: [{ path: '/dashboard', title: '首页' }] as VisitedView[],
+        visitedViews: [] as VisitedView[],
     }),
     actions: {
         addView(view: VisitedView) {
-            if (!this.visitedViews.some((item) => item.path === view.path)) {
+            if (view.path === '/403') {
+                return;
+            }
+            const index = this.visitedViews.findIndex((v) => v.path === view.path);
+            if (index >= 0) {
+                this.visitedViews.splice(index, 1, view);
+            } else {
                 this.visitedViews.push(view);
             }
         },
         removeView(path: string) {
-            if (path === '/dashboard') {
-                return;
+            const index = this.visitedViews.findIndex((v) => v.path === path);
+            if (index >= 0) {
+                this.visitedViews.splice(index, 1);
             }
-            this.visitedViews = this.visitedViews.filter((item) => item.path !== path);
         },
         clearOthers(path: string) {
             this.visitedViews = this.visitedViews.filter(
-                (item) => item.path === '/dashboard' || item.path === path,
+                (v) => v.path === path || v.path === '/dashboard',
             );
+        },
+        clearAll() {
+            this.visitedViews = this.visitedViews.filter((v) => v.path === '/dashboard');
         },
     },
 });

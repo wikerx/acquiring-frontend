@@ -83,6 +83,144 @@ apps/admin-system/src/views/**/index.vue
 
 旧路由会 redirect 到新路由；找不到页面时使用 `views/_fallback/MissingView.vue`，不再抛错白屏。
 
+## RuoYi-Style UI Rules
+
+`admin-system` 的基础页面统一参考若依前后端分离版后台风格，使用白底、蓝色主色、紧凑表格和行内搜索。新增页面必须优先复用以下结构和 class，不要为单个页面重复定义一套搜索区、工具栏、表格、分页样式。
+
+核心视觉基线：
+
+- 左侧菜单宽度固定为 168px，折叠宽度 54px。
+- 顶部导航高度 36px，标签栏高度约 34px。
+- 内容区使用白底，不使用整页灰色卡片。
+- 表单、按钮、表格统一使用 `size="small"`。
+- 查询条件和列表正文统一使用 12px、`#606266`，表头使用 12px、`#515a6e`。
+- 主色使用 Element Plus 默认蓝 `#409eff`，避免单页自定义大面积色块。
+
+### Page Container
+
+页面根节点使用：
+
+```vue
+<div class="app-container">
+  ...
+</div>
+```
+
+内容区不再使用大卡片包裹整页，保持若依式直接铺开：搜索区、工具栏、表格、分页自上而下排列。列表页默认不增加页面大标题和说明文字，标题由面包屑和 TagsView 表达。
+
+### Search Form
+
+查询区使用行内表单：
+
+```vue
+<el-form :model="query" :inline="true" size="small" class="search-form" label-width="68px">
+  <el-form-item label="用户名称" prop="userName">
+    <el-input v-model="query.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
+  </el-form-item>
+  <el-form-item>
+    <el-button type="primary" :icon="Search" size="small" @click="handleQuery">搜索</el-button>
+    <el-button :icon="Refresh" size="small" @click="resetQuery">重置</el-button>
+  </el-form-item>
+</el-form>
+```
+
+规范：
+
+- 表单使用 `size="small"`。
+- 输入框、下拉框默认宽度由 `.search-form` 控制，不在页面里重复写宽度。
+- 查询项 label 默认 `68px`，较长 label 最多调整到 `80px`。
+- 查询按钮使用 `type="primary"`，重置按钮使用默认样式。
+- 搜索区和工具栏之间只保留 8px 间距。
+
+### Toolbar Buttons
+
+工具栏使用若依式 `el-row + mb8`：
+
+```vue
+<el-row :gutter="10" class="mb8">
+  <el-col :span="1.5">
+    <el-button type="primary" plain :icon="Plus" size="small" v-hasPermi="'system:user:add'">新增</el-button>
+  </el-col>
+  <el-col :span="1.5">
+    <el-button type="success" plain :icon="Edit" size="small" v-hasPermi="'system:user:edit'">修改</el-button>
+  </el-col>
+  <el-col class="right-toolbar">
+    <el-button :icon="Search" size="small" circle />
+    <el-button :icon="Refresh" size="small" circle />
+  </el-col>
+</el-row>
+```
+
+规范：
+
+- 功能按钮统一 `size="small"`。
+- 新增：`type="primary" plain`。
+- 修改：`type="success" plain`。
+- 删除：`type="danger"` 或 `type="warning" plain`，按页面危险程度选择。
+- 右侧刷新、显隐搜索等圆形按钮统一放入 `class="right-toolbar"`，不要使用 `float:right`。
+- 按钮级权限必须使用 `v-hasPermi`，角色控制使用 `v-hasRole`。
+
+### Table
+
+表格使用 Element Plus 原生表格，保持若依紧凑风格：
+
+```vue
+<el-table v-loading="loading" :data="rows" row-key="id" size="small">
+  <el-table-column type="selection" width="50" align="center" />
+  <el-table-column prop="userName" label="用户名称" align="center" show-overflow-tooltip />
+  <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width" fixed="right">
+    <template #default="{ row }">
+      <el-button size="small" type="primary" link :icon="Edit" v-hasPermi="'system:user:edit'">修改</el-button>
+      <el-button size="small" type="primary" link :icon="Delete" v-hasPermi="'system:user:delete'">删除</el-button>
+    </template>
+  </el-table-column>
+</el-table>
+```
+
+规范：
+
+- 表格必须设置 `size="small"`。
+- 表头背景、行高、字号由 `main.css` 全局控制。
+- 列表正文的字号和颜色必须与查询条件一致，不在页面内单独加深、放大或加粗。
+- 列文本默认 `align="center"`，长文本列加 `show-overflow-tooltip`。
+- 操作列必须使用 `label="操作"`、`class-name="small-padding fixed-width"`。
+- 操作按钮统一 `size="small" type="primary" link`，危险操作可以使用 `type="danger"`。
+- 操作列按钮必须横向排列，不允许自动换成多行。
+- 操作列宽度按按钮数量设置：1 个按钮 80-100，2 个按钮 140-160，3 个按钮 180-220，4 个按钮 240-280，更多操作应使用下拉菜单。
+
+### Pagination
+
+分页区统一使用：
+
+```vue
+<div class="pagination-container" v-show="total > 0">
+  <el-pagination
+    v-model:current-page="page"
+    v-model:page-size="pageSize"
+    :total="total"
+    :page-sizes="[10, 20, 50, 100]"
+    layout="total, sizes, prev, pager, next, jumper"
+    background
+  />
+</div>
+```
+
+规范：
+
+- 分页靠右。
+- 默认页大小 `10`。
+- 使用 `background`，保持若依式蓝色当前页。
+
+### TagsView And Navigation
+
+顶部标签导航使用 `layout/components/TagsView.vue`，样式由 `.tags-view` 统一控制：
+
+- 标签使用扁平边框样式，带菜单图标和关闭图标。
+- 当前标签使用浅蓝底、蓝色文字、蓝色边框。
+- 标签高度 28px，标签栏高度约 34px。
+- 支持关闭当前、关闭其他、关闭全部。
+- 不在页面内单独调整标签样式。
+
 ## Verification
 
 ```bash

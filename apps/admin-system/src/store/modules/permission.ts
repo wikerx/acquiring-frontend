@@ -24,14 +24,28 @@ function toAdminMenuItem(menu: AuthMenu): AdminMenuItem | null {
         return null;
     }
     const children = (menu.children || []).map(toAdminMenuItem).filter(Boolean) as AdminMenuItem[];
+    // Only keep items that are routes (MENU type) or have visible children
     if (!menu.routePath && !children.length) {
         return null;
     }
     return {
         title: menu.menuName,
-        path: menu.routePath,
+        titleKey: menu.menuCode,
+        path: normalizePath(menu.routePath),
         icon: menu.icon || 'House',
         permission: menu.permissionCode,
         children,
     };
+}
+
+/** Ensure path has leading slash and no trailing slash */
+function normalizePath(path?: string): string | undefined {
+    if (!path) {
+        return undefined;
+    }
+    let normalized = path.trim();
+    if (!normalized.startsWith('/')) {
+        normalized = '/' + normalized;
+    }
+    return normalized.replace(/\/+$/, '') || '/';
 }

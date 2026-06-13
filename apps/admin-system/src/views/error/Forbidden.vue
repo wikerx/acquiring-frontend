@@ -1,9 +1,9 @@
 <template>
-    <PageContainer title="403" category="访问受限" description="当前账号缺少访问该页面的权限。">
-        <el-button type="primary" @click="$router.push('/dashboard')">返回首页</el-button>
-    </PageContainer>
+    <div class="app-container">
+        <el-result icon="warning" :title="$t('permission.denied')" :sub-title="$t('permission.description')">
+            <template #extra>
+                <el-button type="primary" size="small" @click="$router.push('/dashboard')">{{ $t('permission.backHome') }}</el-button>
+            </template>
+        </el-result>
+    </div>
 </template>
-
-<script setup lang="ts">
-import PageContainer from '@/components/PageContainer/index.vue';
-</script>
