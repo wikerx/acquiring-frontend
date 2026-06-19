@@ -116,5 +116,10 @@ async function handleDelete(row: IsoCurrency) {
   try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.chineseName || row.englishName }), t('common.delete'), { type: 'warning' }); } catch { return; }
   try { await deleteCurrency(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
-async function handleExport() { try { const rows = await exportCurrencies(); ElMessage.success(`${t('common.export')} ${rows.length}`); } catch { ElMessage.error(t('common.loadFailed')); } }
+async function handleExport() {
+  try {
+    await exportCurrencies();
+    ElMessage.success(t('common.export'));
+  } catch { ElMessage.error(t('common.loadFailed')); }
+}
 </script>

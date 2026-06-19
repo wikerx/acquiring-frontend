@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface SysConfig {
     id: number;
@@ -71,11 +72,11 @@ export async function deleteConfig(configKey: string) {
 }
 
 export async function exportConfigs(requestBody: SysConfigQuery) {
-    const result = await http.post<CommonResult<PageResult<SysConfig>>>(
-        '/admin/system/configs/export',
-        requestBody,
-    );
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/system/configs/export', {
+        method: 'post',
+        data: requestBody,
+        fileName: '参数列表.xlsx',
+    });
 }
 
 export async function refreshConfigCache() {

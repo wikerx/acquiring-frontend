@@ -1,6 +1,7 @@
 import type { CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface IsoCurrency {
     id: number;
@@ -55,6 +56,8 @@ export async function deleteCurrency(id: number) {
 }
 
 export async function exportCurrencies() {
-    const result = await http.get<CommonResult<IsoCurrency[]>>('/admin/base/currencies/export');
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/base/currencies/export', {
+        method: 'get',
+        fileName: '币种列表.xlsx',
+    });
 }

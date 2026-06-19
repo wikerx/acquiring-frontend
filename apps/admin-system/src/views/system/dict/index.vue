@@ -155,7 +155,7 @@ async function handleDelete(row: SysDictType) {
 async function handleRefreshCache() { try { await refreshDictCache(); ElMessage.success(t('common.success')); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); } }
 async function handleExport() {
   try {
-    const r = await exportDictTypes({
+    await exportDictTypes({
       pageNo: page.value,
       pageSize: pageSize.value,
       dictName: query.dictName || undefined,
@@ -163,7 +163,7 @@ async function handleExport() {
       bizDomain: query.bizDomain || undefined,
       status: query.status,
     });
-    ElMessage.success(`${t('common.export')} ${r.records.length}`);
+    ElMessage.success(t('common.export'));
   } catch (e: any) {
     ElMessage.error(e?.message || t('common.loadFailed'));
   }

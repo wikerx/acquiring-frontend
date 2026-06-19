@@ -1,6 +1,7 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface SysDept {
     id?: number;
@@ -41,7 +42,9 @@ export async function deleteDept(id: number): Promise<void> {
     return unwrapResult(result.data) as unknown as void;
 }
 
-export async function exportDepts(): Promise<SysDept[]> {
-    const result = await http.get<CommonResult<SysDept[]>>('/admin/system/dept/export');
-    return unwrapResult(result.data);
+export async function exportDepts() {
+    await downloadExcel('/admin/system/dept/export', {
+        method: 'get',
+        fileName: '部门列表.xlsx',
+    });
 }

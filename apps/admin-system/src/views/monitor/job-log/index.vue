@@ -23,12 +23,28 @@
         </el-form>
 
         <el-row :gutter="10" class="mb8">
+            <el-col :span="1.5">
+                <el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'monitor:jobLog:export'">
+                    {{ $t('common.export') }}
+                </el-button>
+            </el-col>
+            <el-col :span="1.5">
+                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows[0])" v-hasPermi="'monitor:jobLog:remove'">
+                    {{ $t('common.delete') }}
+                </el-button>
+            </el-col>
+            <el-col :span="1.5">
+                <el-button type="danger" plain :icon="DeleteFilled" size="small" @click="handleClean" v-hasPermi="'monitor:jobLog:clean'">
+                    {{ $t('monitor.jobLog.clean') }}
+                </el-button>
+            </el-col>
             <el-col class="right-toolbar">
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="runId" :label="$t('monitor.jobLog.runId')" min-width="190" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="jobCode" :label="$t('monitor.jobLog.jobCode')" min-width="140" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="jobName" :label="$t('monitor.jobLog.jobName')" min-width="160" align="center" :show-overflow-tooltip="true" />
@@ -95,21 +111,22 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Search, Refresh, View } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Search, Refresh, View, Download, Delete, DeleteFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
-import { searchJobRunLogs, type JobRunLogRow } from '@/api/monitor/jobLog';
+import { cleanJobRunLogs, deleteJobRunLog, exportJobRunLogs, searchJobRunLogs, type JobRunLogRow } from '@/api/monitor/jobLog';
 
 const { t } = useI18n();
 const route = useRoute();
 const loading = ref(false);
 const showSearch = ref(true);
 const rows = ref<JobRunLogRow[]>([]);
+const selectedRows = ref<JobRunLogRow[]>([]);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
@@ -190,6 +207,10 @@ function handleReset() {
     handleSearch();
 }
 
+function handleSelectionChange(selection: JobRunLogRow[]) {
+    selectedRows.value = selection;
+}
+
 /**
  * 将路由中的任务编码同步到查询条件，支持从任务调度页直接钻取日志。
  */
@@ -200,6 +221,56 @@ function applyRouteQuery() {
 function openDetail(row: JobRunLogRow) {
     detailData.value = row as unknown as Record<string, unknown>;
     detailVisible.value = true;
+}
+
+async function handleDelete(row?: JobRunLogRow) {
+    const target = row || selectedRows.value[0];
+    if (!target) {
+        ElMessage.warning(t('common.pleaseSelect'));
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(t('monitor.jobLog.deleteConfirm', { runId: target.runId }), t('common.delete'), { type: 'warning' });
+        await deleteJobRunLog(target.id);
+        ElMessage.success(t('common.deleteSuccess'));
+        loadData();
+    } catch (error) {
+        if (error instanceof Error) {
+            ElMessage.error(error.message);
+        }
+    }
+}
+
+async function handleClean() {
+    try {
+        await ElMessageBox.confirm(t('monitor.jobLog.cleanConfirm'), t('common.delete'), { type: 'warning' });
+        const removedCount = await cleanJobRunLogs({
+            jobCode: query.jobCode.trim() || undefined,
+            runStatus: query.runStatus || undefined,
+            triggerType: query.triggerType || undefined,
+        });
+        ElMessage.success(`${t('monitor.jobLog.clean')} ${removedCount}`);
+        loadData();
+    } catch (error) {
+        if (error instanceof Error) {
+            ElMessage.error(error.message);
+        }
+    }
+}
+
+async function handleExport() {
+    try {
+        await exportJobRunLogs({
+            pageNo: page.value,
+            pageSize: pageSize.value,
+            jobCode: query.jobCode.trim() || undefined,
+            runStatus: query.runStatus || undefined,
+            triggerType: query.triggerType || undefined,
+        });
+        ElMessage.success(t('common.export'));
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    }
 }
 
 function formatTriggerType(triggerType: string) {

@@ -68,5 +68,10 @@ function handleUpdate(row: SysDept) { formMode.value = 'edit'; activeRow.value =
 async function submit() { const v = await formRef.value?.validate().catch(() => false); if (!v) return; try { if (formMode.value === 'create') { await createDept({ deptName: form.deptName.trim(), parentId: form.parentId, sortNo: form.sortNo, leader: form.leader?.trim(), phone: form.phone?.trim(), email: form.email?.trim(), status: form.status }); ElMessage.success(t('common.addSuccess')); } else if (form.id) { await updateDept(form.id, { deptName: form.deptName.trim(), parentId: form.parentId, sortNo: form.sortNo, leader: form.leader?.trim(), phone: form.phone?.trim(), email: form.email?.trim(), status: form.status }); ElMessage.success(t('common.editSuccess')); } open.value = false; loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function toggleStatus(row: SysDept) { const ns = row.status === 1 ? 0 : 1; const at = ns === 1 ? t('common.enable') : t('common.disable'); try { await ElMessageBox.confirm(t('system.role.statusToggleConfirm', { action: at, name: row.deptName }), t('common.confirm'), { type: ns === 1 ? 'success' : 'warning' }); await updateDept(row.id!, { deptName: row.deptName, parentId: row.parentId ?? 0, sortNo: row.sortNo, leader: row.leader, phone: row.phone, email: row.email, status: ns }); ElMessage.success(t('common.success')); loadData(); } catch { /**/ } }
 async function handleDelete(row: SysDept) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.deptName }), t('common.delete'), { type: 'warning' }); await deleteDept(row.id!); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { /**/ } }
-async function handleExport() { try { const rows = await exportDepts(); ElMessage.success(`${t('common.export')} ${rows.length}`); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } }
+async function handleExport() {
+    try {
+        await exportDepts();
+        ElMessage.success(t('common.export'));
+    } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); }
+}
 </script>

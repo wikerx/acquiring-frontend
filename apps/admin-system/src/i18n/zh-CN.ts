@@ -424,6 +424,7 @@ export default {
         jobLog: {
             title: '执行日志',
             description: '查看每次任务执行的触发来源、执行节点、耗时和失败原因',
+            clean: '清空日志',
             runId: '执行批次号',
             jobCode: '任务编码',
             jobName: '任务名称',
@@ -445,6 +446,8 @@ export default {
             paramsSnapshot: '参数快照',
             startTime: '开始时间',
             endTime: '结束时间',
+            deleteConfirm: '确认删除执行批次号为「{runId}」的任务日志？',
+            cleanConfirm: '确认按当前筛选条件清空任务日志吗？该操作不可恢复。',
         },
         jobNode: {
             title: '执行节点',

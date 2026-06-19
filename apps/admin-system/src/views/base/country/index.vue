@@ -121,5 +121,10 @@ async function handleDelete(row: IsoCountry) {
   try { await ElMessageBox.confirm(t('base.country.deleteConfirm', { name: row.chineseName || row.englishName }), t('common.confirm'), { type: 'warning' }); } catch { return; }
   try { await deleteCountry(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.deleteSuccess')); }
 }
-async function handleExport() { try { const rows = await exportCountries(); ElMessage.success(`${t('common.export')} ${rows.length}`); } catch { ElMessage.error(t('common.loadFailed')); } }
+async function handleExport() {
+  try {
+    await exportCountries();
+    ElMessage.success(t('common.export'));
+  } catch { ElMessage.error(t('common.loadFailed')); }
+}
 </script>

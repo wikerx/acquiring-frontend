@@ -117,5 +117,10 @@ async function saveEdit() {
 }
 async function toggleStatus(row: RegionCurrencyRow) { try { await changeRegionCurrencyStatus(row.id, row.status === 1 ? 0 : 1); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); } }
 async function handleDelete(row: RegionCurrencyRow) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.countryName }), t('common.delete'), { type: 'warning' }); } catch { return; } try { await deleteRegionCurrency(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); } }
-async function handleExport() { try { const rows = await exportRegionCurrencies(); ElMessage.success(`${t('common.export')} ${rows.length}`); } catch { ElMessage.error(t('common.loadFailed')); } }
+async function handleExport() {
+  try {
+    await exportRegionCurrencies();
+    ElMessage.success(t('common.export'));
+  } catch { ElMessage.error(t('common.loadFailed')); }
+}
 </script>

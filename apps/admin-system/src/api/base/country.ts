@@ -1,6 +1,7 @@
 import type { CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface IsoCountry {
     id: number;
@@ -61,6 +62,8 @@ export async function deleteCountry(id: number) {
 }
 
 export async function exportCountries() {
-    const result = await http.get<CommonResult<IsoCountry[]>>('/admin/base/countries/export');
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/base/countries/export', {
+        method: 'get',
+        fileName: '国家地区.xlsx',
+    });
 }

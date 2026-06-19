@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface RegionCurrencyRow {
     id: number;
@@ -47,6 +48,8 @@ export async function changeRegionCurrencyStatus(id: number, status: number) {
 }
 
 export async function exportRegionCurrencies() {
-    const result = await http.get<CommonResult<RegionCurrencyRow[]>>('/admin/base/region-currencies/export');
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/base/region-currencies/export', {
+        method: 'get',
+        fileName: '地区币种配置.xlsx',
+    });
 }

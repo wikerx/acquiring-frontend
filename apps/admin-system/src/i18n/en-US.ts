@@ -436,6 +436,7 @@ export default {
         jobLog: {
             title: 'Run Logs',
             description: 'Inspect every job run, including trigger source, executor node, duration, and failure reason',
+            clean: 'Clean Logs',
             runId: 'Run ID',
             jobCode: 'Job Code',
             jobName: 'Job Name',
@@ -457,6 +458,8 @@ export default {
             paramsSnapshot: 'Params Snapshot',
             startTime: 'Start Time',
             endTime: 'End Time',
+            deleteConfirm: 'Delete the task log with run ID "{runId}"?',
+            cleanConfirm: 'Clear task logs with the current filters? This action cannot be undone.',
         },
         jobNode: {
             title: 'Executor Nodes',

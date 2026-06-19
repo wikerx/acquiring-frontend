@@ -1,6 +1,7 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 import type { PageResult } from '@/api/monitor/job';
 
 export interface JobRunLogRow {
@@ -42,5 +43,23 @@ export interface JobRunLogQuery {
 
 export async function searchJobRunLogs(payload: JobRunLogQuery): Promise<PageResult<JobRunLogRow>> {
     const result = await http.post<CommonResult<PageResult<JobRunLogRow>>>('/admin/monitor/job-log/search', payload);
+    return unwrapResult(result.data);
+}
+
+export async function exportJobRunLogs(payload: JobRunLogQuery) {
+    await downloadExcel('/admin/monitor/job-log/export', {
+        method: 'post',
+        data: payload,
+        fileName: '任务日志.xlsx',
+    });
+}
+
+export async function deleteJobRunLog(id: number) {
+    const result = await http.delete<CommonResult<void>>(`/admin/monitor/job-log/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function cleanJobRunLogs(payload: JobRunLogQuery) {
+    const result = await http.post<CommonResult<number>>('/admin/monitor/job-log/clean', payload);
     return unwrapResult(result.data);
 }

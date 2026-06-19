@@ -75,7 +75,12 @@ function handleUpdate(row: PostRow) { formMode.value = 'edit'; activeRow.value =
 async function submit() { const v = await formRef.value?.validate().catch(() => false); if (!v) return; try { if (formMode.value === 'create') { await createPost({ postCode: form.postCode.trim(), postName: form.postName.trim(), sortNo: form.sortNo, status: form.status, remark: form.remark?.trim() }); ElMessage.success(t('common.addSuccess')); } else if (form.id) { await updatePost(form.id, { postCode: form.postCode.trim(), postName: form.postName.trim(), sortNo: form.sortNo, status: form.status, remark: form.remark?.trim() }); ElMessage.success(t('common.editSuccess')); } open.value = false; loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function toggleStatus(row: PostRow) { const ns = row.status === 1 ? 0 : 1; const at = ns === 1 ? t('common.enable') : t('common.disable'); try { await ElMessageBox.confirm(t('system.role.statusToggleConfirm', { action: at, name: row.postName }), t('common.confirm'), { type: ns === 1 ? 'success' : 'warning' }); await updatePost(row.id!, { postCode: row.postCode, postName: row.postName, sortNo: row.sortNo, status: ns }); ElMessage.success(t('common.success')); loadData(); } catch { /**/ } }
 async function handleDelete(row?: PostRow) { const tgt = row || selectedRows.value[0]; if (!tgt) { ElMessage.warning(t('common.pleaseSelect')); return; } try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: tgt.postName }), t('common.delete'), { type: 'warning' }); await deletePost(tgt.id!); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { /**/ } }
-async function handleExport() { try { const rows = await exportPosts(); ElMessage.success(`${t('common.export')} ${rows.length}`); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } }
+async function handleExport() {
+    try {
+        await exportPosts();
+        ElMessage.success(t('common.export'));
+    } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); }
+}
 function sv(v: unknown) { return String(v || '').trim() || undefined; }
 function nv(v: unknown) { return typeof v === 'number' ? v : undefined; }
 </script>

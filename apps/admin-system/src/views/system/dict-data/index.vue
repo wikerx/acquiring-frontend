@@ -453,7 +453,7 @@ async function handleDataExport() {
         return;
     }
     try {
-        const result = await exportDictData({
+        await exportDictData({
             pageNo: page.value,
             pageSize: pageSize.value,
             dictType: currentDict.value.dictType,
@@ -462,7 +462,7 @@ async function handleDataExport() {
             locale: query.locale || undefined,
             status: query.status,
         });
-        ElMessage.success(`${t('common.export')} ${result.records.length}`);
+        ElMessage.success(t('common.export'));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     }

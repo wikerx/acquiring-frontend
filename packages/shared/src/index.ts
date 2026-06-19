@@ -76,6 +76,7 @@ export interface AuthSession {
 
 export type SessionReader = () => AuthSession | null;
 export type UnauthorizedHandler = () => void;
+export type LocaleReader = () => string;
 
 function createRequestId(): string {
     const randomPart = Math.random().toString(36).slice(2, 10).toUpperCase();
@@ -86,6 +87,7 @@ export function createHttpClient(
     baseURL: string,
     readSession: SessionReader,
     onUnauthorized: UnauthorizedHandler,
+    readLocale?: LocaleReader,
 ): AxiosInstance {
     const client = axios.create({
         baseURL,
@@ -107,6 +109,10 @@ export function createHttpClient(
             if (session.account.merchantId) {
                 config.headers['X-Merchant-Id'] = session.account.merchantId;
             }
+        }
+        const locale = readLocale?.();
+        if (locale) {
+            config.headers['Accept-Language'] = locale;
         }
         return config;
     });

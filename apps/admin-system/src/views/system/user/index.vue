@@ -118,7 +118,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableInstance } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download, View, UserFilled, Key } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { createUser, getUserRoles, grantUserRoles, resetUserPassword, searchUsers, updateUser, updateUserStatus, type SysUserAccount } from '@/api/system/user';
+import { createUser, deleteUsers, exportUsers, getUserRoles, grantUserRoles, resetUserPassword, searchUsers, updateUser, updateUserStatus, type SysUserAccount } from '@/api/system/user';
 import { searchRoles, type SysRole } from '@/api/system/role';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -217,9 +217,25 @@ async function handleDelete(rowsParam?: UserRow[]) {
     const targets = rowsParam ?? selectedRows.value;
     if (!targets.length) { ElMessage.warning(t('common.pleaseSelect')); return; }
     const names = targets.map((r) => r.loginAccount).join('、');
-    try { await ElMessageBox.confirm(t('system.user.deleteConfirm', { name: names }), t('common.delete'), { type: 'warning' }); ElMessage.info(t('common.deleteSuccess')); } catch { /* cancelled */ }
+    try {
+        await ElMessageBox.confirm(t('system.user.deleteConfirm', { name: names }), t('common.delete'), { type: 'warning' });
+        await deleteUsers(targets.map((item) => item.accountId));
+        ElMessage.success(t('common.deleteSuccess'));
+        loadData();
+    } catch (error) {
+        if (error instanceof Error) {
+            ElMessage.error(error.message);
+        }
+    }
 }
-function handleExport() { ElMessage.info(t('common.export')); }
+async function handleExport() {
+    try {
+        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), status: numericStatus() });
+        ElMessage.success(t('common.export'));
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    }
+}
 
 async function openRoleAuth(row: UserRow) {
     activeRow.value = row; roleAuthVisible.value = true; roleAuthLoading.value = true;

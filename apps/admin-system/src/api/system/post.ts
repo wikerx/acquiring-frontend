@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface SysPost {
     id?: number;
@@ -49,7 +50,9 @@ export async function deletePost(id: number): Promise<void> {
     return unwrapResult(result.data) as unknown as void;
 }
 
-export async function exportPosts(): Promise<SysPost[]> {
-    const result = await http.get<CommonResult<SysPost[]>>('/admin/system/post/export');
-    return unwrapResult(result.data);
+export async function exportPosts() {
+    await downloadExcel('/admin/system/post/export', {
+        method: 'get',
+        fileName: '岗位列表.xlsx',
+    });
 }

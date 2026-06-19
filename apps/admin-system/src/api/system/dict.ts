@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface SysDictType {
     id: number;
@@ -101,11 +102,11 @@ export async function deleteDictType(dictType: string) {
 }
 
 export async function exportDictTypes(requestBody: SysDictTypeQuery) {
-    const result = await http.post<CommonResult<PageResult<SysDictType>>>(
-        '/admin/system/dicts/types/export',
-        requestBody,
-    );
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/system/dicts/types/export', {
+        method: 'post',
+        data: requestBody,
+        fileName: '字典类型.xlsx',
+    });
 }
 
 export async function refreshDictCache() {
@@ -151,9 +152,9 @@ export async function deleteDictDataById(id: number) {
 }
 
 export async function exportDictData(requestBody: SysDictDataQuery) {
-    const result = await http.post<CommonResult<PageResult<SysDictData>>>(
-        '/admin/system/dicts/data/export',
-        requestBody,
-    );
-    return unwrapResult(result.data);
+    await downloadExcel('/admin/system/dicts/data/export', {
+        method: 'post',
+        data: requestBody,
+        fileName: '字典数据.xlsx',
+    });
 }

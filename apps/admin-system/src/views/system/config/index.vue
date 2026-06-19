@@ -111,7 +111,12 @@ async function handleDelete(row: SysConfig) {
   try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.configName }), t('common.delete'), { type: 'warning' }); } catch { return; }
   try { await deleteConfig(row.configKey); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
-async function handleExport() { try { const r = await exportConfigs({ pageNo: page.value, pageSize: pageSize.value, configName: query.configName || undefined, configGroup: query.configGroup || undefined, status: query.status }); ElMessage.success(`${t('common.export')} ${r.records.length}`); } catch (e: any) { ElMessage.error(e?.message || t('common.loadFailed')); } }
+async function handleExport() {
+  try {
+    await exportConfigs({ pageNo: page.value, pageSize: pageSize.value, configName: query.configName || undefined, configGroup: query.configGroup || undefined, status: query.status });
+    ElMessage.success(t('common.export'));
+  } catch (e: any) { ElMessage.error(e?.message || t('common.loadFailed')); }
+}
 async function handleRefreshCache() { try { await refreshConfigCache(); ElMessage.success(t('common.success')); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); } }
 
 function vt(v: unknown) { return ({ 1: 'String', 2: 'Number', 3: 'Boolean', 4: 'JSON' } as Record<number, string>)[Number(v)] || '-'; }

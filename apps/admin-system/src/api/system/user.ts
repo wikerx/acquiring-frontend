@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 import type { SysRole } from './role';
 
 export interface SysUserAccount {
@@ -116,4 +117,20 @@ export async function grantUserRoles(requestBody: SysUserRoleGrantRequest) {
         requestBody,
     );
     return unwrapResult(result.data);
+}
+
+export async function deleteUsers(accountIds: number[]) {
+    const result = await http.post<CommonResult<void>>(
+        '/admin/system/users/delete',
+        accountIds,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function exportUsers(requestBody: SysUserAccountQuery) {
+    await downloadExcel('/admin/system/users/export', {
+        method: 'post',
+        data: requestBody,
+        fileName: '用户列表.xlsx',
+    });
 }
