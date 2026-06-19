@@ -1,6 +1,6 @@
 import type { CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface IsoCurrency {
     id: number;
@@ -25,36 +25,36 @@ export interface IsoCurrencyQuery {
 }
 
 export async function searchCurrencies(params: IsoCurrencyQuery = {}) {
-    const result = await request.get<CommonResult<PageResult<IsoCurrency>>>('/admin/base/currencies/list', { params }) as unknown as CommonResult<PageResult<IsoCurrency>>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<PageResult<IsoCurrency>>>('/admin/base/currencies/list', { params });
+    return unwrapResult(result.data);
 }
 
 export async function getCurrency(id: number) {
-    const result = await request.get<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}`) as unknown as CommonResult<IsoCurrency>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function createCurrency(data: Partial<IsoCurrency>) {
-    const result = await request.post<CommonResult<IsoCurrency>>('/admin/base/currencies', data) as unknown as CommonResult<IsoCurrency>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<IsoCurrency>>('/admin/base/currencies', data);
+    return unwrapResult(result.data);
 }
 
 export async function updateCurrency(id: number, data: Partial<IsoCurrency>) {
-    const result = await request.put<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}`, data) as unknown as CommonResult<IsoCurrency>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}`, data);
+    return unwrapResult(result.data);
 }
 
 export async function changeCurrencyStatus(id: number, status: number) {
-    const result = await request.put<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}/status`, { status }) as unknown as CommonResult<IsoCurrency>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<IsoCurrency>>(`/admin/base/currencies/${id}/status`, { status });
+    return unwrapResult(result.data);
 }
 
 export async function deleteCurrency(id: number) {
-    const result = await request.delete<CommonResult<null>>(`/admin/base/currencies/${id}`) as unknown as CommonResult<null>;
-    return unwrapResult(result);
+    const result = await http.delete<CommonResult<null>>(`/admin/base/currencies/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function exportCurrencies() {
-    const result = await request.get<CommonResult<IsoCurrency[]>>('/admin/base/currencies/export') as unknown as CommonResult<IsoCurrency[]>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<IsoCurrency[]>>('/admin/base/currencies/export');
+    return unwrapResult(result.data);
 }

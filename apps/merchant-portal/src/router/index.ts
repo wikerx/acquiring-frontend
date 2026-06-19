@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { unwrapResult } from '@acquiring/shared';
 import { currentUser } from '@/api/authApi';
 import MerchantLayout from '@/layouts/MerchantLayout.vue';
 import Dashboard from '@/pages/Dashboard.vue';
@@ -31,7 +30,7 @@ async function refreshCurrentUserIfNeeded() {
         return;
     }
     try {
-        const response = unwrapResult((await currentUser()).data);
+        const response = await currentUser();
         auth.setCurrentUserResponse(response);
     } catch {
         auth.clearSession();

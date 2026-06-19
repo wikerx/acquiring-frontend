@@ -1,14 +1,18 @@
 import type { AuthLoginResponse, CommonResult, LoginRequest } from '@acquiring/shared';
+import { unwrapResult } from '@acquiring/shared';
 import { http } from './http';
 
-export function login(request: LoginRequest) {
-    return http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/login', request);
+export async function login(request: LoginRequest): Promise<AuthLoginResponse> {
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/login', request);
+    return unwrapResult(result.data);
 }
 
-export function currentUser() {
-    return http.get<CommonResult<AuthLoginResponse>>('/merchant/auth/me');
+export async function currentUser(): Promise<AuthLoginResponse> {
+    const result = await http.get<CommonResult<AuthLoginResponse>>('/merchant/auth/me');
+    return unwrapResult(result.data);
 }
 
-export function logout() {
-    return http.post<CommonResult<void>>('/merchant/auth/logout');
+export async function logout(): Promise<void> {
+    const result = await http.post<CommonResult<void>>('/merchant/auth/logout');
+    return unwrapResult(result.data);
 }

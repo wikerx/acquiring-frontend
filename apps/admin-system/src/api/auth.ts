@@ -1,6 +1,6 @@
 import type { AuthLoginResponse, CommonResult, LoginRequest } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from './http';
 
 export interface SendLoginVerifyCodeRequest {
     loginAccount: string;
@@ -27,11 +27,11 @@ export interface LoginParams {
 export async function sendLoginVerifyCodeApi(
     params: SendLoginVerifyCodeRequest,
 ): Promise<SendLoginVerifyCodeResponse> {
-    const result = await request.post<CommonResult<SendLoginVerifyCodeResponse>>(
+    const result = await http.post<CommonResult<SendLoginVerifyCodeResponse>>(
         '/admin/auth/verify-code/send',
         params,
-    ) as unknown as CommonResult<SendLoginVerifyCodeResponse>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function loginApi(params: LoginParams): Promise<AuthLoginResponse> {
@@ -41,23 +41,23 @@ export async function loginApi(params: LoginParams): Promise<AuthLoginResponse> 
         verifyCodeId: params.verifyCodeId,
         verifyCode: params.verifyCode,
     };
-    const result = await request.post<CommonResult<AuthLoginResponse>>(
+    const result = await http.post<CommonResult<AuthLoginResponse>>(
         '/admin/auth/login',
         requestBody,
-    ) as unknown as CommonResult<AuthLoginResponse>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function getUserInfoApi(): Promise<AuthLoginResponse> {
-    const result = await request.get<CommonResult<AuthLoginResponse>>(
+    const result = await http.get<CommonResult<AuthLoginResponse>>(
         '/admin/auth/me',
-    ) as unknown as CommonResult<AuthLoginResponse>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
-export async function logoutApi() {
-    const result = await request.post<CommonResult<void>>(
+export async function logoutApi(): Promise<void> {
+    const result = await http.post<CommonResult<void>>(
         '/admin/auth/logout',
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysLoginLog {
     id: number;
@@ -27,9 +27,9 @@ export interface SysLoginLogQuery extends PageQuery {
 }
 
 export async function searchLoginLogs(requestBody: SysLoginLogQuery) {
-    const result = await request.post<CommonResult<PageResult<SysLoginLog>>>(
+    const result = await http.post<CommonResult<PageResult<SysLoginLog>>>(
         '/admin/system/login-logs/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysLoginLog>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

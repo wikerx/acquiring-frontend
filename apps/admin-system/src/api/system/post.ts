@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysPost {
     id?: number;
@@ -20,36 +20,36 @@ export interface PostQuery extends PageQuery {
 }
 
 export async function searchPosts(params: PostQuery) {
-    const result = await request.get<CommonResult<PageResult<SysPost>>>('/admin/system/post/list', { params }) as unknown as CommonResult<PageResult<SysPost>>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<PageResult<SysPost>>>('/admin/system/post/list', { params });
+    return unwrapResult(result.data);
 }
 
 export async function getAllPosts(): Promise<SysPost[]> {
-    const result = await request.get<CommonResult<SysPost[]>>('/admin/system/post/all') as unknown as CommonResult<SysPost[]>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<SysPost[]>>('/admin/system/post/all');
+    return unwrapResult(result.data);
 }
 
 export async function getPost(id: number): Promise<SysPost> {
-    const result = await request.get<CommonResult<SysPost>>(`/admin/system/post/${id}`) as unknown as CommonResult<SysPost>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<SysPost>>(`/admin/system/post/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function createPost(data: SysPost): Promise<SysPost> {
-    const result = await request.post<CommonResult<SysPost>>('/admin/system/post', data) as unknown as CommonResult<SysPost>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<SysPost>>('/admin/system/post', data);
+    return unwrapResult(result.data);
 }
 
 export async function updatePost(id: number, data: SysPost): Promise<SysPost> {
-    const result = await request.put<CommonResult<SysPost>>(`/admin/system/post/${id}`, data) as unknown as CommonResult<SysPost>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<SysPost>>(`/admin/system/post/${id}`, data);
+    return unwrapResult(result.data);
 }
 
 export async function deletePost(id: number): Promise<void> {
-    const result = await request.delete<CommonResult<null>>(`/admin/system/post/${id}`) as unknown as CommonResult<null>;
-    return unwrapResult(result) as unknown as void;
+    const result = await http.delete<CommonResult<null>>(`/admin/system/post/${id}`);
+    return unwrapResult(result.data) as unknown as void;
 }
 
 export async function exportPosts(): Promise<SysPost[]> {
-    const result = await request.get<CommonResult<SysPost[]>>('/admin/system/post/export') as unknown as CommonResult<SysPost[]>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<SysPost[]>>('/admin/system/post/export');
+    return unwrapResult(result.data);
 }

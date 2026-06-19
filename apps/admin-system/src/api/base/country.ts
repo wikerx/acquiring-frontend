@@ -1,6 +1,6 @@
 import type { CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface IsoCountry {
     id: number;
@@ -31,36 +31,36 @@ export interface IsoCountryQuery {
 }
 
 export async function searchCountries(params: IsoCountryQuery = {}) {
-    const result = await request.get<CommonResult<PageResult<IsoCountry>>>('/admin/base/countries/list', { params }) as unknown as CommonResult<PageResult<IsoCountry>>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<PageResult<IsoCountry>>>('/admin/base/countries/list', { params });
+    return unwrapResult(result.data);
 }
 
 export async function getCountry(id: number) {
-    const result = await request.get<CommonResult<IsoCountry>>(`/admin/base/countries/${id}`) as unknown as CommonResult<IsoCountry>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<IsoCountry>>(`/admin/base/countries/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function createCountry(data: Partial<IsoCountry>) {
-    const result = await request.post<CommonResult<IsoCountry>>('/admin/base/countries', data) as unknown as CommonResult<IsoCountry>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<IsoCountry>>('/admin/base/countries', data);
+    return unwrapResult(result.data);
 }
 
 export async function updateCountry(id: number, data: Partial<IsoCountry>) {
-    const result = await request.put<CommonResult<IsoCountry>>(`/admin/base/countries/${id}`, data) as unknown as CommonResult<IsoCountry>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<IsoCountry>>(`/admin/base/countries/${id}`, data);
+    return unwrapResult(result.data);
 }
 
 export async function changeCountryStatus(id: number, status: number) {
-    const result = await request.put<CommonResult<IsoCountry>>(`/admin/base/countries/${id}/status`, { status }) as unknown as CommonResult<IsoCountry>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<IsoCountry>>(`/admin/base/countries/${id}/status`, { status });
+    return unwrapResult(result.data);
 }
 
 export async function deleteCountry(id: number) {
-    const result = await request.delete<CommonResult<null>>(`/admin/base/countries/${id}`) as unknown as CommonResult<null>;
-    return unwrapResult(result);
+    const result = await http.delete<CommonResult<null>>(`/admin/base/countries/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function exportCountries() {
-    const result = await request.get<CommonResult<IsoCountry[]>>('/admin/base/countries/export') as unknown as CommonResult<IsoCountry[]>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<IsoCountry[]>>('/admin/base/countries/export');
+    return unwrapResult(result.data);
 }

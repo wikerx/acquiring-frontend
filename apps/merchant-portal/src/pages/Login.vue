@@ -33,7 +33,6 @@
     import { reactive, ref } from 'vue';
     import { useRouter } from 'vue-router';
     import { ElMessage } from 'element-plus';
-    import { unwrapResult } from '@acquiring/shared';
     import { login } from '@/api/authApi';
     import { useAuthStore } from '@/stores/authStore';
 
@@ -49,7 +48,7 @@
     async function handleLogin() {
         loading.value = true;
         try {
-            const response = unwrapResult((await login(form)).data);
+            const response = await login(form);
             auth.setLoginResponse(response);
             await router.push('/dashboard');
         } catch (error) {

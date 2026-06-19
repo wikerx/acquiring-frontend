@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface MerchantInfo {
     id: number;
@@ -87,56 +87,56 @@ export interface MerchantQuery extends PageQuery {
 export type MerchantSaveRequest = Omit<MerchantInfo, 'id' | 'gmtCreate' | 'gmtModified' | 'jwtKey' | 'platformPayloadKey' | 'responseKey'>;
 
 export async function searchMerchants(requestBody: MerchantQuery) {
-    const result = await request.post<CommonResult<PageResult<MerchantInfo>>>('/admin/merchants/search', requestBody) as unknown as CommonResult<PageResult<MerchantInfo>>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<PageResult<MerchantInfo>>>('/admin/merchants/search', requestBody);
+    return unwrapResult(result.data);
 }
 
 export async function getMerchant(id: number) {
-    const result = await request.get<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`) as unknown as CommonResult<MerchantInfo>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function createMerchant(requestBody: MerchantSaveRequest) {
-    const result = await request.post<CommonResult<MerchantInfo>>('/admin/merchants', requestBody) as unknown as CommonResult<MerchantInfo>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<MerchantInfo>>('/admin/merchants', requestBody);
+    return unwrapResult(result.data);
 }
 
 export async function updateMerchant(id: number, requestBody: MerchantSaveRequest) {
-    const result = await request.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`, requestBody) as unknown as CommonResult<MerchantInfo>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`, requestBody);
+    return unwrapResult(result.data);
 }
 
 export async function changeMerchantStatus(id: number, merchantStatus: number) {
-    const result = await request.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/status`, { merchantStatus }) as unknown as CommonResult<MerchantInfo>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/status`, { merchantStatus });
+    return unwrapResult(result.data);
 }
 
 export async function provisionSecurityMaterial(merchantId: string) {
-    const result = await request.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/security-material/provision`) as unknown as CommonResult<MerchantSecurityMaterial>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/security-material/provision`);
+    return unwrapResult(result.data);
 }
 
 export async function getMerchantKeys(merchantId: string) {
-    const result = await request.get<CommonResult<MerchantKeyBundle>>(`/admin/merchants/${encodeURIComponent(merchantId)}/keys`) as unknown as CommonResult<MerchantKeyBundle>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<MerchantKeyBundle>>(`/admin/merchants/${encodeURIComponent(merchantId)}/keys`);
+    return unwrapResult(result.data);
 }
 
 export async function rotateJwtKey(merchantId: string) {
-    const result = await request.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/jwt-key/rotate`) as unknown as CommonResult<MerchantSecurityMaterial>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/jwt-key/rotate`);
+    return unwrapResult(result.data);
 }
 
 export async function rotatePlatformPayloadKey(merchantId: string) {
-    const result = await request.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/platform-payload-key/rotate`) as unknown as CommonResult<MerchantSecurityMaterial>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/platform-payload-key/rotate`);
+    return unwrapResult(result.data);
 }
 
 export async function rotateMerchantResponseKey(merchantId: string) {
-    const result = await request.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/response-key/rotate`) as unknown as CommonResult<MerchantSecurityMaterial>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<MerchantSecurityMaterial>>(`/admin/merchants/${encodeURIComponent(merchantId)}/response-key/rotate`);
+    return unwrapResult(result.data);
 }
 
 export async function updateMerchantResponseKey(merchantId: string, publicKeyX509Base64: string, privateKeyPkcs8Base64?: string) {
-    const result = await request.put<CommonResult<MerchantInfo>>(`/admin/merchants/${encodeURIComponent(merchantId)}/response-key`, { publicKeyX509Base64, privateKeyPkcs8Base64, enabled: 1 }) as unknown as CommonResult<MerchantInfo>;
-    return unwrapResult(result);
+    const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${encodeURIComponent(merchantId)}/response-key`, { publicKeyX509Base64, privateKeyPkcs8Base64, enabled: 1 });
+    return unwrapResult(result.data);
 }

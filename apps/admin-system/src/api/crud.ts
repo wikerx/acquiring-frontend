@@ -1,4 +1,6 @@
-import request from '@/utils/request';
+import type { CommonResult } from '@acquiring/shared';
+import { unwrapResult } from '@acquiring/shared';
+import { http } from '@/api/http';
 
 export interface PageQuery {
     pageNum?: number;
@@ -13,20 +15,25 @@ export interface PageResult<T> {
 
 export function createCrudApi<T extends Record<string, unknown>>(baseUrl: string) {
     return {
-        page(data: PageQuery) {
-            return request.post<PageResult<T>>(`${baseUrl}/page`, data);
+        async page(data: PageQuery): Promise<PageResult<T>> {
+            const result = await http.post<CommonResult<PageResult<T>>>(`${baseUrl}/page`, data);
+            return unwrapResult(result.data);
         },
-        detail(id: string | number) {
-            return request.get<T>(`${baseUrl}/${id}`);
+        async detail(id: string | number): Promise<T> {
+            const result = await http.get<CommonResult<T>>(`${baseUrl}/${id}`);
+            return unwrapResult(result.data);
         },
-        create(data: Partial<T>) {
-            return request.post<T>(baseUrl, data);
+        async create(data: Partial<T>): Promise<T> {
+            const result = await http.post<CommonResult<T>>(baseUrl, data);
+            return unwrapResult(result.data);
         },
-        update(id: string | number, data: Partial<T>) {
-            return request.put<T>(`${baseUrl}/${id}`, data);
+        async update(id: string | number, data: Partial<T>): Promise<T> {
+            const result = await http.put<CommonResult<T>>(`${baseUrl}/${id}`, data);
+            return unwrapResult(result.data);
         },
-        remove(id: string | number) {
-            return request.delete<void>(`${baseUrl}/${id}`);
+        async remove(id: string | number): Promise<void> {
+            const result = await http.delete<CommonResult<void>>(`${baseUrl}/${id}`);
+            return unwrapResult(result.data);
         },
     };
 }

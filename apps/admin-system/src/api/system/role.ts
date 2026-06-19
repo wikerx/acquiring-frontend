@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 import type { SysMenu } from './menu';
 
 export interface SysRole {
@@ -62,57 +62,57 @@ export interface SysRoleMenuGrantRequest {
 }
 
 export async function searchRoles(requestBody: SysRoleQuery) {
-    const result = await request.post<CommonResult<PageResult<SysRole>>>(
+    const result = await http.post<CommonResult<PageResult<SysRole>>>(
         '/admin/system/roles/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysRole>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function createRole(requestBody: SysRoleCreateRequest) {
-    const result = await request.post<CommonResult<SysRole>>(
+    const result = await http.post<CommonResult<SysRole>>(
         '/admin/system/roles/create',
         requestBody,
-    ) as unknown as CommonResult<SysRole>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateRole(requestBody: SysRoleUpdateRequest) {
-    const result = await request.post<CommonResult<SysRole>>(
+    const result = await http.post<CommonResult<SysRole>>(
         '/admin/system/roles/update',
         requestBody,
-    ) as unknown as CommonResult<SysRole>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateRoleStatus(requestBody: SysRoleStatusRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/roles/status',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function deleteRole(requestBody: SysRoleDeleteRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/roles/delete',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function getRoleMenus(requestBody: { roleId: number }) {
-    const result = await request.post<CommonResult<SysRoleMenuAuth>>(
+    const result = await http.post<CommonResult<SysRoleMenuAuth>>(
         '/admin/system/roles/menus',
         requestBody,
-    ) as unknown as CommonResult<SysRoleMenuAuth>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function grantRoleMenus(requestBody: SysRoleMenuGrantRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/roles/menus/grant',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

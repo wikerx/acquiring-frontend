@@ -1,6 +1,6 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface ServerInfo {
     cpu?: Record<string, unknown>;
@@ -11,6 +11,6 @@ export interface ServerInfo {
 }
 
 export async function getServerInfo(): Promise<ServerInfo> {
-    const result = await request.get<CommonResult<ServerInfo>>('/admin/monitor/server') as unknown as CommonResult<ServerInfo>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<ServerInfo>>('/admin/monitor/server');
+    return unwrapResult(result.data);
 }

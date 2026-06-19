@@ -1,6 +1,6 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface OnlineUser {
     sessionId?: string;
@@ -23,11 +23,11 @@ export interface OnlineQuery {
 }
 
 export async function getOnlineUsers(params: OnlineQuery): Promise<OnlineListResult> {
-    const result = await request.get<CommonResult<OnlineListResult>>('/admin/monitor/online/list', { params }) as unknown as CommonResult<OnlineListResult>;
-    return unwrapResult(result);
+    const result = await http.get<CommonResult<OnlineListResult>>('/admin/monitor/online/list', { params });
+    return unwrapResult(result.data);
 }
 
 export async function forceLogout(sessionId: string) {
-    const result = await request.delete<CommonResult<null>>(`/admin/monitor/online/${sessionId}`) as unknown as CommonResult<null>;
-    return unwrapResult(result);
+    const result = await http.delete<CommonResult<null>>(`/admin/monitor/online/${sessionId}`);
+    return unwrapResult(result.data);
 }

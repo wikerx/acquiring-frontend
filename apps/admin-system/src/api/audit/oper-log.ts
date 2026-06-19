@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysOperLog {
     id: number;
@@ -34,9 +34,9 @@ export interface SysOperLogQuery extends PageQuery {
 }
 
 export async function searchOperLogs(requestBody: SysOperLogQuery) {
-    const result = await request.post<CommonResult<PageResult<SysOperLog>>>(
+    const result = await http.post<CommonResult<PageResult<SysOperLog>>>(
         '/admin/system/oper-logs/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysOperLog>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

@@ -22,7 +22,7 @@ npm run build
 
 ## 本地代理
 
-- `admin-system` 默认启动在 `http://localhost:5173`，代理 `/admin` 到 `http://127.0.0.1:8000`。
+- `admin-system` 默认启动在 `http://localhost:5173`，代理 `/admin` 到 `http://127.0.0.1:8001`。
 - `merchant-portal` 默认启动在 `http://localhost:5174`，代理 `/merchant` 到 `http://127.0.0.1:8002`。
 - `cashier` 默认启动在 `http://localhost:5175`，预留 `/checkout` 到 `http://127.0.0.1:8000`。
 

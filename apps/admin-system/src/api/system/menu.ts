@@ -1,6 +1,6 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysMenu {
     menuId: number;
@@ -55,33 +55,33 @@ export interface SysMenuStatusRequest {
 }
 
 export async function treeMenus(requestBody: SysMenuQuery) {
-    const result = await request.post<CommonResult<SysMenu[]>>(
+    const result = await http.post<CommonResult<SysMenu[]>>(
         '/admin/system/menus/tree',
         requestBody,
-    ) as unknown as CommonResult<SysMenu[]>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function createMenu(requestBody: SysMenuCreateRequest) {
-    const result = await request.post<CommonResult<SysMenu>>(
+    const result = await http.post<CommonResult<SysMenu>>(
         '/admin/system/menus/create',
         requestBody,
-    ) as unknown as CommonResult<SysMenu>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateMenu(requestBody: SysMenuUpdateRequest) {
-    const result = await request.post<CommonResult<SysMenu>>(
+    const result = await http.post<CommonResult<SysMenu>>(
         '/admin/system/menus/update',
         requestBody,
-    ) as unknown as CommonResult<SysMenu>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateMenuStatus(requestBody: SysMenuStatusRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/menus/status',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

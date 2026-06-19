@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 import type { SysRole } from './role';
 
 export interface SysUserAccount {
@@ -63,57 +63,57 @@ export interface SysUserRoleGrantRequest {
 }
 
 export async function searchUsers(requestBody: SysUserAccountQuery) {
-    const result = await request.post<CommonResult<PageResult<SysUserAccount>>>(
+    const result = await http.post<CommonResult<PageResult<SysUserAccount>>>(
         '/admin/system/users/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysUserAccount>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function createUser(requestBody: SysUserAccountCreateRequest) {
-    const result = await request.post<CommonResult<SysUserAccount>>(
+    const result = await http.post<CommonResult<SysUserAccount>>(
         '/admin/system/users/create',
         requestBody,
-    ) as unknown as CommonResult<SysUserAccount>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateUser(requestBody: SysUserAccountUpdateRequest) {
-    const result = await request.post<CommonResult<SysUserAccount>>(
+    const result = await http.post<CommonResult<SysUserAccount>>(
         '/admin/system/users/update',
         requestBody,
-    ) as unknown as CommonResult<SysUserAccount>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateUserStatus(requestBody: SysUserAccountStatusRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/users/status',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function resetUserPassword(requestBody: SysUserAccountResetPasswordRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/users/reset-password',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function getUserRoles(requestBody: { accountId: number }) {
-    const result = await request.post<CommonResult<SysUserRoleAuth>>(
+    const result = await http.post<CommonResult<SysUserRoleAuth>>(
         '/admin/system/users/roles',
         requestBody,
-    ) as unknown as CommonResult<SysUserRoleAuth>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function grantUserRoles(requestBody: SysUserRoleGrantRequest) {
-    const result = await request.post<CommonResult<void>>(
+    const result = await http.post<CommonResult<void>>(
         '/admin/system/users/roles/grant',
         requestBody,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }

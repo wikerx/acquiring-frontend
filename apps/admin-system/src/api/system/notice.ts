@@ -1,6 +1,6 @@
 import type { CommonResult, PageResult, PageQuery } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysNotice {
     id?: number;
@@ -20,36 +20,36 @@ export interface NoticeQuery extends PageQuery {
 }
 
 export async function searchNotices(params: NoticeQuery) {
-    const result = await request.get<CommonResult<PageResult<SysNotice>>>(
+    const result = await http.get<CommonResult<PageResult<SysNotice>>>(
         '/admin/system/notice/list', { params },
-    ) as unknown as CommonResult<PageResult<SysNotice>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function getNotice(id: number) {
-    const result = await request.get<CommonResult<SysNotice>>(
+    const result = await http.get<CommonResult<SysNotice>>(
         `/admin/system/notice/${id}`,
-    ) as unknown as CommonResult<SysNotice>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function createNotice(data: SysNotice) {
-    const result = await request.post<CommonResult<SysNotice>>(
+    const result = await http.post<CommonResult<SysNotice>>(
         '/admin/system/notice', data,
-    ) as unknown as CommonResult<SysNotice>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateNotice(id: number, data: SysNotice) {
-    const result = await request.put<CommonResult<SysNotice>>(
+    const result = await http.put<CommonResult<SysNotice>>(
         `/admin/system/notice/${id}`, data,
-    ) as unknown as CommonResult<SysNotice>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function deleteNotice(id: number) {
-    const result = await request.delete<CommonResult<null>>(
+    const result = await http.delete<CommonResult<null>>(
         `/admin/system/notice/${id}`,
-    ) as unknown as CommonResult<null>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
