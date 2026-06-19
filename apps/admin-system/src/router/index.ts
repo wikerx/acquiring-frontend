@@ -89,6 +89,12 @@ export const routes: RouteRecordRaw[] = [
                 component: () => import('@/views/dashboard/index.vue'),
                 meta: { title: '工作台', titleKey: 'Dashboard', icon: 'House' },
             },
+            {
+                path: 'system/dict-data',
+                name: 'SystemDictData',
+                component: () => import('@/views/system/dict-data/index.vue'),
+                meta: { title: '字典项', titleKey: 'SystemDictData', permission: 'system:dictData:list' },
+            },
         ],
     },
     {

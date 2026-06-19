@@ -1,6 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import request from '@/utils/request';
+import { http } from '@/api/http';
 
 export interface SysDictType {
     id: number;
@@ -48,86 +48,112 @@ export interface SysDictDataQuery extends PageQuery {
     status?: number;
 }
 
+export async function getDictDataDetail(dictType: string, dictValue: string, locale?: string) {
+    const result = await http.get<CommonResult<PageResult<SysDictData>>>(
+        `/admin/system/dicts/data/${encodeURIComponent(dictType)}/${encodeURIComponent(dictValue)}`,
+        { params: { locale } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getDictDataDetailById(id: number) {
+    const result = await http.get<CommonResult<SysDictData>>(`/admin/system/dicts/data/id/${id}`);
+    return unwrapResult(result.data);
+}
+
 export async function searchDictTypes(requestBody: SysDictTypeQuery) {
-    const result = await request.post<CommonResult<PageResult<SysDictType>>>(
+    const result = await http.post<CommonResult<PageResult<SysDictType>>>(
         '/admin/system/dicts/types/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysDictType>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function searchDictData(requestBody: SysDictDataQuery) {
-    const result = await request.post<CommonResult<PageResult<SysDictData>>>(
+    const result = await http.post<CommonResult<PageResult<SysDictData>>>(
         '/admin/system/dicts/data/search',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysDictData>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function createDictType(requestBody: Omit<SysDictType, 'id' | 'createdAt' | 'updatedAt'>) {
-    const result = await request.post<CommonResult<SysDictType>>(
+    const result = await http.post<CommonResult<SysDictType>>(
         '/admin/system/dicts/types',
         requestBody,
-    ) as unknown as CommonResult<SysDictType>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateDictType(dictType: string, requestBody: Omit<SysDictType, 'id' | 'createdAt' | 'updatedAt'>) {
-    const result = await request.put<CommonResult<SysDictType>>(
+    const result = await http.put<CommonResult<SysDictType>>(
         `/admin/system/dicts/types/${encodeURIComponent(dictType)}`,
         requestBody,
-    ) as unknown as CommonResult<SysDictType>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function deleteDictType(dictType: string) {
-    const result = await request.delete<CommonResult<void>>(
+    const result = await http.delete<CommonResult<void>>(
         `/admin/system/dicts/types/${encodeURIComponent(dictType)}`,
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function exportDictTypes(requestBody: SysDictTypeQuery) {
-    const result = await request.post<CommonResult<PageResult<SysDictType>>>(
+    const result = await http.post<CommonResult<PageResult<SysDictType>>>(
         '/admin/system/dicts/types/export',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysDictType>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function refreshDictCache() {
-    const result = await request.post<CommonResult<void>>('/admin/system/dicts/refresh-cache') as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    const result = await http.post<CommonResult<void>>('/admin/system/dicts/refresh-cache');
+    return unwrapResult(result.data);
 }
 
 export async function createDictData(requestBody: Omit<SysDictData, 'id' | 'createdAt' | 'updatedAt'>) {
-    const result = await request.post<CommonResult<SysDictData>>(
+    const result = await http.post<CommonResult<SysDictData>>(
         '/admin/system/dicts/data',
         requestBody,
-    ) as unknown as CommonResult<SysDictData>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
 
 export async function updateDictData(dictType: string, dictValue: string, requestBody: Omit<SysDictData, 'id' | 'createdAt' | 'updatedAt'>) {
-    const result = await request.put<CommonResult<SysDictData>>(
+    const result = await http.put<CommonResult<SysDictData>>(
         `/admin/system/dicts/data/${encodeURIComponent(dictType)}/${encodeURIComponent(dictValue)}`,
         requestBody,
-    ) as unknown as CommonResult<SysDictData>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
+}
+
+export async function updateDictDataById(id: number, requestBody: Omit<SysDictData, 'id' | 'createdAt' | 'updatedAt'>) {
+    const result = await http.put<CommonResult<SysDictData>>(
+        `/admin/system/dicts/data/id/${id}`,
+        requestBody,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function deleteDictData(dictType: string, dictValue: string, locale?: string) {
-    const result = await request.delete<CommonResult<void>>(
+    const result = await http.delete<CommonResult<void>>(
         `/admin/system/dicts/data/${encodeURIComponent(dictType)}/${encodeURIComponent(dictValue)}`,
         { params: { locale } },
-    ) as unknown as CommonResult<void>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
+}
+
+export async function deleteDictDataById(id: number) {
+    const result = await http.delete<CommonResult<void>>(`/admin/system/dicts/data/id/${id}`);
+    return unwrapResult(result.data);
 }
 
 export async function exportDictData(requestBody: SysDictDataQuery) {
-    const result = await request.post<CommonResult<PageResult<SysDictData>>>(
+    const result = await http.post<CommonResult<PageResult<SysDictData>>>(
         '/admin/system/dicts/data/export',
         requestBody,
-    ) as unknown as CommonResult<PageResult<SysDictData>>;
-    return unwrapResult(result);
+    );
+    return unwrapResult(result.data);
 }
