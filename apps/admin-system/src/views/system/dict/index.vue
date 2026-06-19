@@ -37,7 +37,7 @@
       <el-table-column :label="$t('common.operation')" align="center" width="300" class-name="small-padding fixed-width" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="Tickets" @click="openDictItems(row)" v-hasPermi="'system:dictData:list'">{{ $t('system.dictData.dictItems') }}</el-button>
-          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
+          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:dict:list'">{{ $t('common.detail') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:dict:edit'">{{ $t('common.edit') }}</el-button>
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" :disabled="row.systemBuiltin === 1" v-hasPermi="'system:dict:remove'">{{ $t('common.delete') }}</el-button>
         </template>

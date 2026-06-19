@@ -38,14 +38,14 @@
             <el-table-column prop="mobile" :label="$t('system.user.mobile')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="email" :label="$t('system.user.email')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('common.status')" width="80" align="center">
-                <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" /></template>
+                <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" v-hasPermi="'system:user:changeStatus'" /></template>
             </el-table-column>
             <el-table-column prop="lockedText" :label="$t('system.user.locked')" width="60" align="center" />
             <el-table-column :label="$t('system.user.lastLogin')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.lastLoginAt" /></template></el-table-column>
             <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="240" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:user:list'">{{ $t('common.detail') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:user:edit'">{{ $t('common.edit') }}</el-button>
                     <el-button size="small" type="primary" link :icon="UserFilled" @click="openRoleAuth(row)" v-hasPermi="'system:user:assign-role'">{{ $t('system.user.assignRole') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Key" @click="openResetPassword(row)" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-button>

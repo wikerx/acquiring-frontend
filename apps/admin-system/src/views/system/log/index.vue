@@ -18,7 +18,7 @@
         <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="$t('common.operation')" align="center" width="80" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button></template></el-table-column>
+            <el-table-column :label="$t('common.operation')" align="center" width="80" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'login' ? 'system:login-log:list' : 'system:oper-log:list'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </el-table>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
         <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="800px" append-to-body destroy-on-close>

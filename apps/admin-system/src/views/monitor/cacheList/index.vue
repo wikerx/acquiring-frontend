@@ -55,7 +55,7 @@
             <el-table-column prop="size" :label="$t('monitor.cacheList.size')" width="100" align="center" />
             <el-table-column :label="$t('common.operation')" align="center" width="160" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.view') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:cache:query'">{{ $t('common.view') }}</el-button>
                     <el-button v-hasPermi="'system:cache:clear'" size="small" type="primary" link :icon="Delete" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>

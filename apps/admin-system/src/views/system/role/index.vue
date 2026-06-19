@@ -10,7 +10,7 @@
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'system:role:add'">{{ $t('common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!selectedRows.length || selectedRows.length !== 1" @click="handleUpdate(selectedRows[0])" v-hasPermi="'system:role:edit'">{{ $t('common.edit') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'system:role:remove'">{{ $t('common.delete') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'system:role:delete'">{{ $t('common.delete') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
 
@@ -22,15 +22,15 @@
             <el-table-column :label="$t('system.role.dataScope')" width="100" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
             <el-table-column prop="menuCount" :label="$t('system.role.menuCount')" width="80" align="center" />
             <el-table-column prop="permissionCount" :label="$t('system.role.permissionCount')" width="80" align="center" />
-            <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" /></template></el-table-column>
+            <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" v-hasPermi="'system:role:edit'" /></template></el-table-column>
             <el-table-column prop="sortNo" :label="$t('system.role.sortNo')" width="70" align="center" />
             <el-table-column :label="$t('common.updateTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="230" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:role:assign-menu'">{{ $t('common.detail') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:role:edit'">{{ $t('common.edit') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="Key" @click="openRoleAuth(row)" v-hasPermi="'system:role:dataScope'">{{ $t('system.role.assignAuth') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="Delete" @click="removeRole(row)" v-hasPermi="'system:role:remove'" :disabled="row.roleType === 'SYSTEM'">{{ $t('common.delete') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="Key" @click="openRoleAuth(row)" v-hasPermi="'system:role:assign-menu'">{{ $t('system.role.assignAuth') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="Delete" @click="removeRole(row)" v-hasPermi="'system:role:delete'" :disabled="row.roleType === 'SYSTEM'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
         </el-table>

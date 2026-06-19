@@ -12,15 +12,13 @@
         </el-form>
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Refresh" size="small" @click="loadData">{{ $t('common.refresh') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="success" plain :icon="Plus" size="small" v-hasPermi="'system:config:add'">{{ $t('common.add') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Edit" size="small" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
             <el-col :span="24"><span class="security-note">{{ $t('system.config.writeNote') }}</span></el-col>
         </el-row>
         <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button></template></el-table-column>
+            <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'dict' ? 'system:dict:list' : 'system:config:query'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </el-table>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
         <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="700px" append-to-body destroy-on-close>
@@ -33,7 +31,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Search, Refresh, Plus, Edit, View } from '@element-plus/icons-vue';
+import { Search, Refresh, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchConfigs } from '@/api/system/config';
