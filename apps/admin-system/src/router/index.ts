@@ -4,6 +4,13 @@ import type { RouteRecordRaw } from 'vue-router';
 import type { AuthMenu } from '@acquiring/shared';
 import Layout from '@/layout/index.vue';
 import { useUserStore } from '@/store';
+import {
+    EXTERNAL_FRAME_ROUTE_PREFIX,
+    isExternalFrameMenu,
+    isExternalWindowMenu,
+    normalizeMenuPath,
+    resolveRuntimeMenuPath,
+} from '@/utils/external-menu';
 
 declare module 'vue-router' {
     interface RouteMeta {
@@ -148,30 +155,35 @@ router.beforeEach(async (to) => {
 
 export function syncDynamicRoutes(menus: AuthMenu[]) {
     const signature = JSON.stringify(flattenRouteMenus(menus).map((menu) => [
-        menu.routePath,
+        resolveRuntimeMenuPath(menu),
         menu.componentPath,
         menu.permissionCode,
+        menu.menuType,
+        menu.externalLink,
     ]));
     if (signature === dynamicRouteSignature) {
         return;
     }
     resetDynamicRoutes();
     flattenRouteMenus(menus).forEach((menu) => {
-        if (!menu.routePath || menu.routePath === '/dashboard') {
+        const runtimePath = resolveRuntimeMenuPath(menu);
+        if (!runtimePath || runtimePath === '/dashboard' || isExternalWindowMenu(menu)) {
             return;
         }
         dynamicRouteRemovers.push(
             router.addRoute('AdminRoot', {
-                path: menu.routePath.replace(/^\//, ''),
+                path: runtimePath.replace(/^\//, ''),
                 name: menu.menuCode,
-                component: resolveViewComponent(menu.routePath, menu.componentPath),
+                component: resolveMenuComponent(menu),
                 meta: {
                     title: menu.menuName,
                     titleKey: menu.menuCode,
                     icon: menu.icon,
                     permission: menu.permissionCode,
                     configuredComponent: menu.componentPath,
-                    expectedView: toExpectedViewPath(menu.routePath, menu.componentPath),
+                    expectedView: isExternalFrameMenu(menu)
+                        ? 'src/views/_external/ExternalFrameView.vue'
+                        : toExpectedViewPath(normalizeMenuPath(menu.routePath) || '', menu.componentPath),
                 },
             }),
         );
@@ -191,7 +203,7 @@ function flattenRouteMenus(menus: AuthMenu[]) {
             if (item.visible === 0) {
                 return;
             }
-            if (item.menuType === 'MENU' && item.routePath) {
+            if ((item.menuType === 'MENU' || item.menuType === 'LINK') && resolveRuntimeMenuPath(item)) {
                 result.push(item);
             }
             visit(item.children || []);
@@ -199,6 +211,13 @@ function flattenRouteMenus(menus: AuthMenu[]) {
     };
     visit(menus);
     return result;
+}
+
+function resolveMenuComponent(menu: AuthMenu): Component {
+    if (isExternalFrameMenu(menu)) {
+        return () => import('@/views/_external/ExternalFrameView.vue');
+    }
+    return resolveViewComponent(normalizeMenuPath(menu.routePath) || '', menu.componentPath);
 }
 
 function resolveViewComponent(routePath: string, componentConfig?: string): Component {
@@ -244,4 +263,8 @@ function isMissingRoute(routeName: unknown) {
 
 function hasResolvedRoute(fullPath: string) {
     return !isMissingRoute(router.resolve(fullPath).name);
+}
+
+export function isExternalFrameRoute(path?: string) {
+    return !!path && path.startsWith(EXTERNAL_FRAME_ROUTE_PREFIX);
 }

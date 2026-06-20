@@ -10,8 +10,8 @@
         <el-menu
             :default-active="activePath"
             :collapse="collapsed"
-            router
             class="side-menu"
+            @select="handleSelect"
         >
             <template v-for="item in menus" :key="itemKey(item)">
                 <el-sub-menu v-if="item.children?.length" :index="'__group__' + (item.path || item.title)">
@@ -22,7 +22,7 @@
                     <el-menu-item
                         v-for="child in item.children"
                         :key="child.path || child.title"
-                        :index="child.path"
+                        :index="child.path || child.title || child.titleKey || child.icon"
                     >
                         <el-icon v-if="child.icon"><component :is="resolveIcon(child.icon)" /></el-icon>
                         <span>{{ $te('route.' + child.titleKey) ? $t('route.' + child.titleKey) : child.title }}</span>
@@ -39,7 +39,9 @@
 
 <script setup lang="ts">
 import { computed, type Component } from 'vue';
-import { useRoute } from 'vue-router';
+import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import {
     Avatar,
     Coin,
@@ -64,8 +66,9 @@ import {
     UserFilled,
 } from '@element-plus/icons-vue';
 import type { AdminMenuItem } from '@/types/admin';
+import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
 
-defineProps<{
+const props = defineProps<{
     menus: AdminMenuItem[];
     collapsed: boolean;
     sideTheme?: 'dark' | 'light';
@@ -73,6 +76,8 @@ defineProps<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
 
 const activePath = computed(() => {
     return route.path || '/dashboard';
@@ -80,6 +85,50 @@ const activePath = computed(() => {
 
 function itemKey(item: AdminMenuItem) {
     return item.path || item.title || Math.random().toString(36);
+}
+
+/**
+ * 统一处理侧边栏菜单点击，兼容内部路由与新窗口外链。
+ *
+ * @param index 菜单索引
+ */
+function handleSelect(index: string) {
+    const menu = findMenuByPath(props.menus, index);
+    if (!menu) {
+        return;
+    }
+    if (isExternalWindowMenu({ menuType: menu.menuType, externalLink: menu.externalLink })) {
+        if (openExternalMenu(menu.routePath)) {
+            return;
+        }
+        ElMessage.warning(t('externalMonitor.urlNotConfigured'));
+        return;
+    }
+    if (index && index.startsWith('/')) {
+        router.push(index);
+    }
+}
+
+/**
+ * 根据菜单路径递归查找菜单项。
+ *
+ * @param items 菜单列表
+ * @param path 菜单路径
+ * @returns 菜单项
+ */
+function findMenuByPath(items: AdminMenuItem[], path: string): AdminMenuItem | undefined {
+    for (const item of items) {
+        if (item.path === path) {
+            return item;
+        }
+        if (item.children?.length) {
+            const matchedChild = findMenuByPath(item.children, path);
+            if (matchedChild) {
+                return matchedChild;
+            }
+        }
+    }
+    return undefined;
 }
 
 const icons: Record<string, Component> = {

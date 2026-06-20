@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { AuthMenu } from '@acquiring/shared';
 import type { AdminMenuItem } from '@/types/admin';
+import { normalizeMenuPath, resolveRuntimeMenuPath } from '@/utils/external-menu';
 
 export const usePermissionStore = defineStore('permission', {
     state: () => ({
@@ -24,28 +25,23 @@ function toAdminMenuItem(menu: AuthMenu): AdminMenuItem | null {
         return null;
     }
     const children = (menu.children || []).map(toAdminMenuItem).filter(Boolean) as AdminMenuItem[];
-    // Only keep items that are routes (MENU type) or have visible children
-    if (!menu.routePath && !children.length) {
+    const runtimePath = resolveRuntimeMenuPath(menu);
+    const routePath = normalizeMenuPath(menu.routePath);
+    // 保留可展示菜单节点，包括目录、内部菜单和外链菜单。
+    if (!runtimePath && !children.length) {
         return null;
     }
     return {
         title: menu.menuName,
         titleKey: menu.menuCode,
-        path: normalizePath(menu.routePath),
+        path: runtimePath,
         icon: menu.icon || 'House',
         permission: menu.permissionCode,
+        menuType: menu.menuType,
+        externalLink: menu.externalLink,
+        routePath,
+        componentPath: menu.componentPath,
+        runtimePath,
         children,
     };
-}
-
-/** Ensure path has leading slash and no trailing slash */
-function normalizePath(path?: string): string | undefined {
-    if (!path) {
-        return undefined;
-    }
-    let normalized = path.trim();
-    if (!normalized.startsWith('/')) {
-        normalized = '/' + normalized;
-    }
-    return normalized.replace(/\/+$/, '') || '/';
 }

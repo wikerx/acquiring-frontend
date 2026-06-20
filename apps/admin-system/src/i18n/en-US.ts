@@ -49,6 +49,11 @@ export default {
         operationConfirm: 'Confirm',
         deleteApiPendingInfo: 'Delete API pending',
     },
+    externalMonitor: {
+        urlNotConfigured: 'External monitor URL is not configured',
+        loadFailed: 'Failed to load the external page',
+        openInNewWindow: 'Open in new window',
+    },
     status: {
         enabled: 'Enabled',
         disabled: 'Disabled',
@@ -650,6 +655,11 @@ export default {
         MonitorData: 'Data Monitor',
         MonitorJob: 'Scheduled Jobs',
         MonitorServer: 'Server Monitor',
+        monitor_job_log: 'Job Logs',
+        monitor_job_node: 'Execution Nodes',
+        monitor_datasource: 'Datasource Monitor',
+        monitor_rocketmq: 'RocketMQ Console',
+        monitor_nacos: 'Nacos Console',
     },
     settings: {
         title: 'Layout Settings',

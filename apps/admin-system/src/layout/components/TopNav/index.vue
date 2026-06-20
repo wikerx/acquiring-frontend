@@ -16,7 +16,7 @@
                     <el-menu-item
                         v-for="child in item.children"
                         :key="child.path || child.title"
-                        :index="child.path"
+                        :index="child.path || child.title || child.titleKey || child.icon"
                     >
                         <el-icon v-if="child.icon"><component :is="resolveIcon(child.icon)" /></el-icon>
                         <span>{{ displayTitle(child) }}</span>
@@ -34,18 +34,20 @@
 
 <script setup lang="ts">
 import { computed, type Component } from 'vue';
+import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     House, Setting, Shop, DataLine, Key, Lock,
     Monitor, Location, Coin, Connection, DocumentChecked, Menu,
-    Avatar, Grid, OfficeBuilding, Tickets, User,
+    Avatar, Grid, OfficeBuilding, Tickets, User, Document,
 } from '@element-plus/icons-vue';
 import type { AdminMenuItem } from '@/types/admin';
+import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
 
 const { t, te } = useI18n();
 
-defineProps<{
+const props = defineProps<{
     menus: AdminMenuItem[];
 }>();
 
@@ -63,15 +65,48 @@ function displayTitle(item: AdminMenuItem): string {
 }
 
 function handleSelect(index: string) {
+    const menu = findMenuByPath(props.menus, index);
+    if (!menu) {
+        return;
+    }
+    if (isExternalWindowMenu({ menuType: menu.menuType, externalLink: menu.externalLink })) {
+        if (openExternalMenu(menu.routePath)) {
+            return;
+        }
+        ElMessage.warning(t('externalMonitor.urlNotConfigured'));
+        return;
+    }
     if (index && index.startsWith('/')) {
         router.push(index);
     }
 }
 
+/**
+ * 根据路径查找当前菜单节点。
+ *
+ * @param items 菜单树
+ * @param path 菜单路径
+ * @returns 菜单节点
+ */
+function findMenuByPath(items: AdminMenuItem[], path: string): AdminMenuItem | undefined {
+    for (const item of items) {
+        if (item.path === path) {
+            return item;
+        }
+        if (item.children?.length) {
+            const matchedChild = findMenuByPath(item.children, path);
+            if (matchedChild) {
+                return matchedChild;
+            }
+        }
+    }
+    return undefined;
+}
+
 const icons: Record<string, Component> = {
     House, Setting, Shop, DataLine, Key, Lock,
     Monitor, Location, Coin, Connection, DocumentChecked, Menu,
-    Avatar, Grid, OfficeBuilding, Tickets, User,
+    Avatar, Grid, OfficeBuilding, Tickets, User, Document,
 };
 
 function resolveIcon(name?: string) {

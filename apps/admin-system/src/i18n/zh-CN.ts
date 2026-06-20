@@ -49,6 +49,11 @@ export default {
         operationConfirm: '操作确认',
         deleteApiPendingInfo: '删除接口待接入',
     },
+    externalMonitor: {
+        urlNotConfigured: '外部监控地址未配置',
+        loadFailed: '外部页面加载失败',
+        openInNewWindow: '在新窗口打开',
+    },
     status: {
         enabled: '启用',
         disabled: '停用',
@@ -638,6 +643,11 @@ export default {
         MonitorData: '数据监控',
         MonitorJob: '定时任务',
         MonitorServer: '服务监控',
+        monitor_job_log: '任务日志',
+        monitor_job_node: '执行节点',
+        monitor_datasource: '数据源监控',
+        monitor_rocketmq: 'RocketMQ 控制台',
+        monitor_nacos: 'Nacos 控制台',
     },
     settings: {
         title: '系统布局配置',

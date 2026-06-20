@@ -44,6 +44,11 @@ export interface AdminMenuItem {
     path?: string;
     icon: string;
     permission?: string;
+    menuType?: string;
+    externalLink?: number;
+    routePath?: string;
+    componentPath?: string;
+    runtimePath?: string;
     children?: AdminMenuItem[];
 }
 

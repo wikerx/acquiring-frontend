@@ -7,7 +7,16 @@
         </el-tabs>
         <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
             <el-form-item :label="activeTab === 'login' ? $t('system.log.loginAccount') : $t('system.log.module')" prop="keyword"><el-input v-model="query.keyword" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" /></el-form-item>
-            <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable><el-option :label="$t('common.enable')" :value="1" /><el-option :label="$t('common.disable')" :value="0" /></el-select></el-form-item>
+            <el-form-item :label="$t('common.status')" prop="status">
+                <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
+                    <el-option
+                        v-for="option in logStatusOptions"
+                        :key="option.value"
+                        :label="$t(option.label)"
+                        :value="option.value"
+                    />
+                </el-select>
+            </el-form-item>
             <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handleQuery">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button></el-form-item>
         </el-form>
         <el-row :gutter="10" class="mb8">
@@ -37,7 +46,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchLoginLogs } from '@/api/audit/login-log';
 import { searchOperLogs } from '@/api/audit/oper-log';
 import type { CrudTableColumn } from '@/types/admin';
-import { LoginStatus } from '@/enums/status';
+import { LoginStatus, loginStatusOptions } from '@/enums/status';
 
 const { t } = useI18n();
 type LogTab = 'login' | 'oper';
@@ -47,6 +56,10 @@ const rows = ref<Array<Record<string, unknown>>>([]); const selectedRows = ref<A
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const detailVisible = ref(false); const activeRow = ref<Record<string, unknown> | null>(null);
 const activeTitle = computed(() => activeTab.value === 'login' ? t('system.log.loginLog') : t('system.log.operLog'));
+const logStatusOptions = loginStatusOptions.map((option) => ({
+    label: option.label,
+    value: option.value === LoginStatus.Success ? 1 : 0,
+}));
 
 const loginColumns: CrudTableColumn[] = [
     { prop: 'loginAccount', label: t('system.log.loginAccount'), minWidth: 150 }, { prop: 'loginIp', label: t('system.log.loginIp'), minWidth: 140 },
