@@ -2,7 +2,7 @@
 
 ## Goal
 
-The frontend repositories should evolve toward a consistent enterprise structure shared by `admin-system`, `merchant-portal`, and future cashier flows.
+The frontend repositories should evolve toward a consistent enterprise structure shared by `admin-system`, `merchant-portal`, and future Hosted Checkout flows.
 
 Primary goals:
 

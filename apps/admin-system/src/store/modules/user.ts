@@ -45,7 +45,12 @@ function toUserInfo(account: AuthAccount | null): AdminUserInfo | null {
         userId: account.userId,
         username: account.loginAccount,
         realName: account.realName,
+        email: nullToUndefined((account as AuthAccount & { email?: string | null }).email),
     };
+}
+
+function nullToUndefined<T>(value: T | null | undefined): T | undefined {
+    return value == null ? undefined : value;
 }
 
 const cachedSession = loadSession();

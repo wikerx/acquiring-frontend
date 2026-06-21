@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 import type { AuthMenu } from '@acquiring/shared';
+import { VEXRA_BRAND } from '@acquiring/shared';
 import Layout from '@/layout/index.vue';
 import { useUserStore } from '@/store';
 import {
@@ -41,7 +42,6 @@ const legacyRedirects: Record<string, string> = {
     '/system/menus': '/system/menu',
     '/audit/login-log': '/system/log',
     '/audit/oper-log': '/system/log',
-    '/audit/login-session': '/security/session',
     '/merchant/account': '/merchant/info',
     '/merchant/user': '/merchant/info',
     '/merchant/role': '/merchant/info',
@@ -55,14 +55,10 @@ const legacyRedirects: Record<string, string> = {
     '/merchants/api-keys': '/merchant/info',
     '/base/countries': '/base/country',
     '/base/currencies': '/base/currency',
+    '/monitor/sharding': '/monitor/sharding/rules',
     '/permission/resource': '/permission/app',
     '/permission/role-auth': '/permission/app',
     '/permission/role-grant': '/permission/app',
-    '/security/jwt-key': '/security/api-security',
-    '/security/api-access': '/security/api-security',
-    '/security/audit': '/security/api-security',
-    '/security/operation-audit': '/security/api-security',
-    '/security/login-session': '/security/session',
 };
 
 const redirectRoutes: RouteRecordRaw[] = Object.entries(legacyRedirects).map(([path, redirect]) => ({
@@ -129,6 +125,10 @@ const dynamicRouteRemovers: Array<() => void> = [];
 
 router.beforeEach(async (to) => {
     const user = useUserStore();
+    const defaultTitle = VEXRA_BRAND.systems.admin.title;
+    const titleSuffix = VEXRA_BRAND.systems.admin.name;
+    const rawTitle = typeof to.meta.title === 'string' ? to.meta.title : '';
+    document.title = rawTitle ? `${rawTitle} - ${titleSuffix}` : defaultTitle;
     if (to.path !== '/login') {
         try {
             await user.hydrateSession();
@@ -158,6 +158,7 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
         resolveRuntimeMenuPath(menu),
         menu.componentPath,
         menu.permissionCode,
+        menu.icon || 'House',
         menu.menuType,
         menu.externalLink,
     ]));
@@ -170,6 +171,9 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
         if (!runtimePath || runtimePath === '/dashboard' || isExternalWindowMenu(menu)) {
             return;
         }
+        if (legacyRedirects[runtimePath]) {
+            return;
+        }
         dynamicRouteRemovers.push(
             router.addRoute('AdminRoot', {
                 path: runtimePath.replace(/^\//, ''),
@@ -178,7 +182,7 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
                 meta: {
                     title: menu.menuName,
                     titleKey: menu.menuCode,
-                    icon: menu.icon,
+                    icon: menu.icon || 'House',
                     permission: menu.permissionCode,
                     configuredComponent: menu.componentPath,
                     expectedView: isExternalFrameMenu(menu)

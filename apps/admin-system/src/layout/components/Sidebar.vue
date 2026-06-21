@@ -1,72 +1,53 @@
 <template>
     <aside class="layout-sidebar" :class="{ collapsed, dark: sideTheme === 'dark' }">
         <div v-if="showLogo !== false" class="brand">
-            <span class="brand-mark">A</span>
-            <div v-if="!collapsed">
-                <strong>Acquiring Admin</strong>
-                <small>Global Payment Console</small>
+            <img class="brand-mark brand-icon" :src="adminBrand.logos.icon" :alt="adminBrand.name" />
+            <div v-if="!collapsed" class="brand-copy">
+                <strong>{{ adminBrand.name }}</strong>
+                <small>{{ adminBrand.subtitleEn }}</small>
             </div>
         </div>
-        <el-menu
-            :default-active="activePath"
-            :collapse="collapsed"
-            class="side-menu"
-            @select="handleSelect"
-        >
-            <template v-for="item in menus" :key="itemKey(item)">
-                <el-sub-menu v-if="item.children?.length" :index="'__group__' + (item.path || item.title)">
-                    <template #title>
-                        <el-icon v-if="item.icon"><component :is="resolveIcon(item.icon)" /></el-icon>
+        <div class="sidebar-menu-wrap">
+            <el-menu
+                :default-active="activePath"
+                :collapse="collapsed"
+                class="side-menu"
+                @select="handleSelect"
+            >
+                <template v-for="item in menus" :key="itemKey(item)">
+                    <el-sub-menu v-if="item.children?.length" :index="'__group__' + (item.path || item.title)">
+                        <template #title>
+                            <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
+                            <span>{{ $te('route.' + item.titleKey) ? $t('route.' + item.titleKey) : item.title }}</span>
+                        </template>
+                        <el-menu-item
+                            v-for="child in item.children"
+                            :key="child.path || child.title"
+                            :index="child.path || child.title || child.titleKey || child.icon"
+                        >
+                            <el-icon v-if="child.icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
+                            <span>{{ $te('route.' + child.titleKey) ? $t('route.' + child.titleKey) : child.title }}</span>
+                        </el-menu-item>
+                    </el-sub-menu>
+                    <el-menu-item v-else-if="item.path" :index="item.path">
+                        <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
                         <span>{{ $te('route.' + item.titleKey) ? $t('route.' + item.titleKey) : item.title }}</span>
-                    </template>
-                    <el-menu-item
-                        v-for="child in item.children"
-                        :key="child.path || child.title"
-                        :index="child.path || child.title || child.titleKey || child.icon"
-                    >
-                        <el-icon v-if="child.icon"><component :is="resolveIcon(child.icon)" /></el-icon>
-                        <span>{{ $te('route.' + child.titleKey) ? $t('route.' + child.titleKey) : child.title }}</span>
                     </el-menu-item>
-                </el-sub-menu>
-                <el-menu-item v-else-if="item.path" :index="item.path">
-                    <el-icon v-if="item.icon"><component :is="resolveIcon(item.icon)" /></el-icon>
-                    <span>{{ $te('route.' + item.titleKey) ? $t('route.' + item.titleKey) : item.title }}</span>
-                </el-menu-item>
-            </template>
-        </el-menu>
+                </template>
+            </el-menu>
+        </div>
     </aside>
 </template>
 
 <script setup lang="ts">
-import { computed, type Component } from 'vue';
+import { computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import {
-    Avatar,
-    Coin,
-    Connection,
-    DataLine,
-    Document,
-    DocumentChecked,
-    Grid,
-    House,
-    Key,
-    Location,
-    Lock,
-    Menu,
-    Message,
-    Monitor,
-    OfficeBuilding,
-    Setting,
-    Shop,
-    Tickets,
-    Unlock,
-    User,
-    UserFilled,
-} from '@element-plus/icons-vue';
+import { getSystemBrand } from '@acquiring/shared';
 import type { AdminMenuItem } from '@/types/admin';
 import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
+import { resolveMenuIcon } from '@/utils/menu-icon';
 
 const props = defineProps<{
     menus: AdminMenuItem[];
@@ -78,10 +59,9 @@ const props = defineProps<{
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const adminBrand = getSystemBrand('admin');
 
-const activePath = computed(() => {
-    return route.path || '/dashboard';
-});
+const activePath = computed(() => route.path || '/dashboard');
 
 function itemKey(item: AdminMenuItem) {
     return item.path || item.title || Math.random().toString(36);
@@ -131,34 +111,4 @@ function findMenuByPath(items: AdminMenuItem[], path: string): AdminMenuItem | u
     return undefined;
 }
 
-const icons: Record<string, Component> = {
-    Avatar,
-    Coin,
-    Connection,
-    DataLine,
-    Document,
-    DocumentChecked,
-    Grid,
-    House,
-    Key,
-    Location,
-    Lock,
-    Menu,
-    Message,
-    Monitor,
-    OfficeBuilding,
-    Setting,
-    Shop,
-    Tickets,
-    Unlock,
-    User,
-    UserFilled,
-};
-
-function resolveIcon(name?: string) {
-    if (!name) {
-        return House;
-    }
-    return icons[name] || House;
-}
 </script>

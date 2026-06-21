@@ -9,8 +9,11 @@
                 :collapsed="app.sidebarCollapsed"
                 :show-collapse="settings.layoutMode !== 'top'"
                 :user-name="user.userInfo?.realName || user.userInfo?.username || 'Admin'"
+                :login-account="user.userInfo?.username"
                 :roles="user.roles"
+                :can-view-login-log="user.hasPermission('system:login-log:list')"
                 @toggle="app.toggleSidebar"
+                @open-login-log="handleOpenLoginLog"
                 @logout="handleLogout"
             />
             <TopNav v-if="settings.layoutMode === 'top'" :menus="permission.menus" />
@@ -60,6 +63,10 @@ watch(
 async function handleLogout() {
     await user.logout();
     await router.push('/login');
+}
+
+function handleOpenLoginLog() {
+    router.push('/system/log');
 }
 
 function handleCloseTag(path: string) {

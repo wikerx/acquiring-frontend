@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
+export * from './brand';
 
 export interface CommonResult<T> {
     code: string;
@@ -66,6 +67,14 @@ export interface LoginRequest {
     verifyCode?: string;
 }
 
+export interface AuthVerifyCodeSendResponse {
+    verifyCodeId: string;
+    receiverType: 'SMS' | 'EMAIL' | 'TOTP';
+    maskedReceiver: string;
+    expireSeconds: number;
+    devCode?: string;
+}
+
 export interface AuthSession {
     token: string;
     account: AuthAccount;
@@ -77,6 +86,7 @@ export interface AuthSession {
 export type SessionReader = () => AuthSession | null;
 export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
+export type ErrorMessageResolver = (error: unknown) => string;
 
 function createRequestId(): string {
     const randomPart = Math.random().toString(36).slice(2, 10).toUpperCase();
@@ -88,6 +98,7 @@ export function createHttpClient(
     readSession: SessionReader,
     onUnauthorized: UnauthorizedHandler,
     readLocale?: LocaleReader,
+    resolveErrorMessage?: ErrorMessageResolver,
 ): AxiosInstance {
     const client = axios.create({
         baseURL,
@@ -123,11 +134,65 @@ export function createHttpClient(
             if (error.response?.status === 401) {
                 onUnauthorized();
             }
+            if (resolveErrorMessage) {
+                error.friendlyMessage = resolveErrorMessage(error);
+            }
             return Promise.reject(error);
         },
     );
 
     return client;
+}
+
+export function resolveFriendlyRequestMessage(
+    error: unknown,
+    locale: string = 'zh-CN',
+): string {
+    const isChinese = locale !== 'en-US';
+    const defaultMessage = isChinese ? '请求暂时失败，请稍后重试。' : 'The request failed. Please try again later.';
+    if (!error || typeof error !== 'object') {
+        return defaultMessage;
+    }
+    const axiosLikeError = error as {
+        code?: string;
+        message?: string;
+        response?: {
+            status?: number;
+            data?: {
+                message?: string;
+            };
+        };
+    };
+    const backendMessage = axiosLikeError.response?.data?.message;
+    const status = axiosLikeError.response?.status;
+    const code = axiosLikeError.code;
+
+    if (status === 401) {
+        return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
+    }
+    if (status === 403) {
+        return isChinese ? '当前账号暂无权限执行此操作。' : 'Your account does not have permission to perform this action.';
+    }
+    if (status === 404) {
+        return isChinese ? '请求的服务或页面不存在。' : 'The requested service or page could not be found.';
+    }
+    if (status === 502 || status === 503 || status === 504) {
+        return isChinese
+            ? '服务暂时不可用，可能后端服务尚未启动，请稍后再试。'
+            : 'The service is temporarily unavailable. The backend may not be running yet. Please try again later.';
+    }
+    if (code === 'ECONNABORTED') {
+        return isChinese ? '请求超时，请稍后重试。' : 'The request timed out. Please try again.';
+    }
+    if (!status && code === 'ERR_NETWORK') {
+        return isChinese
+            ? '网络连接失败，或后端服务尚未启动，请检查服务状态后重试。'
+            : 'The network request failed, or the backend service may not be running. Please check the service and try again.';
+    }
+    if (backendMessage && !/^Request failed with status code \d+$/.test(backendMessage)) {
+        return backendMessage;
+    }
+    return defaultMessage;
 }
 
 export function unwrapResult<T>(result: CommonResult<T>): T {

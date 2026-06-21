@@ -130,7 +130,11 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="$t('monitor.job.cronExpression')" prop="cronExpression">
-                    <el-input v-model="form.cronExpression" maxlength="100" :placeholder="$t('monitor.job.cronPlaceholder')" :disabled="form.triggerMode === 'MANUAL'" />
+                    <el-input v-model="form.cronExpression" maxlength="100" :placeholder="$t('monitor.job.cronPlaceholder')" :disabled="form.triggerMode === 'MANUAL'">
+                        <template #append>
+                            <el-button :disabled="form.triggerMode === 'MANUAL'" @click="openCronGenerator">{{ $t('monitor.job.generateCron') }}</el-button>
+                        </template>
+                    </el-input>
                 </el-form-item>
                 <el-form-item :label="$t('monitor.job.misfireStrategy')" prop="misfireStrategy">
                     <el-select v-model="form.misfireStrategy" style="width: 100%">
@@ -211,6 +215,12 @@
                 <BaseDateTime :value="String(data?.lastTriggerTime || '')" />
             </template>
         </DetailDescriptions>
+
+        <CronExpressionGenerator
+            v-model="cronGeneratorVisible"
+            :expression="form.cronExpression"
+            @confirm="handleCronGenerated"
+        />
     </div>
 </template>
 
@@ -223,6 +233,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
+import CronExpressionGenerator from '@/components/CronExpressionGenerator/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import {
@@ -284,6 +295,7 @@ const triggerTarget = ref<JobTaskRow | null>(null);
 const triggerForm = reactive({
     paramsJson: '',
 });
+const cronGeneratorVisible = ref(false);
 
 const detailVisible = ref(false);
 const detailData = ref<Record<string, unknown> | null>(null);
@@ -440,6 +452,18 @@ function handleHandlerChange(handlerCode: string) {
     if (selected.allowConcurrent === false) {
         form.allowConcurrent = 0;
     }
+}
+
+function openCronGenerator() {
+    if (form.triggerMode === 'MANUAL') {
+        return;
+    }
+    cronGeneratorVisible.value = true;
+}
+
+function handleCronGenerated(expression: string) {
+    form.cronExpression = expression;
+    nextTick(() => formRef.value?.validateField('cronExpression'));
 }
 
 async function submitForm() {

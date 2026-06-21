@@ -17,12 +17,22 @@
         </el-row>
         <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
+            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true">
+                <template #default="{ row }">
+                    <BaseDateTime v-if="isTimeColumn(col.prop)" :value="row[col.prop]" />
+                    <span v-else>{{ row[col.prop] ?? '-' }}</span>
+                </template>
+            </el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'dict' ? 'system:dict:list' : 'system:config:query'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </el-table>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
         <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="700px" append-to-body destroy-on-close>
-            <el-descriptions :column="2" border size="small"><el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">{{ activeRow?.[col.prop] ?? '-' }}</el-descriptions-item></el-descriptions>
+            <el-descriptions :column="2" border size="small">
+                <el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">
+                    <BaseDateTime v-if="isTimeColumn(col.prop)" :value="String(activeRow?.[col.prop] || '')" />
+                    <span v-else>{{ activeRow?.[col.prop] ?? '-' }}</span>
+                </el-descriptions-item>
+            </el-descriptions>
             <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
@@ -33,6 +43,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search, Refresh, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchConfigs } from '@/api/system/config';
 import { searchDictTypes } from '@/api/system/dict';
@@ -71,4 +82,5 @@ function kw() { return String(query.keyword || '').trim() || undefined; }
 function ns() { return typeof query.status === 'number' ? query.status : undefined; }
 function nr(row: Record<string, unknown>) { return { ...row, status: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled, valueTypeText: vt(row.valueType) }; }
 function vt(v: unknown) { return ({ 1: 'String', 2: 'Number', 3: 'Boolean', 4: 'JSON' } as Record<number, string>)[Number(v)] || '-'; }
+function isTimeColumn(prop: string) { return ['updatedAt'].includes(prop); }
 </script>

@@ -10,7 +10,7 @@
                 <!-- Category with children → dropdown -->
                 <el-sub-menu v-if="item.children?.length" :index="item.path || '__cat__' + item.title">
                     <template #title>
-                        <el-icon v-if="item.icon"><component :is="resolveIcon(item.icon)" /></el-icon>
+                        <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
                         <span>{{ displayTitle(item) }}</span>
                     </template>
                     <el-menu-item
@@ -18,13 +18,13 @@
                         :key="child.path || child.title"
                         :index="child.path || child.title || child.titleKey || child.icon"
                     >
-                        <el-icon v-if="child.icon"><component :is="resolveIcon(child.icon)" /></el-icon>
+                        <el-icon v-if="child.icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
                         <span>{{ displayTitle(child) }}</span>
                     </el-menu-item>
                 </el-sub-menu>
                 <!-- Leaf menu → direct link -->
                 <el-menu-item v-else :index="item.path">
-                    <el-icon v-if="item.icon"><component :is="resolveIcon(item.icon)" /></el-icon>
+                    <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
                     <span>{{ displayTitle(item) }}</span>
                 </el-menu-item>
             </template>
@@ -33,17 +33,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Component } from 'vue';
+import { computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import {
-    House, Setting, Shop, DataLine, Key, Lock,
-    Monitor, Location, Coin, Connection, DocumentChecked, Menu,
-    Avatar, Grid, OfficeBuilding, Tickets, User, Document,
-} from '@element-plus/icons-vue';
 import type { AdminMenuItem } from '@/types/admin';
 import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
+import { resolveMenuIcon } from '@/utils/menu-icon';
 
 const { t, te } = useI18n();
 
@@ -103,15 +99,6 @@ function findMenuByPath(items: AdminMenuItem[], path: string): AdminMenuItem | u
     return undefined;
 }
 
-const icons: Record<string, Component> = {
-    House, Setting, Shop, DataLine, Key, Lock,
-    Monitor, Location, Coin, Connection, DocumentChecked, Menu,
-    Avatar, Grid, OfficeBuilding, Tickets, User, Document,
-};
-
-function resolveIcon(name?: string) {
-    return name ? icons[name] || House : House;
-}
 </script>
 
 <style scoped>

@@ -11,7 +11,7 @@
 
 不要在本应用任务中修改：
 
-- `apps/cashier`
+- `apps/hosted-checkout`
 - `apps/merchant-portal`
 
 ## Prerequisites

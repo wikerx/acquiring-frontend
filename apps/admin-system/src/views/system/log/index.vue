@@ -26,12 +26,22 @@
         </el-row>
         <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true" />
+            <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label" :min-width="col.minWidth || col.width || 140" :width="col.width" align="center" :show-overflow-tooltip="true">
+                <template #default="{ row }">
+                    <BaseDateTime v-if="isTimeColumn(col.prop)" :value="row[col.prop]" />
+                    <span v-else>{{ row[col.prop] ?? '-' }}</span>
+                </template>
+            </el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="80" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'login' ? 'system:login-log:list' : 'system:oper-log:list'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </el-table>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
         <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="800px" append-to-body destroy-on-close>
-            <el-descriptions :column="2" border size="small"><el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">{{ activeRow?.[col.prop] ?? '-' }}</el-descriptions-item></el-descriptions>
+            <el-descriptions :column="2" border size="small">
+                <el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">
+                    <BaseDateTime v-if="isTimeColumn(col.prop)" :value="String(activeRow?.[col.prop] || '')" />
+                    <span v-else>{{ activeRow?.[col.prop] ?? '-' }}</span>
+                </el-descriptions-item>
+            </el-descriptions>
             <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
@@ -42,6 +52,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search, Refresh, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchLoginLogs } from '@/api/audit/login-log';
 import { searchOperLogs } from '@/api/audit/oper-log';
@@ -49,6 +61,7 @@ import type { CrudTableColumn } from '@/types/admin';
 import { LoginStatus, loginStatusOptions } from '@/enums/status';
 
 const { t } = useI18n();
+const route = useRoute();
 type LogTab = 'login' | 'oper';
 const showSearch = ref(true); const activeTab = ref<LogTab>('login');
 const query = reactive<Record<string, unknown>>({}); const loading = ref(false);
@@ -75,6 +88,15 @@ const operColumns: CrudTableColumn[] = [
 const columns = computed(() => activeTab.value === 'login' ? loginColumns : operColumns);
 
 watch([activeTab, page, pageSize], () => { selectedRows.value = []; loadData(); });
+watch(
+    () => route.query.tab,
+    (tab) => {
+        if (tab === 'login' || tab === 'oper') {
+            activeTab.value = tab;
+        }
+    },
+    { immediate: true },
+);
 onMounted(() => loadData());
 
 async function loadData() { loading.value = true; try { const r = activeTab.value === 'login' ? await searchLoginLogs({ pageNo: page.value, pageSize: pageSize.value, loginAccount: kw(), loginStatus: ns() }) : await searchOperLogs({ pageNo: page.value, pageSize: pageSize.value, moduleName: kw(), status: ns() }); rows.value = r.records.map((i: unknown) => nr(i as Record<string, unknown>)); total.value = r.total; } catch (e) { rows.value = []; total.value = 0; ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } finally { loading.value = false; } }
@@ -84,4 +106,5 @@ function openDetail(row: Record<string, unknown>) { activeRow.value = row; detai
 function kw() { return String(query.keyword || '').trim() || undefined; }
 function ns() { return typeof query.status === 'number' ? query.status : undefined; }
 function nr(row: Record<string, unknown>) { const s = row.loginStatus ?? row.status; return { ...row, status: s === 1 ? LoginStatus.Success : LoginStatus.Failed, costTimeText: typeof row.costTime === 'number' ? `${row.costTime} ms` : '-' }; }
+function isTimeColumn(prop: string) { return ['loginAt', 'operatedAt'].includes(prop); }
 </script>

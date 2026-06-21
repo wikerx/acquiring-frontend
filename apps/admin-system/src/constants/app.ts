@@ -1,10 +1,13 @@
-export const APP_TITLE = 'Acquiring Admin';
+import { VEXRA_BRAND } from '@acquiring/shared';
+
+export const APP_TITLE = VEXRA_BRAND.systems.admin.title;
 
 /* ===== Theme Presets ===== */
-export const DEFAULT_THEME = '#409EFF';
+export const DEFAULT_THEME = VEXRA_BRAND.systems.admin.accentColor;
 
 export const PRESET_COLORS = [
-    '#409EFF', // 蓝
+    '#2563EB', // Admin
+    '#1E3AFF', // Brand Blue
     '#67C23A', // 绿
     '#E6A23C', // 黄
     '#F56C6C', // 红

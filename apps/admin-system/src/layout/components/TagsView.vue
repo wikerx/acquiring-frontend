@@ -9,7 +9,7 @@
             @click="$router.push(tag.path)"
             @contextmenu.prevent="openContextMenu($event, tag)"
         >
-            <el-icon class="tag-icon"><component :is="resolveIcon(tag.icon)" /></el-icon>
+            <el-icon v-if="tag.icon" class="tag-icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
             <span class="tag-title">
             {{ $te('route.' + tag.titleKey) ? $t('route.' + tag.titleKey) : tag.title }}
             </span>
@@ -37,27 +37,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type Component } from 'vue';
+import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import {
-    ChatDotRound,
-    Close,
-    Coin,
-    Document,
-    Grid,
-    House,
-    Key,
-    Menu,
-    Monitor,
-    OfficeBuilding,
-    Setting,
-    Shop,
-    Tickets,
-    User,
-    UserFilled,
-} from '@element-plus/icons-vue';
+import { Close } from '@element-plus/icons-vue';
 import type { VisitedView } from '@/store/modules/tagsView';
+import { resolveMenuIcon } from '@/utils/menu-icon';
 const { t } = useI18n();
 
 const props = defineProps<{
@@ -108,26 +93,6 @@ function closeAll() {
     emit('closeAll');
 }
 
-const icons: Record<string, Component> = {
-    ChatDotRound,
-    Coin,
-    Document,
-    Grid,
-    House,
-    Key,
-    Menu,
-    Monitor,
-    OfficeBuilding,
-    Setting,
-    Shop,
-    Tickets,
-    User,
-    UserFilled,
-};
-
-function resolveIcon(name?: string) {
-    return name ? icons[name] || Document : House;
-}
 </script>
 
 <style scoped>

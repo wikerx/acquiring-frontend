@@ -162,7 +162,7 @@ Always align right in tables.
 
 ------
 
-# Cashier Rules
+# Hosted Checkout Rules
 
 Reference:
 
@@ -184,7 +184,7 @@ Complex Navigation
 
 ------
 
-# Cashier Layout
+# Hosted Checkout Layout
 
 Order Summary
 

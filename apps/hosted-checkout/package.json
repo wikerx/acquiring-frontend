@@ -1,5 +1,5 @@
 {
-  "name": "@acquiring/cashier",
+  "name": "@acquiring/hosted-checkout",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,8 @@
   "dependencies": {
     "@acquiring/shared": "0.1.0",
     "axios": "^1.13.2",
-    "vue": "^3.5.25"
+    "vue": "^3.5.25",
+    "vue-i18n": "^11.1.12"
   },
   "devDependencies": {}
 }

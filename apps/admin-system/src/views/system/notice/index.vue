@@ -54,7 +54,7 @@
             </el-table-column>
             <el-table-column prop="createBy" :label="$t('system.notice.createBy')" align="center" min-width="120" />
             <el-table-column :label="$t('common.createTime')" align="center" min-width="160">
-                <template #default="{ row }">{{ row.createTime || '-' }}</template>
+                <template #default="{ row }"><BaseDateTime :value="row.createTime" /></template>
             </el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="160" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
@@ -108,7 +108,7 @@
                 <el-descriptions-item :label="$t('system.notice.noticeType')" align="center">{{ activeRow?.noticeType === '1' ? $t('system.notice.typeNotice') : $t('system.notice.typeAnnouncement') }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')" align="center">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.notice.createBy')" align="center">{{ activeRow?.createBy || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('common.createTime')" align="center">{{ activeRow?.createTime || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('common.createTime')" align="center"><BaseDateTime :value="String(activeRow?.createTime || '')" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('system.notice.noticeContent')" align="center">{{ activeRow?.noticeContent || '-' }}</el-descriptions-item>
             </el-descriptions>
             <template #footer>
@@ -122,6 +122,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchNotices, createNotice, updateNotice, deleteNotice, type SysNotice } from '@/api/system/notice';
 import { useI18n } from 'vue-i18n';

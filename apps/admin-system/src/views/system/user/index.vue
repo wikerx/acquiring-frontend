@@ -4,6 +4,9 @@
             <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount">
                 <el-input v-model="query.loginAccount" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item :label="$t('system.user.dept')" prop="deptId">
+                <el-tree-select v-model="query.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width: 180px" :placeholder="$t('common.pleaseSelect')" />
+            </el-form-item>
             <el-form-item :label="$t('common.status')" prop="status">
                 <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
                     <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -35,6 +38,10 @@
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="loginAccount" :label="$t('system.user.loginAccount')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="realName" :label="$t('system.user.realName')" min-width="120" align="center" :show-overflow-tooltip="true" />
+            <el-table-column prop="deptName" :label="$t('system.user.dept')" min-width="130" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('system.user.post')" min-width="160" align="center" :show-overflow-tooltip="true">
+                <template #default="{ row }">{{ formatPostNames(row) }}</template>
+            </el-table-column>
             <el-table-column prop="mobile" :label="$t('system.user.mobile')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="email" :label="$t('system.user.email')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('common.status')" width="80" align="center">
@@ -62,14 +69,17 @@
                 <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount"><el-input v-model="userForm.loginAccount" :disabled="formMode === 'edit'" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item v-if="formMode === 'create'" :label="$t('system.user.initPassword')" prop="password"><el-input v-model="userForm.password" type="password" show-password maxlength="64" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.realName')" prop="realName"><el-input v-model="userForm.realName" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                <el-form-item :label="$t('system.user.dept')" prop="deptId">
+                    <el-tree-select v-model="userForm.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width:100%" :placeholder="$t('common.pleaseSelect')" />
+                </el-form-item>
+                <el-form-item :label="$t('system.user.post')" prop="postIds">
+                    <el-select v-model="userForm.postIds" multiple filterable clearable :placeholder="$t('common.pleaseSelect')" style="width:100%">
+                        <el-option v-for="post in postOptions" :key="post.id" :label="post.postName + ' (' + post.postCode + ')'" :value="post.id" />
+                    </el-select>
+                </el-form-item>
                 <el-form-item :label="$t('system.user.mobile')" prop="mobile"><el-input v-model="userForm.mobile" maxlength="30" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.email')" prop="email"><el-input v-model="userForm.email" maxlength="150" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item v-if="formMode === 'edit'" :label="$t('common.status')" prop="status"><el-select v-model="userForm.status" :placeholder="$t('common.pleaseSelect')"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item :label="$t('system.user.assignRole')">
-                    <el-select v-model="selectedRoleIds" multiple :placeholder="$t('common.pleaseSelect')" :loading="roleLoading" style="width:100%">
-                        <el-option v-for="role in roleOptions" :key="role.roleId" :label="role.roleName + ' (' + role.roleCode + ')'" :value="role.roleId" />
-                    </el-select>
-                </el-form-item>
             </el-form>
             <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitUserForm">{{ $t('common.confirm') }}</el-button><el-button @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
@@ -88,6 +98,8 @@
                 <el-descriptions-item :label="$t('system.user.userId')">{{ activeRow?.userId ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.loginAccount')">{{ activeRow?.loginAccount ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.realName')">{{ activeRow?.realName ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.dept')">{{ activeRow?.deptName ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.post')">{{ activeRow ? formatPostNames(activeRow) : '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.mobile')">{{ activeRow?.mobile ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.email')">{{ activeRow?.email ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')"><el-tag :type="activeRow?.status === 1 ? 'success' : 'danger'" size="small">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag></el-descriptions-item>
@@ -119,15 +131,18 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableI
 import { Search, Refresh, Plus, Edit, Delete, Download, View, UserFilled, Key } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { createUser, deleteUsers, exportUsers, getUserRoles, grantUserRoles, resetUserPassword, searchUsers, updateUser, updateUserStatus, type SysUserAccount } from '@/api/system/user';
+import { getDeptTree, type SysDept } from '@/api/system/dept';
+import { getAllPosts, type SysPost } from '@/api/system/post';
 import { searchRoles, type SysRole } from '@/api/system/role';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { CommonStatus } from '@/enums/status';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
-interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; mobile: string; email: string; status: number; }
+interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; }
+type PostOption = SysPost & { id: number };
 
 const statusOptions = [{ label: t('common.enable'), value: 1 }, { label: t('common.disable'), value: 0 }];
 const showSearch = ref(true);
@@ -144,8 +159,9 @@ const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<UserRow | null>(null);
 const userFormRef = ref<FormInstance>(); const resetFormRef = ref<FormInstance>(); const roleTableRef = ref<TableInstance>();
 const roleOptions = ref<SysRole[]>([]); const roleRows = ref<SysRole[]>([]); const selectedRoleIds = ref<number[]>([]); const roleLoading = ref(false);
+const deptOptions = ref<SysDept[]>([]); const postOptions = ref<PostOption[]>([]);
 const dialogTitle = computed(() => formMode.value === 'create' ? t('system.user.addUser') : t('system.user.editUser'));
-const userForm = reactive<UserForm>({ loginAccount: '', password: '', realName: '', mobile: '', email: '', status: 1 });
+const userForm = reactive<UserForm>({ loginAccount: '', password: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1 });
 const resetForm = reactive({ password: '' });
 const userFormRules = computed<FormRules>(() => ({
     loginAccount: [{ required: true, message: t('login.accountRequired'), trigger: 'blur' }],
@@ -156,35 +172,45 @@ const userFormRules = computed<FormRules>(() => ({
 const resetFormRules: FormRules = { password: [{ required: true, min: 8, max: 64, message: t('common.pleaseInput'), trigger: 'blur' }] };
 
 watch([page, pageSize], () => { loadData(); });
-onMounted(() => { loadData(); });
+onMounted(() => {
+    loadOrgOptions();
+    loadData();
+});
 
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), status: numericStatus() });
+        const result = await searchUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus() });
         rows.value = result.records.map(normalizeRow); total.value = result.total;
     } catch (error) { rows.value = []; total.value = 0; ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed')); }
     finally { loading.value = false; }
 }
 
+async function loadOrgOptions() {
+    try {
+        const [deptTree, posts] = await Promise.all([getDeptTree(), getAllPosts()]);
+        deptOptions.value = deptTree;
+        postOptions.value = posts.filter((post): post is PostOption => typeof post.id === 'number');
+    } catch (error) {
+        deptOptions.value = [];
+        postOptions.value = [];
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    }
+}
+
 function handleQuery() { if (page.value === 1) { loadData(); return; } page.value = 1; }
-function resetQuery() { Object.keys(query).forEach((k) => { query[k] = ''; }); handleQuery(); }
+function resetQuery() { Object.keys(query).forEach((k) => { query[k] = undefined; }); handleQuery(); }
 function handleSelectionChange(selection: UserRow[]) { selectedRows.value = selection; }
 
 async function handleAdd() {
     formMode.value = 'create'; activeRow.value = null;
-    Object.assign(userForm, { accountId: undefined, loginAccount: '', password: 'Admin@123456', realName: '', mobile: '', email: '', status: 1 });
-    selectedRoleIds.value = []; roleOptions.value = []; roleLoading.value = true; userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
-    try { const r = await searchRoles({ pageNo: 1, pageSize: 1000 }); roleOptions.value = r.records; } catch { /* roles may not load */ } finally { roleLoading.value = false; }
+    Object.assign(userForm, { accountId: undefined, loginAccount: '', password: 'Admin@123456', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1 });
+    selectedRoleIds.value = []; userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
 }
 async function handleUpdate(row: UserRow) {
     formMode.value = 'edit'; activeRow.value = row;
-    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, password: '', realName: row.realName || '', mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1 });
-    roleLoading.value = true; userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
-    try {
-        const r = await getUserRoles({ accountId: row.accountId });
-        roleOptions.value = r.roles; selectedRoleIds.value = r.checkedRoleIds || [];
-    } catch { roleOptions.value = []; selectedRoleIds.value = []; } finally { roleLoading.value = false; }
+    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, password: '', realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1 });
+    userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
 }
 function openDetail(row: UserRow) { activeRow.value = row; detailVisible.value = true; }
 function openResetPassword(row: UserRow) { activeRow.value = row; resetForm.password = 'Admin@123456'; resetDialogVisible.value = true; nextTick(() => resetFormRef.value?.clearValidate()); }
@@ -192,10 +218,8 @@ function openResetPassword(row: UserRow) { activeRow.value = row; resetForm.pass
 async function submitUserForm() {
     const valid = await userFormRef.value?.validate().catch(() => false); if (!valid) return;
     try {
-        let accountId: number | undefined;
-        if (formMode.value === 'create') { const created = await createUser({ loginAccount: userForm.loginAccount.trim(), password: userForm.password, realName: userForm.realName.trim(), mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email) }); accountId = created.accountId; ElMessage.success(t('common.addSuccess')); }
-        else if (userForm.accountId) { await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email), status: userForm.status }); accountId = userForm.accountId; ElMessage.success(t('common.editSuccess')); }
-        if (accountId) await grantUserRoles({ accountId, roleIds: selectedRoleIds.value });
+        if (formMode.value === 'create') { await createUser({ loginAccount: userForm.loginAccount.trim(), password: userForm.password, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email) }); ElMessage.success(t('common.addSuccess')); }
+        else if (userForm.accountId) { await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email), status: userForm.status }); ElMessage.success(t('common.editSuccess')); }
         userDialogVisible.value = false; loadData();
     } catch (error) { ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed')); }
 }
@@ -230,7 +254,7 @@ async function handleDelete(rowsParam?: UserRow[]) {
 }
 async function handleExport() {
     try {
-        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), status: numericStatus() });
+        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus() });
         ElMessage.success(t('common.export'));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
@@ -252,8 +276,15 @@ async function submitRoleAuth() {
 }
 
 function keyword() { return String(query.loginAccount || '').trim() || undefined; }
+function numericDeptId() { return typeof query.deptId === 'number' ? query.deptId : undefined; }
 function numericStatus() { return typeof query.status === 'number' ? query.status : undefined; }
 function normalizeRow(row: SysUserAccount): UserRow { return { ...row, statusTag: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled, lockedText: row.locked === 1 ? t('common.yes') : t('common.no') }; }
 function trimOptional(value: string) { return value.trim() || undefined; }
+function formatPostNames(row: SysUserAccount) {
+    if (!row.postNames?.length) {
+        return '-';
+    }
+    return row.postNames.join(locale.value === 'zh-CN' ? '、' : ', ');
+}
 function applyRoleSelection() { const checkedIdSet = new Set(selectedRoleIds.value); roleRows.value.forEach((row) => { roleTableRef.value?.toggleRowSelection(row, checkedIdSet.has(row.roleId)); }); }
 </script>

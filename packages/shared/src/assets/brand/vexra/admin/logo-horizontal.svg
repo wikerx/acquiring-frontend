@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 170" role="img" aria-labelledby="title desc">
+<title id="title">Vexra Admin Logo</title><desc id="desc">Management Console</desc>
+<defs>
+<linearGradient id="vxLeft" x1="18" y1="8" x2="90" y2="128" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1E3AFF"/><stop offset="1" stop-color="#0B1026"/></linearGradient>
+<linearGradient id="vxRight" x1="82" y1="126" x2="162" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D7CFF"/><stop offset="1" stop-color="#2563EB"/></linearGradient>
+<linearGradient id="vxRoute" x1="44" y1="100" x2="139" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3D7CFF"/><stop offset=".55" stop-color="#1E3AFF"/><stop offset="1" stop-color="#2563EB"/></linearGradient>
+<filter id="vxSoft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0B1026" flood-opacity=".12"/></filter>
+</defs>
+<style>
+.word{font-family:Inter,Satoshi,Arial,sans-serif;font-weight:800;letter-spacing:-1.8px;fill:#0B1026}
+.sub{font-family:Inter,Satoshi,Arial,sans-serif;font-weight:500;letter-spacing:6px;fill:#64748B}
+.product{font-family:Inter,Satoshi,Arial,sans-serif;font-weight:800;letter-spacing:-1.5px;fill:#2563EB}
+.tag{font-family:Inter,Satoshi,Arial,sans-serif;font-weight:500;letter-spacing:1.4px;fill:#64748B}
+.divider{stroke:#CBD5E1;stroke-width:2}
+</style>
+<g transform="translate(28 18) scale(.86)"><g id="vexra-mark-simple">
+<path d="M18 14h45c6 0 11 3 14 8l30 57-25 46L18 14Z" fill="url(#vxLeft)"/>
+<path d="M102 14h60L98 126 72 81l30-67Z" fill="url(#vxRight)"/>
+</g></g>
+<text x="205" y="96" class="word" font-size="76">Vexra</text>
+<path d="M428 39v88" class="divider"/>
+<text x="455" y="96" class="product" font-size="70">Admin</text>
+<text x="210" y="136" class="tag" font-size="23">Management Console</text>
+</svg>

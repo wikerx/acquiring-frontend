@@ -21,7 +21,7 @@
             <el-table-column prop="postName" :label="$t('system.post.postName')" min-width="140" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="sortNo" :label="$t('common.sort')" width="70" align="center" />
             <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'system:post:edit'" /></template></el-table-column>
-            <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }">{{ row.createdAt || '-' }}</template></el-table-column>
+            <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="200" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:post:edit'">{{ $t('common.edit') }}</el-button>
@@ -50,6 +50,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchPosts, createPost, updatePost, deletePost, exportPosts, type SysPost } from '@/api/system/post';
 

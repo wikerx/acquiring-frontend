@@ -8,5 +8,5 @@
       "@acquiring/shared": ["../../packages/shared/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "../../packages/shared/src/**/*.ts", "../../packages/shared/src/**/*.vue"]
 }

@@ -25,7 +25,7 @@
       <el-table-column :label="$t('common.status')" width="80" align="center">
         <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'system:config:edit'" /></template>
       </el-table-column>
-      <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }">{{ row.createdAt || '-' }}</template></el-table-column>
+      <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
       <el-table-column :label="$t('common.operation')" align="center" width="200" class-name="small-padding fixed-width" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button>
@@ -56,6 +56,7 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { searchConfigs, saveConfig, updateConfig, deleteConfig, exportConfigs, refreshConfigCache, type SysConfig } from '@/api/system/config';
 

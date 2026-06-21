@@ -7,6 +7,10 @@ import type { SysRole } from './role';
 export interface SysUserAccount {
     accountId: number;
     userId: number;
+    deptId?: number;
+    deptName?: string;
+    postIds?: number[];
+    postNames?: string[];
     loginAccount: string;
     realName?: string;
     mobile?: string;
@@ -23,6 +27,7 @@ export interface SysUserAccountQuery extends PageQuery {
     loginAccount?: string;
     mobile?: string;
     email?: string;
+    deptId?: number;
     status?: number;
 }
 
@@ -30,6 +35,8 @@ export interface SysUserAccountCreateRequest {
     loginAccount: string;
     password: string;
     realName: string;
+    deptId?: number;
+    postIds?: number[];
     mobile?: string;
     email?: string;
 }
@@ -37,6 +44,8 @@ export interface SysUserAccountCreateRequest {
 export interface SysUserAccountUpdateRequest {
     accountId: number;
     realName?: string;
+    deptId?: number;
+    postIds?: number[];
     mobile?: string;
     email?: string;
     status?: number;

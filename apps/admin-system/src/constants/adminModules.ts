@@ -1,5 +1,5 @@
-import { commonStatusOptions, keyStatusOptions, loginStatusOptions } from '@/enums/status';
-import { auditRows, commonRows, keyRows, merchantRows, userRows } from '@/fixtures/crudData';
+import { commonStatusOptions } from '@/enums/status';
+import { auditRows, commonRows, merchantRows, userRows } from '@/fixtures/crudData';
 import type { AdminMenuItem, CrudModuleConfig } from '@/types/admin';
 
 const statusField = {
@@ -7,20 +7,6 @@ const statusField = {
     label: '状态',
     type: 'select' as const,
     options: commonStatusOptions,
-};
-
-const keyStatusField = {
-    prop: 'status',
-    label: '状态',
-    type: 'select' as const,
-    options: keyStatusOptions,
-};
-
-const loginStatusField = {
-    prop: 'status',
-    label: '状态',
-    type: 'select' as const,
-    options: loginStatusOptions,
 };
 
 const commonColumns = [
@@ -37,14 +23,6 @@ const auditColumns = [
     { prop: 'status', label: '状态', type: 'status' as const, width: 110 },
     { prop: 'message', label: '说明', minWidth: 180 },
     { prop: 'createdAt', label: '发生时间', type: 'datetime' as const, minWidth: 180 },
-];
-
-const keyColumns = [
-    { prop: 'keyId', label: '密钥 ID', minWidth: 180 },
-    { prop: 'merchantNo', label: '商户号', minWidth: 160 },
-    { prop: 'fingerprint', label: '指纹', minWidth: 200 },
-    { prop: 'status', label: '状态', type: 'status' as const, width: 110 },
-    { prop: 'updatedAt', label: '更新时间', type: 'datetime' as const, minWidth: 180 },
 ];
 
 const baseSearchFields = [
@@ -149,53 +127,13 @@ export const crudModules: CrudModuleConfig[] = [
     createCommonModule('permission.app', '应用权限', '权限中心', '/permission/app', 'PermissionApp', 'Key', 'permission:app:list', 'permission/app', 'sys_app / sys_permission', '维护应用、资源权限和角色授权入口。'),
     createCommonModule('permission.dataScope', '数据权限', '权限中心', '/permission/data-scope', 'PermissionDataScope', 'Connection', 'permission:data-scope:list', 'permission/data-scope', 'sys_role_data_scope', '维护角色数据范围和后续数据隔离策略。'),
 
-    {
-        key: 'security.session',
-        title: '会话管理',
-        menuTitle: '会话管理',
-        category: '安全中心',
-        path: '/security/session',
-        routeName: 'SecuritySession',
-        icon: 'Monitor',
-        permission: 'security:session:list',
-        component: 'security/session',
-        tableName: 'sys_login_session',
-        summary: '查询当前登录会话、会话状态和访问终端。',
-        searchFields: [
-            { prop: 'keyword', label: '账号关键词', placeholder: '登录账号/IP' },
-            loginStatusField,
-        ],
-        columns: auditColumns,
-        seedRows: auditRows,
-    },
-    {
-        key: 'security.apiSecurity',
-        title: '密钥与 API 安全',
-        menuTitle: '密钥与 API 安全',
-        category: '安全中心',
-        path: '/security/api-security',
-        routeName: 'SecurityApiSecurity',
-        icon: 'Lock',
-        permission: 'security:jwt-key:list',
-        component: 'security/api-security',
-        tableName: 'base_merchant_jwt_key / sys_permission / sys_oper_log',
-        summary: '整合 JWT 密钥、API 访问控制和操作审计入口。',
-        searchFields: [
-            { prop: 'keyword', label: '关键词', placeholder: '密钥 ID/商户号/API 资源' },
-            keyStatusField,
-        ],
-        columns: keyColumns,
-        seedRows: keyRows,
-        dialogWidth: '900px',
-        sensitive: true,
-    },
 ];
 
 export const moduleMap = new Map(crudModules.map((module) => [module.key, module]));
 
 export const adminMenus: AdminMenuItem[] = [
     { title: '首页', path: '/dashboard', icon: 'House' },
-    ...['系统管理', '商户管理', '基础数据', '权限中心', '安全中心'].map((category) => ({
+    ...['系统管理', '商户管理', '基础数据', '权限中心'].map((category) => ({
         title: category,
         icon: categoryIcon(category),
         children: crudModules.filter((module) => module.category === category).map(toMenuItem),
@@ -209,7 +147,6 @@ function categoryIcon(category: string) {
             商户管理: 'Shop',
             基础数据: 'DataLine',
             权限中心: 'Key',
-            安全中心: 'Lock',
         } as Record<string, string>
     )[category];
 }

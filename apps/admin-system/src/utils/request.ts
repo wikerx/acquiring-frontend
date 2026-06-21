@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ElMessage } from 'element-plus';
+import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { getToken, removeAuthStorage } from './auth';
 
 const request = axios.create({
@@ -19,7 +20,8 @@ request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 request.interceptors.response.use(
     (response) => response.data,
     (error: AxiosError<{ message?: string }>) => {
-        const message = error.response?.data?.message || error.message || '请求失败';
+        const locale = document.documentElement.lang || navigator.language || 'zh-CN';
+        const message = resolveFriendlyRequestMessage(error, locale);
         if (error.response?.status === 401) {
             removeAuthStorage();
             redirectToLogin();

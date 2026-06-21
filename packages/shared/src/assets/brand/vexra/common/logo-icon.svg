@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 140" role="img" aria-labelledby="title desc">
+<title id="title">Vexra Icon</title><desc id="desc">Icon-only Vexra mark with routing nodes.</desc>
+<defs>
+<linearGradient id="vxLeft" x1="18" y1="8" x2="90" y2="128" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1E3AFF"/><stop offset="1" stop-color="#0B1026"/></linearGradient>
+<linearGradient id="vxRight" x1="82" y1="126" x2="162" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7B5CFF"/><stop offset="1" stop-color="#00C2FF"/></linearGradient>
+<linearGradient id="vxRoute" x1="44" y1="100" x2="139" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7B5CFF"/><stop offset=".55" stop-color="#1E3AFF"/><stop offset="1" stop-color="#00C2FF"/></linearGradient>
+<filter id="vxSoft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0B1026" flood-opacity=".12"/></filter>
+</defs>
+<g id="vexra-mark">
+<path d="M18 14h45c6 0 11 3 14 8l30 57-25 46L18 14Z" fill="url(#vxLeft)"/>
+<path d="M102 14h60L98 126 72 81l30-67Z" fill="url(#vxRight)"/>
+<path d="M47 98 80 67l27 17 33-42" fill="none" stroke="url(#vxRoute)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="47" cy="98" r="9" fill="#2F6BFF"/>
+<circle cx="80" cy="67" r="8" fill="#00C2FF"/>
+<circle cx="107" cy="84" r="8" fill="#7B5CFF"/>
+<circle cx="140" cy="42" r="9" fill="#00C2FF"/>
+</g>
+</svg>

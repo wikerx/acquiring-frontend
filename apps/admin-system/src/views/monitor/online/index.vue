@@ -36,7 +36,7 @@
             <el-table-column prop="browser" :label="$t('monitor.online.browser')" min-width="120" align="center" />
             <el-table-column prop="os" :label="$t('monitor.online.os')" min-width="140" align="center" />
             <el-table-column :label="$t('monitor.online.loginTime')" min-width="160" align="center">
-                <template #default="{ row }">{{ row.loginTime || '-' }}</template>
+                <template #default="{ row }"><BaseDateTime :value="row.loginTime" /></template>
             </el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
@@ -59,6 +59,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Delete } from '@element-plus/icons-vue';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { getOnlineUsers, forceLogout, type OnlineUser } from '@/api/monitor/online';
 import { useI18n } from 'vue-i18n';

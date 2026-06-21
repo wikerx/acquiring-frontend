@@ -61,7 +61,9 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="gmtCreate" :label="$t('common.createTime')" min-width="170" align="center" :show-overflow-tooltip="true" />
+      <el-table-column :label="$t('common.createTime')" min-width="170" align="center" :show-overflow-tooltip="true">
+        <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
+      </el-table-column>
       <el-table-column :label="$t('common.operation')" align="center" width="300" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:query'">{{ $t('common.detail') }}</el-button>
@@ -200,7 +202,7 @@
               <el-descriptions-item :label="$t('merchant.info.keySize')">{{ item.keySize || '-' }}</el-descriptions-item>
               <el-descriptions-item :label="$t('merchant.info.fingerprint')">{{ item.fingerprint || '-' }}</el-descriptions-item>
               <el-descriptions-item v-if="item.keyVersion" :label="$t('merchant.info.keyVersion')">{{ item.keyVersion }}</el-descriptions-item>
-              <el-descriptions-item v-if="item.gmtModified" :label="$t('common.updateTime')">{{ item.gmtModified }}</el-descriptions-item>
+              <el-descriptions-item v-if="item.gmtModified" :label="$t('common.updateTime')"><BaseDateTime :value="item.gmtModified" /></el-descriptions-item>
             </el-descriptions>
             <div v-if="item.merchantKey" class="key-value-block">
               <div class="secret-preview__header compact">
@@ -266,6 +268,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import {
   createMerchant,

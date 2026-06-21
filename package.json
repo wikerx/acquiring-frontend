@@ -10,11 +10,15 @@
   "scripts": {
     "dev:admin": "npm --workspace @acquiring/admin-system run dev",
     "dev:merchant": "npm --workspace @acquiring/merchant-portal run dev",
-    "dev:cashier": "npm --workspace @acquiring/cashier run dev",
+    "dev:checkout": "npm --workspace @acquiring/hosted-checkout run dev",
+    "dev:hosted-checkout": "npm --workspace @acquiring/hosted-checkout run dev",
+    "dev:cashier": "npm run dev:checkout",
     "build": "npm run build --workspaces --if-present",
     "build:admin": "npm --workspace @acquiring/admin-system run build",
     "build:merchant": "npm --workspace @acquiring/merchant-portal run build",
-    "build:cashier": "npm --workspace @acquiring/cashier run build",
+    "build:checkout": "npm --workspace @acquiring/hosted-checkout run build",
+    "build:hosted-checkout": "npm --workspace @acquiring/hosted-checkout run build",
+    "build:cashier": "npm run build:checkout",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "format": "prettier --write \"{apps,packages}/**/*.{ts,vue,css,md,json}\""
   },

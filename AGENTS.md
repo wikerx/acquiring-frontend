@@ -35,7 +35,7 @@ Admin Applications:
 
 - Element Plus
 
-Cashier Application:
+Hosted Checkout Application:
 
 - Tailwind CSS
 
@@ -56,7 +56,7 @@ unless explicitly requested.
 apps/
 ├── admin-system
 ├── merchant-portal
-└── cashier
+└── hosted-checkout
 
 packages/
 ├── components
@@ -72,6 +72,17 @@ docs/
 ------
 
 ## Development Principles
+
+## Vexra Brand System
+
+- Frontend primary brand is fixed as `Vexra`.
+- Admin must use `Vexra Admin`.
+- Merchant must use `Vexra Merchant`.
+- Hosted Checkout must use `Vexra Checkout`.
+- Do not introduce alternative primary brand names or mix historical names into login pages, sidebars, headers, browser titles, or favicon resources.
+- Prefer shared brand configuration and shared assets over scattering brand copy across pages.
+- Use formal SVG assets for logo and favicon resources. Do not replace them with screenshots, text placeholders, or ad-hoc CSS art.
+- Browser tab icons should use the shared Vexra icon resource unless the user explicitly asks for another approved variant.
 
 ### Never Invent Business Logic
 
