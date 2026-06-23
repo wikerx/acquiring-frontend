@@ -1,5 +1,9 @@
 import axios, { type AxiosInstance } from 'axios';
 export * from './brand';
+export * from './paymentBrand';
+export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
+export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
+export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
 
 export interface CommonResult<T> {
     code: string;
@@ -23,10 +27,12 @@ export interface PageResult<T> {
 export interface AuthAccount {
     accountId: number;
     userId: number;
+    merchantUserId?: number | null;
     appCode: string;
     loginAccount: string;
     realName: string;
     merchantId?: string | null;
+    merchantAdmin?: boolean;
     status: number;
 }
 

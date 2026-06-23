@@ -27,6 +27,7 @@ export const useAuthStore = defineStore('merchantAuth', {
                 token: response.accessToken,
                 account: response.account,
                 menus: response.menus,
+                roles: response.roles,
                 permissions: response.permissions,
             };
             this.hydrated = true;
@@ -40,6 +41,7 @@ export const useAuthStore = defineStore('merchantAuth', {
                 token: this.session.token,
                 account: response.account,
                 menus: response.menus,
+                roles: response.roles,
                 permissions: response.permissions,
             };
             this.hydrated = true;

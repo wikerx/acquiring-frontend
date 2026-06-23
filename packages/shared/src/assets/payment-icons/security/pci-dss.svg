@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40" role="img" aria-label="PCI DSS">
+  <rect x="1" y="1" width="118" height="38" rx="8" fill="#ffffff" stroke="#d9e2ef" stroke-width="1.2"/>
+  
+  <text x="60" y="22" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing=".2" fill="#1F6F43">PCI DSS</text>
+  <text x="60" y="31" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="8" font-weight="600" fill="#1F6F43" opacity=".72">COMPLIANT</text>
+</svg>

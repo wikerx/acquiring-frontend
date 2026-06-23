@@ -1,10 +1,10 @@
 <template>
     <footer class="checkout-trust-footer" :aria-label="t('footer.assuranceLabel')">
-        <div class="trust-badge-row">
+        <div class="trust-logo-row">
             <img class="trust-logo-strip" :src="trustLogos" :alt="t('footer.trustLogosAlt')" />
         </div>
 
-        <div class="trust-footer-bottom">
+        <div class="trust-footer-powered">
             <span class="secure-text">{{ t('footer.securePayment') }}</span>
             <span class="divider" aria-hidden="true"></span>
             <span class="powered-text">
