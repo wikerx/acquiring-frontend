@@ -116,65 +116,156 @@
           <el-descriptions-item label="Response RSA">{{ keySummaryText(currentMerchant.responseKey) }}</el-descriptions-item>
         </el-descriptions>
         <div class="material-actions">
+          <el-button v-if="canDownloadPrivateMaterial" type="primary" :icon="Key" @click="downloadMaterial('SDK_KIT', 'ZIP')">{{ $t('merchant.info.downloadKit') }}</el-button>
+          <el-button v-if="canDownloadPrivateMaterial" :icon="Key" @click="downloadMaterial('MERCHANT_CONFIG', 'PROPERTIES')">{{ $t('merchant.info.downloadConfig') }}</el-button>
+          <el-button v-if="canCopyPrivateMaterial" :icon="Key" @click="copyMaterial('MERCHANT_CONFIG')">{{ $t('merchant.info.copyConfig') }}</el-button>
+          <el-button v-if="canDownloadPrivateMaterial" :icon="Key" @click="downloadMaterial('MERCHANT_CONFIG_TEXT', 'PROPERTIES')">{{ $t('merchant.info.downloadTextConfig') }}</el-button>
+          <el-button v-if="canCopyPrivateMaterial" :icon="Key" @click="copyMaterial('MERCHANT_CONFIG_TEXT')">{{ $t('merchant.info.copyTextConfig') }}</el-button>
           <el-button type="primary" :icon="Key" @click="provisionMaterial" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.provision') }}</el-button>
           <el-button :icon="Refresh" @click="rotateJwt" v-hasPermi="'merchant:key:rotate'">{{ $t('merchant.info.rotateJwt') }}</el-button>
           <el-button :icon="Refresh" @click="rotatePlatform" v-hasPermi="'merchant:platform-payload-key:rotate'">{{ $t('merchant.info.rotatePlatform') }}</el-button>
           <el-button :icon="Refresh" @click="rotateResponse" v-hasPermi="'merchant:response-key:update'">{{ $t('merchant.info.rotateResponse') }}</el-button>
         </div>
         <el-divider />
-        <el-empty v-if="!material" :description="$t('merchant.info.noMaterial')" />
-        <div v-else class="secret-preview-list" v-hasPermi="'merchant:material:view'">
-          <div v-if="material.merchantKey" class="secret-preview">
+        <div class="secret-preview-list" v-hasPermi="'merchant:material:view'">
+          <div class="secret-preview">
             <div class="secret-preview__header">
               <div>
                 <strong>merchantKey</strong>
                 <p>{{ $t('merchant.info.merchantKeyHelp') }}</p>
               </div>
               <div class="secret-preview__actions">
-                <el-button size="small" @click="copySecret('merchantKey', material.merchantKey)">{{ $t('merchant.info.copy') }}</el-button>
-                <el-button size="small" @click="downloadSecret('merchantKey.txt', material.merchantKey)">{{ $t('merchant.info.download') }}</el-button>
+                <el-button v-if="canCopyMaterial" size="small" :loading="isMaterialActionLoading('view', 'JWT_KEY')" @click="viewMaterial('JWT_KEY')">{{ $t('merchant.info.viewSecret') }}</el-button>
+                <el-button v-if="canCopyMaterial" size="small" :loading="isMaterialActionLoading('copy', 'JWT_KEY')" @click="copyMaterial('JWT_KEY')">{{ $t('merchant.info.copy') }}</el-button>
+                <el-button v-if="canDownloadMaterial" size="small" :loading="isMaterialActionLoading('download', 'JWT_KEY')" @click="downloadMaterial('JWT_KEY', 'TXT')">{{ $t('merchant.info.download') }}</el-button>
               </div>
             </div>
-            <el-input :model-value="material.merchantKey" type="textarea" :autosize="{ minRows: 2, maxRows: 6 }" readonly />
+            <el-descriptions :column="1" border size="small">
+              <el-descriptions-item :label="$t('merchant.info.algorithm')">{{ materialSummary?.jwtAlgorithm || currentMerchant.jwtKey?.algorithm || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.keyVersion')">{{ materialSummary?.jwtKeyVersion || currentMerchant.jwtKey?.keyVersion || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.fingerprint')">{{ materialSummary?.jwtKeyFingerprint || currentMerchant.jwtKey?.fingerprint || '-' }}</el-descriptions-item>
+            </el-descriptions>
           </div>
-          <div v-if="material.platformPublicKeyX509Base64" class="secret-preview">
+          <div class="secret-preview">
             <div class="secret-preview__header">
               <div>
                 <strong>platformPublicKeyX509Base64</strong>
                 <p>{{ $t('merchant.info.platformPublicKeyHelp') }}</p>
               </div>
               <div class="secret-preview__actions">
-                <el-button size="small" @click="copySecret('platformPublicKeyX509Base64', material.platformPublicKeyX509Base64)">{{ $t('merchant.info.copy') }}</el-button>
-                <el-button size="small" @click="downloadSecret('platformPublicKeyX509Base64.txt', material.platformPublicKeyX509Base64)">{{ $t('merchant.info.download') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('view', 'PLATFORM_PUBLIC_KEY')" @click="viewMaterial('PLATFORM_PUBLIC_KEY')">{{ $t('merchant.info.viewSecret') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('copy', 'PLATFORM_PUBLIC_KEY')" @click="copyMaterial('PLATFORM_PUBLIC_KEY')">{{ $t('merchant.info.copy') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'PLATFORM_PUBLIC_KEY')" @click="downloadMaterial('PLATFORM_PUBLIC_KEY', 'PEM')">PEM</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'PLATFORM_PUBLIC_KEY')" @click="downloadMaterial('PLATFORM_PUBLIC_KEY', 'TXT')">TXT</el-button>
               </div>
             </div>
-            <el-input :model-value="material.platformPublicKeyX509Base64" type="textarea" :autosize="{ minRows: 6, maxRows: 12 }" readonly />
+            <el-descriptions :column="1" border size="small">
+              <el-descriptions-item :label="$t('merchant.info.algorithm')">{{ materialSummary?.platformPayloadAlgorithm || currentMerchant.platformPayloadKey?.algorithm || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.keySize')">{{ materialSummary?.platformPayloadKeySize || currentMerchant.platformPayloadKey?.keySize || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.fingerprint')">{{ materialSummary?.platformPayloadPublicKeyFingerprint || currentMerchant.platformPayloadKey?.fingerprint || '-' }}</el-descriptions-item>
+            </el-descriptions>
           </div>
-          <div v-if="material.merchantResponsePublicKeyX509Base64" class="secret-preview">
+          <div v-if="canDownloadPrivateMaterial" class="secret-preview">
+            <div class="secret-preview__header">
+              <div>
+                <strong>platformPrivateKeyPkcs8Base64</strong>
+                <p>{{ $t('merchant.info.platformPrivateKeyHelp') }}</p>
+              </div>
+              <div class="secret-preview__actions">
+                <el-button size="small" :loading="isMaterialActionLoading('view', 'PLATFORM_PRIVATE_KEY')" @click="viewMaterial('PLATFORM_PRIVATE_KEY')">{{ $t('merchant.info.viewSecret') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('copy', 'PLATFORM_PRIVATE_KEY')" @click="copyMaterial('PLATFORM_PRIVATE_KEY')">{{ $t('merchant.info.copy') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'PLATFORM_PRIVATE_KEY')" @click="downloadMaterial('PLATFORM_PRIVATE_KEY', 'PEM')">PEM</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'PLATFORM_PRIVATE_KEY')" @click="downloadMaterial('PLATFORM_PRIVATE_KEY', 'TXT')">TXT</el-button>
+              </div>
+            </div>
+            <el-alert type="warning" :closable="false" :title="$t('merchant.info.privateMaterialWarning')" />
+          </div>
+          <div class="secret-preview">
             <div class="secret-preview__header">
               <div>
                 <strong>merchantResponsePublicKeyX509Base64</strong>
                 <p>{{ $t('merchant.info.responsePublicKeyHelp') }}</p>
               </div>
               <div class="secret-preview__actions">
-                <el-button size="small" @click="copySecret('merchantResponsePublicKeyX509Base64', material.merchantResponsePublicKeyX509Base64)">{{ $t('merchant.info.copy') }}</el-button>
-                <el-button size="small" @click="downloadSecret('merchantResponsePublicKeyX509Base64.txt', material.merchantResponsePublicKeyX509Base64)">{{ $t('merchant.info.download') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('view', 'MERCHANT_RESPONSE_PUBLIC_KEY')" @click="viewMaterial('MERCHANT_RESPONSE_PUBLIC_KEY')">{{ $t('merchant.info.viewSecret') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('copy', 'MERCHANT_RESPONSE_PUBLIC_KEY')" @click="copyMaterial('MERCHANT_RESPONSE_PUBLIC_KEY')">{{ $t('merchant.info.copy') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'MERCHANT_RESPONSE_PUBLIC_KEY')" @click="downloadMaterial('MERCHANT_RESPONSE_PUBLIC_KEY', 'PEM')">PEM</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'MERCHANT_RESPONSE_PUBLIC_KEY')" @click="downloadMaterial('MERCHANT_RESPONSE_PUBLIC_KEY', 'TXT')">TXT</el-button>
               </div>
             </div>
-            <el-input :model-value="material.merchantResponsePublicKeyX509Base64" type="textarea" :autosize="{ minRows: 6, maxRows: 12 }" readonly />
+            <el-descriptions :column="1" border size="small">
+              <el-descriptions-item :label="$t('merchant.info.algorithm')">{{ materialSummary?.merchantResponseAlgorithm || currentMerchant.responseKey?.algorithm || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.keySize')">{{ materialSummary?.merchantResponseKeySize || currentMerchant.responseKey?.keySize || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('merchant.info.fingerprint')">{{ materialSummary?.merchantResponsePublicKeyFingerprint || currentMerchant.responseKey?.fingerprint || '-' }}</el-descriptions-item>
+            </el-descriptions>
           </div>
-          <div v-if="material.merchantResponsePrivateKeyPkcs8Base64" class="secret-preview">
+          <div v-if="canDownloadPrivateMaterial && responsePrivateKeyAvailable" class="secret-preview">
             <div class="secret-preview__header">
               <div>
                 <strong>merchantResponsePrivateKeyPkcs8Base64</strong>
                 <p>{{ $t('merchant.info.responsePrivateKeyHelp') }}</p>
               </div>
               <div class="secret-preview__actions">
-                <el-button size="small" @click="copySecret('merchantResponsePrivateKeyPkcs8Base64', material.merchantResponsePrivateKeyPkcs8Base64)">{{ $t('merchant.info.copy') }}</el-button>
-                <el-button size="small" @click="downloadSecret('merchantResponsePrivateKeyPkcs8Base64.txt', material.merchantResponsePrivateKeyPkcs8Base64)">{{ $t('merchant.info.download') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('view', 'MERCHANT_RESPONSE_PRIVATE_KEY')" @click="viewMaterial('MERCHANT_RESPONSE_PRIVATE_KEY')">{{ $t('merchant.info.viewSecret') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('copy', 'MERCHANT_RESPONSE_PRIVATE_KEY')" @click="copyMaterial('MERCHANT_RESPONSE_PRIVATE_KEY')">{{ $t('merchant.info.copy') }}</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'MERCHANT_RESPONSE_PRIVATE_KEY')" @click="downloadMaterial('MERCHANT_RESPONSE_PRIVATE_KEY', 'PEM')">PEM</el-button>
+                <el-button size="small" :loading="isMaterialActionLoading('download', 'MERCHANT_RESPONSE_PRIVATE_KEY')" @click="downloadMaterial('MERCHANT_RESPONSE_PRIVATE_KEY', 'TXT')">TXT</el-button>
               </div>
             </div>
-            <el-input :model-value="material.merchantResponsePrivateKeyPkcs8Base64" type="textarea" :autosize="{ minRows: 8, maxRows: 14 }" readonly />
+            <el-alert type="warning" :closable="false" :title="$t('merchant.info.privateMaterialWarning')" />
+          </div>
+          <div v-else-if="canDownloadPrivateMaterial" class="secret-preview">
+            <div class="secret-preview__header">
+              <div>
+                <strong>merchantResponsePrivateKeyPkcs8Base64</strong>
+                <p>{{ $t('merchant.info.responsePrivateKeyHelp') }}</p>
+              </div>
+              <div class="secret-preview__actions">
+                <el-button size="small" type="warning" @click="rotateResponse">{{ $t('merchant.info.rotateResponse') }}</el-button>
+              </div>
+            </div>
+            <el-alert type="warning" :closable="false" :title="$t('merchant.info.responsePrivateMissing')" />
+          </div>
+        </div>
+        <el-divider />
+        <div class="material-log-section" v-hasPermi="'merchant:material:logs'">
+          <div class="section-title">
+            <span>{{ $t('merchant.info.materialLogs') }}</span>
+            <el-button size="small" :icon="Refresh" :loading="materialLogsLoading" @click="loadMaterialLogs">{{ $t('common.refresh') }}</el-button>
+          </div>
+          <el-table v-loading="materialLogsLoading" :data="materialLogs" row-key="id" size="small">
+            <el-table-column prop="operationName" :label="$t('merchant.info.logOperation')" min-width="170" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('merchant.info.logBusinessType')" width="110" align="center">
+              <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
+            </el-table-column>
+            <el-table-column prop="operatorName" :label="$t('merchant.info.logOperator')" min-width="120" align="center" :show-overflow-tooltip="true" />
+            <el-table-column prop="requestMethod" :label="$t('merchant.info.logMethod')" width="90" align="center" />
+            <el-table-column prop="operIp" :label="$t('merchant.info.logIp')" min-width="130" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('merchant.info.logCostTime')" width="100" align="center">
+              <template #default="{ row }">{{ typeof row.costTime === 'number' ? `${row.costTime} ms` : '-' }}</template>
+            </el-table-column>
+            <el-table-column :label="$t('common.status')" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? $t('status.success') : $t('status.failed') }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column :label="$t('merchant.info.logOperTime')" min-width="170" align="center">
+              <template #default="{ row }"><BaseDateTime :value="row.operatedAt" /></template>
+            </el-table-column>
+            <el-table-column prop="errorMsg" :label="$t('merchant.info.logError')" min-width="180" :show-overflow-tooltip="true" />
+          </el-table>
+          <div class="pagination-container compact" v-show="materialLogTotal > 0">
+            <el-pagination
+              v-model:current-page="materialLogPage"
+              v-model:page-size="materialLogPageSize"
+              :total="materialLogTotal"
+              :page-sizes="[10, 20, 50]"
+              layout="total, sizes, prev, pager, next"
+              small
+              background
+              @size-change="loadMaterialLogs"
+              @current-change="loadMaterialLogs"
+            />
           </div>
         </div>
       </template>
@@ -204,35 +295,39 @@
               <el-descriptions-item v-if="item.keyVersion" :label="$t('merchant.info.keyVersion')">{{ item.keyVersion }}</el-descriptions-item>
               <el-descriptions-item v-if="item.gmtModified" :label="$t('common.updateTime')"><BaseDateTime :value="item.gmtModified" /></el-descriptions-item>
             </el-descriptions>
-            <div v-if="item.merchantKey" class="key-value-block">
+            <div v-if="materialKeyType(item)" class="key-value-block">
               <div class="secret-preview__header compact">
                 <div><strong>merchantKey</strong><p>{{ $t('merchant.info.merchantKeyHelp') }}</p></div>
                 <div class="secret-preview__actions">
-                  <el-button size="small" @click="copySecret('merchantKey', item.merchantKey)">{{ $t('merchant.info.copy') }}</el-button>
-                  <el-button size="small" @click="downloadSecret('merchantKey.txt', item.merchantKey)">{{ $t('merchant.info.download') }}</el-button>
+                  <el-button v-if="canCopyMaterial" size="small" :loading="isMaterialActionLoading('view', materialKeyType(item))" @click="viewMaterial(materialKeyType(item)!)">{{ $t('merchant.info.viewSecret') }}</el-button>
+                  <el-button v-if="canCopyMaterial" size="small" :loading="isMaterialActionLoading('copy', materialKeyType(item))" @click="copyMaterial(materialKeyType(item)!)">{{ $t('merchant.info.copy') }}</el-button>
+                  <el-button v-if="canDownloadMaterial" size="small" :loading="isMaterialActionLoading('download', materialKeyType(item))" @click="downloadMaterial(materialKeyType(item)!, 'TXT')">TXT</el-button>
                 </div>
               </div>
-              <el-input :model-value="item.merchantKey" type="textarea" :autosize="{ minRows: 2, maxRows: 6 }" readonly />
+              <el-alert type="warning" :closable="false" :title="$t('merchant.info.sharedSecretWarning')" />
             </div>
-            <div v-if="item.publicKeyX509Base64" class="key-value-block">
-              <div class="secret-preview__header compact">
-                <div><strong>{{ publicKeyTitle(item) }}</strong><p>{{ publicKeyHelp(item) }}</p></div>
-                <div class="secret-preview__actions">
-                  <el-button size="small" @click="copySecret(publicKeyTitle(item), item.publicKeyX509Base64)">{{ $t('merchant.info.copy') }}</el-button>
-                  <el-button size="small" @click="downloadSecret(`${publicKeyTitle(item)}.txt`, item.publicKeyX509Base64)">{{ $t('merchant.info.download') }}</el-button>
-                </div>
-              </div>
-              <el-input :model-value="item.publicKeyX509Base64" type="textarea" :autosize="{ minRows: 6, maxRows: 12 }" readonly />
-            </div>
-            <div v-if="item.privateKeyPkcs8Base64" class="key-value-block">
+            <div v-if="privateMaterialKeyType(item) && canExportPrivateMaterial(item)" class="key-value-block">
               <div class="secret-preview__header compact">
                 <div><strong>{{ privateKeyTitle(item) }}</strong><p>{{ privateKeyHelp(item) }}</p></div>
                 <div class="secret-preview__actions">
-                  <el-button size="small" @click="copySecret(privateKeyTitle(item), item.privateKeyPkcs8Base64)">{{ $t('merchant.info.copy') }}</el-button>
-                  <el-button size="small" @click="downloadSecret(`${privateKeyTitle(item)}.txt`, item.privateKeyPkcs8Base64)">{{ $t('merchant.info.download') }}</el-button>
+                  <el-button v-if="canCopyPrivateMaterial" size="small" :loading="isMaterialActionLoading('view', privateMaterialKeyType(item))" @click="viewMaterial(privateMaterialKeyType(item)!)">{{ $t('merchant.info.viewSecret') }}</el-button>
+                  <el-button v-if="canCopyPrivateMaterial" size="small" :loading="isMaterialActionLoading('copy', privateMaterialKeyType(item))" @click="copyMaterial(privateMaterialKeyType(item)!)">{{ $t('merchant.info.copy') }}</el-button>
+                  <el-button v-if="canDownloadPrivateMaterial" size="small" :loading="isMaterialActionLoading('download', privateMaterialKeyType(item))" @click="downloadMaterial(privateMaterialKeyType(item)!, 'PEM')">PEM</el-button>
+                  <el-button v-if="canDownloadPrivateMaterial" size="small" :loading="isMaterialActionLoading('download', privateMaterialKeyType(item))" @click="downloadMaterial(privateMaterialKeyType(item)!, 'TXT')">TXT</el-button>
                 </div>
               </div>
-              <el-input :model-value="item.privateKeyPkcs8Base64" type="textarea" :autosize="{ minRows: 8, maxRows: 14 }" readonly />
+              <el-alert type="warning" :closable="false" :title="$t('merchant.info.privateMaterialWarning')" />
+            </div>
+            <div v-if="publicMaterialKeyType(item)" class="key-value-block">
+              <div class="secret-preview__header compact">
+                <div><strong>{{ publicKeyTitle(item) }}</strong><p>{{ publicKeyHelp(item) }}</p></div>
+                <div class="secret-preview__actions">
+                  <el-button size="small" :loading="isMaterialActionLoading('view', publicMaterialKeyType(item))" @click="viewMaterial(publicMaterialKeyType(item)!)">{{ $t('merchant.info.viewSecret') }}</el-button>
+                  <el-button size="small" :loading="isMaterialActionLoading('copy', publicMaterialKeyType(item))" @click="copyMaterial(publicMaterialKeyType(item)!)">{{ $t('merchant.info.copy') }}</el-button>
+                  <el-button size="small" :loading="isMaterialActionLoading('download', publicMaterialKeyType(item))" @click="downloadMaterial(publicMaterialKeyType(item)!, 'PEM')">PEM</el-button>
+                  <el-button size="small" :loading="isMaterialActionLoading('download', publicMaterialKeyType(item))" @click="downloadMaterial(publicMaterialKeyType(item)!, 'TXT')">TXT</el-button>
+                </div>
+              </div>
             </div>
             <el-alert v-else-if="item.keyType === 'MERCHANT_RESPONSE_PAYLOAD_RSA'" type="warning" :closable="false" :title="$t('merchant.info.responsePrivateMissing')" />
           </div>
@@ -260,11 +355,20 @@
         <el-button type="primary" @click="submitResponseKey">{{ $t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="viewedMaterialVisible" :title="viewedMaterial.name" width="760px" append-to-body destroy-on-close>
+      <el-alert class="mb16" type="warning" :closable="false" :title="$t('merchant.info.viewedMaterialHint')" />
+      <el-input :model-value="viewedMaterial.content" type="textarea" :autosize="{ minRows: 8, maxRows: 18 }" readonly />
+      <template #footer>
+        <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -272,7 +376,11 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import {
   createMerchant,
+  copyOpenApiKeyMaterial,
+  downloadOpenApiKeyMaterial,
   getMerchantKeys,
+  getOpenApiKeyMaterialSummary,
+  getOpenApiKeyMaterialLogs,
   provisionSecurityMaterial,
   rotateJwtKey,
   rotateMerchantResponseKey,
@@ -286,10 +394,17 @@ import {
   type MerchantSaveRequest,
   type MerchantSecurityMaterial,
   type MerchantKeySummary,
+  type OpenApiKeyMaterialSummary,
+  type OpenApiKeyOperationLog,
+  type OpenApiKeyExportFormat,
+  type OpenApiKeyType,
+  viewOpenApiKeyMaterial,
 } from '@/api/merchant/info';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
+import { useUserStore } from '@/store/modules/user';
 
 const { t, locale } = useI18n();
+const userStore = useUserStore();
 const showSearch = ref(true);
 const loading = ref(false);
 const rows = ref<MerchantInfo[]>([]);
@@ -323,10 +438,25 @@ const editingId = ref<number>();
 const materialVisible = ref(false);
 const currentMerchant = ref<MerchantInfo>();
 const material = ref<MerchantSecurityMaterial>();
+const materialSummary = ref<OpenApiKeyMaterialSummary>();
+const viewedMaterial = reactive({ name: '', content: '' });
+const viewedMaterialVisible = ref(false);
+const materialActionLoading = reactive<Record<string, boolean>>({});
+const materialLogs = ref<OpenApiKeyOperationLog[]>([]);
+const materialLogsLoading = ref(false);
+const materialLogPage = ref(1);
+const materialLogPageSize = ref(10);
+const materialLogTotal = ref(0);
 const keysVisible = ref(false);
 const keyBundle = ref<MerchantKeyBundle>();
 const responseKeyVisible = ref(false);
 const responseKeyForm = reactive({ publicKeyX509Base64: '', privateKeyPkcs8Base64: '' });
+const canCopyMaterial = userStore.hasPermission('merchant:material:copy');
+const canDownloadMaterial = userStore.hasPermission('merchant:material:download');
+const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:download') && userStore.hasPermission('merchant:material:private');
+const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
+const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
+const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
 
 onMounted(() => {
   loadData();
@@ -356,7 +486,31 @@ function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
   formVisible.value = true;
 }
 function openDetail(row: MerchantInfo) { openMaterial(row); }
-function openMaterial(row: MerchantInfo) { currentMerchant.value = row; material.value = undefined; materialVisible.value = true; }
+function openMaterial(row: MerchantInfo) {
+  currentMerchant.value = row;
+  material.value = undefined;
+  materialSummary.value = undefined;
+  viewedMaterial.name = '';
+  viewedMaterial.content = '';
+  viewedMaterialVisible.value = false;
+  materialLogs.value = [];
+  materialLogTotal.value = 0;
+  materialLogPage.value = 1;
+  materialVisible.value = true;
+  loadMaterialSummary();
+  if (canViewMaterialLogs) {
+    loadMaterialLogs();
+  }
+}
+
+async function loadMaterialSummary() {
+  if (!currentMerchant.value) return;
+  try {
+    materialSummary.value = await getOpenApiKeyMaterialSummary(currentMerchant.value.merchantId);
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.loadFailed'));
+  }
+}
 
 async function loadTimezones() {
   try {
@@ -386,19 +540,37 @@ async function provisionMaterial() {
     material.value = await provisionSecurityMaterial(currentMerchant.value.merchantId);
     ElMessage.success(t('common.success'));
     loadData();
+    loadMaterialSummary();
+    loadMaterialLogs();
   } catch { /* cancelled or failed */ }
 }
 async function rotateJwt() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotateJwt')); material.value = await rotateJwtKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); } catch { /* ignore */ }
+  try { await confirmSecretAction(t('merchant.info.rotateJwt')); material.value = await rotateJwtKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
 }
 async function rotatePlatform() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotatePlatform')); material.value = await rotatePlatformPayloadKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); } catch { /* ignore */ }
+  try { await confirmSecretAction(t('merchant.info.rotatePlatform')); material.value = await rotatePlatformPayloadKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
 }
 async function rotateResponse() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotateResponse')); material.value = await rotateMerchantResponseKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); } catch { /* ignore */ }
+  try { await confirmSecretAction(t('merchant.info.rotateResponse')); material.value = await rotateMerchantResponseKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
+}
+
+async function loadMaterialLogs() {
+  if (!currentMerchant.value || !canViewMaterialLogs) return;
+  materialLogsLoading.value = true;
+  try {
+    const result = await getOpenApiKeyMaterialLogs(currentMerchant.value.merchantId, materialLogPage.value, materialLogPageSize.value);
+    materialLogs.value = result.records;
+    materialLogTotal.value = result.total;
+  } catch (error: any) {
+    materialLogs.value = [];
+    materialLogTotal.value = 0;
+    ElMessage.error(error?.message || t('common.loadFailed'));
+  } finally {
+    materialLogsLoading.value = false;
+  }
 }
 
 async function openKeys(row: MerchantInfo) {
@@ -436,21 +608,74 @@ async function confirmSecretAction(action: string) {
   await ElMessageBox.confirm(t('merchant.info.secretConfirm', { action }), t('common.operationConfirm'), { type: 'warning' });
 }
 
-async function copySecret(name: string, value?: string) {
-  if (!value) return;
-  await navigator.clipboard.writeText(value);
-  ElMessage.success(t('merchant.info.copySuccess', { name }));
+async function copyMaterial(keyType: OpenApiKeyType) {
+  if (!currentMerchant.value) return;
+  const loadingKey = materialActionKey('copy', keyType);
+  materialActionLoading[loadingKey] = true;
+  try {
+    if (isSensitiveExportType(keyType)) {
+      await confirmSecretAction(t('merchant.info.copy'));
+    }
+    const result = await copyOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, keyType === 'MERCHANT_CONFIG' ? 'PROPERTIES' : 'TEXT');
+    await navigator.clipboard.writeText(result.content);
+    ElMessage.success(t('merchant.info.copySuccess', { name: keyType }));
+    loadMaterialLogs();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  } finally {
+    materialActionLoading[loadingKey] = false;
+  }
 }
 
-function downloadSecret(fileName: string, value?: string) {
-  if (!value) return;
-  const blob = new Blob([value], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${currentMerchant.value?.merchantId || 'merchant'}-${fileName}`;
-  link.click();
-  URL.revokeObjectURL(url);
+async function viewMaterial(keyType: OpenApiKeyType) {
+  if (!currentMerchant.value) return;
+  const loadingKey = materialActionKey('view', keyType);
+  materialActionLoading[loadingKey] = true;
+  try {
+    if (isSensitiveExportType(keyType)) {
+      await confirmSecretAction(t('merchant.info.viewSecret'));
+    }
+    const result = await viewOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, keyType === 'MERCHANT_CONFIG' ? 'PROPERTIES' : 'TEXT');
+    viewedMaterial.name = materialDisplayName(keyType);
+    viewedMaterial.content = result.content;
+    viewedMaterialVisible.value = true;
+    loadMaterialLogs();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  } finally {
+    materialActionLoading[loadingKey] = false;
+  }
+}
+
+async function copyViewedMaterial() {
+  if (!viewedMaterial.content) return;
+  await navigator.clipboard.writeText(viewedMaterial.content);
+  ElMessage.success(t('merchant.info.copySuccess', { name: viewedMaterial.name }));
+}
+
+async function downloadMaterial(keyType: OpenApiKeyType, format?: OpenApiKeyExportFormat) {
+  if (!currentMerchant.value) return;
+  const loadingKey = materialActionKey('download', keyType);
+  materialActionLoading[loadingKey] = true;
+  try {
+    if (isSensitiveExportType(keyType)) {
+      await confirmSecretAction(t('merchant.info.download'));
+    }
+    await downloadOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, format);
+    loadMaterialLogs();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  } finally {
+    materialActionLoading[loadingKey] = false;
+  }
+}
+
+function materialActionKey(action: 'view' | 'copy' | 'download', keyType: OpenApiKeyType) {
+  return `${action}:${keyType}`;
+}
+
+function isMaterialActionLoading(action: 'view' | 'copy' | 'download', keyType?: OpenApiKeyType) {
+  return keyType ? materialActionLoading[materialActionKey(action, keyType)] === true : false;
 }
 
 function statusText(status: number) {
@@ -502,6 +727,61 @@ function publicKeyHelp(item: MerchantKeyMaterial) {
 function privateKeyHelp(item: MerchantKeyMaterial) {
   return item.keyType === 'PLATFORM_REQUEST_PAYLOAD_RSA' ? t('merchant.info.platformPrivateKeyHelp') : t('merchant.info.responsePrivateKeyHelp');
 }
+
+function materialKeyType(item: MerchantKeyMaterial): OpenApiKeyType | undefined {
+  if (item.keyType === 'MERCHANT_JWT') return 'JWT_KEY';
+  return undefined;
+}
+
+function privateMaterialKeyType(item: MerchantKeyMaterial): OpenApiKeyType | undefined {
+  if (item.keyType === 'PLATFORM_REQUEST_PAYLOAD_RSA') return 'PLATFORM_PRIVATE_KEY';
+  if (item.keyType === 'MERCHANT_RESPONSE_PAYLOAD_RSA') return 'MERCHANT_RESPONSE_PRIVATE_KEY';
+  return undefined;
+}
+
+function publicMaterialKeyType(item: MerchantKeyMaterial): OpenApiKeyType | undefined {
+  if (item.keyType === 'PLATFORM_REQUEST_PAYLOAD_RSA') return 'PLATFORM_PUBLIC_KEY';
+  if (item.keyType === 'MERCHANT_RESPONSE_PAYLOAD_RSA') return 'MERCHANT_RESPONSE_PUBLIC_KEY';
+  return undefined;
+}
+
+function canExportPrivateMaterial(item: MerchantKeyMaterial) {
+  if (!privateMaterialKeyType(item)) return false;
+  if (item.keyType === 'MERCHANT_RESPONSE_PAYLOAD_RSA' && item.stored !== true) return false;
+  return canCopyPrivateMaterial || canDownloadPrivateMaterial;
+}
+
+function isSensitiveExportType(keyType: OpenApiKeyType) {
+  return keyType === 'JWT_KEY'
+    || keyType === 'MERCHANT_RESPONSE_PRIVATE_KEY'
+    || keyType === 'PLATFORM_PRIVATE_KEY'
+    || keyType === 'MERCHANT_CONFIG'
+    || keyType === 'MERCHANT_CONFIG_TEXT'
+    || keyType === 'SDK_KIT';
+}
+
+function materialDisplayName(keyType: OpenApiKeyType) {
+  if (keyType === 'JWT_KEY') return 'merchantKey';
+  if (keyType === 'PLATFORM_PUBLIC_KEY') return 'platformPublicKeyX509Base64';
+  if (keyType === 'PLATFORM_PRIVATE_KEY') return 'platformPrivateKeyPkcs8Base64';
+  if (keyType === 'MERCHANT_RESPONSE_PUBLIC_KEY') return 'merchantResponsePublicKeyX509Base64';
+  if (keyType === 'MERCHANT_RESPONSE_PRIVATE_KEY') return 'merchantResponsePrivateKeyPkcs8Base64';
+  if (keyType === 'MERCHANT_CONFIG') return 'merchant-config.properties';
+  if (keyType === 'MERCHANT_CONFIG_TEXT') return 'merchant-config-text.properties';
+  return 'SDK_KIT';
+}
+
+function businessTypeText(type?: number) {
+  if (type === 1) return t('dashboard.operationCreate');
+  if (type === 2) return t('dashboard.operationUpdate');
+  if (type === 3) return t('dashboard.operationDelete');
+  if (type === 4) return t('dashboard.operationQuery');
+  if (type === 5) return t('dashboard.operationExport');
+  if (type === 6) return t('dashboard.operationAudit');
+  if (type === 7) return t('dashboard.operationFreeze');
+  if (type === 8) return t('dashboard.operationUnfreeze');
+  return t('dashboard.operationUnknown');
+}
 </script>
 
 <style scoped>
@@ -528,9 +808,21 @@ function privateKeyHelp(item: MerchantKeyMaterial) {
 }
 
 .material-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.material-actions :deep(.el-button) {
+  width: 100%;
+  min-width: 0;
+  margin-left: 0;
+}
+
+@media (max-width: 720px) {
+  .material-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .mb16 {
@@ -594,5 +886,28 @@ function privateKeyHelp(item: MerchantKeyMaterial) {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.material-log-section {
+  margin-top: 12px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-title span {
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pagination-container.compact {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 </style>

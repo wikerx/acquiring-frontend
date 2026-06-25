@@ -7,7 +7,13 @@ import MerchantLayout from '@/layouts/MerchantLayout.vue';
 import Dashboard from '@/pages/Dashboard.vue';
 import Forbidden from '@/pages/Forbidden.vue';
 import Login from '@/pages/Login.vue';
+import OpenApiKeys from '@/pages/merchant-info/openapi-keys/index.vue';
 import PlaceholderPage from '@/pages/PlaceholderPage.vue';
+import SystemAccount from '@/pages/system/account/index.vue';
+import SystemDept from '@/pages/system/dept/index.vue';
+import SystemPost from '@/pages/system/post/index.vue';
+import SystemRole from '@/pages/system/role/index.vue';
+import SystemRoleAuth from '@/pages/system/role-auth/index.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { flattenRouteMenus, normalizeMenuPath, resolveMenuComponent } from '@/utils/menu';
 
@@ -24,6 +30,12 @@ const staticChildren: RouteRecordRaw[] = [
     { path: 'transactions', component: PlaceholderPage, props: { pageKey: 'transactions' }, meta: { titleKey: 'layout.transactions' } },
     { path: 'settlements', component: PlaceholderPage, props: { pageKey: 'settlements' }, meta: { titleKey: 'layout.settlements' } },
     { path: 'account', component: PlaceholderPage, props: { pageKey: 'account' }, meta: { titleKey: 'layout.account' } },
+    { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { title: '商户密钥管理', permission: 'merchant:openapi:key:view' } },
+    { path: 'system/account', component: SystemAccount, meta: { title: '账号管理', permission: 'merchant:system:account:list' } },
+    { path: 'system/dept', component: SystemDept, meta: { title: '部门管理', permission: 'merchant:system:dept:list' } },
+    { path: 'system/post', component: SystemPost, meta: { title: '岗位管理', permission: 'merchant:system:post:list' } },
+    { path: 'system/role', component: SystemRole, meta: { title: '角色管理', permission: 'merchant:system:role:list' } },
+    { path: 'system/role-auth', component: SystemRoleAuth, meta: { title: '角色授权', permission: 'merchant:system:role:grantMenu' } },
     { path: ':pathMatch(.*)*', name: 'MerchantRuntimeFallback', component: Forbidden, meta: { title: '403', runtimeFallback: true } },
 ];
 
@@ -104,6 +116,9 @@ export function syncDynamicRoutes(menus: import('@acquiring/shared').AuthMenu[])
     flattenRouteMenus(menus).forEach((menu) => {
         const runtimePath = normalizeMenuPath(menu.routePath);
         if (!runtimePath || runtimePath === '/dashboard') {
+            return;
+        }
+        if (router.resolve(runtimePath).name !== 'MerchantRuntimeFallback') {
             return;
         }
         dynamicRouteRemovers.push(

@@ -28,7 +28,32 @@ export async function downloadExcel(
         data: options.data,
         responseType: 'blob' as ResponseType,
     });
-    await handleBlobResponse(response, options.fileName || 'export.xlsx');
+    await handleBlobResponse(response, options.fileName || 'export.xlsx', EXCEL_CONTENT_TYPE);
+}
+
+/**
+ * 统一发起普通二进制文件下载请求，适用于 txt、pem、properties 和 zip。
+ *
+ * @param url 请求地址
+ * @param options 请求选项
+ */
+export async function downloadBlob(
+    url: string,
+    options: {
+        method?: 'get' | 'post';
+        params?: Record<string, unknown>;
+        data?: unknown;
+        fileName?: string;
+    } = {},
+) {
+    const response = await http.request<Blob>({
+        url,
+        method: options.method || 'get',
+        params: options.params,
+        data: options.data,
+        responseType: 'blob' as ResponseType,
+    });
+    await handleBlobResponse(response, options.fileName || 'download.bin');
 }
 
 /**
@@ -36,10 +61,15 @@ export async function downloadExcel(
  *
  * @param response Axios Blob 响应
  * @param fallbackFileName 兜底文件名
+ * @param expectedContentType 期望 MIME，普通文件下载可不传
  */
-async function handleBlobResponse(response: AxiosResponse<Blob>, fallbackFileName: string) {
+async function handleBlobResponse(response: AxiosResponse<Blob>, fallbackFileName: string, expectedContentType = '') {
     const contentType = String(response.headers['content-type'] || '');
-    if (!contentType.includes(EXCEL_CONTENT_TYPE)) {
+    if (contentType.includes('application/json')) {
+        const errorMessage = await resolveBlobErrorMessage(response.data);
+        throw new Error(errorMessage);
+    }
+    if (expectedContentType && !contentType.includes(expectedContentType)) {
         const errorMessage = await resolveBlobErrorMessage(response.data);
         throw new Error(errorMessage);
     }

@@ -14,7 +14,7 @@ export default defineConfig({
     },
   server: {
     proxy: {
-      '/merchant': {
+      '^/merchant(?:/|$)': {
         target: 'http://127.0.0.1:8002',
         changeOrigin: true,
       },

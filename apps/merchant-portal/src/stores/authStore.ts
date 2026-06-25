@@ -51,7 +51,8 @@ export const useAuthStore = defineStore('merchantAuth', {
             if (!permissionCode) {
                 return true;
             }
-            return Boolean(this.session?.permissions.includes(permissionCode));
+            const permissions = this.session?.permissions || [];
+            return permissions.includes('*:*:*') || permissions.includes(permissionCode);
         },
         clearSession() {
             this.session = null;
