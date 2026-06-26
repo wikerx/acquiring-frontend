@@ -1,8 +1,8 @@
 <template>
     <div class="page system-page">
-        <el-result title="角色授权已合并到角色管理" sub-title="请在角色管理列表中点击“授权”，或在新增、编辑角色时直接维护菜单与功能权限。">
+        <el-result :title="t('system.roleAuth.title')" :sub-title="t('system.roleAuth.subtitle')">
             <template #extra>
-                <el-button type="primary" size="small" @click="goRoleManage">进入角色管理</el-button>
+                <el-button type="primary" size="small" @click="goRoleManage">{{ t('system.roleAuth.action') }}</el-button>
             </template>
         </el-result>
     </div>
@@ -11,8 +11,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 
 function goRoleManage() {
     router.replace('/system/role');
