@@ -1,24 +1,24 @@
 <template>
     <div class="page system-page">
         <el-form :model="query" inline size="small" class="search-form">
-            <el-form-item label="关键字"><el-input v-model="query.keyword" placeholder="账号/姓名/手机号/邮箱" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item label="角色"><el-select v-model="query.roleId" class="search-form__select--wide" placeholder="全部" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
-            <el-form-item label="状态"><el-select v-model="query.status" placeholder="全部" clearable><el-option label="启用" :value="1" /><el-option label="停用" :value="0" /></el-select></el-form-item>
-            <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">查询</el-button><el-button :icon="RefreshLeft" @click="resetQuery">重置</el-button></el-form-item>
+            <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
+            <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
+            <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
+            <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
         </el-form>
-        <div class="toolbar"><el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">新增员工</el-button><el-button plain size="small" :icon="Refresh" @click="loadData">刷新</el-button></div>
+        <div class="toolbar"><el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button><el-button plain size="small" :icon="Refresh" @click="loadData">{{ t('common.refresh') }}</el-button></div>
         <el-table v-loading="loading" :data="rows" row-key="accountId" size="small">
-            <el-table-column prop="loginAccount" label="登录账号" min-width="160" />
-            <el-table-column prop="realName" label="姓名" min-width="140" />
-            <el-table-column prop="mobile" label="手机号" min-width="140" />
-            <el-table-column prop="email" label="邮箱" min-width="180" />
-            <el-table-column label="角色" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
-            <el-table-column label="状态" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template></el-table-column>
-            <el-table-column label="操作" width="240" align="center" class-name="small-padding fixed-width">
+            <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
+            <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
+            <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
+            <el-table-column prop="email" :label="t('system.account.email')" min-width="180" />
+            <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
+            <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
+            <el-table-column :label="t('common.operation')" width="240" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
-                    <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">编辑</el-button>
-                    <el-button v-if="canChangeStatus" size="small" link type="primary" :icon="row.status === 1 ? CircleClose : CircleCheck" @click="toggleStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</el-button>
-                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">删除</el-button>
+                    <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
+                    <el-button v-if="canChangeStatus" size="small" link type="primary" :icon="row.status === 1 ? CircleClose : CircleCheck" @click="toggleStatus(row)">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-button>
+                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">{{ t('common.delete') }}</el-button>
                     <span v-if="!canEdit && !canAssignRole && !canChangeStatus && !canDelete">-</span>
                 </template>
             </el-table-column>
@@ -26,19 +26,19 @@
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
-        <el-dialog v-model="visible" :title="form.accountId ? '编辑员工' : '新增员工'" width="560px">
+        <el-dialog v-model="visible" :title="form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee')" width="560px">
             <el-form :model="form" label-width="92px">
-                <el-form-item label="登录账号"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item v-if="!form.accountId" label="初始密码"><el-input v-model="form.password" type="password" show-password /></el-form-item>
-                <el-form-item label="姓名"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item label="手机号"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item label="邮箱"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item label="角色"><el-select v-model="form.roleIds" multiple style="width:100%" :disabled="!canAssignRole"><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
-                <el-form-item label="部门"><el-tree-select v-model="form.deptIds" multiple :data="deptTree" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item label="岗位"><el-select v-model="form.postIds" multiple style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
-                <el-form-item label="状态"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" /></el-form-item>
+                <el-form-item :label="t('system.account.loginAccount')"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item v-if="!form.accountId" :label="t('system.account.initialPassword')"><el-input v-model="form.password" type="password" show-password /></el-form-item>
+                <el-form-item :label="t('system.account.realName')"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item :label="t('system.account.mobile')"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item :label="t('system.account.email')"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item :label="t('system.account.role')"><el-select v-model="form.roleIds" multiple style="width:100%" :disabled="!canAssignRole"><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
+                <el-form-item :label="t('system.account.dept')"><el-tree-select v-model="form.deptIds" multiple :data="deptTree" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item :label="t('system.account.post')"><el-select v-model="form.postIds" multiple style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
+                <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" /></el-form-item>
             </el-form>
-            <template #footer><el-button size="small" @click="visible = false">取消</el-button><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">保存</el-button></template>
+            <template #footer><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button></template>
         </el-dialog>
     </div>
 </template>
@@ -47,9 +47,11 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleCheck, CircleClose, Delete, Edit, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { systemApi, type AccountItem, type DeptItem, type PostItem, type RoleItem } from '@/api/systemApi';
 import { hasPermission } from '@/utils/permission';
 
+const { t } = useI18n();
 const loading = ref(false);
 const visible = ref(false);
 const rows = ref<AccountItem[]>([]);
@@ -125,7 +127,7 @@ async function submit() {
         }
         await Promise.all(tasks);
     }
-    ElMessage.success('保存成功');
+    ElMessage.success(t('common.saveSuccess'));
     visible.value = false;
     await loadData();
 }
@@ -136,9 +138,9 @@ async function toggleStatus(row: AccountItem) {
 }
 
 async function remove(row: AccountItem) {
-    await ElMessageBox.confirm(`确认删除员工 ${row.loginAccount}？`, '删除确认', { type: 'warning' });
+    await ElMessageBox.confirm(t('system.account.deleteConfirm', { name: row.loginAccount }), t('common.deleteConfirmTitle'), { type: 'warning' });
     await systemApi.deleteAccount(row.accountId);
-    ElMessage.success('删除成功');
+    ElMessage.success(t('common.deleteSuccess'));
     await loadData();
 }
 

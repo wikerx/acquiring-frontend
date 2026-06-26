@@ -30,12 +30,12 @@ const staticChildren: RouteRecordRaw[] = [
     { path: 'transactions', component: PlaceholderPage, props: { pageKey: 'transactions' }, meta: { titleKey: 'layout.transactions' } },
     { path: 'settlements', component: PlaceholderPage, props: { pageKey: 'settlements' }, meta: { titleKey: 'layout.settlements' } },
     { path: 'account', component: PlaceholderPage, props: { pageKey: 'account' }, meta: { titleKey: 'layout.account' } },
-    { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { title: '商户密钥管理', permission: 'merchant:openapi:key:view' } },
-    { path: 'system/account', component: SystemAccount, meta: { title: '账号管理', permission: 'merchant:system:account:list' } },
-    { path: 'system/dept', component: SystemDept, meta: { title: '部门管理', permission: 'merchant:system:dept:list' } },
-    { path: 'system/post', component: SystemPost, meta: { title: '岗位管理', permission: 'merchant:system:post:list' } },
-    { path: 'system/role', component: SystemRole, meta: { title: '角色管理', permission: 'merchant:system:role:list' } },
-    { path: 'system/role-auth', component: SystemRoleAuth, meta: { title: '角色授权', permission: 'merchant:system:role:grantMenu' } },
+    { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
+    { path: 'system/account', component: SystemAccount, meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },
+    { path: 'system/dept', component: SystemDept, meta: { titleKey: 'route.systemDept', permission: 'merchant:system:dept:list' } },
+    { path: 'system/post', component: SystemPost, meta: { titleKey: 'route.systemPost', permission: 'merchant:system:post:list' } },
+    { path: 'system/role', component: SystemRole, meta: { titleKey: 'route.systemRole', permission: 'merchant:system:role:list' } },
+    { path: 'system/role-auth', component: SystemRoleAuth, meta: { titleKey: 'route.systemRoleAuth', permission: 'merchant:system:role:grantMenu' } },
     { path: ':pathMatch(.*)*', name: 'MerchantRuntimeFallback', component: Forbidden, meta: { title: '403', runtimeFallback: true } },
 ];
 

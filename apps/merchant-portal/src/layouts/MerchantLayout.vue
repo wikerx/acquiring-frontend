@@ -131,7 +131,7 @@ import { resolveMenuIcon } from '@/utils/menuIcon';
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const merchantBrand = getSystemBrand('merchant');
 const menuVisible = ref(false);
 const fallbackMenus = computed<MenuItem[]>(() => [
@@ -280,20 +280,12 @@ function formatRoleLabel(roleCode: string) {
     if (!normalized) {
         return '';
     }
-    const isChinese = locale.value !== 'en-US';
-    const presetLabels = isChinese
-        ? {
-              MERCHANT_ADMIN: '商户管理员',
-              ROLE_MERCHANT_ADMIN: '商户管理员',
-              MERCHANT_OPERATOR: '商户操作员',
-              ROLE_MERCHANT_OPERATOR: '商户操作员',
-          }
-        : {
-              MERCHANT_ADMIN: 'Merchant Admin',
-              ROLE_MERCHANT_ADMIN: 'Merchant Admin',
-              MERCHANT_OPERATOR: 'Merchant Operator',
-              ROLE_MERCHANT_OPERATOR: 'Merchant Operator',
-          };
+    const presetLabels = {
+        MERCHANT_ADMIN: t('layout.merchantAdmin'),
+        ROLE_MERCHANT_ADMIN: t('layout.merchantAdmin'),
+        MERCHANT_OPERATOR: t('layout.merchantOperator'),
+        ROLE_MERCHANT_OPERATOR: t('layout.merchantOperator'),
+    };
     if (presetLabels[normalized as keyof typeof presetLabels]) {
         return presetLabels[normalized as keyof typeof presetLabels];
     }

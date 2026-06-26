@@ -1,46 +1,46 @@
 <template>
     <div class="page system-page">
         <el-form :model="query" inline size="small" class="search-form">
-            <el-form-item label="角色名称"><el-input v-model="query.roleName" placeholder="请输入" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item label="角色编码"><el-input v-model="query.roleCode" placeholder="请输入" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item label="状态">
-                <el-select v-model="query.status" placeholder="全部" clearable>
-                    <el-option label="启用" :value="1" />
-                    <el-option label="停用" :value="0" />
+            <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
+            <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
+            <el-form-item :label="t('common.status')">
+                <el-select v-model="query.status" :placeholder="t('common.all')" clearable>
+                    <el-option :label="t('common.enabled')" :value="1" />
+                    <el-option :label="t('common.disabled')" :value="0" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="创建时间">
-                <el-date-picker v-model="query.createdRange" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" clearable />
+            <el-form-item :label="t('system.role.createdTime')">
+                <el-date-picker v-model="query.createdRange" type="daterange" :start-placeholder="t('system.role.startDate')" :end-placeholder="t('system.role.endDate')" value-format="YYYY-MM-DD" clearable />
             </el-form-item>
             <el-form-item>
-                <el-button type="primary" :icon="Search" @click="applyQuery">查询</el-button>
-                <el-button :icon="RefreshLeft" @click="resetQuery">重置</el-button>
+                <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
+                <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
             </el-form-item>
         </el-form>
 
         <div class="toolbar">
-            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">新增角色</el-button>
-            <el-button plain size="small" :icon="Refresh" @click="loadData">刷新</el-button>
+            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
+            <el-button plain size="small" :icon="Refresh" @click="loadData">{{ t('common.refresh') }}</el-button>
         </div>
 
         <el-table v-loading="loading" :data="rows" row-key="roleId" size="small">
-            <el-table-column prop="roleName" label="角色名称" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="roleCode" label="角色编码" min-width="180" show-overflow-tooltip />
-            <el-table-column label="数据范围" width="110" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
-            <el-table-column label="状态" width="120" align="center">
+            <el-table-column prop="roleName" :label="t('system.role.name')" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="t('system.role.dataScope')" width="110" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
+            <el-table-column :label="t('common.status')" width="120" align="center">
                 <template #default="{ row }">
                     <el-switch v-if="canChangeStatus" :model-value="row.status" :active-value="1" :inactive-value="0" @change="changeStatus(row)" />
-                    <el-tag v-else :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</el-tag>
+                    <el-tag v-else :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag>
                 </template>
             </el-table-column>
-            <el-table-column prop="sortNo" label="排序" width="80" align="center" />
-            <el-table-column label="更新时间" min-width="170" align="center"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
-            <el-table-column label="操作" width="260" align="center" class-name="small-padding fixed-width" fixed="right">
+            <el-table-column prop="sortNo" :label="t('common.sortNo')" width="80" align="center" />
+            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
+            <el-table-column :label="t('common.operation')" width="260" align="center" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button v-if="canDetail" size="small" link type="primary" :icon="View" @click="openDetail(row)">详情</el-button>
-                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openEdit(row)">编辑</el-button>
-                    <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">授权</el-button>
-                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" :disabled="isSystemRole(row)" @click="remove(row)">删除</el-button>
+                    <el-button v-if="canDetail" size="small" link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
+                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+                    <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">{{ t('system.role.grant') }}</el-button>
+                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" :disabled="isSystemRole(row)" @click="remove(row)">{{ t('common.delete') }}</el-button>
                     <span v-if="!canDetail && !canEdit && !canGrant && !canDelete">-</span>
                 </template>
             </el-table-column>
@@ -49,56 +49,56 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog v-model="detailVisible" title="角色详情" width="760px" append-to-body destroy-on-close>
+        <el-dialog v-model="detailVisible" :title="t('system.role.detailTitle')" width="760px" append-to-body destroy-on-close>
             <el-descriptions :column="1" border size="small" class="role-desc">
-                <el-descriptions-item label="角色名称">{{ activeRole?.roleName || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="角色编码">{{ activeRole?.roleCode || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="数据范围">{{ dataScopeLabel(activeRole?.dataScope) }}</el-descriptions-item>
-                <el-descriptions-item label="角色状态"><el-tag :type="activeRole?.status === 1 ? 'success' : 'info'" size="small">{{ activeRole?.status === 1 ? '启用' : '停用' }}</el-tag></el-descriptions-item>
-                <el-descriptions-item label="排序">{{ activeRole?.sortNo ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item label="创建时间">{{ formatTime(activeRole?.createdAt) }}</el-descriptions-item>
-                <el-descriptions-item label="更新时间">{{ formatTime(activeRole?.updatedAt) }}</el-descriptions-item>
-                <el-descriptions-item label="说明">{{ activeRole?.description || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.name')">{{ activeRole?.roleName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.code')">{{ activeRole?.roleCode || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.dataScope')">{{ dataScopeLabel(activeRole?.dataScope) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.roleStatus')"><el-tag :type="activeRole?.status === 1 ? 'success' : 'info'" size="small">{{ activeRole?.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></el-descriptions-item>
+                <el-descriptions-item :label="t('common.sortNo')">{{ activeRole?.sortNo ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.createdTime')">{{ formatTime(activeRole?.createdAt) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.updatedTime')">{{ formatTime(activeRole?.updatedAt) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.description')">{{ activeRole?.description || '-' }}</el-descriptions-item>
             </el-descriptions>
             <div v-loading="grantLoading" class="grant-tree-box">
                 <el-tree :data="grantTree" node-key="id" show-checkbox default-expand-all :default-checked-keys="checkedKeys" :props="{ label: 'name', children: 'children' }" disabled>
                     <template #default="{ data }"><GrantTreeNode :node="data" /></template>
                 </el-tree>
             </div>
-            <template #footer><el-button @click="detailVisible = false">关闭</el-button></template>
+            <template #footer><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></template>
         </el-dialog>
 
-        <el-dialog v-model="editVisible" :title="form.roleId ? '编辑角色' : '新增角色'" width="840px" append-to-body destroy-on-close>
+        <el-dialog v-model="editVisible" :title="form.roleId ? t('system.role.edit') : t('system.role.add')" width="840px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
                 <el-row :gutter="12">
-                    <el-col :span="12"><el-form-item label="角色名称" prop="roleName"><el-input v-model="form.roleName" maxlength="100" /></el-form-item></el-col>
-                    <el-col :span="12"><el-form-item label="角色编码" prop="roleCode"><el-input v-model="form.roleCode" :disabled="Boolean(form.roleId) && isSystemForm" maxlength="80" /></el-form-item></el-col>
+                    <el-col :span="12"><el-form-item :label="t('system.role.name')" prop="roleName"><el-input v-model="form.roleName" maxlength="100" /></el-form-item></el-col>
+                    <el-col :span="12"><el-form-item :label="t('system.role.code')" prop="roleCode"><el-input v-model="form.roleCode" :disabled="Boolean(form.roleId) && isSystemForm" maxlength="80" /></el-form-item></el-col>
                     <el-col :span="12">
-                        <el-form-item label="数据范围" prop="dataScope">
+                        <el-form-item :label="t('system.role.dataScope')" prop="dataScope">
                             <el-select v-model="form.dataScope" style="width:100%">
-                                <el-option label="全部数据" value="ALL" />
-                                <el-option label="本人数据" value="SELF" />
-                                <el-option label="自定义数据" value="CUSTOM" />
+                                <el-option :label="t('system.role.dataAll')" value="ALL" />
+                                <el-option :label="t('system.role.dataSelf')" value="SELF" />
+                                <el-option :label="t('system.role.dataCustom')" value="CUSTOM" />
                             </el-select>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="6"><el-form-item label="排序" prop="sortNo"><el-input-number v-model="form.sortNo" :min="0" :max="9999" controls-position="right" /></el-form-item></el-col>
+                    <el-col :span="6"><el-form-item :label="t('common.sortNo')" prop="sortNo"><el-input-number v-model="form.sortNo" :min="0" :max="9999" controls-position="right" /></el-form-item></el-col>
                     <el-col :span="6">
-                        <el-form-item label="状态" prop="status">
+                        <el-form-item :label="t('common.status')" prop="status">
                             <el-select v-model="form.status" style="width:100%">
-                                <el-option label="启用" :value="1" />
-                                <el-option label="停用" :value="0" />
+                                <el-option :label="t('common.enabled')" :value="1" />
+                                <el-option :label="t('common.disabled')" :value="0" />
                             </el-select>
                         </el-form-item>
                     </el-col>
                 </el-row>
-                <el-form-item label="说明"><el-input v-model="form.description" type="textarea" maxlength="500" show-word-limit /></el-form-item>
+                <el-form-item :label="t('system.role.description')"><el-input v-model="form.description" type="textarea" maxlength="500" show-word-limit /></el-form-item>
             </el-form>
-            <el-divider>菜单与功能权限</el-divider>
+            <el-divider>{{ t('system.role.menuPermission') }}</el-divider>
             <div class="grant-toolbar">
-                <el-button size="small" :icon="Sort" @click="toggleFormExpand">{{ formExpanded ? '收起' : '展开' }}</el-button>
-                <el-checkbox v-model="formSelectAllChecked" size="small" @change="toggleFormSelectAll">全选</el-checkbox>
-                <el-checkbox v-model="formParentLinked" size="small">父子联动</el-checkbox>
+                <el-button size="small" :icon="Sort" @click="toggleFormExpand">{{ formExpanded ? t('system.role.collapse') : t('system.role.expand') }}</el-button>
+                <el-checkbox v-model="formSelectAllChecked" size="small" @change="toggleFormSelectAll">{{ t('system.role.selectAll') }}</el-checkbox>
+                <el-checkbox v-model="formParentLinked" size="small">{{ t('system.role.parentLinked') }}</el-checkbox>
             </div>
             <div v-loading="grantLoading" class="grant-tree-box grant-tree-box--form">
                 <el-tree
@@ -118,21 +118,21 @@
                 </el-tree>
             </div>
             <template #footer>
-                <el-button size="small" @click="editVisible = false">取消</el-button>
-                <el-button type="primary" size="small" :loading="saving" @click="submitEdit">保存</el-button>
+                <el-button size="small" @click="editVisible = false">{{ t('common.cancel') }}</el-button>
+                <el-button type="primary" size="small" :loading="saving" @click="submitEdit">{{ t('common.save') }}</el-button>
             </template>
         </el-dialog>
 
-        <el-dialog v-model="grantVisible" title="角色授权" width="820px" append-to-body destroy-on-close>
+        <el-dialog v-model="grantVisible" :title="t('system.role.grantTitle')" width="820px" append-to-body destroy-on-close>
             <el-descriptions :column="3" border size="small" class="role-desc">
-                <el-descriptions-item label="角色名称">{{ activeRole?.roleName || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="角色编码">{{ activeRole?.roleCode || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="数据范围">{{ dataScopeLabel(activeRole?.dataScope) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.name')">{{ activeRole?.roleName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.code')">{{ activeRole?.roleCode || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.dataScope')">{{ dataScopeLabel(activeRole?.dataScope) }}</el-descriptions-item>
             </el-descriptions>
             <div class="grant-toolbar">
-                <el-button size="small" :icon="Sort" @click="toggleExpand">{{ expanded ? '收起' : '展开' }}</el-button>
-                <el-checkbox v-model="selectAllChecked" size="small" @change="toggleSelectAll">全选</el-checkbox>
-                <el-checkbox v-model="parentLinked" size="small">父子联动</el-checkbox>
+                <el-button size="small" :icon="Sort" @click="toggleExpand">{{ expanded ? t('system.role.collapse') : t('system.role.expand') }}</el-button>
+                <el-checkbox v-model="selectAllChecked" size="small" @change="toggleSelectAll">{{ t('system.role.selectAll') }}</el-checkbox>
+                <el-checkbox v-model="parentLinked" size="small">{{ t('system.role.parentLinked') }}</el-checkbox>
             </div>
             <div v-loading="grantLoading" class="grant-tree-box">
                 <el-tree
@@ -152,8 +152,8 @@
                 </el-tree>
             </div>
             <template #footer>
-                <el-button size="small" @click="grantVisible = false">取消</el-button>
-                <el-button type="primary" size="small" :loading="saving" @click="submitGrant">确认</el-button>
+                <el-button size="small" @click="grantVisible = false">{{ t('common.cancel') }}</el-button>
+                <el-button type="primary" size="small" :loading="saving" @click="submitGrant">{{ t('common.confirm') }}</el-button>
             </template>
         </el-dialog>
     </div>
@@ -163,6 +163,7 @@
 import { computed, defineComponent, h, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Key, Plus, Refresh, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
 
@@ -189,6 +190,7 @@ const GrantTreeNode = defineComponent({
     },
 });
 
+const { t } = useI18n();
 const loading = ref(false);
 const detailVisible = ref(false);
 const editVisible = ref(false);
@@ -224,10 +226,10 @@ const canDelete = hasPermission('merchant:system:role:delete');
 const canChangeStatus = hasPermission('merchant:system:role:status');
 const canGrant = hasAnyPermission(['merchant:system:role:grant', 'merchant:system:role:grantMenu', 'merchant:system:role:grantPermission']);
 const isSystemForm = computed(() => form.roleType === 'SYSTEM');
-const rules: FormRules = {
-    roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-    roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-};
+const rules = computed<FormRules>(() => ({
+    roleName: [{ required: true, message: t('system.role.nameRequired'), trigger: 'blur' }],
+    roleCode: [{ required: true, message: t('system.role.codeRequired'), trigger: 'blur' }],
+}));
 
 onMounted(loadData);
 
@@ -316,7 +318,7 @@ async function loadGrant(roleId?: number) {
         grantTreeRef.value?.setCheckedKeys(checkedKeys.value, false);
         syncSelectAll();
     } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : '授权树加载失败');
+        ElMessage.error(error instanceof Error ? error.message : t('system.role.grantTreeLoadFailed'));
     } finally {
         grantLoading.value = false;
     }
@@ -337,7 +339,7 @@ async function submitEdit() {
             ...(canGrant ? selectedGrantIds(formGrantTreeRef.value) : {}),
         };
         await systemApi.saveRole(payload, form.roleId);
-        ElMessage.success('保存成功');
+        ElMessage.success(t('common.saveSuccess'));
         editVisible.value = false;
         await loadData();
     } finally {
@@ -351,7 +353,7 @@ async function submitGrant() {
     try {
         const selection = selectedGrantIds(grantTreeRef.value);
         await systemApi.saveRoleGrantTree(activeRole.value.roleId, selection.menuIds, selection.permissionIds);
-        ElMessage.success('授权已保存');
+        ElMessage.success(t('system.role.grantSaved'));
         grantVisible.value = false;
         await loadData();
     } finally {
@@ -361,17 +363,21 @@ async function submitGrant() {
 
 async function changeStatus(row: RoleItem) {
     const nextStatus = row.status === 1 ? 0 : 1;
-    await ElMessageBox.confirm(`确认${nextStatus === 1 ? '启用' : '停用'}角色 ${row.roleName}？`, '状态确认', { type: nextStatus === 1 ? 'success' : 'warning' });
+    await ElMessageBox.confirm(
+        t('system.role.changeStatusConfirm', { status: nextStatus === 1 ? t('common.enabled') : t('common.disabled'), name: row.roleName }),
+        t('common.statusConfirmTitle'),
+        { type: nextStatus === 1 ? 'success' : 'warning' },
+    );
     await systemApi.changeRoleStatus(row.roleId, nextStatus);
-    ElMessage.success('操作成功');
+    ElMessage.success(t('common.operationSuccess'));
     await loadData();
 }
 
 async function remove(row: RoleItem) {
     if (isSystemRole(row)) return;
-    await ElMessageBox.confirm(`确认删除角色 ${row.roleName}？`, '删除确认', { type: 'warning' });
+    await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.roleName }), t('common.deleteConfirmTitle'), { type: 'warning' });
     await systemApi.deleteRole(row.roleId);
-    ElMessage.success('删除成功');
+    ElMessage.success(t('common.deleteSuccess'));
     await loadData();
 }
 
@@ -473,7 +479,7 @@ function isSystemRole(row?: RoleItem) {
 }
 
 function dataScopeLabel(value?: string) {
-    const labels: Record<string, string> = { ALL: '全部数据', SELF: '本人数据', CUSTOM: '自定义数据' };
+    const labels: Record<string, string> = { ALL: t('system.role.dataAll'), SELF: t('system.role.dataSelf'), CUSTOM: t('system.role.dataCustom') };
     return value ? labels[value] || value : '-';
 }
 
@@ -482,7 +488,7 @@ function formatTime(value?: string) {
 }
 
 function nodeTypeName(value?: string) {
-    const labels: Record<string, string> = { DIR: '目录', MENU: '菜单', BTN: '按钮' };
+    const labels: Record<string, string> = { DIR: t('system.role.dir'), MENU: t('system.role.menu'), BTN: t('system.role.button') };
     return value ? labels[value] || value : '-';
 }
 
