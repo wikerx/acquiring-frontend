@@ -9,6 +9,8 @@ export default {
         settlements: '结算查询',
         account: '账户信息',
         fallbackMerchant: '演示商户',
+        userMenu: '用户菜单',
+        noRole: '暂无角色',
     },
     login: {
         eyebrow: 'VEXRA BRAND SYSTEM',

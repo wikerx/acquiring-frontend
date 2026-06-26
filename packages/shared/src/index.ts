@@ -94,6 +94,15 @@ export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
 export type ErrorMessageResolver = (error: unknown) => string;
 
+export interface IdleLogoutOptions {
+    readSession: SessionReader;
+    onIdle: UnauthorizedHandler;
+    timeoutMs?: number;
+}
+
+const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'click', 'scroll', 'touchstart'] as const;
+
 function createRequestId(): string {
     const randomPart = Math.random().toString(36).slice(2, 10).toUpperCase();
     return `WEB${Date.now()}${randomPart}`;
@@ -148,6 +157,76 @@ export function createHttpClient(
     );
 
     return client;
+}
+
+export function setupIdleLogout(options: IdleLogoutOptions): () => void {
+    if (typeof window === 'undefined') {
+        return () => undefined;
+    }
+    const timeoutMs = options.timeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+    let lastActiveAt = Date.now();
+    let hasActiveSession = false;
+    let timer: ReturnType<typeof window.setTimeout> | undefined;
+
+    const clearTimer = () => {
+        if (timer) {
+            window.clearTimeout(timer);
+            timer = undefined;
+        }
+    };
+    const schedule = () => {
+        clearTimer();
+        const hasSession = Boolean(options.readSession());
+        if (!hasSession) {
+            hasActiveSession = false;
+            timer = window.setTimeout(checkIdle, 5000);
+            return;
+        }
+        if (!hasActiveSession) {
+            hasActiveSession = true;
+            lastActiveAt = Date.now();
+        }
+        const remainingMs = Math.max(timeoutMs - (Date.now() - lastActiveAt), 0);
+        timer = window.setTimeout(checkIdle, remainingMs);
+    };
+    const markActive = () => {
+        lastActiveAt = Date.now();
+        schedule();
+    };
+    const checkIdle = () => {
+        const hasSession = Boolean(options.readSession());
+        if (!hasSession) {
+            schedule();
+            return;
+        }
+        if (!hasActiveSession) {
+            hasActiveSession = true;
+            lastActiveAt = Date.now();
+            schedule();
+            return;
+        }
+        if (Date.now() - lastActiveAt >= timeoutMs) {
+            options.onIdle();
+            clearTimer();
+            return;
+        }
+        schedule();
+    };
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            checkIdle();
+        }
+    };
+
+    ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, markActive, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    schedule();
+
+    return () => {
+        clearTimer();
+        ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, markActive));
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
 }
 
 export function resolveFriendlyRequestMessage(

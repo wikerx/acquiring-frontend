@@ -9,6 +9,8 @@ export default {
         settlements: 'Settlements',
         account: 'Account',
         fallbackMerchant: 'Demo Merchant',
+        userMenu: 'User menu',
+        noRole: 'No role',
     },
     login: {
         eyebrow: 'VEXRA BRAND SYSTEM',

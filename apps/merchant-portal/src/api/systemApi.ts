@@ -1,9 +1,19 @@
-import type { AuthMenu, CommonResult } from '@acquiring/shared';
+import type { AuthMenu, CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from './http';
 
 export interface IdsRequest {
     ids: number[];
+}
+
+export interface MerchantSystemPageQuery {
+    pageNo?: number;
+    pageSize?: number;
+}
+
+export interface DeptQuery extends MerchantSystemPageQuery {
+    keyword?: string;
+    status?: number;
 }
 
 export interface DeptItem {
@@ -19,6 +29,11 @@ export interface DeptItem {
     children?: DeptItem[];
 }
 
+export interface PostQuery extends MerchantSystemPageQuery {
+    keyword?: string;
+    status?: number;
+}
+
 export interface PostItem {
     postId: number;
     postCode: string;
@@ -28,6 +43,14 @@ export interface PostItem {
     remark?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface RoleQuery extends MerchantSystemPageQuery {
+    roleName?: string;
+    roleCode?: string;
+    status?: number;
+    createdStartTime?: string;
+    createdEndTime?: string;
 }
 
 export interface RoleItem {
@@ -52,6 +75,12 @@ export interface RoleSavePayload {
     sortNo?: number;
     menuIds?: number[];
     permissionIds?: number[];
+}
+
+export interface AccountQuery extends MerchantSystemPageQuery {
+    keyword?: string;
+    roleId?: number;
+    status?: number;
 }
 
 export interface AccountItem {
@@ -116,6 +145,10 @@ export const systemApi = {
         const result = await http.get<CommonResult<DeptItem[]>>('/merchant/system/depts');
         return unwrapResult(result.data);
     },
+    async pageDepts(params: DeptQuery) {
+        const result = await http.get<CommonResult<PageResult<DeptItem>>>('/merchant/system/depts/page', { params });
+        return unwrapResult(result.data);
+    },
     async deptTree() {
         const result = await http.get<CommonResult<DeptItem[]>>('/merchant/system/depts/tree');
         return unwrapResult(result.data);
@@ -134,6 +167,10 @@ export const systemApi = {
         const result = await http.get<CommonResult<PostItem[]>>('/merchant/system/posts');
         return unwrapResult(result.data);
     },
+    async pagePosts(params: PostQuery) {
+        const result = await http.get<CommonResult<PageResult<PostItem>>>('/merchant/system/posts/page', { params });
+        return unwrapResult(result.data);
+    },
     async savePost(payload: Partial<PostItem>, id?: number) {
         const result = id
             ? await http.put<CommonResult<PostItem>>(`/merchant/system/posts/${id}`, payload)
@@ -146,6 +183,10 @@ export const systemApi = {
     },
     async roles() {
         const result = await http.get<CommonResult<RoleItem[]>>('/merchant/system/roles');
+        return unwrapResult(result.data);
+    },
+    async pageRoles(params: RoleQuery) {
+        const result = await http.get<CommonResult<PageResult<RoleItem>>>('/merchant/system/roles/page', { params });
         return unwrapResult(result.data);
     },
     async roleDetail(id: number) {
@@ -196,6 +237,10 @@ export const systemApi = {
     },
     async accounts() {
         const result = await http.get<CommonResult<AccountItem[]>>('/merchant/system/accounts');
+        return unwrapResult(result.data);
+    },
+    async pageAccounts(params: AccountQuery) {
+        const result = await http.get<CommonResult<PageResult<AccountItem>>>('/merchant/system/accounts/page', { params });
         return unwrapResult(result.data);
     },
     async saveAccount(payload: Partial<AccountItem> & { password?: string }, id?: number) {

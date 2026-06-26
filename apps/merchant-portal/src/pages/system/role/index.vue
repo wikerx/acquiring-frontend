@@ -23,7 +23,7 @@
             <el-button plain size="small" :icon="Refresh" @click="loadData">刷新</el-button>
         </div>
 
-        <el-table v-loading="loading" :data="filteredRows" row-key="roleId" size="small">
+        <el-table v-loading="loading" :data="rows" row-key="roleId" size="small">
             <el-table-column prop="roleName" label="角色名称" min-width="150" show-overflow-tooltip />
             <el-table-column prop="roleCode" label="角色编码" min-width="180" show-overflow-tooltip />
             <el-table-column label="数据范围" width="110" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
@@ -35,16 +35,19 @@
             </el-table-column>
             <el-table-column prop="sortNo" label="排序" width="80" align="center" />
             <el-table-column label="更新时间" min-width="170" align="center"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
-            <el-table-column label="操作" width="260" align="center" fixed="right">
+            <el-table-column label="操作" width="260" align="center" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button v-if="canDetail" link type="primary" @click="openDetail(row)">详情</el-button>
-                    <el-button v-if="canEdit" link type="primary" @click="openEdit(row)">编辑</el-button>
-                    <el-button v-if="canGrant" link type="primary" @click="openGrant(row)">授权</el-button>
-                    <el-button v-if="canDelete" link type="danger" :disabled="isSystemRole(row)" @click="remove(row)">删除</el-button>
+                    <el-button v-if="canDetail" size="small" link type="primary" :icon="View" @click="openDetail(row)">详情</el-button>
+                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openEdit(row)">编辑</el-button>
+                    <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">授权</el-button>
+                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" :disabled="isSystemRole(row)" @click="remove(row)">删除</el-button>
                     <span v-if="!canDetail && !canEdit && !canGrant && !canDelete">-</span>
                 </template>
             </el-table-column>
         </el-table>
+        <div class="pagination-container" v-show="total > 0">
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+        </div>
 
         <el-dialog v-model="detailVisible" title="角色详情" width="760px" append-to-body destroy-on-close>
             <el-descriptions :column="1" border size="small" class="role-desc">
@@ -159,7 +162,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
-import { Plus, Refresh, RefreshLeft, Search, Sort } from '@element-plus/icons-vue';
+import { Delete, Edit, Key, Plus, Refresh, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
 
@@ -193,6 +196,9 @@ const grantVisible = ref(false);
 const grantLoading = ref(false);
 const saving = ref(false);
 const rows = ref<RoleItem[]>([]);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
 const query = reactive<{ roleName?: string; roleCode?: string; status?: number; createdRange?: [string, string] }>({});
 const form = reactive<RoleForm>({ roleCode: '', roleName: '', dataScope: 'SELF', description: '', status: 1, sortNo: 100 });
 const formRef = ref<FormInstance>();
@@ -223,34 +229,38 @@ const rules: FormRules = {
     roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
 };
 
-const filteredRows = computed(() => rows.value.filter((item) => {
-    const roleName = query.roleName?.trim().toLowerCase();
-    const roleCode = query.roleCode?.trim().toLowerCase();
-    const matchedName = !roleName || item.roleName.toLowerCase().includes(roleName);
-    const matchedCode = !roleCode || item.roleCode.toLowerCase().includes(roleCode);
-    const matchedStatus = query.status === undefined || item.status === query.status;
-    const matchedDate = matchCreatedDate(item.createdAt);
-    return matchedName && matchedCode && matchedStatus && matchedDate;
-}));
-
 onMounted(loadData);
 
 async function loadData() {
     loading.value = true;
     try {
-        rows.value = await systemApi.roles();
+        const result = await systemApi.pageRoles({
+            pageNo: page.value,
+            pageSize: pageSize.value,
+            roleName: query.roleName?.trim() || undefined,
+            roleCode: query.roleCode?.trim() || undefined,
+            status: query.status,
+            createdStartTime: query.createdRange?.[0],
+            createdEndTime: query.createdRange?.[1],
+        });
+        rows.value = result.records;
+        total.value = result.total;
     } finally {
         loading.value = false;
     }
 }
 
-function applyQuery() {}
+function applyQuery() {
+    page.value = 1;
+    loadData();
+}
 
 function resetQuery() {
     query.roleName = undefined;
     query.roleCode = undefined;
     query.status = undefined;
     query.createdRange = undefined;
+    applyQuery();
 }
 
 async function openDetail(row: RoleItem) {
@@ -460,12 +470,6 @@ function buildNodeMap(nodes: RoleGrantNode[]) {
 
 function isSystemRole(row?: RoleItem) {
     return row?.roleType === 'SYSTEM' || row?.roleCode?.startsWith('MERCHANT_ADMIN_') || row?.roleCode === 'MERCHANT_ADMIN';
-}
-
-function matchCreatedDate(createdAt?: string) {
-    if (!query.createdRange || !createdAt) return true;
-    const day = createdAt.slice(0, 10);
-    return day >= query.createdRange[0] && day <= query.createdRange[1];
 }
 
 function dataScopeLabel(value?: string) {

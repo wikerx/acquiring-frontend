@@ -3,6 +3,8 @@ import type { AuthLoginResponse, AuthSession } from '@acquiring/shared';
 
 const STORAGE_KEY = 'acquiring_merchant_session';
 
+// Security note: current merchant login state is intentionally kept in localStorage for this phase.
+// Do not render untrusted HTML; migrate this token to HttpOnly + Secure + SameSite Cookie in the next auth upgrade.
 function loadSession(): AuthSession | null {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);

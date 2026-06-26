@@ -7,22 +7,25 @@
             <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">查询</el-button><el-button :icon="RefreshLeft" @click="resetQuery">重置</el-button></el-form-item>
         </el-form>
         <div class="toolbar"><el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">新增员工</el-button><el-button plain size="small" :icon="Refresh" @click="loadData">刷新</el-button></div>
-        <el-table v-loading="loading" :data="filteredRows" row-key="accountId" size="small">
+        <el-table v-loading="loading" :data="rows" row-key="accountId" size="small">
             <el-table-column prop="loginAccount" label="登录账号" min-width="160" />
             <el-table-column prop="realName" label="姓名" min-width="140" />
             <el-table-column prop="mobile" label="手机号" min-width="140" />
             <el-table-column prop="email" label="邮箱" min-width="180" />
             <el-table-column label="角色" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
             <el-table-column label="状态" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template></el-table-column>
-            <el-table-column label="操作" width="240" align="center">
+            <el-table-column label="操作" width="240" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
-                    <el-button v-if="canEdit || canAssignRole" link type="primary" @click="openForm(row)">编辑</el-button>
-                    <el-button v-if="canChangeStatus" link type="primary" @click="toggleStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</el-button>
-                    <el-button v-if="canDelete" link type="danger" @click="remove(row)">删除</el-button>
+                    <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">编辑</el-button>
+                    <el-button v-if="canChangeStatus" size="small" link type="primary" :icon="row.status === 1 ? CircleClose : CircleCheck" @click="toggleStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</el-button>
+                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">删除</el-button>
                     <span v-if="!canEdit && !canAssignRole && !canChangeStatus && !canDelete">-</span>
                 </template>
             </el-table-column>
         </el-table>
+        <div class="pagination-container" v-show="total > 0">
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+        </div>
         <el-dialog v-model="visible" :title="form.accountId ? '编辑员工' : '新增员工'" width="560px">
             <el-form :model="form" label-width="92px">
                 <el-form-item label="登录账号"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
@@ -43,13 +46,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Delete, Edit, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { systemApi, type AccountItem, type DeptItem, type PostItem, type RoleItem } from '@/api/systemApi';
 import { hasPermission } from '@/utils/permission';
 
 const loading = ref(false);
 const visible = ref(false);
 const rows = ref<AccountItem[]>([]);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
 const roles = ref<RoleItem[]>([]);
 const posts = ref<PostItem[]>([]);
 const deptTree = ref<DeptItem[]>([]);
@@ -61,30 +67,24 @@ const canDelete = hasPermission('merchant:system:account:delete');
 const canChangeStatus = hasPermission('merchant:system:account:status');
 const canAssignRole = hasPermission('merchant:system:account:assignRole');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
-const filteredRows = computed(() => {
-    const keyword = query.keyword.trim().toLowerCase();
-    return rows.value.filter((item) => {
-        const matchedKeyword = !keyword
-            || item.loginAccount.toLowerCase().includes(keyword)
-            || item.realName.toLowerCase().includes(keyword)
-            || (item.mobile || '').toLowerCase().includes(keyword)
-            || (item.email || '').toLowerCase().includes(keyword);
-        const matchedRole = query.roleId === undefined || item.roleIds.includes(query.roleId);
-        const matchedStatus = query.status === undefined || item.status === query.status;
-        return matchedKeyword && matchedRole && matchedStatus;
-    });
-});
 
 async function loadData() {
     loading.value = true;
     try {
-        const [accountRows, roleRows, postRows, deptRows] = await Promise.all([
-            systemApi.accounts(),
+        const [accountPage, roleRows, postRows, deptRows] = await Promise.all([
+            systemApi.pageAccounts({
+                pageNo: page.value,
+                pageSize: pageSize.value,
+                keyword: query.keyword.trim() || undefined,
+                roleId: query.roleId,
+                status: query.status,
+            }),
             systemApi.roles(),
             systemApi.posts(),
             systemApi.deptTree(),
         ]);
-        rows.value = accountRows;
+        rows.value = accountPage.records;
+        total.value = accountPage.total;
         roles.value = roleRows;
         posts.value = postRows;
         deptTree.value = deptRows;
@@ -93,12 +93,16 @@ async function loadData() {
     }
 }
 
-function applyQuery() {}
+function applyQuery() {
+    page.value = 1;
+    loadData();
+}
 
 function resetQuery() {
     query.keyword = '';
     query.roleId = undefined;
     query.status = undefined;
+    applyQuery();
 }
 
 function openForm(row?: AccountItem) {

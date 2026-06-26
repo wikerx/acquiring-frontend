@@ -194,12 +194,89 @@ body {
     font-weight: 500;
 }
 
-.system-page .el-table {
-    font-size: 13px;
+.merchant-main .el-table {
+    width: 100%;
+    color: #606266;
+    font-size: 12px;
+    border-top: 1px solid #ebeef5;
+    --el-table-border-color: #ebeef5;
+    --el-table-header-bg-color: #f8f8f9;
 }
 
-.system-page .el-table .el-button.is-link {
+.merchant-main .el-table .el-table__header-wrapper th,
+.merchant-main .el-table .el-table__fixed-header-wrapper th {
+    height: 34px;
+    color: #515a6e;
+    background-color: #f8f8f9;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    word-break: break-word;
+}
+
+.merchant-main .el-table td.el-table__cell,
+.merchant-main .el-table th.el-table__cell {
+    padding: 4px 0;
+}
+
+.merchant-main .el-table .cell {
+    padding-left: 10px;
+    padding-right: 10px;
+    color: #606266;
+    line-height: 20px;
+}
+
+.merchant-main .el-table .el-table__body td.el-table__cell {
+    color: #606266;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.merchant-main .el-table .el-table__body-wrapper .el-button [class*="el-icon-"] + span {
+    margin-left: 1px;
+}
+
+.merchant-main .el-table .small-padding.fixed-width .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 2px;
+    width: 100%;
+    white-space: nowrap;
+}
+
+.merchant-main .el-table .el-button.is-link {
+    height: auto;
+    min-width: auto;
     padding: 0 2px;
+    font-size: 12px;
+    line-height: 22px;
+}
+
+.merchant-main .el-table .small-padding.fixed-width .el-button + .el-button {
+    margin-left: 0;
+}
+
+.pagination-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 42px;
+    margin-top: 8px;
+    padding: 4px 0 0;
+    color: #606266;
+}
+
+.pagination-container .el-pagination {
+    --el-pagination-font-size: 13px;
+    --el-pagination-button-width: 28px;
+    --el-pagination-button-height: 28px;
+}
+
+.pagination-container .el-pagination.is-background .el-pager li {
+    min-width: 28px;
+    border-radius: 2px;
 }
 
 .permission-list {
@@ -210,10 +287,6 @@ body {
 }
 
 .page {
-    width: 100%;
-}
-
-.system-page .el-table {
     width: 100%;
 }
 

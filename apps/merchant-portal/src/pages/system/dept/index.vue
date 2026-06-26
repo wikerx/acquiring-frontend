@@ -9,19 +9,22 @@
             <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">新增部门</el-button>
             <el-button plain size="small" :icon="Refresh" @click="loadData">刷新</el-button>
         </div>
-        <el-table v-loading="loading" :data="filteredRows" row-key="deptId" size="small">
+        <el-table v-loading="loading" :data="rows" row-key="deptId" size="small">
             <el-table-column prop="deptName" label="部门名称" min-width="180" />
             <el-table-column prop="deptCode" label="部门编码" min-width="160" />
             <el-table-column prop="sortNo" label="排序" width="90" align="center" />
             <el-table-column label="状态" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template></el-table-column>
-            <el-table-column label="操作" width="180" align="center">
+            <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
-                    <el-button v-if="canEdit" link type="primary" @click="openForm(row)">编辑</el-button>
-                    <el-button v-if="canDelete" link type="danger" @click="remove(row)">删除</el-button>
+                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openForm(row)">编辑</el-button>
+                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">删除</el-button>
                     <span v-if="!canEdit && !canDelete">-</span>
                 </template>
             </el-table-column>
         </el-table>
+        <div class="pagination-container" v-show="total > 0">
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+        </div>
         <el-dialog v-model="visible" :title="form.deptId ? '编辑部门' : '新增部门'" width="520px">
             <el-form :model="form" label-width="92px">
                 <el-form-item label="上级部门"><el-tree-select v-model="form.parentId" :data="treeOptions" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" check-strictly clearable /></el-form-item>
@@ -37,56 +40,54 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { Delete, Edit, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { systemApi, type DeptItem } from '@/api/systemApi';
 import { hasPermission } from '@/utils/permission';
 
 const loading = ref(false);
 const visible = ref(false);
 const rows = ref<DeptItem[]>([]);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
 const treeOptions = ref<DeptItem[]>([]);
 const query = reactive<{ keyword: string; status?: number }>({ keyword: '' });
 const form = reactive<Partial<DeptItem>>({ parentId: 0, status: 1, sortNo: 0 });
 const canAdd = hasPermission('merchant:system:dept:add');
 const canEdit = hasPermission('merchant:system:dept:edit');
 const canDelete = hasPermission('merchant:system:dept:delete');
-const filteredRows = computed(() => filterDeptTree(rows.value));
 
 async function loadData() {
     loading.value = true;
     try {
-        rows.value = await systemApi.deptTree();
-        treeOptions.value = [{ deptId: 0, parentId: 0, deptCode: 'ROOT', deptName: '顶级部门', sortNo: 0, status: 1, children: rows.value }];
+        const [deptPage, deptTree] = await Promise.all([
+            systemApi.pageDepts({
+                pageNo: page.value,
+                pageSize: pageSize.value,
+                keyword: query.keyword.trim() || undefined,
+                status: query.status,
+            }),
+            systemApi.deptTree(),
+        ]);
+        rows.value = deptPage.records;
+        total.value = deptPage.total;
+        treeOptions.value = [{ deptId: 0, parentId: 0, deptCode: 'ROOT', deptName: '顶级部门', sortNo: 0, status: 1, children: deptTree }];
     } finally {
         loading.value = false;
     }
 }
 
 function applyQuery() {
-    // computed rows update from query state
+    page.value = 1;
+    loadData();
 }
 
 function resetQuery() {
     query.keyword = '';
     query.status = undefined;
-}
-
-function filterDeptTree(items: DeptItem[]): DeptItem[] {
-    const keyword = query.keyword.trim().toLowerCase();
-    const result: DeptItem[] = [];
-    items.forEach((item) => {
-        const children = filterDeptTree(item.children || []);
-        const matchedKeyword = !keyword
-            || item.deptName.toLowerCase().includes(keyword)
-            || item.deptCode.toLowerCase().includes(keyword);
-        const matchedStatus = query.status === undefined || item.status === query.status;
-        if ((matchedKeyword && matchedStatus) || children.length) {
-            result.push({ ...item, children });
-        }
-    });
-    return result;
+    applyQuery();
 }
 
 function openForm(row?: DeptItem) {
