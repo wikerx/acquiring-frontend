@@ -144,6 +144,34 @@ export interface MerchantQuery extends PageQuery {
 
 export type MerchantSaveRequest = Omit<MerchantInfo, 'id' | 'gmtCreate' | 'gmtModified' | 'jwtKey' | 'platformPayloadKey' | 'responseKey'>;
 
+export interface MerchantOptionNode {
+    value: string;
+    label: string;
+    nameCn?: string;
+    nameEn?: string;
+    children?: MerchantOptionNode[];
+}
+
+export interface MerchantOptionItem {
+    value: string;
+    label: string;
+    nameCn?: string;
+    nameEn?: string;
+    fractionDigits?: number;
+    minimumAmount?: number | string;
+}
+
+export interface MerchantFormOptions {
+    mccOptions: MerchantOptionNode[];
+    countries: MerchantOptionItem[];
+    currencies: MerchantOptionItem[];
+}
+
+export async function getMerchantFormOptions() {
+    const result = await http.get<CommonResult<MerchantFormOptions>>('/admin/merchants/form-options');
+    return unwrapResult(result.data);
+}
+
 export async function searchMerchants(requestBody: MerchantQuery) {
     const result = await http.post<CommonResult<PageResult<MerchantInfo>>>('/admin/merchants/search', requestBody);
     return unwrapResult(result.data);

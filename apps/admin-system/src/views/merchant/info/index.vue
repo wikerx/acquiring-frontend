@@ -83,9 +83,30 @@
         <el-form-item :label="$t('merchant.info.merchantId')"><el-input v-model="form.merchantId" :disabled="formMode === 'edit'" maxlength="32" /></el-form-item>
         <el-form-item :label="$t('merchant.info.merchantName')"><el-input v-model="form.merchantName" maxlength="128" /></el-form-item>
         <el-form-item :label="$t('merchant.info.shortName')"><el-input v-model="form.merchantShortName" maxlength="64" /></el-form-item>
-        <el-form-item label="MCC"><el-input v-model="form.merchantCategoryCode" maxlength="4" placeholder="5311" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.countryCode')"><el-input v-model="form.countryCode" maxlength="3" placeholder="USA" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.settlementCurrency')"><el-input v-model="form.settlementCurrency" maxlength="3" placeholder="USD" /></el-form-item>
+        <el-form-item label="MCC">
+          <el-cascader
+            v-model="selectedMccPath"
+            :options="localizedMccOptions"
+            :props="mccCascaderProps"
+            :show-all-levels="false"
+            :placeholder="$t('common.pleaseSelect')"
+            :loading="formOptionsLoading"
+            filterable
+            clearable
+            style="width:100%"
+            @change="handleMccChange"
+          />
+        </el-form-item>
+        <el-form-item :label="$t('merchant.info.countryCode')">
+          <el-select v-model="form.countryCode" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
+            <el-option v-for="item in formOptions.countries" :key="item.value" :label="countryOptionLabel(item)" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('merchant.info.settlementCurrency')">
+          <el-select v-model="form.settlementCurrency" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
+            <el-option v-for="item in formOptions.currencies" :key="item.value" :label="currencyOptionLabel(item)" :value="item.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="$t('merchant.info.timezone')">
           <el-select v-model="form.timezone" filterable clearable style="width:100%" :placeholder="$t('common.pleaseSelect')">
             <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
@@ -378,6 +399,7 @@ import {
   createMerchant,
   copyOpenApiKeyMaterial,
   downloadOpenApiKeyMaterial,
+  getMerchantFormOptions,
   getMerchantKeys,
   getOpenApiKeyMaterialSummary,
   getOpenApiKeyMaterialLogs,
@@ -391,6 +413,9 @@ import {
   type MerchantKeyBundle,
   type MerchantKeyMaterial,
   type MerchantInfo,
+  type MerchantFormOptions,
+  type MerchantOptionItem,
+  type MerchantOptionNode,
   type MerchantSaveRequest,
   type MerchantSecurityMaterial,
   type MerchantKeySummary,
@@ -410,6 +435,10 @@ const loading = ref(false);
 const rows = ref<MerchantInfo[]>([]);
 const selectedRows = ref<MerchantInfo[]>([]);
 const timezoneOptions = ref<SysDictData[]>([]);
+const formOptions = reactive<MerchantFormOptions>({ mccOptions: [], countries: [], currencies: [] });
+const formOptionsLoading = ref(false);
+const selectedMccPath = ref<string[]>([]);
+const mccCascaderProps = { emitPath: true };
 const page = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
@@ -457,10 +486,12 @@ const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:do
 const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
 const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
 const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
+const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
 
 onMounted(() => {
   loadData();
   loadTimezones();
+  loadFormOptions();
 });
 
 async function loadData() {
@@ -479,10 +510,12 @@ async function loadData() {
 
 function handleSearch() { page.value = 1; loadData(); }
 function resetQuery() { query.keyword = ''; query.merchantStatus = undefined; query.countryCode = ''; handleSearch(); }
-function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
+async function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
+  await loadFormOptions();
   formMode.value = mode;
   editingId.value = row?.id;
   Object.assign(form, emptyForm(), row || {});
+  selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
   formVisible.value = true;
 }
 function openDetail(row: MerchantInfo) { openMaterial(row); }
@@ -519,6 +552,85 @@ async function loadTimezones() {
   } catch {
     timezoneOptions.value = [];
   }
+}
+
+async function loadFormOptions() {
+  if (formOptions.mccOptions.length > 0 && formOptions.countries.length > 0 && formOptions.currencies.length > 0) return;
+  formOptionsLoading.value = true;
+  try {
+    const result = await getMerchantFormOptions();
+    formOptions.mccOptions = result.mccOptions || [];
+    formOptions.countries = result.countries || [];
+    formOptions.currencies = result.currencies || [];
+    selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.loadFailed'));
+  } finally {
+    formOptionsLoading.value = false;
+  }
+}
+
+function handleMccChange(value: unknown) {
+  if (Array.isArray(value) && value.length > 0) {
+    form.merchantCategoryCode = String(value[value.length - 1] || '');
+    return;
+  }
+  form.merchantCategoryCode = '';
+}
+
+function resolveMccPath(mccCode?: string) {
+  if (!mccCode) return [];
+  for (const level1 of formOptions.mccOptions) {
+    for (const level2 of level1.children || []) {
+      const leaf = (level2.children || []).find(item => item.value === mccCode);
+      if (leaf) {
+        return [level1.value, level2.value, leaf.value];
+      }
+    }
+  }
+  return [];
+}
+
+function localizeMccNode(node: MerchantOptionNode): MerchantOptionNode {
+  const children = (node.children || []).map(localizeMccNode);
+  return {
+    ...node,
+    label: children.length > 0 ? optionName(node) || node.label : codeNameLabel(node.value, node),
+    children,
+  };
+}
+
+function countryOptionLabel(item: MerchantOptionItem) {
+  return codeNameLabel(item.value, item);
+}
+
+function currencyOptionLabel(item: MerchantOptionItem) {
+  const separator = isEnglishLocale() ? ', ' : '，';
+  const colon = isEnglishLocale() ? ': ' : '：';
+  return [
+    codeNameLabel(item.value, item),
+    `${t('base.currency.minorUnit')}${colon}${item.fractionDigits ?? '-'}`,
+    `${t('base.currency.minAmount')}${colon}${formatMinimumAmount(item.minimumAmount)}`,
+  ].join(separator);
+}
+
+function codeNameLabel(code: string, item: Pick<MerchantOptionItem, 'label' | 'nameCn' | 'nameEn'>) {
+  const name = optionName(item);
+  return name ? `${code}（${name}）` : item.label || code;
+}
+
+function optionName(item: Pick<MerchantOptionItem, 'nameCn' | 'nameEn'>) {
+  const preferred = isEnglishLocale() ? item.nameEn : item.nameCn;
+  return preferred || item.nameCn || item.nameEn || '';
+}
+
+function isEnglishLocale() {
+  return String(locale.value).toLowerCase().startsWith('en');
+}
+
+function formatMinimumAmount(value?: number | string) {
+  if (value === undefined || value === null || value === '') return '-';
+  return String(value);
 }
 
 async function submitForm() {
