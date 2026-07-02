@@ -791,6 +791,23 @@ body {
         0 0 0 4px rgb(16 185 129 / 12%);
 }
 
+.merchant-login-verify-code {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 128px;
+    gap: 10px;
+    width: 100%;
+}
+
+.merchant-login-verify-code__button {
+    min-height: 50px;
+    border-radius: 16px !important;
+    border-color: rgb(16 185 129 / 24%) !important;
+    color: #047857 !important;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: normal;
+}
+
 .merchant-login-submit {
     width: 100%;
     height: 52px;
@@ -842,6 +859,10 @@ body {
 
     .merchant-login-panel {
         justify-content: center;
+    }
+
+    .merchant-login-verify-code {
+        grid-template-columns: 1fr;
     }
 
     .merchant-metric-grid,

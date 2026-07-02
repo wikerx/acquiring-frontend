@@ -58,7 +58,25 @@
                                 autocomplete="current-password"
                                 show-password
                                 :placeholder="t('login.passwordPlaceholder')"
+                                @keyup.enter="handleLogin"
                             />
+                        </el-form-item>
+                        <el-form-item :label="t('login.verifyCode')">
+                            <div class="merchant-login-verify-code">
+                                <el-input
+                                    v-model.trim="form.verifyCode"
+                                    :placeholder="t('login.verifyCodePlaceholder')"
+                                    @keyup.enter="handleLogin"
+                                />
+                                <el-button
+                                    class="merchant-login-verify-code__button"
+                                    :loading="sendingCode"
+                                    :disabled="loading || loadingCredential"
+                                    @click="handleSendVerifyCode"
+                                >
+                                    {{ t('login.getVerifyCode') }}
+                                </el-button>
+                            </div>
                         </el-form-item>
                         <el-button type="primary" class="merchant-login-submit" :loading="loading || loadingCredential" @click="handleLogin">
                             {{ t('login.submit') }}
@@ -92,6 +110,7 @@ const merchantBrand = getSystemBrand('merchant');
 const { t } = useI18n();
 const loading = ref(false);
 const loadingCredential = ref(false);
+const sendingCode = ref(false);
 const credentialLoaded = ref(false);
 const verifyCodeReceiver = ref('');
 const heroTags = computed(() => [t('login.tagTransaction'), t('login.tagSettlement'), t('login.tagOperation')]);
@@ -109,7 +128,7 @@ const form = reactive({
 });
 const loginHint = computed(() => {
     if (verifyCodeReceiver.value) {
-        return `${t('login.verifyCodeReady')} ${verifyCodeReceiver.value}`;
+        return `${t('login.verifyCodeSentTo')} ${verifyCodeReceiver.value}`;
     }
     return credentialLoaded.value ? t('login.defaultCredentialLoaded') : t('login.footerDescription');
 });
@@ -146,26 +165,45 @@ async function loadDefaultCredential() {
     }
 }
 
-async function prepareVerifyCode() {
-    if (!form.loginAccount || !form.password) {
+async function handleSendVerifyCode() {
+    if (!form.merchantId || !form.loginAccount) {
+        ElMessage.warning(t('login.accountRequired'));
         return;
     }
-    const result = await sendLoginVerifyCode({
-        loginAccount: form.loginAccount,
-        merchantId: form.merchantId || undefined,
-        scene: 'LOGIN',
-    });
-    form.verifyCodeId = result.verifyCodeId;
-    form.verifyCode = result.devCode || '';
-    verifyCodeReceiver.value = result.maskedReceiver;
+    sendingCode.value = true;
+    try {
+        const result = await sendLoginVerifyCode({
+            loginAccount: form.loginAccount,
+            merchantId: form.merchantId,
+            scene: 'LOGIN',
+        });
+        form.verifyCodeId = result.verifyCodeId;
+        form.verifyCode = result.devCode || '';
+        verifyCodeReceiver.value = result.maskedReceiver;
+        ElMessage.success(t('login.verifyCodeSent'));
+    } catch (error) {
+        const locale = document.documentElement.lang || navigator.language || 'zh-CN';
+        ElMessage.error(resolveFriendlyRequestMessage(error, locale));
+    } finally {
+        sendingCode.value = false;
+    }
 }
 
 async function handleLogin() {
+    if (!form.merchantId || !form.loginAccount || !form.password) {
+        ElMessage.warning(t('login.loginFieldsRequired'));
+        return;
+    }
+    if (!form.verifyCodeId) {
+        ElMessage.warning(t('login.getVerifyCodeFirst'));
+        return;
+    }
+    if (!form.verifyCode) {
+        ElMessage.warning(t('login.verifyCodeRequired'));
+        return;
+    }
     loading.value = true;
     try {
-        if (!form.verifyCodeId || !form.verifyCode) {
-            await prepareVerifyCode();
-        }
         const response = await login({
             merchantId: form.merchantId,
             loginAccount: form.loginAccount,
