@@ -32,6 +32,9 @@ export type PaymentLogoKey =
     | 'alipayPlus'
     | 'bankCard'
     | 'digitalWallet'
+    | 'cashAppPay'
+    | 'achDebit'
+    | 'bankTransfer'
     | 'spei'
     | 'pix'
     | 'pciDss'
@@ -169,6 +172,24 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         kind: 'wallet',
         label: 'Digital Wallet',
         textFallback: 'Digital Wallet',
+    },
+    cashAppPay: {
+        key: 'cashAppPay',
+        kind: 'wallet',
+        label: 'Cash App Pay',
+        textFallback: 'Cash App Pay',
+    },
+    achDebit: {
+        key: 'achDebit',
+        kind: 'bank-transfer',
+        label: 'ACH Debit',
+        textFallback: 'ACH Debit',
+    },
+    bankTransfer: {
+        key: 'bankTransfer',
+        kind: 'bank-transfer',
+        label: 'Bank Transfer',
+        textFallback: 'Bank Transfer',
     },
     spei: {
         key: 'spei',
