@@ -3,7 +3,7 @@
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
             <el-form-item :label="t('channel.common.channel')">
                 <el-select v-model="query.channelId" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" />
+                    <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.access.envMode')">
@@ -85,7 +85,7 @@
 
         <el-dialog :title="formMode === 'create' ? t('channel.access.addTitle') : t('channel.access.editTitle')" v-model="formVisible" width="720px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="128px" size="small">
-                <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%"><el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" /></el-select></el-form-item>
+                <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%"><el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.access.envMode')" prop="envMode"><el-select v-model="form.envMode" style="width:100%"><el-option v-for="item in envOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.access.baseUrl')" prop="baseUrl"><el-input v-model.trim="form.baseUrl" maxlength="512" /></el-form-item>
                 <el-form-item :label="t('channel.access.callbackUrl')"><el-input v-model.trim="form.callbackUrl" maxlength="512" /></el-form-item>
@@ -116,7 +116,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { createChannelAccessConfig, deleteChannelAccessConfig, getChannelAccessConfig, searchChannelAccessConfigs, updateChannelAccessConfig, updateChannelAccessConfigStatus, type ChannelAccessConfig, type ChannelOption } from '@/api/channel';
-import { loadChannelOptions, loadDictOptions, optionLabel, statusText, statusType, type SelectOption } from '../shared';
+import { channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, statusText, statusType, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);

@@ -1,4 +1,5 @@
 import type { PaymentLogoKey } from '@acquiring/shared';
+import { searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
 import { listChannelOptions, type ChannelOption } from '@/api/channel';
 
@@ -51,6 +52,11 @@ export async function loadChannelOptions(): Promise<ChannelOption[]> {
     return listChannelOptions();
 }
 
+export async function loadCurrencyOptions(): Promise<IsoCurrency[]> {
+    const result = await searchCurrencies({ pageNo: 1, pageSize: 500, status: 1 });
+    return result.records.map((item) => ({ ...item, alpha3Code: normalizeCode(item.alpha3Code) }));
+}
+
 export function optionLabel(options: SelectOption[], value?: string) {
     if (!value) {
         return '-';
@@ -63,7 +69,16 @@ export function channelLabel(options: ChannelOption[], id?: number) {
         return '-';
     }
     const option = options.find((item) => item.id === id);
-    return option ? `${option.channelName} (${option.channelCode})` : String(id);
+    return option ? channelOptionLabel(option) : String(id);
+}
+
+export function channelOptionLabel(option: ChannelOption) {
+    return `${option.channelCode} (${option.channelName})`;
+}
+
+export function currencyOptionLabel(option: IsoCurrency) {
+    const name = option.chineseName || option.englishName;
+    return name ? `${option.alpha3Code} (${name})` : option.alpha3Code;
 }
 
 export function statusType(value?: number) {
@@ -106,4 +121,8 @@ export function arrayText(values?: string[], options: SelectOption[] = []) {
         return '-';
     }
     return values.map((value) => optionLabel(options, value)).join(', ');
+}
+
+function normalizeCode(value?: string) {
+    return (value || '').trim().toUpperCase();
 }

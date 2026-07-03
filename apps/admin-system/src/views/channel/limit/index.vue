@@ -3,7 +3,7 @@
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
             <el-form-item :label="t('channel.common.channel')">
                 <el-select v-model="query.channelId" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" />
+                    <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.businessType')">
@@ -40,7 +40,6 @@
             <el-table-column prop="channelName" :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center"><template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template></el-table-column>
             <el-table-column :label="t('channel.common.paymentMethod')" min-width="140" align="center"><template #default="{ row }">{{ optionLabel(paymentOptions, row.paymentMethod) }}</template></el-table-column>
-            <el-table-column :label="t('channel.common.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ optionLabel(transactionOptions, row.transactionType) }}</template></el-table-column>
             <el-table-column :label="t('channel.common.cardBrand')" min-width="130" align="center"><template #default="{ row }">{{ optionLabel(cardBrandOptions, row.cardBrand) }}</template></el-table-column>
             <el-table-column :label="t('channel.limit.limitType')" min-width="130" align="center"><template #default="{ row }">{{ optionLabel(limitTypeOptions, row.limitType) }}</template></el-table-column>
             <el-table-column :label="t('channel.limit.limitAmount')" min-width="130" align="center">
@@ -72,7 +71,6 @@
                 <el-descriptions-item :label="t('channel.common.channel')">{{ detailRow.channelName }} ({{ detailRow.channelCode }})</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.paymentMethod')">{{ optionLabel(paymentOptions, detailRow.paymentMethod) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.transactionType')">{{ optionLabel(transactionOptions, detailRow.transactionType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.cardBrand')">{{ optionLabel(cardBrandOptions, detailRow.cardBrand) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.limit.limitType')">{{ optionLabel(limitTypeOptions, detailRow.limitType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.limit.limitCurrency')">{{ detailRow.limitCurrency }}</el-descriptions-item>
@@ -89,11 +87,10 @@
 
         <el-dialog :title="formMode === 'create' ? t('channel.limit.addTitle') : t('channel.limit.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
-                <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%"><el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" /></el-select></el-form-item>
-                <el-form-item :label="t('channel.common.businessType')" prop="businessType"><el-select v-model="form.businessType" style="width:100%"><el-option v-for="item in businessOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item :label="t('channel.common.paymentMethod')"><el-select v-model="form.paymentMethod" clearable filterable style="width:100%"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in paymentOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item :label="t('channel.common.transactionType')"><el-select v-model="form.transactionType" clearable filterable style="width:100%"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in transactionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item :label="t('channel.common.cardBrand')"><el-select v-model="form.cardBrand" clearable filterable style="width:100%"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%" @change="handleScopeChange"><el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" /></el-select></el-form-item>
+                <el-form-item :label="t('channel.common.businessType')" prop="businessType"><el-select v-model="form.businessType" style="width:100%" @change="handleScopeChange"><el-option v-for="item in businessOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item :label="t('channel.common.paymentMethod')"><el-select v-model="form.paymentMethod" clearable filterable style="width:100%" @change="handlePaymentMethodChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')"><el-select v-model="form.cardBrand" clearable filterable style="width:100%"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.limit.limitType')" prop="limitType"><el-select v-model="form.limitType" filterable style="width:100%"><el-option v-for="item in limitTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.limit.limitAmount')" prop="limitAmount"><el-input-number v-model="form.limitAmount" :min="0" :precision="2" style="width:100%" /></el-form-item>
                 <el-form-item :label="t('channel.limit.effectiveRange')">
@@ -111,14 +108,14 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
-import { createChannelLimit, deleteChannelLimit, getChannelLimit, searchChannelLimits, updateChannelLimit, updateChannelLimitStatus, type ChannelLimitRule, type ChannelOption } from '@/api/channel';
-import { loadChannelOptions, loadDictOptions, optionLabel, statusText, statusType, type SelectOption } from '../shared';
+import { createChannelLimit, deleteChannelLimit, getChannelLimit, searchChannelCapabilities, searchChannelLimits, updateChannelLimit, updateChannelLimitStatus, type ChannelLimitRule, type ChannelOption } from '@/api/channel';
+import { channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, statusText, statusType, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -136,16 +133,17 @@ const formRef = ref<FormInstance>();
 const effectiveRange = ref<[string, string] | []>([]);
 const channelOptions = ref<ChannelOption[]>([]);
 const businessOptions = ref<SelectOption[]>([]);
+const acquiringPaymentOptions = ref<SelectOption[]>([]);
+const payoutPaymentOptions = ref<SelectOption[]>([]);
 const paymentOptions = ref<SelectOption[]>([]);
-const transactionOptions = ref<SelectOption[]>([]);
 const cardBrandOptions = ref<SelectOption[]>([]);
 const limitTypeOptions = ref<SelectOption[]>([]);
+const enabledCapabilityMethods = ref<string[]>([]);
 
 const query = reactive({
     channelId: undefined as number | undefined,
     businessType: '',
     paymentMethod: '',
-    transactionType: '',
     cardBrand: '',
     limitType: '',
     ruleStatus: undefined as number | undefined,
@@ -156,7 +154,6 @@ const emptyForm = () => ({
     channelId: undefined as number | undefined,
     businessType: 'ACQUIRING',
     paymentMethod: 'ALL',
-    transactionType: 'ALL',
     cardBrand: 'ALL',
     limitType: '',
     limitAmount: 0,
@@ -173,6 +170,22 @@ const rules: FormRules = {
     limitAmount: [{ required: true, message: t('channel.limit.requiredLimitAmount'), trigger: 'blur' }],
     ruleStatus: [{ required: true, message: t('channel.limit.requiredStatus'), trigger: 'change' }],
 };
+const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const paymentOptionsByBusiness = computed(() => {
+    if (form.businessType === 'PAYOUT') {
+        return payoutPaymentOptions.value;
+    }
+    if (form.businessType === 'ACQUIRING') {
+        return acquiringPaymentOptions.value;
+    }
+    return paymentOptions.value;
+});
+const formPaymentOptions = computed(() => {
+    const options = form.channelId && form.businessType
+        ? paymentOptionsByBusiness.value.filter((item) => enabledCapabilityMethods.value.includes(item.value))
+        : paymentOptionsByBusiness.value;
+    return dedupeOptions(options);
+});
 
 onMounted(async () => {
     await Promise.all([loadOptions(), loadData()]);
@@ -183,19 +196,19 @@ watch(locale, () => {
 });
 
 async function loadOptions() {
-    const [channels, business, acquiringPayments, payoutPayments, transactions, cardBrands, limitTypes] = await Promise.all([
+    const [channels, business, acquiringPayments, payoutPayments, cardBrands, limitTypes] = await Promise.all([
         loadChannelOptions(),
         loadDictOptions('channel_business_type', String(locale.value)),
         loadDictOptions('acquiring_payment_method', String(locale.value)),
         loadDictOptions('payout_payment_method', String(locale.value)),
-        loadDictOptions('transaction_type', String(locale.value)),
         loadDictOptions('card_brand', String(locale.value)),
         loadDictOptions('channel_limit_type', String(locale.value)),
     ]);
     channelOptions.value = channels;
     businessOptions.value = business;
+    acquiringPaymentOptions.value = acquiringPayments;
+    payoutPaymentOptions.value = payoutPayments;
     paymentOptions.value = [...acquiringPayments, ...payoutPayments];
-    transactionOptions.value = transactions;
     cardBrandOptions.value = cardBrands;
     limitTypeOptions.value = limitTypes;
 }
@@ -220,7 +233,6 @@ function resetQuery() {
     query.channelId = undefined;
     query.businessType = '';
     query.paymentMethod = '';
-    query.transactionType = '';
     query.cardBrand = '';
     query.limitType = '';
     query.ruleStatus = undefined;
@@ -232,12 +244,32 @@ async function openDetail(row: ChannelLimitRule) {
     detailVisible.value = true;
 }
 
-function openForm(mode: 'create' | 'edit', row?: ChannelLimitRule) {
+async function openForm(mode: 'create' | 'edit', row?: ChannelLimitRule) {
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
+    await refreshCapabilityMethods();
+    syncConditionalFields();
     effectiveRange.value = form.effectiveStartTime && form.effectiveEndTime ? [form.effectiveStartTime, form.effectiveEndTime] : [];
     formVisible.value = true;
     nextTick(() => formRef.value?.clearValidate());
+}
+
+async function handleScopeChange() {
+    await refreshCapabilityMethods();
+    if (form.paymentMethod !== 'ALL' && !formPaymentOptions.value.some((item) => item.value === form.paymentMethod)) {
+        form.paymentMethod = 'ALL';
+    }
+    syncConditionalFields();
+}
+
+function handlePaymentMethodChange() {
+    syncConditionalFields();
+}
+
+function syncConditionalFields() {
+    if (!isBankCardPayment.value) {
+        form.cardBrand = 'ALL';
+    }
 }
 
 function syncRange(value: [string, string] | null) {
@@ -246,18 +278,46 @@ function syncRange(value: [string, string] | null) {
 }
 
 async function submitForm() {
+    syncConditionalFields();
     const valid = await formRef.value?.validate().catch(() => false);
     if (!valid) {
         return;
     }
+    const payload = { ...form, transactionType: 'ALL' };
     if (formMode.value === 'create') {
-        await createChannelLimit(form);
+        await createChannelLimit(payload);
     } else {
-        await updateChannelLimit(form.id, form);
+        await updateChannelLimit(form.id, payload);
     }
     ElMessage.success(t('channel.common.saveSuccess'));
     formVisible.value = false;
     loadData();
+}
+
+async function refreshCapabilityMethods() {
+    if (!form.channelId || !form.businessType) {
+        enabledCapabilityMethods.value = [];
+        return;
+    }
+    const result = await searchChannelCapabilities({
+        pageNo: 1,
+        pageSize: 200,
+        channelId: form.channelId,
+        businessType: form.businessType,
+        capabilityStatus: 1,
+    });
+    enabledCapabilityMethods.value = Array.from(new Set(result.records.map((item) => item.paymentMethod).filter(Boolean)));
+}
+
+function dedupeOptions(options: SelectOption[]) {
+    const seen = new Set<string>();
+    return options.filter((item) => {
+        if (seen.has(item.value)) {
+            return false;
+        }
+        seen.add(item.value);
+        return true;
+    });
 }
 
 async function toggleStatus(row: ChannelLimitRule) {

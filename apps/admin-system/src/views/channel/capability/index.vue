@@ -3,7 +3,7 @@
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
             <el-form-item :label="t('channel.common.channel')">
                 <el-select v-model="query.channelId" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" />
+                    <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.businessType')">
@@ -47,15 +47,15 @@
                 <template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template>
             </el-table-column>
             <el-table-column :label="t('channel.common.paymentMethod')" min-width="150" align="center">
-                <template #default="{ row }">
-                    <div class="logo-line">
-                        <PaymentLogoGroup :keys="paymentLogo(row.paymentMethod)" fallback="text" size="sm" />
-                        <span>{{ optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod) }}</span>
-                    </div>
-                </template>
+                <template #default="{ row }">{{ optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod) }}</template>
             </el-table-column>
-            <el-table-column :label="t('channel.common.transactionType')" min-width="130" align="center">
-                <template #default="{ row }">{{ optionLabel(transactionOptions, row.transactionType) }}</template>
+            <el-table-column :label="t('channel.common.transactionType')" min-width="260" align="center">
+                <template #default="{ row }">
+                    <div v-if="transactionTypeItems(row).length" class="tag-list">
+                        <el-tag v-for="item in transactionTypeItems(row)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </template>
             </el-table-column>
             <el-table-column :label="t('channel.common.currency')" min-width="150" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">{{ row.currencyCodes?.join(', ') || '-' }}</template>
@@ -66,8 +66,22 @@
                     <span v-else>-</span>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.capability.incrementalAuthorization')" width="100" align="center">
-                <template #default="{ row }">{{ yesNoText(row.supportIncrementalAuthorization, t('channel.common.yes'), t('channel.common.no')) }}</template>
+            <el-table-column label="3DS" width="90" align="center">
+                <template #default="{ row }">
+                    <el-switch :model-value="row.support3ds" :active-value="1" :inactive-value="0" @change="toggleSupportFlag(row, 'support3ds', $event)" v-hasPermi="'channel:capability:edit'" />
+                </template>
+            </el-table-column>
+            <el-table-column :label="t('channel.capability.incrementalAuthorization')" width="120" align="center">
+                <template #default="{ row }">
+                    <el-switch
+                        :model-value="row.supportIncrementalAuthorization"
+                        :active-value="1"
+                        :inactive-value="0"
+                        :disabled="!canRowConfigureIncrementalAuthorization(row)"
+                        @change="toggleSupportFlag(row, 'supportIncrementalAuthorization', $event)"
+                        v-hasPermi="'channel:capability:edit'"
+                    />
+                </template>
             </el-table-column>
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
                 <template #default="{ row }"><el-switch :model-value="row.capabilityStatus" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'channel:capability:status'" /></template>
@@ -91,11 +105,23 @@
                 <el-descriptions-item :label="t('channel.common.channel')">{{ detailRow.channelName }} ({{ detailRow.channelCode }})</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.paymentMethod')">{{ optionLabel(paymentOptionsFor(detailRow.businessType), detailRow.paymentMethod) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.transactionType')">{{ optionLabel(transactionOptions, detailRow.transactionType) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.transactionType')">
+                    <div v-if="transactionTypeItems(detailRow).length" class="tag-list">
+                        <el-tag v-for="item in transactionTypeItems(detailRow)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.currencies')">{{ detailRow.currencyCodes?.join(', ') || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.cardBrand')">{{ arrayText(detailRow.cardBrands, cardBrandOptions) }}</el-descriptions-item>
-                <el-descriptions-item label="3DS">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.capability.supportIncrementalAuthorization')">{{ yesNoText(detailRow.supportIncrementalAuthorization, t('channel.common.yes'), t('channel.common.no')) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.cardBrand')">
+                    <PaymentLogoGroup v-if="detailRow.cardBrands?.length" :keys="cardLogo(detailRow.cardBrands)" fallback="text" size="sm" />
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="3DS">
+                    <el-tag size="small" effect="plain" :type="detailRow.support3ds === 1 ? 'success' : 'info'">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('channel.capability.supportIncrementalAuthorization')">
+                    <el-tag size="small" effect="plain" :type="detailRow.supportIncrementalAuthorization === 1 ? 'success' : 'info'">{{ yesNoText(detailRow.supportIncrementalAuthorization, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.status')"><el-tag size="small" :type="statusType(detailRow.capabilityStatus)">{{ statusText(detailRow.capabilityStatus, t('channel.common.enabled'), t('channel.common.disabled')) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.sort')">{{ detailRow.sortOrder ?? 0 }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
@@ -108,40 +134,37 @@
         <el-dialog :title="formMode === 'create' ? t('channel.capability.addTitle') : t('channel.capability.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
                 <el-form-item :label="t('channel.common.channel')" prop="channelId">
-                    <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%">
-                        <el-option v-for="item in channelOptions" :key="item.id" :label="`${item.channelName} (${item.channelCode})`" :value="item.id" />
+                    <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="isEditMode">
+                        <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.businessType')" prop="businessType">
-                    <el-select v-model="form.businessType" style="width:100%" @change="handleBusinessChange">
+                    <el-select v-model="form.businessType" style="width:100%" :disabled="isEditMode" @change="handleBusinessChange">
                         <el-option v-for="item in businessOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
-                    <el-select v-model="form.paymentMethod" filterable style="width:100%" @change="handlePaymentChange">
+                    <el-select v-model="form.paymentMethod" filterable style="width:100%" :disabled="isEditMode" @change="handlePaymentChange">
                         <el-option v-for="item in paymentOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
-                <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.common.transactionType')" prop="transactionType">
-                    <el-select v-model="form.transactionType" filterable style="width:100%">
+                <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.common.transactionType')" prop="transactionTypes">
+                    <el-select v-model="form.transactionTypes" multiple filterable style="width:100%" @change="handleTransactionTypeChange">
                         <el-option v-for="item in transactionOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.currencies')" prop="currencyCodes">
-                    <el-select v-model="form.currencyCodes" multiple filterable allow-create default-first-option style="width:100%" :placeholder="t('channel.capability.currencyPlaceholder')">
-                        <el-option label="USD" value="USD" />
-                        <el-option label="EUR" value="EUR" />
-                        <el-option label="GBP" value="GBP" />
-                        <el-option label="CNY" value="CNY" />
+                    <el-select v-model="form.currencyCodes" multiple filterable :reserve-keyword="false" style="width:100%" :loading="currencyLoading" :placeholder="t('channel.capability.currencyPlaceholder')">
+                        <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
                     </el-select>
                 </el-form-item>
-                <el-form-item v-if="form.paymentMethod === 'BANK_CARD'" :label="t('channel.common.cardBrand')" prop="cardBrands">
+                <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
                     <el-select v-model="form.cardBrands" multiple filterable style="width:100%">
                         <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.info.support3ds')"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
-                <el-form-item :label="t('channel.capability.incrementalAuthorization')"><el-switch v-model="form.supportIncrementalAuthorization" :active-value="1" :inactive-value="0" /></el-form-item>
+                <el-form-item v-if="canConfigureIncrementalAuthorization" :label="t('channel.capability.incrementalAuthorization')"><el-switch v-model="form.supportIncrementalAuthorization" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item :label="t('channel.common.status')" prop="capabilityStatus"><el-select v-model="form.capabilityStatus" style="width:100%"><el-option :label="t('channel.common.enabled')" :value="1" /><el-option :label="t('channel.common.disabled')" :value="0" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.common.sort')"><el-input-number v-model="form.sortOrder" :min="0" style="width:100%" /></el-form-item>
                 <el-form-item :label="t('channel.common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
@@ -168,26 +191,30 @@ import {
     getChannelCapability,
     searchChannelCapabilities,
     updateChannelCapability,
+    updateChannelCapabilitySupport,
     updateChannelCapabilityStatus,
     type ChannelCapability,
     type ChannelOption,
 } from '@/api/channel';
 import {
-    arrayText,
     cardLogoKeys,
+    channelOptionLabel,
+    currencyOptionLabel,
     loadChannelOptions,
+    loadCurrencyOptions,
     loadDictOptions,
     optionLabel,
-    paymentLogoKeys,
     statusText,
     statusType,
     yesNoText,
     type SelectOption,
 } from '../shared';
+import type { IsoCurrency } from '@/api/base/currency';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
+const currencyLoading = ref(false);
 const rows = ref<ChannelCapability[]>([]);
 const selectedRows = ref<ChannelCapability[]>([]);
 const total = ref(0);
@@ -204,6 +231,8 @@ const acquiringPaymentOptions = ref<SelectOption[]>([]);
 const payoutPaymentOptions = ref<SelectOption[]>([]);
 const transactionOptions = ref<SelectOption[]>([]);
 const cardBrandOptions = ref<SelectOption[]>([]);
+const currencyOptions = ref<IsoCurrency[]>([]);
+const INCREMENTAL_AUTH_TRANSACTION_TYPES = new Set(['AUTHORIZATION', 'PRE_AUTHORIZATION']);
 
 const query = reactive({
     channelId: undefined as number | undefined,
@@ -221,6 +250,7 @@ const emptyForm = () => ({
     businessType: 'ACQUIRING',
     paymentMethod: 'BANK_CARD',
     transactionType: 'PAYMENT',
+    transactionTypes: ['PAYMENT'] as string[],
     currencyCodes: ['USD'] as string[],
     cardBrands: [] as string[],
     support3ds: 1,
@@ -234,16 +264,24 @@ const rules: FormRules = {
     channelId: [{ required: true, message: t('channel.capability.requiredChannel'), trigger: 'change' }],
     businessType: [{ required: true, message: t('channel.capability.requiredBusinessType'), trigger: 'change' }],
     paymentMethod: [{ required: true, message: t('channel.capability.requiredPaymentMethod'), trigger: 'change' }],
-    transactionType: [{ required: true, message: t('channel.capability.requiredTransactionType'), trigger: 'change' }],
+    transactionTypes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredTransactionType'), trigger: 'change' }],
     currencyCodes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredCurrencies'), trigger: 'change' }],
     cardBrands: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredCardBrands'), trigger: 'change' }],
     capabilityStatus: [{ required: true, message: t('channel.capability.requiredStatus'), trigger: 'change' }],
 };
 
 const currentPaymentOptions = computed(() => paymentOptionsFor(query.businessType || 'ACQUIRING'));
+const isEditMode = computed(() => formMode.value === 'edit');
+const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const canConfigureIncrementalAuthorization = computed(() => {
+    if (form.businessType !== 'ACQUIRING') {
+        return false;
+    }
+    return form.transactionTypes.some((value) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(value));
+});
 
 onMounted(async () => {
-    await Promise.all([loadOptions(), loadData()]);
+    await Promise.all([loadOptions(), loadCurrencyList(), loadData()]);
 });
 
 watch(locale, () => {
@@ -265,6 +303,15 @@ async function loadOptions() {
     payoutPaymentOptions.value = payoutPayments;
     transactionOptions.value = transactions;
     cardBrandOptions.value = cardBrands;
+}
+
+async function loadCurrencyList() {
+    currencyLoading.value = true;
+    try {
+        currencyOptions.value = await loadCurrencyOptions();
+    } finally {
+        currencyLoading.value = false;
+    }
 }
 
 async function loadData() {
@@ -306,9 +353,9 @@ async function openDetail(row: ChannelCapability) {
 function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
-    if (form.paymentMethod !== 'BANK_CARD') {
-        form.cardBrands = [];
-    }
+    form.transactionTypes = normalizeTransactionTypes(form.businessType, form.transactionTypes, form.transactionType);
+    form.transactionType = form.transactionTypes.join(',');
+    syncConditionalFields();
     formVisible.value = true;
     nextTick(() => formRef.value?.clearValidate());
 }
@@ -316,21 +363,40 @@ function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
 function handleBusinessChange() {
     form.paymentMethod = form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : 'BANK_CARD';
     form.transactionType = form.businessType === 'PAYOUT' ? 'NONE' : 'PAYMENT';
+    form.transactionTypes = form.businessType === 'PAYOUT' ? [] : ['PAYMENT'];
     handlePaymentChange();
 }
 
 function handlePaymentChange() {
-    if (form.paymentMethod !== 'BANK_CARD') {
+    syncConditionalFields();
+}
+
+function handleTransactionTypeChange() {
+    syncConditionalFields();
+}
+
+function syncConditionalFields() {
+    if (!isBankCardPayment.value) {
         form.cardBrands = [];
+    }
+    if (!canConfigureIncrementalAuthorization.value) {
+        form.supportIncrementalAuthorization = 0;
     }
 }
 
 async function submitForm() {
+    syncConditionalFields();
     const valid = await formRef.value?.validate().catch(() => false);
     if (!valid) {
         return;
     }
-    const payload = { ...form, transactionType: form.businessType === 'PAYOUT' ? 'NONE' : form.transactionType };
+    const transactionTypes = form.businessType === 'PAYOUT' ? ['NONE'] : form.transactionTypes;
+    const payload = {
+        ...form,
+        transactionTypes,
+        transactionType: transactionTypes.join(','),
+        supportIncrementalAuthorization: transactionTypes.some((type) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(type)) ? form.supportIncrementalAuthorization : 0,
+    };
     if (formMode.value === 'create') {
         await createChannelCapability(payload);
     } else {
@@ -347,6 +413,23 @@ async function toggleStatus(row: ChannelCapability) {
     loadData();
 }
 
+async function toggleSupportFlag(row: ChannelCapability, field: 'support3ds' | 'supportIncrementalAuthorization', value: string | number | boolean) {
+    const enabledValue = value === 1 || value === true ? 1 : 0;
+    const previousValue = row[field];
+    row[field] = enabledValue;
+    try {
+        const response = await updateChannelCapabilitySupport(row.id, {
+            [field]: enabledValue,
+        });
+        Object.assign(row, response);
+        ElMessage.success(t('channel.common.operationSuccess'));
+        loadData();
+    } catch (error) {
+        row[field] = previousValue;
+        throw error;
+    }
+}
+
 async function handleDelete(row?: ChannelCapability) {
     if (!row) {
         return;
@@ -361,21 +444,45 @@ async function handleDelete(row?: ChannelCapability) {
     loadData();
 }
 
-function paymentLogo(value?: string): PaymentLogoKey[] {
-    return paymentLogoKeys(value, [...acquiringPaymentOptions.value, ...payoutPaymentOptions.value].find((item) => item.value === value));
-}
-
 function cardLogo(values?: string[]): PaymentLogoKey[] {
     return (values || []).flatMap((value) => cardLogoKeys(value, cardBrandOptions.value.find((item) => item.value === value)));
+}
+
+function normalizeTransactionTypes(businessType?: string, transactionTypes?: string[], transactionType?: string) {
+    if (businessType === 'PAYOUT') {
+        return [];
+    }
+    const values = [...(transactionTypes || []), ...(transactionType || '').split(',')];
+    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function transactionTypeText(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
+    const values = normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType);
+    if (!values.length) {
+        return '-';
+    }
+    return values.map((value) => optionLabel(transactionOptions.value, value)).join(', ');
+}
+
+function transactionTypeItems(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
+    return normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType).map((value) => ({
+        value,
+        label: optionLabel(transactionOptions.value, value),
+    }));
+}
+
+function canRowConfigureIncrementalAuthorization(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
+    return row.businessType === 'ACQUIRING'
+        && normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType).some((value) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(value));
 }
 </script>
 
 <style scoped>
-.logo-line {
+.tag-list {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .center-dialog-footer {

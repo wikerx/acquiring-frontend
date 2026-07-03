@@ -1,13 +1,5 @@
 <template>
   <div class="app-container">
-    <div class="page-header">
-      <div>
-        <h1>{{ $t('route.SystemDict') }}</h1>
-        <p>{{ $t('system.config.description') }}</p>
-      </div>
-      <el-tag type="success" size="small">{{ $t('system.config.apiConnected') }}</el-tag>
-    </div>
-
     <el-form ref="queryFormRef" :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="82px">
       <el-form-item :label="$t('system.config.dictName')" prop="dictName"><el-input v-model="query.dictName" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" /></el-form-item>
       <el-form-item :label="$t('system.config.dictType')" prop="dictType"><el-input v-model="query.dictType" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" /></el-form-item>

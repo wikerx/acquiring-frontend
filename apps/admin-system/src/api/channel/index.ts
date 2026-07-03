@@ -38,6 +38,7 @@ export interface ChannelCapability {
     businessType: string;
     paymentMethod: string;
     transactionType?: string;
+    transactionTypes?: string[];
     currencyCodes: string[];
     cardBrands: string[];
     support3ds: number;
@@ -186,6 +187,11 @@ export async function updateChannelCapability(id: number, data: Partial<ChannelC
 
 export async function updateChannelCapabilityStatus(id: number, status: number) {
     const result = await http.put<CommonResult<ChannelCapability>>(`/admin/channel/capabilities/${id}/status`, { status });
+    return unwrapResult(result.data);
+}
+
+export async function updateChannelCapabilitySupport(id: number, data: Pick<Partial<ChannelCapability>, 'support3ds' | 'supportIncrementalAuthorization'>) {
+    const result = await http.put<CommonResult<ChannelCapability>>(`/admin/channel/capabilities/${id}/support`, data);
     return unwrapResult(result.data);
 }
 
