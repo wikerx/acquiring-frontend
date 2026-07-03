@@ -142,7 +142,9 @@ export interface MerchantQuery extends PageQuery {
     settlementCurrency?: string;
 }
 
-export type MerchantSaveRequest = Omit<MerchantInfo, 'id' | 'gmtCreate' | 'gmtModified' | 'jwtKey' | 'platformPayloadKey' | 'responseKey'>;
+export type MerchantSaveRequest = Omit<MerchantInfo, 'id' | 'merchantId' | 'gmtCreate' | 'gmtModified' | 'jwtKey' | 'platformPayloadKey' | 'responseKey'> & {
+    merchantId?: string;
+};
 
 export interface MerchantOptionNode {
     value: string;

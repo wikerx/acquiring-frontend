@@ -78,12 +78,43 @@
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
     </div>
 
+    <el-dialog :title="$t('merchant.info.detailTitle')" v-model="detailVisible" width="720px" append-to-body destroy-on-close>
+      <el-descriptions v-if="detailMerchant" :column="1" border size="small">
+        <el-descriptions-item :label="$t('merchant.info.merchantId')">{{ detailMerchant.merchantId }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.merchantName')">{{ detailMerchant.merchantName }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.shortName')">{{ detailMerchant.merchantShortName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="MCC">{{ detailMerchant.merchantCategoryCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.countryCode')">{{ detailMerchant.countryCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.settlementCurrency')">{{ detailMerchant.settlementCurrency || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.timezone')">{{ detailMerchant.timezone || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('common.status')">
+          <el-tag size="small" :type="statusType(detailMerchant.merchantStatus)">{{ statusText(detailMerchant.merchantStatus) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.riskLevel')">
+          <el-tag size="small" :type="riskType(detailMerchant.riskLevel)">{{ riskText(detailMerchant.riskLevel) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.contactEmail')">{{ detailMerchant.contactEmail || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.contactPhone')">{{ detailMerchant.contactPhone || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.regionCode')">{{ detailMerchant.regionCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.city')">{{ detailMerchant.city || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailMerchant.gmtCreate" /></el-descriptions-item>
+        <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailMerchant.gmtModified" /></el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.info.address')">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <div class="merchant-detail-footer">
+          <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <el-dialog :title="formMode === 'add' ? $t('merchant.info.addTitle') : $t('merchant.info.editTitle')" v-model="formVisible" width="640px" append-to-body destroy-on-close>
-      <el-form :model="form" label-width="112px" size="small">
-        <el-form-item :label="$t('merchant.info.merchantId')"><el-input v-model="form.merchantId" :disabled="formMode === 'edit'" maxlength="32" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.merchantName')"><el-input v-model="form.merchantName" maxlength="128" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.shortName')"><el-input v-model="form.merchantShortName" maxlength="64" /></el-form-item>
-        <el-form-item label="MCC">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="112px" size="small">
+        <el-form-item v-if="formMode === 'edit'" :label="$t('merchant.info.merchantId')" prop="merchantId"><el-input v-model="form.merchantId" disabled maxlength="32" /></el-form-item>
+        <el-form-item v-else :label="$t('merchant.info.merchantId')"><el-input :model-value="$t('merchant.info.autoGenerateMerchantId')" disabled /></el-form-item>
+        <el-form-item :label="$t('merchant.info.merchantName')" prop="merchantName"><el-input v-model.trim="form.merchantName" maxlength="128" /></el-form-item>
+        <el-form-item :label="$t('merchant.info.shortName')" prop="merchantShortName"><el-input v-model.trim="form.merchantShortName" maxlength="64" /></el-form-item>
+        <el-form-item label="MCC" prop="merchantCategoryCode">
           <el-cascader
             v-model="selectedMccPath"
             :options="localizedMccOptions"
@@ -97,25 +128,25 @@
             @change="handleMccChange"
           />
         </el-form-item>
-        <el-form-item :label="$t('merchant.info.countryCode')">
+        <el-form-item :label="$t('merchant.info.countryCode')" prop="countryCode">
           <el-select v-model="form.countryCode" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
             <el-option v-for="item in formOptions.countries" :key="item.value" :label="countryOptionLabel(item)" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="$t('merchant.info.settlementCurrency')">
+        <el-form-item :label="$t('merchant.info.settlementCurrency')" prop="settlementCurrency">
           <el-select v-model="form.settlementCurrency" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
             <el-option v-for="item in formOptions.currencies" :key="item.value" :label="currencyOptionLabel(item)" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="$t('merchant.info.timezone')">
+        <el-form-item :label="$t('merchant.info.timezone')" prop="timezone">
           <el-select v-model="form.timezone" filterable clearable style="width:100%" :placeholder="$t('common.pleaseSelect')">
             <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="$t('common.status')"><el-select v-model="form.merchantStatus" style="width:100%"><el-option :label="$t('merchant.info.statusNormal')" :value="1" /><el-option :label="$t('merchant.info.statusFrozen')" :value="2" /><el-option :label="$t('merchant.info.statusClosed')" :value="3" /></el-select></el-form-item>
+        <el-form-item :label="$t('common.status')" prop="merchantStatus"><el-select v-model="form.merchantStatus" style="width:100%"><el-option :label="$t('merchant.info.statusNormal')" :value="1" /><el-option :label="$t('merchant.info.statusFrozen')" :value="2" /><el-option :label="$t('merchant.info.statusClosed')" :value="3" /></el-select></el-form-item>
         <el-form-item :label="$t('merchant.info.riskLevel')"><el-select v-model="form.riskLevel" style="width:100%"><el-option :label="$t('merchant.info.riskLow')" :value="1" /><el-option :label="$t('merchant.info.riskNormal')" :value="2" /><el-option :label="$t('merchant.info.riskHigh')" :value="3" /></el-select></el-form-item>
         <el-form-item :label="$t('merchant.info.regionCode')"><el-input v-model="form.regionCode" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.contactEmail')"><el-input v-model="form.contactEmail" /></el-form-item>
+        <el-form-item :label="$t('merchant.info.contactEmail')" prop="contactEmail"><el-input v-model.trim="form.contactEmail" /></el-form-item>
         <el-form-item :label="$t('merchant.info.contactPhone')"><el-input v-model="form.contactPhone" /></el-form-item>
         <el-form-item :label="$t('merchant.info.city')"><el-input v-model="form.city" /></el-form-item>
         <el-form-item :label="$t('merchant.info.address')"><el-input v-model="form.addressLine" type="textarea" :rows="2" /></el-form-item>
@@ -390,6 +421,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -461,9 +493,26 @@ const emptyForm = (): MerchantSaveRequest => ({
   riskLevel: 2,
 });
 const form = reactive<MerchantSaveRequest>(emptyForm());
+const formRef = ref<FormInstance>();
+const requiredRule = (messageKey: string) => [{ required: true, message: () => t(messageKey), trigger: 'blur' }];
+const formRules = computed<FormRules>(() => ({
+  merchantName: requiredRule('merchant.info.requiredMerchantName'),
+  merchantShortName: requiredRule('merchant.info.requiredShortName'),
+  merchantCategoryCode: requiredRule('merchant.info.requiredMcc'),
+  countryCode: [{ required: true, message: () => t('merchant.info.requiredCountryCode'), trigger: 'change' }],
+  settlementCurrency: [{ required: true, message: () => t('merchant.info.requiredSettlementCurrency'), trigger: 'change' }],
+  timezone: [{ required: true, message: () => t('merchant.info.requiredTimezone'), trigger: 'change' }],
+  merchantStatus: [{ required: true, message: () => t('merchant.info.requiredStatus'), trigger: 'change' }],
+  contactEmail: [
+    { required: true, message: () => t('merchant.info.requiredContactEmail'), trigger: 'blur' },
+    { type: 'email', message: () => t('merchant.info.invalidContactEmail'), trigger: 'blur' },
+  ],
+}));
 const formVisible = ref(false);
 const formMode = ref<'add' | 'edit'>('add');
 const editingId = ref<number>();
+const detailVisible = ref(false);
+const detailMerchant = ref<MerchantInfo>();
 const materialVisible = ref(false);
 const currentMerchant = ref<MerchantInfo>();
 const material = ref<MerchantSecurityMaterial>();
@@ -517,8 +566,12 @@ async function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
   Object.assign(form, emptyForm(), row || {});
   selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
   formVisible.value = true;
+  formRef.value?.clearValidate();
 }
-function openDetail(row: MerchantInfo) { openMaterial(row); }
+function openDetail(row: MerchantInfo) {
+  detailMerchant.value = row;
+  detailVisible.value = true;
+}
 function openMaterial(row: MerchantInfo) {
   currentMerchant.value = row;
   material.value = undefined;
@@ -635,6 +688,8 @@ function formatMinimumAmount(value?: number | string) {
 
 async function submitForm() {
   try {
+    const valid = await formRef.value?.validate().catch(() => false);
+    if (!valid) return;
     if (formMode.value === 'add') await createMerchant(form);
     else if (editingId.value) await updateMerchant(editingId.value, form);
     ElMessage.success(t('common.saveSuccess'));
@@ -917,6 +972,11 @@ function businessTypeText(type?: number) {
   color: #909399;
   font-style: normal;
   text-overflow: ellipsis;
+}
+
+.merchant-detail-footer {
+  display: flex;
+  justify-content: center;
 }
 
 .material-actions {
