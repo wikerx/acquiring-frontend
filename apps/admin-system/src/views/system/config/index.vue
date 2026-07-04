@@ -12,14 +12,15 @@
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'system:config:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:config:export'">{{ $t('common.export') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:config:refresh'">刷新缓存</el-button></el-col>
+      <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:config:refresh'">{{ $t('system.config.refreshCache') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
     <el-table v-loading="loading" :data="rows" row-key="configKey" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="configKey" :label="$t('system.config.configKey')" min-width="200" align="center" :show-overflow-tooltip="true" />
-      <el-table-column prop="configName" :label="$t('system.config.configName')" min-width="180" :show-overflow-tooltip="true" />
+      <el-table-column prop="configName" :label="$t('system.config.configName')" min-width="180" align="center" :show-overflow-tooltip="true" />
+      <el-table-column prop="configValue" :label="$t('system.config.configValue')" min-width="220" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="configGroup" :label="$t('system.config.configGroup')" min-width="130" align="center" :show-overflow-tooltip="true" />
       <el-table-column :label="$t('system.config.valueType')" width="100" align="center"><template #default="{ row }">{{ vt(row.valueType) }}</template></el-table-column>
       <el-table-column :label="$t('common.status')" width="80" align="center">

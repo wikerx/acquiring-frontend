@@ -929,13 +929,24 @@ textarea {
     padding: 8px 20px !important;
 }
 
-.el-dialog .dialog-footer {
+.el-dialog__footer {
     text-align: center;
-    padding: 8px 0 4px;
 }
 
-.el-dialog .dialog-footer .el-button + .el-button {
-    margin-left: 12px;
+.el-dialog .dialog-footer,
+.el-dialog .center-dialog-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 4px;
+    text-align: center;
+}
+
+.el-dialog__footer .el-button + .el-button,
+.el-dialog .dialog-footer .el-button + .el-button,
+.el-dialog .center-dialog-footer .el-button + .el-button {
+    margin-left: 0;
 }
 
 /* ===== Card ===== */

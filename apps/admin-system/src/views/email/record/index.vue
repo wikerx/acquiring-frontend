@@ -101,7 +101,7 @@
                 <el-descriptions-item :label="t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>
@@ -230,8 +230,4 @@ async function handleResend(row: EmailRecord) {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 </style>

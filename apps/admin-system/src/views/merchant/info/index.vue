@@ -102,7 +102,7 @@
         <el-descriptions-item :label="$t('merchant.info.address')">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <div class="merchant-detail-footer">
+        <div class="dialog-footer">
           <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
         </div>
       </template>
@@ -152,8 +152,10 @@
         <el-form-item :label="$t('merchant.info.address')"><el-input v-model="form.addressLine" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -403,8 +405,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="responseKeyVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submitResponseKey">{{ $t('common.confirm') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitResponseKey">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="responseKeyVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -412,8 +416,10 @@
       <el-alert class="mb16" type="warning" :closable="false" :title="$t('merchant.info.viewedMaterialHint')" />
       <el-input :model-value="viewedMaterial.content" type="textarea" :autosize="{ minRows: 8, maxRows: 18 }" readonly />
       <template #footer>
-        <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
+          <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -974,10 +980,6 @@ function businessTypeText(type?: number) {
   text-overflow: ellipsis;
 }
 
-.merchant-detail-footer {
-  display: flex;
-  justify-content: center;
-}
 
 .material-actions {
   display: grid;

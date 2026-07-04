@@ -62,7 +62,7 @@
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.calculationDescription')">{{ detailRow.calculationDescription || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>
@@ -140,10 +140,3 @@ async function handleExport() {
     await exportExchangeUsageSnapshots({ pageNo: page.value, pageSize: pageSize.value, ...query, appliedStartTime, appliedEndTime });
 }
 </script>
-
-<style scoped>
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
-</style>

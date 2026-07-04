@@ -35,6 +35,24 @@ Admin Applications:
 
 - Element Plus
 
+Admin dialog rules:
+
+- All `el-dialog` footers in `apps/admin-system` must use the shared centered footer style.
+- Use a `.dialog-footer` wrapper for dialog footer buttons.
+- Create/edit/action dialogs must show the primary confirm action first, then cancel.
+- Detail/view dialogs with only a close action must show the close button centered.
+- Do not create page-local right-aligned dialog footer styles. Reuse the global dialog footer rules in `apps/admin-system/src/styles/main.css`.
+- Do not hardcode dialog button text such as `确定`, `取消`, or `关闭`; use existing i18n keys such as `common.confirm`, `common.cancel`, and `common.close`.
+
+Merchant dialog rules:
+
+- All `el-dialog` footers in `apps/merchant-portal` must use the shared centered footer style.
+- Use a `.dialog-footer` wrapper for dialog footer buttons.
+- Create/edit/action dialogs must show the primary action first, then cancel. Save dialogs may use `common.save`; confirmation dialogs should use `common.confirm`.
+- Detail/view dialogs with only a close action must show the close button centered.
+- Do not create page-local right-aligned dialog footer styles. Reuse the global dialog footer rules in `apps/merchant-portal/src/styles/main.css`.
+- Do not hardcode dialog button text such as `确定`, `取消`, or `关闭`; use existing i18n keys such as `common.confirm`, `common.save`, `common.cancel`, and `common.close`.
+
 Hosted Checkout Application:
 
 - Tailwind CSS

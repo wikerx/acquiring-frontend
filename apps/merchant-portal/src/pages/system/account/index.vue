@@ -38,7 +38,7 @@
                 <el-form-item :label="t('system.account.post')"><el-select v-model="form.postIds" multiple style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
                 <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" /></el-form-item>
             </el-form>
-            <template #footer><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button></template>
+            <template #footer><div class="dialog-footer"><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>

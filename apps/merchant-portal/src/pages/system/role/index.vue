@@ -65,7 +65,7 @@
                     <template #default="{ data }"><GrantTreeNode :node="data" /></template>
                 </el-tree>
             </div>
-            <template #footer><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog v-model="editVisible" :title="form.roleId ? t('system.role.edit') : t('system.role.add')" width="840px" append-to-body destroy-on-close>
@@ -118,8 +118,10 @@
                 </el-tree>
             </div>
             <template #footer>
-                <el-button size="small" @click="editVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button type="primary" size="small" :loading="saving" @click="submitEdit">{{ t('common.save') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="saving" @click="submitEdit">{{ t('common.save') }}</el-button>
+                    <el-button size="small" @click="editVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
 
@@ -152,8 +154,10 @@
                 </el-tree>
             </div>
             <template #footer>
-                <el-button size="small" @click="grantVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button type="primary" size="small" :loading="saving" @click="submitGrant">{{ t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="saving" @click="submitGrant">{{ t('common.confirm') }}</el-button>
+                    <el-button size="small" @click="grantVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>

@@ -16,6 +16,24 @@ body {
         sans-serif;
 }
 
+.el-dialog__footer {
+    text-align: center;
+}
+
+.el-dialog .dialog-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 4px;
+    text-align: center;
+}
+
+.el-dialog__footer .el-button + .el-button,
+.el-dialog .dialog-footer .el-button + .el-button {
+    margin-left: 0;
+}
+
 .app-shell {
     min-height: 100vh;
 }

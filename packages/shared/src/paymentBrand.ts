@@ -1,8 +1,11 @@
 import visaLogo from './assets/payment-icons/cards/visa.svg';
+import americanExpressLogo from './assets/payment-icons/cards/american-express.svg';
 import dinersClubLogo from './assets/payment-icons/cards/diners-club.svg';
+import discoverLogo from './assets/payment-icons/cards/discover.svg';
 import mastercardLogo from './assets/payment-icons/cards/mastercard.svg';
 import jcbLogo from './assets/payment-icons/cards/jcb.png';
 import maestroLogo from './assets/payment-icons/cards/maestro.svg';
+import unionPayLogo from './assets/payment-icons/cards/union-pay.svg';
 import httpsLogo from './assets/payment-icons/security/https.svg';
 import pciDssLogo from './assets/payment-icons/security/pci-dss.svg';
 import sslLogo from './assets/payment-icons/security/ssl.svg';
@@ -94,6 +97,8 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         kind: 'card-brand',
         label: 'American Express',
         textFallback: 'American Express',
+        asset: americanExpressLogo,
+        assetSource: 'Wikimedia Commons: American Express logo (2018) SVG',
     },
     dinersClub: {
         key: 'dinersClub',
@@ -108,12 +113,16 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         kind: 'card-brand',
         label: 'Discover',
         textFallback: 'Discover',
+        asset: discoverLogo,
+        assetSource: 'Wikimedia Commons: Discover Card logo SVG',
     },
     unionPay: {
         key: 'unionPay',
         kind: 'card-brand',
         label: 'UnionPay',
         textFallback: 'UnionPay',
+        asset: unionPayLogo,
+        assetSource: 'Wikimedia Commons: UnionPay logo SVG',
     },
     maestro: {
         key: 'maestro',

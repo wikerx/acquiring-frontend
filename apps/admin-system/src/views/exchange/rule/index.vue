@@ -73,7 +73,7 @@
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? $t('exchange.rule.addTitle') : $t('exchange.rule.editTitle')" v-model="formVisible" width="760px" append-to-body destroy-on-close>
@@ -97,8 +97,10 @@
                 <el-form-item :label="$t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -298,10 +300,3 @@ function validateAdjustDirection(_rule: FormItemRule, value: string, callback: (
     callback();
 }
 </script>
-
-<style scoped>
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
-</style>

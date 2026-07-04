@@ -111,7 +111,7 @@
                 </section>
             </div>
 
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">关闭</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>

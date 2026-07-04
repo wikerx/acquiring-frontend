@@ -34,7 +34,7 @@
                 <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item :label="t('common.remark')"><el-input v-model="form.remark" type="textarea" /></el-form-item>
             </el-form>
-            <template #footer><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button><el-button type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button></template>
+            <template #footer><div class="dialog-footer"><el-button type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>

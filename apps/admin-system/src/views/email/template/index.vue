@@ -129,7 +129,7 @@
                     <div class="template-detail__remark">{{ detailRow.remark || '-' }}</div>
                 </section>
             </div>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? t('email.template.addTitle') : t('email.template.editTitle')" v-model="formVisible" width="980px" top="5vh" append-to-body destroy-on-close>
@@ -150,9 +150,11 @@
                 <el-form-item :label="t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" show-word-limit /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button @click="previewForm" v-hasPermi="'email:template:preview'">{{ t('email.template.preview') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                    <el-button @click="previewForm" v-hasPermi="'email:template:preview'">{{ t('email.template.preview') }}</el-button>
+                    <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
 
@@ -186,8 +188,10 @@
                 </section>
             </div>
             <template #footer>
-                <el-button @click="previewVisible = false">{{ t('common.close') }}</el-button>
-                <el-button type="primary" @click="submitPreview">{{ t('email.template.preview') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitPreview">{{ t('email.template.preview') }}</el-button>
+                    <el-button @click="previewVisible = false">{{ t('common.close') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -696,10 +700,6 @@ function escapeHtml(value: string) {
     background: #fff;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 @media (max-width: 760px) {
     .form-grid {
