@@ -1,4 +1,5 @@
 import type { PaymentLogoKey } from '@acquiring/shared';
+import { ElMessageBox } from 'element-plus';
 import { searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
 import { listChannelOptions, type ChannelOption } from '@/api/channel';
@@ -76,6 +77,16 @@ export function channelOptionLabel(option: ChannelOption) {
     return `${option.channelCode} (${option.channelName})`;
 }
 
+export function channelDisplayText(row: { channelCode?: string; channelName?: string }) {
+    if (!row.channelCode && !row.channelName) {
+        return '-';
+    }
+    if (!row.channelCode) {
+        return row.channelName || '-';
+    }
+    return row.channelName ? `${row.channelCode} (${row.channelName})` : row.channelCode;
+}
+
 export function currencyOptionLabel(option: IsoCurrency) {
     const name = option.chineseName || option.englishName;
     return name ? `${option.alpha3Code} (${name})` : option.alpha3Code;
@@ -121,6 +132,14 @@ export function arrayText(values?: string[], options: SelectOption[] = []) {
         return '-';
     }
     return values.map((value) => optionLabel(options, value)).join(', ');
+}
+
+export function resolveErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export function showChannelError(error: unknown, title: string, fallback: string) {
+    return ElMessageBox.alert(resolveErrorMessage(error, fallback), title, { type: 'error' });
 }
 
 function normalizeCode(value?: string) {

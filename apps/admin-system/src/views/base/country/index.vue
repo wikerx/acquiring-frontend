@@ -9,7 +9,7 @@
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openDialog('add')" v-hasPermi="'base:country:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="openDialog('edit', sel[0])" v-hasPermi="'base:country:edit'">{{ $t('common.edit') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel[0])" v-hasPermi="'base:country:remove'">{{ $t('common.delete') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'base:country:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:country:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
@@ -117,9 +117,10 @@ async function toggleStatus(row: IsoCountry) {
   try { await changeCountryStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 
-async function handleDelete(row: IsoCountry) {
-  try { await ElMessageBox.confirm(t('base.country.deleteConfirm', { name: row.chineseName || row.englishName }), t('common.confirm'), { type: 'warning' }); } catch { return; }
-  try { await deleteCountry(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.deleteSuccess')); }
+async function handleDelete(target: IsoCountry | IsoCountry[]) {
+  const targets = Array.isArray(target) ? target : [target];
+  try { await ElMessageBox.confirm(t('base.country.deleteConfirm', { name: targets.map((item) => item.chineseName || item.englishName).join('、') }), t('common.confirm'), { type: 'warning' }); } catch { return; }
+  try { await Promise.all(targets.map((item) => deleteCountry(item.id))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleExport() {
   try {

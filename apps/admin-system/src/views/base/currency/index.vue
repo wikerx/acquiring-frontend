@@ -9,7 +9,7 @@
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'base:currency:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'base:currency:edit'">{{ $t('common.edit') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel[0])" v-hasPermi="'base:currency:remove'">{{ $t('common.delete') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'base:currency:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:currency:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
@@ -112,9 +112,10 @@ async function submit() {
 async function toggleStatus(row: IsoCurrency) {
   try { await changeCurrencyStatus(row.id, row.status === 1 ? 0 : 1); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
-async function handleDelete(row: IsoCurrency) {
-  try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.chineseName || row.englishName }), t('common.delete'), { type: 'warning' }); } catch { return; }
-  try { await deleteCurrency(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
+async function handleDelete(target: IsoCurrency | IsoCurrency[]) {
+  const targets = Array.isArray(target) ? target : [target];
+  try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: targets.map((item) => item.chineseName || item.englishName).join('、') }), t('common.delete'), { type: 'warning' }); } catch { return; }
+  try { await Promise.all(targets.map((item) => deleteCurrency(item.id))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function handleExport() {
   try {

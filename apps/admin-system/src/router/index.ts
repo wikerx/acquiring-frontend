@@ -56,9 +56,6 @@ const legacyRedirects: Record<string, string> = {
     '/base/countries': '/base/country',
     '/base/currencies': '/base/currency',
     '/monitor/sharding': '/monitor/sharding/rules',
-    '/permission/resource': '/permission/app',
-    '/permission/role-auth': '/permission/app',
-    '/permission/role-grant': '/permission/app',
 };
 
 const redirectRoutes: RouteRecordRaw[] = Object.entries(legacyRedirects).map(([path, redirect]) => ({

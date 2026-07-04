@@ -5,6 +5,9 @@
             :today-text="todayText"
             :last-login-time="lastLoginTime"
             :last-login-ip="lastLoginIp"
+            :notices="dashboardNotices"
+            @notice-click="openNoticeDetail"
+            @more-notices="navigate('/system/notice')"
         />
 
         <section class="dashboard-page__metrics">
@@ -60,6 +63,25 @@
         </section>
 
         <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
+
+        <el-dialog v-model="noticeDetailVisible" :title="$t('system.notice.detailTitle')" width="min(980px, 90vw)" top="6vh" append-to-body destroy-on-close>
+            <article v-if="activeNotice" class="dashboard-notice-detail">
+                <div class="dashboard-notice-detail__type">
+                    <el-tag :type="activeNotice.noticeType === '1' ? 'warning' : 'success'" size="small">
+                        {{ noticeTypeText(activeNotice.noticeType) }}
+                    </el-tag>
+                </div>
+                <h2>{{ activeNotice.noticeTitle }}</h2>
+                <div class="dashboard-notice-detail__meta">
+                    <span>{{ activeNotice.createBy || '-' }}</span>
+                    <span><BaseDateTime :value="activeNotice.createdAt" /></span>
+                </div>
+                <div class="dashboard-notice-detail__content">{{ activeNotice.noticeContent || '-' }}</div>
+            </article>
+            <template #footer>
+                <div class="dialog-footer"><el-button @click="noticeDetailVisible = false">{{ $t('common.close') }}</el-button></div>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -89,8 +111,11 @@ import { searchOperLogs } from '@/api/audit/oper-log';
 import { getDatasourceSnapshot } from '@/api/monitor/datasource';
 import type { MerchantQuery } from '@/api/merchant/info';
 import { searchMerchants } from '@/api/merchant/info';
+import type { SysNotice } from '@/api/system/notice';
+import { getNotice, listLatestNotices } from '@/api/system/notice';
 import type { SysUserAccountQuery } from '@/api/system/user';
 import { searchUsers } from '@/api/system/user';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useUserStore } from '@/store/modules/user';
 import { formatDateTime } from '@/utils/format';
@@ -102,6 +127,7 @@ import type { RecentOperationRow } from './components/DashboardRecentOperation.v
 import DashboardRecentOperation from './components/DashboardRecentOperation.vue';
 import DashboardTrendChart from './components/DashboardTrendChart.vue';
 import DashboardWelcome from './components/DashboardWelcome.vue';
+import type { DashboardNoticeItem } from './components/DashboardWelcome.vue';
 import { dashboardMonitorMock, dashboardTrendMock } from './dashboard.mock';
 
 type TrendMetric = 'login' | 'oper';
@@ -153,6 +179,9 @@ const recentLoginRows = ref<SysLoginLog[]>([]);
 const recentOperationRows = ref<RecentOperationRow[]>([]);
 const alertCount = ref(dashboardMonitorMock.systemAlertCount);
 const resourceHealthy = ref(dashboardMonitorMock.resourceStatus === 'healthy');
+const latestNotices = ref<SysNotice[]>([]);
+const activeNotice = ref<SysNotice | null>(null);
+const noticeDetailVisible = ref(false);
 
 const trendPoints = dashboardTrendMock;
 const displayName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || 'Admin');
@@ -167,6 +196,12 @@ const todayText = computed(() => {
         weekday: 'long',
     }).format(now);
 });
+const dashboardNotices = computed<DashboardNoticeItem[]>(() => latestNotices.value.map((notice) => ({
+    id: Number(notice.id),
+    title: notice.noticeTitle,
+    typeText: noticeTypeText(notice.noticeType),
+    createdAtText: formatDateTime(notice.createdAt),
+})));
 
 const metricCards = computed<MetricCardItem[]>(() => [
     {
@@ -262,10 +297,28 @@ async function loadDashboard() {
             loadLoginSummary(),
             loadOperSummary(),
             loadDatasourceSummary(),
+            loadLatestNotices(),
         ]);
     } finally {
         loading.value = false;
     }
+}
+
+async function loadLatestNotices() {
+    try {
+        latestNotices.value = await listLatestNotices(3);
+    } catch {
+        latestNotices.value = [];
+    }
+}
+
+async function openNoticeDetail(item: DashboardNoticeItem) {
+    activeNotice.value = await getNotice(item.id);
+    noticeDetailVisible.value = true;
+}
+
+function noticeTypeText(type?: string) {
+    return type === '1' ? t('system.notice.typeNotice') : t('system.notice.typeAnnouncement');
 }
 
 async function loadMerchantTotal() {
@@ -413,6 +466,52 @@ function navigate(path: string) {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: 20px;
+}
+
+.dashboard-notice-detail {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 8px 0 24px;
+}
+
+.dashboard-notice-detail__type {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.dashboard-notice-detail h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 22px;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.dashboard-notice-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 18px;
+    margin-top: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #edf1f7;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.dashboard-notice-detail__content {
+    min-height: 260px;
+    margin-top: 26px;
+    padding: 28px 32px;
+    border: 1px solid #edf1f7;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 @media (max-width: 1280px) {

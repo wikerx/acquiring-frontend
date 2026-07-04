@@ -124,16 +124,13 @@ export const crudModules: CrudModuleConfig[] = [
     createCommonModule('base.currency', '币种管理', '基础数据', '/base/currency', 'BaseCurrency', 'Coin', 'base:currency:list', 'base/currency', 'base_iso_currency', '维护 ISO 4217 币种基础字典、小数位和启用状态。'),
     createCommonModule('base.regionCurrency', '地区币种配置', '基础数据', '/base/region-currency', 'BaseRegionCurrency', 'Connection', 'base:countryCurrency:list', 'base/region-currency', 'base_iso_country / base_iso_currency', '维护国家地区与支持币种之间的启用关系。'),
 
-    createCommonModule('permission.app', '应用权限', '权限中心', '/permission/app', 'PermissionApp', 'Key', 'permission:app:list', 'permission/app', 'sys_app / sys_permission', '维护应用、资源权限和角色授权入口。'),
-    createCommonModule('permission.dataScope', '数据权限', '权限中心', '/permission/data-scope', 'PermissionDataScope', 'Connection', 'permission:data-scope:list', 'permission/data-scope', 'sys_role_data_scope', '维护角色数据范围和后续数据隔离策略。'),
-
 ];
 
 export const moduleMap = new Map(crudModules.map((module) => [module.key, module]));
 
 export const adminMenus: AdminMenuItem[] = [
     { title: '首页', path: '/dashboard', icon: 'House' },
-    ...['系统管理', '商户管理', '基础数据', '权限中心'].map((category) => ({
+    ...['系统管理', '商户管理', '基础数据'].map((category) => ({
         title: category,
         icon: categoryIcon(category),
         children: crudModules.filter((module) => module.category === category).map(toMenuItem),
@@ -146,7 +143,6 @@ function categoryIcon(category: string) {
             系统管理: 'Setting',
             商户管理: 'Shop',
             基础数据: 'DataLine',
-            权限中心: 'Key',
         } as Record<string, string>
     )[category];
 }

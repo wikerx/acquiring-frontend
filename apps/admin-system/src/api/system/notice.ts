@@ -26,6 +26,13 @@ export async function searchNotices(params: NoticeQuery) {
     return unwrapResult(result.data);
 }
 
+export async function listLatestNotices(limit = 3) {
+    const result = await http.get<CommonResult<SysNotice[]>>(
+        '/admin/system/notice/latest', { params: { limit } },
+    );
+    return unwrapResult(result.data);
+}
+
 export async function getNotice(id: number) {
     const result = await http.get<CommonResult<SysNotice>>(
         `/admin/system/notice/${id}`,
@@ -47,7 +54,13 @@ export async function updateNotice(id: number, data: SysNotice) {
     return unwrapResult(result.data);
 }
 
-export async function deleteNotice(id: number) {
+export async function deleteNotice(id: number | number[]) {
+    if (Array.isArray(id)) {
+        const result = await http.delete<CommonResult<null>>(
+            '/admin/system/notice/batch', { data: { ids: id } },
+        );
+        return unwrapResult(result.data);
+    }
     const result = await http.delete<CommonResult<null>>(
         `/admin/system/notice/${id}`,
     );

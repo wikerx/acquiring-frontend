@@ -51,7 +51,7 @@
                 <el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="handleDataUpdate(selectedRows[0])" v-hasPermi="'system:dictData:edit'">{{ $t('common.edit') }}</el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDataDelete(selectedRows[0])" v-hasPermi="'system:dictData:remove'">{{ $t('common.delete') }}</el-button>
+                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDataDelete(selectedRows)" v-hasPermi="'system:dictData:remove'">{{ $t('common.delete') }}</el-button>
             </el-col>
             <el-col :span="1.5">
                 <el-button type="warning" plain :icon="Download" size="small" @click="handleDataExport" v-hasPermi="'system:dictData:export'">{{ $t('common.export') }}</el-button>
@@ -422,14 +422,14 @@ async function submitForm() {
     }
 }
 
-async function handleDataDelete(row?: SysDictData) {
-    const target = row || selectedRows.value[0];
-    if (!target) {
+async function handleDataDelete(target?: SysDictData | SysDictData[]) {
+    const targets = Array.isArray(target) ? target : (target ? [target] : selectedRows.value);
+    if (!targets.length) {
         return;
     }
     try {
         await ElMessageBox.confirm(
-            t('system.dictData.deleteConfirm', { name: target.dictLabel }),
+            t('system.dictData.deleteConfirm', { name: targets.map((item) => item.dictLabel).join('、') }),
             t('common.delete'),
             { type: 'warning' },
         );
@@ -437,10 +437,10 @@ async function handleDataDelete(row?: SysDictData) {
         return;
     }
     try {
-        if (!target.id) {
+        if (targets.some((item) => !item.id)) {
             throw new Error(t('common.loadFailed'));
         }
-        await deleteDictDataById(target.id);
+        await Promise.all(targets.map((item) => deleteDictDataById(item.id!)));
         ElMessage.success(t('common.deleteSuccess'));
         loadData();
     } catch (error) {

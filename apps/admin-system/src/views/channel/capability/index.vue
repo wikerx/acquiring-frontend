@@ -36,18 +36,21 @@
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openForm('create')" v-hasPermi="'channel:capability:add'">{{ t('channel.common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="openForm('edit', selectedRows[0])" v-hasPermi="'channel:capability:edit'">{{ t('channel.common.edit') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows[0])" v-hasPermi="'channel:capability:remove'">{{ t('channel.common.delete') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'channel:capability:remove'">{{ t('channel.common.delete') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
         <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column prop="channelName" :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true"><template #default="{ row }">{{ channelDisplayText(row) }}</template></el-table-column>
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
                 <template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template>
             </el-table-column>
-            <el-table-column :label="t('channel.common.paymentMethod')" min-width="150" align="center">
-                <template #default="{ row }">{{ optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod) }}</template>
+            <el-table-column :label="t('channel.capability.paymentScope')" min-width="230" align="center">
+                <template #default="{ row }">
+                    <PaymentLogoGroup v-if="paymentScopeLogo(row).length" :keys="paymentScopeLogo(row)" fallback="text" size="sm" align="center" />
+                    <span v-else>{{ optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod) }}</span>
+                </template>
             </el-table-column>
             <el-table-column :label="t('channel.common.transactionType')" min-width="260" align="center">
                 <template #default="{ row }">
@@ -59,12 +62,6 @@
             </el-table-column>
             <el-table-column :label="t('channel.common.currency')" min-width="150" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">{{ row.currencyCodes?.join(', ') || '-' }}</template>
-            </el-table-column>
-            <el-table-column :label="t('channel.common.cardBrand')" min-width="210" align="center">
-                <template #default="{ row }">
-                    <PaymentLogoGroup v-if="row.cardBrands?.length" :keys="cardLogo(row.cardBrands)" fallback="text" size="sm" align="center" />
-                    <span v-else>-</span>
-                </template>
             </el-table-column>
             <el-table-column label="3DS" width="90" align="center">
                 <template #default="{ row }">
@@ -102,20 +99,19 @@
 
         <el-dialog :title="t('channel.capability.detailTitle')" v-model="detailVisible" width="700px" append-to-body destroy-on-close>
             <el-descriptions v-if="detailRow" :column="1" border size="small">
-                <el-descriptions-item :label="t('channel.common.channel')">{{ detailRow.channelName }} ({{ detailRow.channelCode }})</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.paymentMethod')">{{ optionLabel(paymentOptionsFor(detailRow.businessType), detailRow.paymentMethod) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.capability.paymentScope')">
+                    <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" fallback="text" size="sm" />
+                    <span v-else>{{ optionLabel(paymentOptionsFor(detailRow.businessType), detailRow.paymentMethod) }}</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.transactionType')">
-                    <div v-if="transactionTypeItems(detailRow).length" class="tag-list">
+                    <div v-if="transactionTypeItems(detailRow).length" class="tag-list tag-list-left">
                         <el-tag v-for="item in transactionTypeItems(detailRow)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
                     </div>
                     <span v-else>-</span>
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.currencies')">{{ detailRow.currencyCodes?.join(', ') || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.cardBrand')">
-                    <PaymentLogoGroup v-if="detailRow.cardBrands?.length" :keys="cardLogo(detailRow.cardBrands)" fallback="text" size="sm" />
-                    <span v-else>-</span>
-                </el-descriptions-item>
                 <el-descriptions-item label="3DS">
                     <el-tag size="small" effect="plain" :type="detailRow.support3ds === 1 ? 'success' : 'info'">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
                 </el-descriptions-item>
@@ -134,13 +130,13 @@
         <el-dialog :title="formMode === 'create' ? t('channel.capability.addTitle') : t('channel.capability.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
                 <el-form-item :label="t('channel.common.channel')" prop="channelId">
-                    <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="isEditMode">
+                    <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="isEditMode" @change="handleChannelChange">
                         <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.businessType')" prop="businessType">
-                    <el-select v-model="form.businessType" style="width:100%" :disabled="isEditMode" @change="handleBusinessChange">
-                        <el-option v-for="item in businessOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <el-select v-model="form.businessType" style="width:100%" :disabled="isEditMode || !form.channelId" @change="handleBusinessChange">
+                        <el-option v-for="item in formBusinessOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
@@ -163,7 +159,7 @@
                         <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
-                <el-form-item :label="t('channel.info.support3ds')"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
+                <el-form-item v-if="canConfigure3ds" :label="t('channel.info.support3ds')"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item v-if="canConfigureIncrementalAuthorization" :label="t('channel.capability.incrementalAuthorization')"><el-switch v-model="form.supportIncrementalAuthorization" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item :label="t('channel.common.status')" prop="capabilityStatus"><el-select v-model="form.capabilityStatus" style="width:100%"><el-option :label="t('channel.common.enabled')" :value="1" /><el-option :label="t('channel.common.disabled')" :value="0" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.common.sort')"><el-input-number v-model="form.sortOrder" :min="0" style="width:100%" /></el-form-item>
@@ -198,12 +194,15 @@ import {
 } from '@/api/channel';
 import {
     cardLogoKeys,
+    channelDisplayText,
     channelOptionLabel,
     currencyOptionLabel,
     loadChannelOptions,
     loadCurrencyOptions,
     loadDictOptions,
     optionLabel,
+    paymentLogoKeys,
+    showChannelError,
     statusText,
     statusType,
     yesNoText,
@@ -272,7 +271,10 @@ const rules: FormRules = {
 
 const currentPaymentOptions = computed(() => paymentOptionsFor(query.businessType || 'ACQUIRING'));
 const isEditMode = computed(() => formMode.value === 'edit');
+const selectedChannel = computed(() => channelOptions.value.find((item) => item.id === form.channelId));
+const formBusinessOptions = computed(() => businessOptions.value.filter((item) => isBusinessSupportedByChannel(item.value, selectedChannel.value)));
 const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const canConfigure3ds = computed(() => form.businessType === 'ACQUIRING' && selectedChannel.value?.supportAcquiring === 1 && selectedChannel.value?.support3ds === 1);
 const canConfigureIncrementalAuthorization = computed(() => {
     if (form.businessType !== 'ACQUIRING') {
         return false;
@@ -329,6 +331,19 @@ function paymentOptionsFor(businessType?: string) {
     return businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
 }
 
+function isBusinessSupportedByChannel(businessType: string, channel?: ChannelOption) {
+    if (!channel) {
+        return true;
+    }
+    if (businessType === 'ACQUIRING') {
+        return channel.supportAcquiring === 1;
+    }
+    if (businessType === 'PAYOUT') {
+        return channel.supportPayout === 1;
+    }
+    return false;
+}
+
 function handleSearch() {
     page.value = 1;
     loadData();
@@ -353,6 +368,7 @@ async function openDetail(row: ChannelCapability) {
 function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
+    syncBusinessTypeWithChannel();
     form.transactionTypes = normalizeTransactionTypes(form.businessType, form.transactionTypes, form.transactionType);
     form.transactionType = form.transactionTypes.join(',');
     syncConditionalFields();
@@ -360,7 +376,19 @@ function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
     nextTick(() => formRef.value?.clearValidate());
 }
 
+function handleChannelChange() {
+    syncBusinessTypeWithChannel();
+    handleBusinessChange();
+}
+
 function handleBusinessChange() {
+    if (!form.businessType) {
+        form.paymentMethod = '';
+        form.transactionType = '';
+        form.transactionTypes = [];
+        syncConditionalFields();
+        return;
+    }
     form.paymentMethod = form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : 'BANK_CARD';
     form.transactionType = form.businessType === 'PAYOUT' ? 'NONE' : 'PAYMENT';
     form.transactionTypes = form.businessType === 'PAYOUT' ? [] : ['PAYMENT'];
@@ -379,6 +407,9 @@ function syncConditionalFields() {
     if (!isBankCardPayment.value) {
         form.cardBrands = [];
     }
+    if (!canConfigure3ds.value) {
+        form.support3ds = 0;
+    }
     if (!canConfigureIncrementalAuthorization.value) {
         form.supportIncrementalAuthorization = 0;
     }
@@ -395,12 +426,18 @@ async function submitForm() {
         ...form,
         transactionTypes,
         transactionType: transactionTypes.join(','),
+        support3ds: canConfigure3ds.value ? form.support3ds : 0,
         supportIncrementalAuthorization: transactionTypes.some((type) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(type)) ? form.supportIncrementalAuthorization : 0,
     };
-    if (formMode.value === 'create') {
-        await createChannelCapability(payload);
-    } else {
-        await updateChannelCapability(form.id, payload);
+    try {
+        if (formMode.value === 'create') {
+            await createChannelCapability(payload);
+        } else {
+            await updateChannelCapability(form.id, payload);
+        }
+    } catch (error) {
+        await showChannelError(error, t('common.saveFailed'), t('common.saveFailed'));
+        return;
     }
     ElMessage.success(t('channel.common.saveSuccess'));
     formVisible.value = false;
@@ -408,7 +445,12 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ChannelCapability) {
-    await updateChannelCapabilityStatus(row.id, row.capabilityStatus === 1 ? 0 : 1);
+    try {
+        await updateChannelCapabilityStatus(row.id, row.capabilityStatus === 1 ? 0 : 1);
+    } catch (error) {
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
+        return;
+    }
     ElMessage.success(t('channel.common.operationSuccess'));
     loadData();
 }
@@ -416,6 +458,11 @@ async function toggleStatus(row: ChannelCapability) {
 async function toggleSupportFlag(row: ChannelCapability, field: 'support3ds' | 'supportIncrementalAuthorization', value: string | number | boolean) {
     const enabledValue = value === 1 || value === true ? 1 : 0;
     const previousValue = row[field];
+    if (field === 'support3ds' && enabledValue === 1 && !canRowConfigure3ds(row)) {
+        row[field] = previousValue;
+        ElMessage.warning(t('channel.info.support3ds'));
+        return;
+    }
     row[field] = enabledValue;
     try {
         const response = await updateChannelCapabilitySupport(row.id, {
@@ -426,26 +473,46 @@ async function toggleSupportFlag(row: ChannelCapability, field: 'support3ds' | '
         loadData();
     } catch (error) {
         row[field] = previousValue;
-        throw error;
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
     }
 }
 
-async function handleDelete(row?: ChannelCapability) {
-    if (!row) {
+function syncBusinessTypeWithChannel() {
+    const options = formBusinessOptions.value;
+    if (!options.some((item) => item.value === form.businessType)) {
+        form.businessType = options[0]?.value || '';
+    }
+}
+
+async function handleDelete(target?: ChannelCapability | ChannelCapability[]) {
+    const targets = Array.isArray(target) ? target : (target ? [target] : []);
+    if (!targets.length) {
         return;
     }
     try {
-        await ElMessageBox.confirm(t('channel.capability.deleteConfirm', { name: row.channelName }), t('channel.common.delete'), { type: 'warning' });
+        await ElMessageBox.confirm(t('channel.capability.deleteConfirm', { name: targets.map((item) => item.channelName).join('、') }), t('channel.common.delete'), { type: 'warning' });
     } catch {
         return;
     }
-    await deleteChannelCapability(row.id);
+    try {
+        await Promise.all(targets.map((item) => deleteChannelCapability(item.id)));
+    } catch (error) {
+        await showChannelError(error, t('common.deleteFailed'), t('common.saveFailed'));
+        return;
+    }
     ElMessage.success(t('channel.common.deleteSuccess'));
     loadData();
 }
 
 function cardLogo(values?: string[]): PaymentLogoKey[] {
     return (values || []).flatMap((value) => cardLogoKeys(value, cardBrandOptions.value.find((item) => item.value === value)));
+}
+
+function paymentScopeLogo(row: Pick<ChannelCapability, 'businessType' | 'paymentMethod' | 'cardBrands'>): PaymentLogoKey[] {
+    if (row.paymentMethod === 'BANK_CARD') {
+        return cardLogo(row.cardBrands);
+    }
+    return paymentLogoKeys(row.paymentMethod, paymentOptionsFor(row.businessType).find((item) => item.value === row.paymentMethod));
 }
 
 function normalizeTransactionTypes(businessType?: string, transactionTypes?: string[], transactionType?: string) {
@@ -475,6 +542,11 @@ function canRowConfigureIncrementalAuthorization(row: Pick<ChannelCapability, 'b
     return row.businessType === 'ACQUIRING'
         && normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType).some((value) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(value));
 }
+
+function canRowConfigure3ds(row: Pick<ChannelCapability, 'channelId' | 'businessType'>) {
+    const channel = channelOptions.value.find((item) => item.id === row.channelId);
+    return row.businessType === 'ACQUIRING' && channel?.supportAcquiring === 1 && channel.support3ds === 1;
+}
 </script>
 
 <style scoped>
@@ -483,6 +555,10 @@ function canRowConfigureIncrementalAuthorization(row: Pick<ChannelCapability, 'b
     flex-wrap: wrap;
     justify-content: center;
     gap: 6px;
+}
+
+.tag-list-left {
+    justify-content: flex-start;
 }
 
 .center-dialog-footer {

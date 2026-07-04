@@ -22,7 +22,7 @@
 
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5">
-                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleForceLogout(null)" v-hasPermi="'system:online:forceLogout'">{{ $t('monitor.online.forceLogout') }}</el-button>
+                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleForceLogout(selectedRows)" v-hasPermi="'system:online:forceLogout'">{{ $t('monitor.online.forceLogout') }}</el-button>
             </el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
@@ -96,12 +96,13 @@ async function loadData() {
 }
 function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); loadData(); }
 function handleSelectionChange(s: OnlineUser[]) { selectedRows.value = s; }
-async function handleForceLogout(row: OnlineUser | null) {
-    const target = row || selectedRows.value[0];
-    if (!target || !target.sessionId) { ElMessage.warning(t('monitor.online.pleaseSelectUser')); return; }
+async function handleForceLogout(target: OnlineUser | OnlineUser[]) {
+    const targets = Array.isArray(target) ? target : [target];
+    const sessionIds = targets.map((item) => item.sessionId).filter((item): item is string => Boolean(item));
+    if (!targets.length || sessionIds.length !== targets.length) { ElMessage.warning(t('monitor.online.pleaseSelectUser')); return; }
     try {
-        await ElMessageBox.confirm(t('monitor.online.forceLogoutConfirm', { name: target.userName || target.sessionId }), t('monitor.online.forceLogoutTitle'), { type: 'warning' });
-        await forceLogout(target.sessionId);
+        await ElMessageBox.confirm(t('monitor.online.forceLogoutConfirm', { name: targets.map((item) => item.userName || item.sessionId).join('、') }), t('monitor.online.forceLogoutTitle'), { type: 'warning' });
+        await Promise.all(sessionIds.map((sessionId) => forceLogout(sessionId)));
         ElMessage.success(t('monitor.online.forceLogoutSuccess'));
         loadData();
     } catch { /* cancelled */ }

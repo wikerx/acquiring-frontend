@@ -5,6 +5,26 @@
             <h1 class="dashboard-welcome__title">{{ $t('dashboard.welcomeBack', { name: displayName }) }}</h1>
             <p class="dashboard-welcome__description">{{ $t('dashboard.welcomeDescription') }}</p>
         </div>
+        <div class="dashboard-welcome__notice">
+            <div class="dashboard-welcome__notice-head">
+                <span>{{ $t('dashboard.noticeBoard') }}</span>
+                <button type="button" @click="$emit('more-notices')">{{ $t('dashboard.viewMore') }}</button>
+            </div>
+            <div v-if="notices.length" class="dashboard-welcome__notice-list">
+                <button
+                    v-for="notice in notices"
+                    :key="notice.id"
+                    type="button"
+                    class="dashboard-welcome__notice-item"
+                    @click="$emit('notice-click', notice)"
+                >
+                    <span class="dashboard-welcome__notice-type">{{ notice.typeText }}</span>
+                    <strong>{{ notice.title }}</strong>
+                    <small>{{ notice.createdAtText }}</small>
+                </button>
+            </div>
+            <div v-else class="dashboard-welcome__notice-empty">{{ $t('dashboard.noNotice') }}</div>
+        </div>
         <div class="dashboard-welcome__meta">
             <div class="dashboard-welcome__meta-item">
                 <span>{{ $t('dashboard.today') }}</span>
@@ -32,15 +52,27 @@ interface Props {
     todayText: string;
     lastLoginTime: string;
     lastLoginIp: string;
+    notices: DashboardNoticeItem[];
+}
+
+export interface DashboardNoticeItem {
+    id: number;
+    title: string;
+    typeText: string;
+    createdAtText: string;
 }
 
 defineProps<Props>();
+defineEmits<{
+    (event: 'notice-click', notice: DashboardNoticeItem): void;
+    (event: 'more-notices'): void;
+}>();
 </script>
 
 <style scoped>
 .dashboard-welcome {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.9fr) minmax(320px, 1fr);
     gap: 20px;
     padding: 24px 28px;
     border: 1px solid #e6ebf2;
@@ -49,6 +81,95 @@ defineProps<Props>();
         radial-gradient(circle at top right, rgba(64, 158, 255, 0.14), transparent 32%),
         linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+}
+
+.dashboard-welcome__notice {
+    min-height: 140px;
+    padding: 18px;
+    border: 1px solid rgba(37, 99, 235, 0.22);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.dashboard-welcome__notice-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.dashboard-welcome__notice-head span {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.dashboard-welcome__notice-head button {
+    border: 0;
+    background: transparent;
+    color: #2563eb;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.dashboard-welcome__notice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dashboard-welcome__notice-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #edf1f7;
+    border-radius: 6px;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-welcome__notice-item:hover {
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.dashboard-welcome__notice-type {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.dashboard-welcome__notice-item strong {
+    overflow: hidden;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-welcome__notice-item small {
+    color: #94a3b8;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.dashboard-welcome__notice-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 84px;
+    color: #94a3b8;
+    font-size: 13px;
 }
 
 .dashboard-welcome__eyebrow {

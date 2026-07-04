@@ -28,6 +28,7 @@ export interface ChannelOption {
     channelStatus: number;
     supportAcquiring: number;
     supportPayout: number;
+    support3ds: number;
 }
 
 export interface ChannelCapability {
@@ -57,40 +58,14 @@ export interface ChannelLimitRule {
     channelName: string;
     businessType: string;
     paymentMethod?: string;
-    transactionType?: string;
     cardBrand?: string;
     limitType: string;
     limitCurrency: string;
     limitAmount: number;
-    effectiveStartTime?: string;
-    effectiveEndTime?: string;
     ruleStatus: number;
     remark?: string;
-    createTime?: string;
-    updateTime?: string;
-}
-
-export interface ChannelAccessConfig {
-    id: number;
-    channelId: number;
-    channelCode: string;
-    channelName: string;
-    envMode: string;
-    baseUrl: string;
-    callbackUrl?: string;
-    interactionMode: string;
-    channelMerchantNo?: string;
-    apiKey?: string;
-    apiSecret?: string;
-    clientCertPath?: string;
-    clientCertPassword?: string;
-    serverCertPath?: string;
-    apiKeyMasked?: string;
-    apiSecretMasked?: string;
-    clientCertPasswordMasked?: string;
-    extraConfigJson?: string;
-    configStatus: number;
-    remark?: string;
+    createBy?: string;
+    updateBy?: string;
     createTime?: string;
     updateTime?: string;
 }
@@ -117,17 +92,9 @@ export interface ChannelLimitQuery extends PageQuery {
     channelId?: number;
     businessType?: string;
     paymentMethod?: string;
-    transactionType?: string;
     cardBrand?: string;
     limitType?: string;
     ruleStatus?: number;
-}
-
-export interface ChannelAccessQuery extends PageQuery {
-    channelId?: number;
-    envMode?: string;
-    interactionMode?: string;
-    configStatus?: number;
 }
 
 export async function searchChannels(data: ChannelInfoQuery) {
@@ -215,6 +182,16 @@ export async function createChannelLimit(data: Partial<ChannelLimitRule>) {
     return unwrapResult(result.data);
 }
 
+export async function createChannelLimits(items: Partial<ChannelLimitRule>[]) {
+    const result = await http.post<CommonResult<ChannelLimitRule[]>>('/admin/channel/limits/batch', { items });
+    return unwrapResult(result.data);
+}
+
+export async function saveChannelLimitDimension(items: Partial<ChannelLimitRule>[]) {
+    const result = await http.put<CommonResult<ChannelLimitRule[]>>('/admin/channel/limits/dimension', { items });
+    return unwrapResult(result.data);
+}
+
 export async function updateChannelLimit(id: number, data: Partial<ChannelLimitRule>) {
     const result = await http.put<CommonResult<ChannelLimitRule>>(`/admin/channel/limits/${id}`, data);
     return unwrapResult(result.data);
@@ -227,35 +204,5 @@ export async function updateChannelLimitStatus(id: number, status: number) {
 
 export async function deleteChannelLimit(id: number) {
     const result = await http.delete<CommonResult<void>>(`/admin/channel/limits/${id}`);
-    return unwrapResult(result.data);
-}
-
-export async function searchChannelAccessConfigs(data: ChannelAccessQuery) {
-    const result = await http.post<CommonResult<PageResult<ChannelAccessConfig>>>('/admin/channel/access-configs/search', data);
-    return unwrapResult(result.data);
-}
-
-export async function getChannelAccessConfig(id: number) {
-    const result = await http.get<CommonResult<ChannelAccessConfig>>(`/admin/channel/access-configs/${id}`);
-    return unwrapResult(result.data);
-}
-
-export async function createChannelAccessConfig(data: Partial<ChannelAccessConfig>) {
-    const result = await http.post<CommonResult<ChannelAccessConfig>>('/admin/channel/access-configs', data);
-    return unwrapResult(result.data);
-}
-
-export async function updateChannelAccessConfig(id: number, data: Partial<ChannelAccessConfig>) {
-    const result = await http.put<CommonResult<ChannelAccessConfig>>(`/admin/channel/access-configs/${id}`, data);
-    return unwrapResult(result.data);
-}
-
-export async function updateChannelAccessConfigStatus(id: number, status: number) {
-    const result = await http.put<CommonResult<ChannelAccessConfig>>(`/admin/channel/access-configs/${id}/status`, { status });
-    return unwrapResult(result.data);
-}
-
-export async function deleteChannelAccessConfig(id: number) {
-    const result = await http.delete<CommonResult<void>>(`/admin/channel/access-configs/${id}`);
     return unwrapResult(result.data);
 }

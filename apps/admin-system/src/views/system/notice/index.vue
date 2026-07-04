@@ -1,12 +1,5 @@
 <template>
     <div class="app-container">
-        <div class="page-header">
-            <div>
-                <h1>{{ $t('system.notice.title') }}</h1>
-                
-            </div>
-        </div>
-
         <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
             <el-form-item :label="$t('system.notice.noticeTitle')" align="center" prop="noticeTitle">
                 <el-input v-model="query.noticeTitle" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="loadData" />
@@ -41,10 +34,17 @@
 
         <el-table v-loading="loading" :data="rows" row-key="id" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column prop="noticeTitle" :label="$t('system.notice.noticeTitle')" align="center" min-width="200" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('common.index')" width="86" align="center">
+                <template #default="{ $index }">No.{{ (page - 1) * pageSize + $index + 1 }}</template>
+            </el-table-column>
+            <el-table-column prop="noticeTitle" :label="$t('system.notice.noticeTitle')" align="center" min-width="260" :show-overflow-tooltip="true">
+                <template #default="{ row }">
+                    <el-button type="primary" link class="notice-title-link" @click="openDetail(row)">{{ row.noticeTitle }}</el-button>
+                </template>
+            </el-table-column>
             <el-table-column :label="$t('system.notice.noticeType')" width="90" align="center">
                 <template #default="{ row }">
-                    <el-tag :type="row.noticeType === '1' ? 'success' : 'info'" size="small">{{ row.noticeType === '1' ? $t('system.notice.typeNotice') : $t('system.notice.typeAnnouncement') }}</el-tag>
+                    <el-tag :type="row.noticeType === '1' ? 'warning' : 'success'" size="small">{{ row.noticeType === '1' ? $t('system.notice.typeNotice') : $t('system.notice.typeAnnouncement') }}</el-tag>
                 </template>
             </el-table-column>
             <el-table-column :label="$t('common.status')" width="90" align="center">
@@ -54,9 +54,9 @@
             </el-table-column>
             <el-table-column prop="createBy" :label="$t('system.notice.createBy')" align="center" min-width="120" />
             <el-table-column :label="$t('common.createTime')" align="center" min-width="160">
-                <template #default="{ row }"><BaseDateTime :value="row.createTime" /></template>
+                <template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template>
             </el-table-column>
-            <el-table-column :label="$t('common.operation')" align="center" width="160" class-name="small-padding fixed-width" fixed="right">
+            <el-table-column :label="$t('common.operation')" align="center" width="190" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:notice:edit'">{{ $t('common.edit') }}</el-button>
@@ -73,25 +73,35 @@
             />
         </div>
 
-        <el-dialog :title="dialogTitle" v-model="open" width="600px" append-to-body destroy-on-close>
-            <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
-                <el-form-item :label="$t('system.notice.noticeTitle')" align="center" prop="noticeTitle">
-                    <el-input v-model="form.noticeTitle" :placeholder="$t('common.pleaseInput')" />
-                </el-form-item>
-                <el-form-item :label="$t('system.notice.noticeType')" align="center" prop="noticeType">
-                    <el-select v-model="form.noticeType" :placeholder="$t('common.pleaseSelect')">
-                        <el-option :label="$t('system.notice.typeNotice')" align="center" value="1" />
-                        <el-option :label="$t('system.notice.typeAnnouncement')" align="center" value="2" />
-                    </el-select>
-                </el-form-item>
-                <el-form-item :label="$t('common.status')" align="center">
-                    <el-radio-group v-model="form.status">
-                        <el-radio :value="1">{{ $t('common.enable') }}</el-radio>
-                        <el-radio :value="0">{{ $t('common.disable') }}</el-radio>
-                    </el-radio-group>
-                </el-form-item>
-                <el-form-item :label="$t('system.notice.noticeContent')" align="center">
-                    <el-input v-model="form.noticeContent" type="textarea" :rows="4" :placeholder="$t('common.pleaseInput')" />
+        <el-dialog :title="dialogTitle" v-model="open" width="min(1120px, 92vw)" top="5vh" append-to-body destroy-on-close class="notice-editor-dialog">
+            <el-form ref="formRef" :model="form" :rules="rules" label-width="96px" class="notice-form">
+                <div class="notice-form__grid">
+                    <el-form-item :label="$t('system.notice.noticeTitle')" prop="noticeTitle">
+                        <el-input v-model="form.noticeTitle" :placeholder="$t('common.pleaseInput')" maxlength="120" show-word-limit />
+                    </el-form-item>
+                    <el-form-item :label="$t('system.notice.noticeType')" prop="noticeType">
+                        <el-select v-model="form.noticeType" :placeholder="$t('common.pleaseSelect')" style="width: 100%">
+                            <el-option :label="$t('system.notice.typeNotice')" value="1" />
+                            <el-option :label="$t('system.notice.typeAnnouncement')" value="2" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="$t('common.status')" class="notice-form__status">
+                        <el-radio-group v-model="form.status">
+                            <el-radio :value="1">{{ $t('common.enable') }}</el-radio>
+                            <el-radio :value="0">{{ $t('common.disable') }}</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                </div>
+                <el-form-item :label="$t('system.notice.noticeContent')" prop="noticeContent" class="notice-content-form-item">
+                    <el-input
+                        v-model="form.noticeContent"
+                        type="textarea"
+                        :rows="18"
+                        resize="vertical"
+                        maxlength="8000"
+                        show-word-limit
+                        :placeholder="$t('system.notice.contentPlaceholder')"
+                    />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -102,15 +112,21 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="detailVisible" :title="$t('system.notice.detailTitle')" width="600px" append-to-body destroy-on-close>
-            <el-descriptions :column="1" border size="small">
-                <el-descriptions-item :label="$t('system.notice.noticeTitle')" align="center">{{ activeRow?.noticeTitle || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.notice.noticeType')" align="center">{{ activeRow?.noticeType === '1' ? $t('system.notice.typeNotice') : $t('system.notice.typeAnnouncement') }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('common.status')" align="center">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.notice.createBy')" align="center">{{ activeRow?.createBy || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('common.createTime')" align="center"><BaseDateTime :value="String(activeRow?.createTime || '')" /></el-descriptions-item>
-                <el-descriptions-item :label="$t('system.notice.noticeContent')" align="center">{{ activeRow?.noticeContent || '-' }}</el-descriptions-item>
-            </el-descriptions>
+        <el-dialog v-model="detailVisible" :title="$t('system.notice.detailTitle')" width="min(980px, 90vw)" top="6vh" append-to-body destroy-on-close class="notice-detail-dialog">
+            <article v-if="activeRow" class="notice-detail">
+                <div class="notice-detail__type">
+                    <el-tag :type="activeRow.noticeType === '1' ? 'warning' : 'success'" size="small">
+                        {{ activeRow.noticeType === '1' ? $t('system.notice.typeNotice') : $t('system.notice.typeAnnouncement') }}
+                    </el-tag>
+                </div>
+                <h2>{{ activeRow.noticeTitle }}</h2>
+                <div class="notice-detail__meta">
+                    <span>{{ activeRow.createBy || '-' }}</span>
+                    <span><BaseDateTime :value="activeRow.createdAt" /></span>
+                    <span>{{ activeRow.status === 1 ? $t('common.enable') : $t('common.disable') }}</span>
+                </div>
+                <div class="notice-detail__content">{{ activeRow.noticeContent || '-' }}</div>
+            </article>
             <template #footer>
                 <div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div>
             </template>
@@ -124,21 +140,21 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
-import { searchNotices, createNotice, updateNotice, deleteNotice, type SysNotice } from '@/api/system/notice';
+import { searchNotices, createNotice, updateNotice, deleteNotice, getNotice, type SysNotice } from '@/api/system/notice';
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 
 const showSearch = ref(true);
-const query = reactive<Record<string, unknown>>({});
+const query = reactive<{ noticeTitle?: string; noticeType?: string; createBy?: string }>({});
 const loading = ref(false);
-const rows = ref<Array<Record<string, unknown>>>([]);
-const selectedRows = ref<Array<Record<string, unknown>>>([]);
+const rows = ref<SysNotice[]>([]);
+const selectedRows = ref<SysNotice[]>([]);
 const total = ref(0);
 const page = ref(1); const pageSize = ref(10);
 const open = ref(false);
 const detailVisible = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
-const activeRow = ref<Record<string, unknown> | null>(null);
+const activeRow = ref<SysNotice | null>(null);
 const formRef = ref<FormInstance>();
 
 const dialogTitle = computed(() => formMode.value === 'create' ? t('system.notice.addNotice') : t('system.notice.editNotice'));
@@ -147,6 +163,7 @@ const form = reactive({ noticeTitle: '', noticeType: '1', status: 1, noticeConte
 const rules: FormRules = {
     noticeTitle: [{ required: true, message: () => t('common.pleaseInput'), trigger: 'blur' }],
     noticeType: [{ required: true, message: () => t('common.pleaseSelect'), trigger: 'change' }],
+    noticeContent: [{ required: true, message: () => t('common.pleaseInput'), trigger: 'blur' }],
 };
 
 onMounted(() => loadData());
@@ -159,17 +176,36 @@ async function loadData() {
             noticeType: String(query.noticeType || '').trim() || undefined,
             createBy: String(query.createBy || '').trim() || undefined,
         });
-        rows.value = result.records as unknown as Record<string, unknown>[];
+        rows.value = result.records || [];
         total.value = result.total;
     } catch { rows.value = []; total.value = 0; }
     finally { loading.value = false; }
 }
-function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); loadData(); }
-function handleSelectionChange(s: Array<Record<string, unknown>>) { selectedRows.value = s; }
+function resetQuery() {
+    query.noticeTitle = '';
+    query.noticeType = '';
+    query.createBy = '';
+    loadData();
+}
+function handleSelectionChange(s: SysNotice[]) { selectedRows.value = s; }
 
 function handleAdd() { formMode.value = 'create'; activeRow.value = null; Object.assign(form, { noticeTitle: '', noticeType: '1', status: 1, noticeContent: '' }); open.value = true; nextTick(() => formRef.value?.clearValidate()); }
-function handleUpdate(row: Record<string, unknown>) { formMode.value = 'edit'; activeRow.value = row; Object.assign(form, { noticeTitle: row.noticeTitle, noticeType: row.noticeType, status: row.status, noticeContent: row.noticeContent }); open.value = true; nextTick(() => formRef.value?.clearValidate()); }
-function openDetail(row: Record<string, unknown>) { activeRow.value = row; detailVisible.value = true; }
+async function handleUpdate(row: SysNotice) {
+    formMode.value = 'edit';
+    activeRow.value = row.id ? await getNotice(row.id) : row;
+    Object.assign(form, {
+        noticeTitle: activeRow.value.noticeTitle,
+        noticeType: activeRow.value.noticeType,
+        status: activeRow.value.status ?? 1,
+        noticeContent: activeRow.value.noticeContent || '',
+    });
+    open.value = true;
+    nextTick(() => formRef.value?.clearValidate());
+}
+async function openDetail(row: SysNotice) {
+    activeRow.value = row.id ? await getNotice(row.id) : row;
+    detailVisible.value = true;
+}
 
 async function submitForm() {
     const valid = await formRef.value?.validate().catch(() => false);
@@ -180,13 +216,104 @@ async function submitForm() {
         ElMessage.success(formMode.value === 'create' ? t('common.addSuccess') : t('common.editSuccess')); open.value = false; loadData();
     } catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); }
 }
-async function handleDelete(row?: Record<string, unknown>) {
-    const target = row || selectedRows.value[0];
-    if (!target) { ElMessage.warning(t('system.notice.selectNotice')); return; }
+async function handleDelete(row?: SysNotice) {
+    const targets = row ? [row] : selectedRows.value;
+    if (!targets.length) { ElMessage.warning(t('system.notice.selectNotice')); return; }
+    const ids = targets.filter((item) => item.id).map((item) => Number(item.id));
+    if (!ids.length) { ElMessage.warning(t('system.notice.selectNotice')); return; }
     try {
         await ElMessageBox.confirm(t('system.notice.deleteConfirm'), t('common.delete'), { type: 'warning' });
-        if (target.id) await deleteNotice(Number(target.id));
-        ElMessage.success(t('common.deleteSuccess')); loadData();
-    } catch { /* cancelled */ }
+    } catch {
+        return;
+    }
+    try {
+        await deleteNotice(ids);
+        ElMessage.success(t('common.deleteSuccess'));
+        loadData();
+    } catch (e: unknown) {
+        ElMessage.error(e instanceof Error ? e.message : t('common.deleteFailed'));
+    }
 }
 </script>
+
+<style scoped>
+.notice-title-link {
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.notice-form__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 18px 24px;
+}
+
+.notice-form__status {
+    grid-column: 1 / -1;
+}
+
+.notice-content-form-item :deep(.el-textarea__inner) {
+    min-height: 360px !important;
+    line-height: 1.7;
+}
+
+.notice-detail {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 8px 0 24px;
+}
+
+.notice-detail__type {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.notice-detail h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 22px;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.notice-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 18px;
+    margin-top: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #edf1f7;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.notice-detail__content {
+    min-height: 260px;
+    margin-top: 26px;
+    padding: 28px 32px;
+    border: 1px solid #edf1f7;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 768px) {
+    .notice-form__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .notice-content-form-item :deep(.el-textarea__inner) {
+        min-height: 280px !important;
+    }
+
+    .notice-detail__content {
+        padding: 20px;
+    }
+}
+</style>

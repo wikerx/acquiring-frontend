@@ -31,7 +31,7 @@
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openForm('create')" v-hasPermi="'channel:info:add'">{{ t('channel.common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="openForm('edit', selectedRows[0])" v-hasPermi="'channel:info:edit'">{{ t('channel.common.edit') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows[0])" v-hasPermi="'channel:info:remove'">{{ t('channel.common.delete') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'channel:info:remove'">{{ t('channel.common.delete') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
@@ -52,7 +52,16 @@
                 <template #default="{ row }">{{ paymentMethodText(row.payoutPaymentMethods) }}</template>
             </el-table-column>
             <el-table-column label="3DS" width="80" align="center">
-                <template #default="{ row }">{{ yesNoText(row.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</template>
+                <template #default="{ row }">
+                    <el-switch
+                        :model-value="row.support3ds"
+                        :active-value="1"
+                        :inactive-value="0"
+                        :disabled="row.supportAcquiring !== 1"
+                        @change="toggle3ds(row)"
+                        v-hasPermi="'channel:info:edit'"
+                    />
+                </template>
             </el-table-column>
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
                 <template #default="{ row }"><el-switch :model-value="row.channelStatus" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'channel:info:status'" /></template>
@@ -79,10 +88,21 @@
                 <el-descriptions-item :label="t('channel.info.channelCnName')">{{ detailRow.channelCnName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelEnName')">{{ detailRow.channelEnName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.status')"><el-tag size="small" :type="statusType(detailRow.channelStatus)">{{ statusText(detailRow.channelStatus, t('channel.common.enabled'), t('channel.common.disabled')) }}</el-tag></el-descriptions-item>
-                <el-descriptions-item :label="t('channel.info.supportAcquiring')">{{ yesNoText(detailRow.supportAcquiring, t('channel.common.yes'), t('channel.common.no')) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.info.supportPayout')">{{ yesNoText(detailRow.supportPayout, t('channel.common.yes'), t('channel.common.no')) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.info.support3ds')">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.info.acquiringMethods')">{{ paymentMethodText(detailRow.acquiringPaymentMethods) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.info.supportAcquiring')">
+                    <el-tag size="small" effect="plain" :type="statusType(detailRow.supportAcquiring)">{{ yesNoText(detailRow.supportAcquiring, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('channel.info.supportPayout')">
+                    <el-tag size="small" effect="plain" :type="statusType(detailRow.supportPayout)">{{ yesNoText(detailRow.supportPayout, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('channel.info.support3ds')">
+                    <el-tag size="small" effect="plain" :type="statusType(detailRow.support3ds)">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('channel.info.acquiringMethods')">
+                    <div v-if="detailRow.acquiringPaymentMethods?.length" class="tag-list">
+                        <el-tag v-for="method in detailRow.acquiringPaymentMethods" :key="method" size="small" effect="plain">{{ optionLabel(paymentOptions, method) }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.payoutMethods')">{{ paymentMethodText(detailRow.payoutPaymentMethods) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.defaultRequestUrl')">{{ detailRow.defaultRequestUrl || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.defaultInteractionMode')">{{ detailRow.defaultInteractionMode || '-' }}</el-descriptions-item>
@@ -102,8 +122,8 @@
                 <el-form-item :label="t('channel.common.status')" prop="channelStatus"><el-select v-model="form.channelStatus" style="width:100%"><el-option :label="t('channel.common.enabled')" :value="1" /><el-option :label="t('channel.common.disabled')" :value="0" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.info.supportAcquiring')" prop="supportAcquiring"><el-switch v-model="form.supportAcquiring" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item :label="t('channel.info.supportPayout')" prop="supportPayout"><el-switch v-model="form.supportPayout" :active-value="1" :inactive-value="0" /></el-form-item>
-                <el-form-item :label="t('channel.info.support3ds')" prop="support3ds"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
-                <el-form-item :label="t('channel.info.defaultRequestUrl')"><el-input v-model.trim="form.defaultRequestUrl" maxlength="512" /></el-form-item>
+                <el-form-item v-if="canConfigure3ds" :label="t('channel.info.support3ds')" prop="support3ds"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
+                <el-form-item :label="t('channel.info.defaultRequestUrl')" prop="defaultRequestUrl"><el-input v-model.trim="form.defaultRequestUrl" maxlength="512" /></el-form-item>
                 <el-form-item :label="t('channel.info.defaultInteractionMode')"><el-select v-model="form.defaultInteractionMode" clearable filterable style="width:100%"><el-option v-for="item in interactionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.common.sort')"><el-input-number v-model="form.sortOrder" :min="0" style="width:100%" /></el-form-item>
                 <el-form-item :label="t('channel.common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
@@ -117,15 +137,15 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
-import { createChannel, deleteChannel, getChannel, searchChannels, updateChannel, updateChannelStatus, type ChannelInfo } from '@/api/channel';
-import { loadDictOptions, optionLabel, paymentLogoKeys, statusText, statusType, yesNoText, type SelectOption } from '../shared';
+import { createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo } from '@/api/channel';
+import { loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -140,6 +160,7 @@ const detailRow = ref<ChannelInfo | null>(null);
 const formVisible = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const formRef = ref<FormInstance>();
+const editingRowSnapshot = ref<ChannelInfo | null>(null);
 const paymentOptions = ref<SelectOption[]>([]);
 const interactionOptions = ref<SelectOption[]>([]);
 
@@ -166,6 +187,7 @@ const emptyForm = () => ({
     remark: '',
 });
 const form = reactive(emptyForm());
+const canConfigure3ds = computed(() => form.supportAcquiring === 1);
 const rules: FormRules = {
     channelCode: [{ required: true, message: t('channel.info.requiredChannelCode'), trigger: 'blur' }],
     channelCnName: [{ required: true, message: t('channel.info.requiredChannelCnName'), trigger: 'blur' }],
@@ -174,6 +196,16 @@ const rules: FormRules = {
     supportAcquiring: [{ required: true, message: t('channel.info.requiredSupportAcquiring'), trigger: 'change' }],
     supportPayout: [{ required: true, message: t('channel.info.requiredSupportPayout'), trigger: 'change' }],
     support3ds: [{ required: true, message: t('channel.info.requiredSupport3ds'), trigger: 'change' }],
+    defaultRequestUrl: [{
+        validator: (_rule, value, callback) => {
+            if (!value || /^https?:\/\/.+/i.test(String(value).trim())) {
+                callback();
+                return;
+            }
+            callback(new Error(t('channel.info.invalidDefaultRequestUrl')));
+        },
+        trigger: 'blur',
+    }],
 };
 
 onMounted(async () => {
@@ -185,6 +217,10 @@ onMounted(async () => {
 
 watch(locale, () => {
     loadOptions();
+});
+
+watch(() => form.supportAcquiring, () => {
+    syncChannelSupportFields();
 });
 
 async function loadOptions() {
@@ -229,42 +265,169 @@ async function openDetail(row: ChannelInfo) {
 
 function openForm(mode: 'create' | 'edit', row?: ChannelInfo) {
     formMode.value = mode;
+    editingRowSnapshot.value = row ? { ...row } : null;
     Object.assign(form, emptyForm(), row || {});
+    syncChannelSupportFields();
     formVisible.value = true;
     nextTick(() => formRef.value?.clearValidate());
 }
 
 async function submitForm() {
+    syncChannelSupportFields();
     const valid = await formRef.value?.validate().catch(() => false);
     if (!valid) {
         return;
     }
-    if (formMode.value === 'create') {
-        await createChannel(form);
-    } else {
-        await updateChannel(form.id, form);
+    try {
+        if (formMode.value === 'create') {
+            await createChannel(form);
+        } else {
+            const confirmed = await confirmChannelCapabilityImpact(editingRowSnapshot.value, form);
+            if (!confirmed) {
+                return;
+            }
+            await updateChannel(form.id, form);
+        }
+    } catch (error) {
+        await showChannelError(error, t('common.saveFailed'), t('common.saveFailed'));
+        return;
     }
     ElMessage.success(t('channel.common.saveSuccess'));
     formVisible.value = false;
     loadData();
 }
 
+function syncChannelSupportFields() {
+    if (!canConfigure3ds.value) {
+        form.support3ds = 0;
+    }
+}
+
 async function toggleStatus(row: ChannelInfo) {
-    await updateChannelStatus(row.id, row.channelStatus === 1 ? 0 : 1);
+    const nextValue = row.channelStatus === 1 ? 0 : 1;
+    let confirmed = false;
+    try {
+        confirmed = await confirmChannelCapabilityImpact(row, { channelStatus: nextValue });
+    } catch (error) {
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
+        return;
+    }
+    if (!confirmed) {
+        return;
+    }
+    try {
+        await updateChannelStatus(row.id, nextValue);
+    } catch (error) {
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
+        return;
+    }
     ElMessage.success(t('channel.common.operationSuccess'));
     loadData();
 }
 
-async function handleDelete(row?: ChannelInfo) {
-    if (!row) {
+async function toggle3ds(row: ChannelInfo) {
+    if (row.supportAcquiring !== 1) {
+        return;
+    }
+    const nextValue = row.support3ds === 1 ? 0 : 1;
+    let confirmed = false;
+    try {
+        confirmed = await confirmChannelCapabilityImpact(row, { support3ds: nextValue });
+    } catch (error) {
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
+        return;
+    }
+    if (!confirmed) {
         return;
     }
     try {
-        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: row.channelCnName }), t('channel.common.delete'), { type: 'warning' });
+        await updateChannel(row.id, {
+            ...row,
+            support3ds: nextValue,
+        });
+    } catch (error) {
+        await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
+        return;
+    }
+    ElMessage.success(t('channel.common.operationSuccess'));
+    loadData();
+}
+
+async function confirmChannelCapabilityImpact(current: ChannelInfo | null, next: Partial<ChannelInfo>) {
+    if (!current?.id) {
+        return true;
+    }
+    const disablingChannel = current.channelStatus === 1 && next.channelStatus === 0;
+    const disabling3ds = current.support3ds === 1 && next.support3ds === 0;
+    if (!disablingChannel && !disabling3ds) {
+        return true;
+    }
+
+    const prompts: string[] = [];
+    if (disablingChannel && await hasActiveCapabilities(current.id)) {
+        prompts.push(t('channel.info.disableChannelWithActiveCapabilityConfirm'));
+    }
+    if (disabling3ds && await hasActive3dsCapabilities(current.id)) {
+        prompts.push(t('channel.info.disable3dsWithActiveCapabilityConfirm'));
+    }
+    if (!prompts.length) {
+        return true;
+    }
+
+    try {
+        await ElMessageBox.confirm(prompts.join('\n'), t('common.operationConfirm'), { type: 'warning' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function hasActiveCapabilities(channelId: number) {
+    const result = await searchChannelCapabilities({
+        pageNo: 1,
+        pageSize: 1,
+        channelId,
+        capabilityStatus: 1,
+    });
+    return result.total > 0;
+}
+
+async function hasActive3dsCapabilities(channelId: number) {
+    const pageSize = 500;
+    let pageNo = 1;
+    while (true) {
+        const result = await searchChannelCapabilities({
+            pageNo,
+            pageSize,
+            channelId,
+            capabilityStatus: 1,
+        });
+        if (result.records.some((item: ChannelCapability) => item.support3ds === 1)) {
+            return true;
+        }
+        if (result.records.length < pageSize || pageNo * pageSize >= result.total) {
+            return false;
+        }
+        pageNo += 1;
+    }
+}
+
+async function handleDelete(target?: ChannelInfo | ChannelInfo[]) {
+    const targets = Array.isArray(target) ? target : (target ? [target] : []);
+    if (!targets.length) {
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: targets.map((item) => item.channelCnName).join('、') }), t('channel.common.delete'), { type: 'warning' });
     } catch {
         return;
     }
-    await deleteChannel(row.id);
+    try {
+        await Promise.all(targets.map((item) => deleteChannel(item.id)));
+    } catch (error) {
+        await showChannelError(error, t('common.deleteFailed'), t('common.saveFailed'));
+        return;
+    }
     ElMessage.success(t('channel.common.deleteSuccess'));
     loadData();
 }
@@ -290,5 +453,12 @@ function paymentMethodText(values?: string[]) {
 .center-dialog-footer {
     display: flex;
     justify-content: center;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
 }
 </style>

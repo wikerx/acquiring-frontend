@@ -29,7 +29,7 @@
                 </el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows[0])" v-hasPermi="'monitor:jobLog:remove'">
+                <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'monitor:jobLog:remove'">
                     {{ $t('common.delete') }}
                 </el-button>
             </el-col>
@@ -223,15 +223,15 @@ function openDetail(row: JobRunLogRow) {
     detailVisible.value = true;
 }
 
-async function handleDelete(row?: JobRunLogRow) {
-    const target = row || selectedRows.value[0];
-    if (!target) {
+async function handleDelete(target?: JobRunLogRow | JobRunLogRow[]) {
+    const targets = Array.isArray(target) ? target : (target ? [target] : selectedRows.value);
+    if (!targets.length) {
         ElMessage.warning(t('common.pleaseSelect'));
         return;
     }
     try {
-        await ElMessageBox.confirm(t('monitor.jobLog.deleteConfirm', { runId: target.runId }), t('common.delete'), { type: 'warning' });
-        await deleteJobRunLog(target.id);
+        await ElMessageBox.confirm(t('monitor.jobLog.deleteConfirm', { runId: targets.map((item) => item.runId).join('、') }), t('common.delete'), { type: 'warning' });
+        await Promise.all(targets.map((item) => deleteJobRunLog(item.id)));
         ElMessage.success(t('common.deleteSuccess'));
         loadData();
     } catch (error) {
