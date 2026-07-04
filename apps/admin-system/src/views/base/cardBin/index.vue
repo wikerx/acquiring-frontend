@@ -199,7 +199,7 @@
     </el-dialog>
 
     <el-dialog :title="$t('base.cardBin.detailTitle')" v-model="detailOpen" width="760px" append-to-body>
-      <el-descriptions v-if="detailRow" :column="1" border class="one-column-detail">
+      <el-descriptions v-if="detailRow" :column="1" border size="small" class="one-column-detail">
         <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ detailRow.cardBinStart }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardBinEnd')">{{ detailRow.cardBinEnd }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.binLength')">{{ detailRow.binLength }}</el-descriptions-item>
