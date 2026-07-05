@@ -16,9 +16,11 @@
       </el-form-item>
     </el-form>
 
+    <el-alert class="ip-library-tip" type="info" :closable="false" show-icon :title="$t('base.ipLibrary.shardPageTip')" />
+
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button type="primary" plain :icon="Aim" size="small" :disabled="!query.ipAddress" @click="handleLookup" v-hasPermi="'base:ip-library:list'">{{ $t('base.ipLibrary.lookup') }}</el-button>
+        <el-button type="primary" plain :icon="Aim" size="small" @click="openLookupDialog" v-hasPermi="'base:ip-library:list'">{{ $t('base.ipLibrary.lookup') }}</el-button>
       </el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
@@ -48,6 +50,36 @@
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
     </div>
+
+    <el-dialog :title="$t('base.ipLibrary.lookup')" v-model="lookupOpen" width="980px" append-to-body>
+      <el-form :model="lookupForm" inline size="small" class="lookup-form">
+        <el-form-item :label="$t('base.ipLibrary.ipAddress')">
+          <el-input v-model.trim="lookupForm.ipAddress" :placeholder="$t('base.ipLibrary.ipPlaceholder')" clearable class="lookup-input" @input="handleLookupIpInput" @keyup.enter="handleLookup" />
+        </el-form-item>
+        <el-form-item><el-button type="primary" :icon="Aim" @click="handleLookup">{{ $t('base.ipLibrary.lookup') }}</el-button></el-form-item>
+      </el-form>
+      <div v-if="lookupSearched" class="lookup-summary">
+        <el-alert :type="lookupResult ? 'success' : 'warning'" :closable="false" show-icon>
+          <template #title>{{ lookupResult ? $t('base.ipLibrary.lookupSuccess') : $t('base.ipLibrary.notFound') }}</template>
+        </el-alert>
+        <el-descriptions v-if="lookupResult" :title="$t('base.ipLibrary.bestMatch')" :column="1" border size="small" class="one-column-detail">
+          <el-descriptions-item :label="$t('base.ipLibrary.ipType')">{{ lookupResult.ipType }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.ipLibrary.ipNumberStart')">{{ lookupResult.ipNumberStart }} / {{ lookupResult.ipAddressStart }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.ipLibrary.ipNumberEnd')">{{ lookupResult.ipNumberEnd }} / {{ lookupResult.ipAddressEnd }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.ipLibrary.countryName')">{{ lookupResult.countryName || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.ipLibrary.stateProvince')">{{ lookupResult.stateProvince || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.ipLibrary.city')">{{ lookupResult.city || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table v-if="lookupResult" :data="[lookupResult]" size="small" class="lookup-table">
+          <el-table-column prop="ipType" :label="$t('base.ipLibrary.ipType')" width="90" align="center" />
+          <el-table-column prop="ipAddressStart" :label="$t('base.ipLibrary.ipAddressStart')" min-width="190" align="center" />
+          <el-table-column prop="ipAddressEnd" :label="$t('base.ipLibrary.ipAddressEnd')" min-width="190" align="center" />
+          <el-table-column prop="countryName" :label="$t('base.ipLibrary.countryName')" min-width="160" align="center" :show-overflow-tooltip="true" />
+          <el-table-column prop="stateProvince" :label="$t('base.ipLibrary.stateProvince')" min-width="130" align="center" :show-overflow-tooltip="true" />
+          <el-table-column prop="city" :label="$t('base.ipLibrary.city')" min-width="120" align="center" :show-overflow-tooltip="true" />
+        </el-table>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -67,8 +99,14 @@ const rows = ref<IpLibraryRecord[]>([]);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
+const lookupOpen = ref(false);
+const lookupSearched = ref(false);
+const lookupResult = ref<IpLibraryRecord | null>(null);
 const query = reactive<IpLibraryQuery>({
   ipType: 'IPV4',
+  ipAddress: '',
+});
+const lookupForm = reactive({
   ipAddress: '',
 });
 
@@ -105,15 +143,28 @@ function handleReset() {
   handleSearch();
 }
 
+function openLookupDialog() {
+  lookupForm.ipAddress = query.ipAddress || '';
+  lookupSearched.value = false;
+  lookupResult.value = null;
+  lookupOpen.value = true;
+}
+
 async function handleLookup() {
-  if (!query.ipAddress) {
+  const ipAddress = lookupForm.ipAddress?.trim();
+  if (!ipAddress) {
+    ElMessage.warning(t('base.ipLibrary.ipRequired'));
     return;
+  }
+  const nextType = detectIpType(ipAddress);
+  if (nextType) {
+    query.ipType = nextType;
   }
   loading.value = true;
   try {
-    const record = await lookupIpLibrary(query.ipAddress, query.ipType);
-    rows.value = record ? [record] : [];
-    total.value = record ? 1 : 0;
+    const record = await lookupIpLibrary(ipAddress);
+    lookupSearched.value = true;
+    lookupResult.value = record;
     if (!record) {
       ElMessage.warning(t('base.ipLibrary.notFound'));
     }
@@ -121,6 +172,13 @@ async function handleLookup() {
     ElMessage.error(error?.message || t('common.loadFailed'));
   } finally {
     loading.value = false;
+  }
+}
+
+function handleLookupIpInput(value: string) {
+  const nextType = detectIpType(value);
+  if (nextType) {
+    query.ipType = nextType;
   }
 }
 
@@ -154,6 +212,10 @@ function detectIpType(value: string): 'IPV4' | 'IPV6' | undefined {
   height: 28px;
 }
 
+.ip-library-tip {
+  margin-bottom: 12px;
+}
+
 .ip-type-select {
   width: 86px;
   flex: 0 0 86px;
@@ -173,6 +235,27 @@ function detectIpType(value: string): 'IPV4' | 'IPV6' | undefined {
   margin-left: -1px;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+}
+
+.lookup-form {
+  margin-bottom: 12px;
+}
+
+.lookup-input {
+  width: 320px;
+}
+
+.lookup-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.lookup-table {
+  margin-top: 4px;
+}
+
+.one-column-detail :deep(.el-descriptions__label) {
+  width: 150px;
 }
 
 .ip-range-cell {
