@@ -448,6 +448,13 @@ async function handleDelete(target: CardBinRecord | CardBinRecord[]) {
 
 async function handleStatus(row: CardBinRecord, status: number) {
   if (row.status === status) return;
+  const action = status === 1 ? t('common.enable') : t('common.disable');
+  const name = row.cardBinEnd && row.cardBinEnd !== row.cardBinStart ? `${row.cardBinStart}-${row.cardBinEnd}` : row.cardBinStart;
+  try {
+    await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: status === 1 ? 'success' : 'warning' });
+  } catch {
+    return;
+  }
   try {
     await updateCardBinStatus(row.id, status);
     ElMessage.success(t('common.success'));

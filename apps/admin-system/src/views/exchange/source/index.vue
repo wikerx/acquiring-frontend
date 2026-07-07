@@ -204,7 +204,15 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ExchangeRateSource) {
-    await updateExchangeSourceStatus(row.id, row.sourceStatus === 1 ? 0 : 1);
+    const nextStatus = row.sourceStatus === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = row.sourceName || row.sourceCode || row.id;
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    await updateExchangeSourceStatus(row.id, nextStatus);
     ElMessage.success(t('common.success'));
     loadData();
 }

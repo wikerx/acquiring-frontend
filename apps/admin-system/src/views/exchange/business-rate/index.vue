@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -263,7 +263,15 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ExchangeBusinessRate) {
-    await updateExchangeBusinessRateStatus(row.id, row.rateStatus === 'ENABLED' ? 0 : 1);
+    const nextStatus = row.rateStatus === 'ENABLED' ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = `${optionLabel(rateTypeOptions.value, row.rateType)} ${formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency)}`.trim();
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    await updateExchangeBusinessRateStatus(row.id, nextStatus);
     ElMessage.success(t('common.success'));
     loadData();
 }

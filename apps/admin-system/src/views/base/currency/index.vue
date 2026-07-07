@@ -110,7 +110,11 @@ async function submit() {
   } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function toggleStatus(row: IsoCurrency) {
-  try { await changeCurrencyStatus(row.id, row.status === 1 ? 0 : 1); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
+  const newStatus = row.status === 1 ? 0 : 1;
+  const action = newStatus === 1 ? t('common.enable') : t('common.disable');
+  const name = row.chineseName || row.englishName || row.alpha3Code || row.id;
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: newStatus === 1 ? 'success' : 'warning' }); } catch { return; }
+  try { await changeCurrencyStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleDelete(target: IsoCurrency | IsoCurrency[]) {
   const targets = Array.isArray(target) ? target : [target];

@@ -107,6 +107,9 @@ async function submit() {
 }
 async function toggleStatus(row: SysConfig) {
   const ns = row.status === 1 ? 0 : 1;
+  const action = ns === 1 ? t('common.enable') : t('common.disable');
+  const name = row.configName || row.configKey;
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: ns === 1 ? 'success' : 'warning' }); } catch { return; }
   try { await updateConfig(row.configKey, { ...row, status: ns } as any); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleDelete(target: SysConfig | SysConfig[]) {

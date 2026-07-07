@@ -14,26 +14,11 @@
                 class="side-menu"
                 @select="handleSelect"
             >
-                <template v-for="item in menus" :key="itemKey(item)">
-                    <el-sub-menu v-if="item.children?.length" :index="'__group__' + (item.path || item.title)">
-                        <template #title>
-                            <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                            <span>{{ $te('route.' + item.titleKey) ? $t('route.' + item.titleKey) : item.title }}</span>
-                        </template>
-                        <el-menu-item
-                            v-for="child in item.children"
-                            :key="child.path || child.title"
-                            :index="child.path || child.title || child.titleKey || child.icon"
-                        >
-                            <el-icon v-if="child.icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
-                            <span>{{ $te('route.' + child.titleKey) ? $t('route.' + child.titleKey) : child.title }}</span>
-                        </el-menu-item>
-                    </el-sub-menu>
-                    <el-menu-item v-else-if="item.path" :index="item.path">
-                        <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                        <span>{{ $te('route.' + item.titleKey) ? $t('route.' + item.titleKey) : item.title }}</span>
-                    </el-menu-item>
-                </template>
+                <SidebarMenuNode
+                    v-for="item in menus"
+                    :key="itemKey(item)"
+                    :item="item"
+                />
             </el-menu>
         </div>
     </aside>
@@ -47,7 +32,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getSystemBrand } from '@acquiring/shared';
 import type { AdminMenuItem } from '@/types/admin';
 import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
-import { resolveMenuIcon } from '@/utils/menu-icon';
+import SidebarMenuNode from './SidebarMenuNode.vue';
 
 const props = defineProps<{
     menus: AdminMenuItem[];
@@ -64,7 +49,7 @@ const adminBrand = getSystemBrand('admin');
 const activePath = computed(() => route.path || '/dashboard');
 
 function itemKey(item: AdminMenuItem) {
-    return item.path || item.title || Math.random().toString(36);
+    return item.path || item.titleKey || item.title;
 }
 
 /**

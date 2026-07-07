@@ -114,6 +114,9 @@ async function submitForm() {
 
 async function toggleStatus(row: IsoCountry) {
   const newStatus = row.status === 1 ? 0 : 1;
+  const action = newStatus === 1 ? t('common.enable') : t('common.disable');
+  const name = row.chineseName || row.englishName || row.alpha2Code || row.id;
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: newStatus === 1 ? 'success' : 'warning' }); } catch { return; }
   try { await changeCountryStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 

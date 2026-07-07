@@ -447,8 +447,15 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ChannelCapability) {
+    const nextStatus = row.capabilityStatus === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
     try {
-        await updateChannelCapabilityStatus(row.id, row.capabilityStatus === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: capabilityStatusTargetName(row) }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateChannelCapabilityStatus(row.id, nextStatus);
     } catch (error) {
         await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
         return;
@@ -463,6 +470,13 @@ async function toggleSupportFlag(row: ChannelCapability, field: 'support3ds' | '
     if (field === 'support3ds' && enabledValue === 1 && !canRowConfigure3ds(row)) {
         row[field] = previousValue;
         ElMessage.warning(t('channel.info.support3ds'));
+        return;
+    }
+    const action = enabledValue === 1 ? t('common.enable') : t('common.disable');
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: capabilitySupportTargetName(row, field) }), t('common.operationConfirm'), { type: enabledValue === 1 ? 'success' : 'warning' });
+    } catch {
+        row[field] = previousValue;
         return;
     }
     row[field] = enabledValue;
@@ -531,6 +545,15 @@ function transactionTypeText(row: Pick<ChannelCapability, 'businessType' | 'tran
         return '-';
     }
     return values.map((value) => optionLabel(transactionOptions.value, value)).join(', ');
+}
+
+function capabilityStatusTargetName(row: ChannelCapability) {
+    return `${channelDisplayText(row)} ${optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod)} ${transactionTypeText(row)}`.trim();
+}
+
+function capabilitySupportTargetName(row: ChannelCapability, field: 'support3ds' | 'supportIncrementalAuthorization') {
+    const fieldName = field === 'support3ds' ? t('channel.info.support3ds') : t('channel.capability.incrementalAuthorization');
+    return `${capabilityStatusTargetName(row)} ${fieldName}`.trim();
 }
 
 function transactionTypeItems(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {

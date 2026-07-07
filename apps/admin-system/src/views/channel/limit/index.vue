@@ -681,8 +681,15 @@ function limitSummary(row: ChannelLimitRule) {
 }
 
 async function toggleStatus(row: ChannelLimitRule) {
+    const nextStatus = row.ruleStatus === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
     try {
-        await updateChannelLimitStatus(row.id, row.ruleStatus === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: `${channelDisplayText(row)} ${limitSummary(row)}`.trim() }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateChannelLimitStatus(row.id, nextStatus);
     } catch (error) {
         await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
         return;

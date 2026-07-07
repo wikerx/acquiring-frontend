@@ -474,8 +474,16 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: EmailAccount) {
+    const nextStatus = row.status === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = row.accountName || row.fromEmail || row.accountCode || row.id;
     try {
-        await updateEmailAccountStatus(row.id, row.status === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateEmailAccountStatus(row.id, nextStatus);
         ElMessage.success(t('common.success'));
         loadData();
     } catch (error) {

@@ -307,6 +307,12 @@ function syncChannelSupportFields() {
 
 async function toggleStatus(row: ChannelInfo) {
     const nextValue = row.channelStatus === 1 ? 0 : 1;
+    const action = nextValue === 1 ? t('common.enable') : t('common.disable');
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: channelStatusTargetName(row) }), t('common.operationConfirm'), { type: nextValue === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
     let confirmed = false;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { channelStatus: nextValue });
@@ -332,6 +338,12 @@ async function toggle3ds(row: ChannelInfo) {
         return;
     }
     const nextValue = row.support3ds === 1 ? 0 : 1;
+    const action = nextValue === 1 ? t('common.enable') : t('common.disable');
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: `${channelStatusTargetName(row)} ${t('channel.info.support3ds')}` }), t('common.operationConfirm'), { type: nextValue === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
     let confirmed = false;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { support3ds: nextValue });
@@ -443,6 +455,10 @@ function paymentMethodText(values?: string[]) {
         return '-';
     }
     return values.map((value) => optionLabel(paymentOptions.value, value)).join(', ');
+}
+
+function channelStatusTargetName(row: ChannelInfo) {
+    return row.channelCnName || row.channelEnName || row.channelCode || String(row.id);
 }
 </script>
 

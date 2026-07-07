@@ -115,7 +115,13 @@ async function saveEdit() {
     ElMessage.success(t('common.saveSuccess')); open.value = false; loadData();
   } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
-async function toggleStatus(row: RegionCurrencyRow) { try { await changeRegionCurrencyStatus(row.id, row.status === 1 ? 0 : 1); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); } }
+async function toggleStatus(row: RegionCurrencyRow) {
+  const newStatus = row.status === 1 ? 0 : 1;
+  const action = newStatus === 1 ? t('common.enable') : t('common.disable');
+  const name = `${row.countryName || row.alpha2Code || row.id} / ${row.currencyAlpha3Code || ''}`.trim();
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: newStatus === 1 ? 'success' : 'warning' }); } catch { return; }
+  try { await changeRegionCurrencyStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
+}
 async function handleDelete(row: RegionCurrencyRow) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.countryName }), t('common.delete'), { type: 'warning' }); } catch { return; } try { await deleteRegionCurrency(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); } }
 async function handleExport() {
   try {
