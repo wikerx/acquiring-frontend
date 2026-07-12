@@ -49,20 +49,40 @@
       <template #footer><div class="dialog-footer"><el-button type="primary" @click="submit">{{ $t('common.confirm') }}</el-button><el-button @click="open = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
-    <DetailDescriptions
-      v-model:visible="detailVisible"
-      :title="$t('common.detail')"
-      :data="detailData"
-      :items="detailItems"
-      :column="1"
-    >
-      <template #cell-status="{ data }">
-        <BaseStatusTag :value="Number(data?.status) === 1 ? 'ENABLED' : 'DISABLED'" />
-      </template>
-      <template #cell-createdAt="{ data }">
-        <BaseDateTime :value="String(data?.createdAt || '')" />
-      </template>
-    </DetailDescriptions>
+    <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('common.detail')" size="xl" :loading="detailLoading">
+      <div v-if="detailData" class="dict-detail">
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item :label="$t('system.config.dictName')">{{ detailData.dictName || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('system.config.dictType')">{{ detailData.dictType || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('system.config.bizDomain')">{{ detailData.bizDomain || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('common.status')">
+            <BaseStatusTag :value="Number(detailData.status) === 1 ? 'ENABLED' : 'DISABLED'" />
+          </el-descriptions-item>
+          <el-descriptions-item :label="$t('common.remark')" :span="2">{{ detailData.remark || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="String(detailData.createdAt || '')" /></el-descriptions-item>
+          <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="String(detailData.updatedAt || '')" /></el-descriptions-item>
+        </el-descriptions>
+
+        <div class="dict-detail-items">
+          <div class="dict-detail-items__header">
+            <span>{{ $t('system.dictData.dictItems') }}</span>
+            <el-button size="small" type="primary" link :icon="Tickets" @click="openDictItems(detailData as unknown as SysDictType)">{{ $t('system.dictData.dictItems') }}</el-button>
+          </div>
+          <el-table :data="detailDictItems" size="small" border>
+            <el-table-column prop="dictLabel" :label="$t('system.dictData.dictLabel')" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="dictValue" :label="$t('system.dictData.dictValue')" min-width="150" align="center" show-overflow-tooltip />
+            <el-table-column :label="$t('system.dictData.locale')" width="170" align="center">
+              <template #default="{ row }">{{ formatLocaleLabel(row.locale) }}</template>
+            </el-table-column>
+            <el-table-column :label="$t('common.status')" width="90" align="center">
+              <template #default="{ row }"><BaseStatusTag :value="Number(row.status) === 1 ? 'ENABLED' : 'DISABLED'" /></template>
+            </el-table-column>
+            <el-table-column prop="dictSort" :label="$t('common.sort')" width="80" align="center" />
+            <el-table-column prop="remark" :label="$t('common.remark')" min-width="180" show-overflow-tooltip />
+          </el-table>
+        </div>
+      </div>
+    </CommonDetailDrawer>
   </div>
 </template>
 
@@ -74,10 +94,10 @@ import { Search, Refresh, Plus, Edit, Delete, Download, Tickets, View } from '@e
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
-import DetailDescriptions from '@/components/DetailDescriptions.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchDictTypes, createDictType, updateDictType, deleteDictType, exportDictTypes, refreshDictCache, type SysDictType } from '@/api/system/dict';
+import { searchDictTypes, searchDictData, createDictType, updateDictType, deleteDictType, exportDictTypes, refreshDictCache, type SysDictData, type SysDictType } from '@/api/system/dict';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -95,15 +115,9 @@ const rules: FormRules = {
   dictType: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }],
 };
 const detailVisible = ref(false);
-const detailData = ref<Record<string, unknown> | null>(null);
-const detailItems = computed(() => [
-  { prop: 'dictName', label: t('system.config.dictName') },
-  { prop: 'dictType', label: t('system.config.dictType') },
-  { prop: 'bizDomain', label: t('system.config.bizDomain') },
-  { prop: 'status', label: t('common.status') },
-  { prop: 'remark', label: t('common.remark') },
-  { prop: 'createdAt', label: t('common.createTime') },
-]);
+const detailLoading = ref(false);
+const detailData = ref<SysDictType | null>(null);
+const detailDictItems = ref<SysDictData[]>([]);
 
 onMounted(() => loadData());
 
@@ -177,8 +191,45 @@ function openDictItems(row: SysDictType) {
   });
 }
 
-function openDetail(row: SysDictType) {
-  detailData.value = row as unknown as Record<string, unknown>;
+async function openDetail(row: SysDictType) {
+  detailData.value = row;
+  detailDictItems.value = [];
   detailVisible.value = true;
+  detailLoading.value = true;
+  try {
+    const result = await searchDictData({ dictType: row.dictType, pageNo: 1, pageSize: 100 });
+    detailDictItems.value = result.records || [];
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('common.loadFailed'));
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+function formatLocaleLabel(locale?: string) {
+  if (locale === 'zh-CN') {
+    return t('system.dictData.localeOptions.zhCN');
+  }
+  if (locale === 'en-US') {
+    return t('system.dictData.localeOptions.enUS');
+  }
+  return locale || '-';
 }
 </script>
+
+<style scoped>
+.dict-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dict-detail-items__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+</style>

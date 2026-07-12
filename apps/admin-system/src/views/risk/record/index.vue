@@ -45,8 +45,8 @@
       <el-table-column :label="$t('common.operation')" width="100" align="center" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openHits(row)" v-hasPermi="'risk:record:evaluation:detail'">{{ $t('common.detail') }}</el-button></template></el-table-column>
     </StandardTable>
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
-    <el-dialog :title="$t('risk.record.hitDetail')" v-model="hitOpen" width="920px" append-to-body>
-      <el-table :data="hits" size="small">
+    <CommonDetailDrawer v-model:visible="hitOpen" :title="$t('risk.record.hitDetail')" size="lg">
+      <el-table :data="hits" size="small" class="risk-hit-table">
         <el-table-column prop="module_type" :label="$t('risk.record.moduleType')" width="100" align="center" />
         <el-table-column prop="function_name" :label="$t('risk.record.functionName')" min-width="160" align="center" />
         <el-table-column prop="hit_element" :label="$t('risk.record.hitElement')" width="120" align="center" />
@@ -56,7 +56,7 @@
         </el-table-column>
         <el-table-column prop="decision_reason" :label="$t('risk.record.decisionReason')" min-width="180" align="center" show-overflow-tooltip />
       </el-table>
-    </el-dialog>
+    </CommonDetailDrawer>
   </div>
 </template>
 
@@ -66,6 +66,7 @@ import { ElMessage } from 'element-plus';
 import { Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
@@ -122,3 +123,9 @@ function decisionActionText(value: unknown) { return riskOptionLabel(t, 'decisio
 function riskLevelTagType(value?: string) { if (value === 'CRITICAL') return 'danger'; if (value === 'HIGH') return 'warning'; if (value === 'MEDIUM') return 'primary'; return 'success'; }
 function decisionActionTagType(value?: string) { if (value === 'REJECT') return 'danger'; if (value === 'REVIEW') return 'warning'; return 'success'; }
 </script>
+
+<style scoped>
+.risk-hit-table {
+  width: 100%;
+}
+</style>

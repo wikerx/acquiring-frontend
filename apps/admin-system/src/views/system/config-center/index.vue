@@ -26,15 +26,14 @@
             <el-table-column :label="$t('common.operation')" align="center" width="100" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'dict' ? 'system:dict:list' : 'system:config:query'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </StandardTable>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
-        <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="700px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" size="md">
             <el-descriptions :column="2" border size="small">
                 <el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">
                     <BaseDateTime v-if="isTimeColumn(col.prop)" :value="String(activeRow?.[col.prop] || '')" />
                     <span v-else>{{ activeRow?.[col.prop] ?? '-' }}</span>
                 </el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -44,6 +43,7 @@ import { ElMessage } from 'element-plus';
 import { Search, Refresh, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchConfigs } from '@/api/system/config';

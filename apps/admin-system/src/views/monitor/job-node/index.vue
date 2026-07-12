@@ -36,6 +36,7 @@
             :data="detailData"
             :items="detailItems"
             :column="1"
+            size="md"
         >
             <template #cell-status="{ data }">
                 <BaseStatusTag :value="String(data?.status || '') === 'ONLINE' ? 'ENABLED' : 'DISABLED'" :text="formatNodeStatus(String(data?.status || ''))" />

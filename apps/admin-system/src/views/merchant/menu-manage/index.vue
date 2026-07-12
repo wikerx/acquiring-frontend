@@ -28,18 +28,30 @@
         </StandardTable>
         <div class="pagination-container" style="color:#909399;font-size:13px">{{ $t('system.menu.nodeCount', { count: total }) }}</div>
 
-        <el-dialog v-model="detailVisible" :title="$t('system.menu.menuDetail')" width="700px" append-to-body destroy-on-close>
-            <el-descriptions :column="2" border size="small">
-                <el-descriptions-item :label="$t('system.menu.menuId')">{{ activeRow?.menuId ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.parentId')">{{ activeRow?.parentId ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.menuCode')">{{ activeRow?.menuCode ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.menuName')">{{ activeRow?.menuName ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.menuType')">{{ activeRow?.menuTypeText ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.icon')">{{ activeRow?.icon ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.routePath')">{{ activeRow?.routePath ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.componentPath')">{{ activeRow?.componentPath ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.permissionCode')">{{ activeRow?.permissionCode ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.redirect')">{{ activeRow?.redirect ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.visible')">{{ activeRow?.visibleText ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('system.menu.keepAlive')">{{ activeRow?.keepAliveText ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.menu.externalLink')">{{ activeRow?.externalLinkText ?? '-' }}</el-descriptions-item><el-descriptions-item :label="$t('common.sort')">{{ activeRow?.sortNo ?? '-' }}</el-descriptions-item>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('system.menu.menuDetail')" size="md">
+            <el-descriptions :column="1" border size="small">
+                <el-descriptions-item :label="$t('system.menu.menuId')">{{ activeRow?.menuId ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.parentId')">{{ activeRow?.parentId ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.menuCode')">{{ activeRow?.menuCode ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.menuName')">
+                    <span class="menu-detail-name">
+                        <el-icon v-if="activeRow?.icon && menuIconMap[activeRow.icon]" class="menu-detail-name__icon">
+                            <component :is="menuIconMap[activeRow.icon]" />
+                        </el-icon>
+                        <span>{{ activeRow?.menuName ?? '-' }}</span>
+                    </span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.menuType')">{{ activeRow?.menuTypeText ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.routePath')">{{ activeRow?.routePath ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.componentPath')">{{ activeRow?.componentPath ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.permissionCode')">{{ activeRow?.permissionCode ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.redirect')">{{ activeRow?.redirect ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.visible')">{{ activeRow?.visibleText ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.keepAlive')">{{ activeRow?.keepAliveText ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.menu.externalLink')">{{ activeRow?.externalLinkText ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('common.sort')">{{ activeRow?.sortNo ?? '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog :title="dialogTitle" v-model="menuDialogVisible" width="560px" append-to-body destroy-on-close>
             <el-form ref="menuFormRef" :model="menuForm" :rules="menuFormRules" label-width="100px" style="padding:0 20px">
@@ -82,6 +94,7 @@ const menuIconMap = Object.fromEntries(
     .map(([k,v]) => [k, v as Component])
 ) as Record<string, Component>;
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createMerchantMenu, deleteMerchantMenu, treeMerchantMenus, updateMerchantMenu, updateMerchantMenuStatus, type SysMenu } from '@/api/merchant/menu-manage';
 import { CommonStatus } from '@/enums/status';
@@ -141,5 +154,16 @@ function to(v:string){return v.trim()||undefined}
 
 .menu-icon-grid .el-button + .el-button {
     margin-left: 0;
+}
+
+.menu-detail-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-detail-name__icon {
+    color: var(--el-color-primary);
+    font-size: 16px;
 }
 </style>

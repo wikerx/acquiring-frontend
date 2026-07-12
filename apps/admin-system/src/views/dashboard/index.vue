@@ -64,7 +64,7 @@
 
         <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
 
-        <el-dialog v-model="noticeDetailVisible" :title="$t('system.notice.detailTitle')" width="min(980px, 90vw)" top="6vh" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="noticeDetailVisible" :title="$t('system.notice.detailTitle')" size="full">
             <article v-if="activeNotice" class="dashboard-notice-detail">
                 <div class="dashboard-notice-detail__type">
                     <el-tag :type="activeNotice.noticeType === '1' ? 'warning' : 'success'" size="small">
@@ -78,10 +78,7 @@
                 </div>
                 <div class="dashboard-notice-detail__content">{{ activeNotice.noticeContent || '-' }}</div>
             </article>
-            <template #footer>
-                <div class="dialog-footer"><el-button @click="noticeDetailVisible = false">{{ $t('common.close') }}</el-button></div>
-            </template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -116,6 +113,7 @@ import { getNotice, listLatestNotices } from '@/api/system/notice';
 import type { SysUserAccountQuery } from '@/api/system/user';
 import { searchUsers } from '@/api/system/user';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useUserStore } from '@/store/modules/user';
 import { formatDateTime } from '@/utils/format';

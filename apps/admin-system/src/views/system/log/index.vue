@@ -35,15 +35,14 @@
             <el-table-column :label="$t('common.operation')" align="center" width="80" class-name="small-padding fixed-width" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="activeTab === 'login' ? 'system:login-log:list' : 'system:oper-log:list'">{{ $t('common.detail') }}</el-button></template></el-table-column>
         </StandardTable>
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
-        <el-dialog v-model="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" width="800px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="`${activeTitle} ${$t('common.detail')}`" size="lg">
             <el-descriptions :column="1" border size="small">
                 <el-descriptions-item v-for="col in columns" :key="col.prop" :label="col.label">
                     <BaseDateTime v-if="isTimeColumn(col.prop)" :value="String(activeRow?.[col.prop] || '')" />
                     <span v-else>{{ activeRow?.[col.prop] ?? '-' }}</span>
                 </el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -54,6 +53,7 @@ import { Search, Refresh, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchLoginLogs } from '@/api/audit/login-log';

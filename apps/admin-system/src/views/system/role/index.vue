@@ -70,7 +70,7 @@
             <template #footer><div class="dialog-footer"><el-button type="primary" :loading="authSaving" @click="submitRoleForm">{{ $t('common.confirm') }}</el-button><el-button @click="roleDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
 
-        <el-dialog v-model="detailVisible" :title="$t('system.role.roleDetail')" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('system.role.roleDetail')" size="xl">
             <el-descriptions :column="1" border size="small" style="margin-bottom:12px">
                 <el-descriptions-item :label="$t('system.role.roleName')">{{ activeRow?.roleName || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.role.roleCode')">{{ activeRow?.roleCode || '-' }}</el-descriptions-item>
@@ -83,7 +83,7 @@
                 <el-descriptions-item :label="$t('system.role.permissionCount')">{{ activeRow?.permissionCount ?? 0 }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.role.desc')">{{ activeRow?.description || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <div class="auth-tree-wrapper" style="max-height:400px">
+            <div class="auth-tree-wrapper role-detail-tree">
                 <el-tree :data="detailTreeData" node-key="id" show-checkbox default-expand-all :default-checked-keys="detailCheckedKeys" :props="{ label: 'label', children: 'children', disabled: 'disabled' }" disabled>
                     <template #default="{ data }">
                         <span class="auth-tree-node">
@@ -96,8 +96,7 @@
                     </template>
                 </el-tree>
             </div>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog v-model="roleAuthVisible" :title="$t('system.role.roleAuth')" width="760px" append-to-body destroy-on-close>
             <el-descriptions :column="1" border size="small" style="margin-bottom:12px">
@@ -152,6 +151,7 @@ import { useI18n } from 'vue-i18n';
 import { createRole, deleteRole, getRoleMenus, grantRoleMenus, searchRoles, updateRole, updateRoleStatus, type SysRole } from '@/api/system/role';
 import { treeMenus, type SysMenu } from '@/api/system/menu';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
@@ -257,3 +257,10 @@ function to(v: string) { return v.trim() || undefined; }
 function ni(keys: Array<string | number>) { return Array.from(new Set(keys.map(Number).filter(i => Number.isInteger(i) && i > 0))); }
 function dataScopeLabel(v?: string) { const m: Record<string, string> = { ALL: t('system.role.allData'), SELF: t('system.role.selfData'), CUSTOM: t('system.role.customData') }; return v ? (m[v] || v) : '-'; }
 </script>
+
+<style scoped>
+.role-detail-tree {
+    min-height: 520px;
+    max-height: calc(100vh - 360px);
+}
+</style>

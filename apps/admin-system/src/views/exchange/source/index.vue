@@ -56,7 +56,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="$t('exchange.source.detailTitle')" v-model="detailVisible" width="680px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('exchange.source.detailTitle')" size="md">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.sourceCode')">{{ detailRow.sourceCode }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.sourceName')">{{ detailRow.sourceName }}</el-descriptions-item>
@@ -72,8 +72,7 @@
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog :title="formMode === 'create' ? $t('exchange.source.addTitle') : $t('exchange.source.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="112px" size="small">
@@ -103,6 +102,7 @@ import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createExchangeSource, deleteExchangeSource, exportExchangeSources, getExchangeSource, searchExchangeSources, updateExchangeSource, updateExchangeSourceStatus, type ExchangeRateSource } from '@/api/exchange';

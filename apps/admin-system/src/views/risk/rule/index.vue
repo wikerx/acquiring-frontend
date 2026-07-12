@@ -160,10 +160,11 @@
       </el-table-column>
       <el-table-column :label="$t('common.status')" width="92" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" :disabled="isStatusUpdating(row.id)" @change="(status: number) => handleStatus(row, status)" v-hasPermi="`${current.permissionPrefix}:status`" /></template></el-table-column>
       <el-table-column :label="$t('common.updateTime')" width="180" align="center"><template #default="{ row }"><BaseDateTime :value="row.updateTime" /></template></el-table-column>
-      <el-table-column :label="$t('common.operation')" width="190" align="center" fixed="right">
+      <el-table-column :label="$t('common.operation')" width="320" align="center" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="`${current.permissionPrefix}:detail`">{{ $t('common.detail') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('common.edit') }}</el-button>
+          <el-button v-if="isMerchantLimitRule" size="small" type="primary" link :icon="Edit" @click="openMerchantLimitDimensionEdit(row)" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('risk.rule.dimensionEdit') }}</el-button>
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
@@ -269,7 +270,7 @@
         </el-row>
         <template v-if="isMerchantLimitRule">
           <el-form-item :label="$t('risk.rule.limitType')" prop="limitType">
-            <el-select v-if="formMode === 'add'" v-model="merchantLimitForm.limitTypes" multiple filterable clearable collapse-tags collapse-tags-tooltip :max-collapse-tags="2" style="width:100%" @change="syncMerchantLimitAmounts">
+            <el-select v-if="isMerchantLimitMultiEdit" v-model="merchantLimitForm.limitTypes" multiple filterable clearable collapse-tags collapse-tags-tooltip :max-collapse-tags="2" style="width:100%" @change="syncMerchantLimitAmounts">
               <el-option v-for="item in limitTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
             <el-select v-else v-model="form.limitType" filterable clearable style="width:100%" @change="handleLimitTypeChange">
@@ -324,7 +325,7 @@
       <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button><el-button @click="formOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
-    <el-dialog :title="$t('common.detail')" v-model="detailOpen" width="760px" append-to-body>
+    <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('common.detail')" size="lg">
       <el-descriptions v-if="detailRow" :column="1" border size="small">
         <el-descriptions-item v-for="item in detailItems" :key="item.label" :label="item.label">
           <span v-if="item.cardBrand" class="card-brand-cell">
@@ -369,10 +370,7 @@
           <span v-else>{{ item.value || '-' }}</span>
         </el-descriptions-item>
       </el-descriptions>
-      <template #footer>
-        <div class="dialog-footer"><el-button @click="detailOpen = false">{{ $t('common.close') }}</el-button></div>
-      </template>
-    </el-dialog>
+    </CommonDetailDrawer>
   </div>
 </template>
 
@@ -385,6 +383,7 @@ import { useI18n } from 'vue-i18n';
 import type { UploadFile } from 'element-plus';
 import { PaymentLogoGroup, PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { listChannelOptions, searchChannelCapabilities, type ChannelCapability, type ChannelOption } from '@/api/channel';
@@ -421,7 +420,7 @@ const formOpen = ref(false);
 const detailOpen = ref(false);
 const detailRow = ref<RiskRecord | null>(null);
 const formRef = ref<FormInstance>();
-const formMode = ref<'add' | 'edit'>('add');
+const formMode = ref<'add' | 'edit' | 'dimensionEdit'>('add');
 const editingId = ref<number>();
 const statusUpdatingIds = ref<Set<number>>(new Set());
 const merchantLoading = ref(false);
@@ -444,6 +443,7 @@ type DetailItem = {
   time?: boolean;
   frequencyPolicy?: boolean;
 };
+type MerchantLimitDimensionSnapshot = Partial<Record<string, RiskRecord>>;
 const frequencyForm = reactive({
   elements: [] as string[],
   statDimension: 'ANY_ELEMENT',
@@ -456,6 +456,7 @@ const merchantLimitForm = reactive({
   limitTypes: [] as string[],
   amounts: {} as Record<string, number | undefined>,
 });
+const merchantLimitDimensionRows = ref<MerchantLimitDimensionSnapshot>({});
 const MERCHANT_LIMIT_CURRENCY = 'USD';
 const merchantLimitRelationTypes = ['DAILY', 'WEEKLY', 'MONTHLY'] as const;
 const ALL_DIMENSION = 'ALL';
@@ -594,7 +595,10 @@ const rules = computed<FormRules>(() => ({
   triggerAction: [{ validator: validateThreeDsRequired, trigger: 'change' }],
   priority: [{ validator: validateThreeDsPriority, trigger: 'change' }],
 }));
-const formTitle = computed(() => `${formMode.value === 'add' ? t('common.add') : t('common.edit')} - ${currentFunctionName.value}`);
+const formTitle = computed(() => {
+  const action = formMode.value === 'dimensionEdit' ? t('risk.rule.dimensionEdit') : formMode.value === 'add' ? t('common.add') : t('common.edit');
+  return `${action} - ${currentFunctionName.value}`;
+});
 const formCardBrandLogo = computed(() => cardBrandLogo(form.cardBrand));
 const formCardBrandText = computed(() => form.cardBrand ? cardBrandDisplay(form.cardBrand) : t('risk.common.cardBrandAutoPending'));
 const showRuleConditionSection = computed(() => !isThreeDsRule.value && (profile.value.showMatchValue || profile.value.showCountry || profile.value.showLimitType || profile.value.showFrequency));
@@ -602,7 +606,8 @@ const showAmountMinInput = computed(() => profile.value.showAmount && !isMerchan
 const showAmountMaxInput = computed(() => profile.value.showAmount && !isMerchantLimitRule.value && !!form.limitType && String(form.limitType) !== 'SINGLE_MIN');
 const showThreeDsAmountMinInput = computed(() => ['GE', 'BETWEEN'].includes(String(form.amountMatchType || '')));
 const showThreeDsAmountMaxInput = computed(() => ['LE', 'BETWEEN'].includes(String(form.amountMatchType || '')));
-const merchantLimitAmountTypes = computed(() => formMode.value === 'add' ? merchantLimitForm.limitTypes : form.limitType ? [String(form.limitType)] : []);
+const isMerchantLimitMultiEdit = computed(() => formMode.value === 'add' || formMode.value === 'dimensionEdit');
+const merchantLimitAmountTypes = computed(() => isMerchantLimitMultiEdit.value ? merchantLimitForm.limitTypes : form.limitType ? [String(form.limitType)] : []);
 const currentRuleGuidance = computed(() => t(`risk.rule.guidance.${current.value.functionCode}`));
 const ruleConditionGuidance = computed(() => t(`risk.rule.conditionGuidance.${current.value.functionCode}`));
 const detailItems = computed<DetailItem[]>(() => {
@@ -743,7 +748,29 @@ function resetForm(row?: RiskRecord) {
   resetDefaultRuleControls();
   syncCurrentMerchantOption();
 }
-function openForm(mode: 'add' | 'edit', row?: RiskRecord) { formMode.value = mode; editingId.value = row?.id; resetForm(row); formOpen.value = true; }
+function openForm(mode: 'add' | 'edit', row?: RiskRecord) { formMode.value = mode; editingId.value = row?.id; merchantLimitDimensionRows.value = {}; resetForm(row); formOpen.value = true; }
+async function openMerchantLimitDimensionEdit(row: RiskRecord) {
+  if (!isMerchantLimitRule.value) {
+    return;
+  }
+  loading.value = true;
+  try {
+    const dimensionRows = await loadMerchantLimitDimensionRows(row);
+    const seedRow = dimensionRows[0] || row;
+    formMode.value = 'dimensionEdit';
+    editingId.value = undefined;
+    resetForm(seedRow);
+    merchantLimitDimensionRows.value = Object.fromEntries(dimensionRows.filter((item) => item.limitType).map((item) => [String(item.limitType), item]));
+    merchantLimitForm.limitTypes = dimensionRows.map((item) => String(item.limitType || '')).filter(Boolean);
+    merchantLimitForm.amounts = Object.fromEntries(dimensionRows.filter((item) => item.limitType).map((item) => [String(item.limitType), merchantLimitAmount(item)]));
+    syncMerchantLimitAmounts();
+    formOpen.value = true;
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.loadFailed'));
+  } finally {
+    loading.value = false;
+  }
+}
 async function submitForm() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
@@ -754,6 +781,8 @@ async function submitForm() {
     const payload = buildRulePayload();
     if (isSourceUrlRule.value && !editingId.value) {
       await createRiskSourceUrls(payload);
+    } else if (isMerchantLimitRule.value && formMode.value === 'dimensionEdit') {
+      await saveMerchantLimitDimensionRules(payload);
     } else if (isMerchantLimitRule.value && !editingId.value) {
       await createMerchantLimitRules(payload);
     } else {
@@ -888,6 +917,44 @@ async function createMerchantLimitRules(payload: Partial<RiskRecord>) {
       currency: MERCHANT_LIMIT_CURRENCY,
     });
   }
+}
+
+async function saveMerchantLimitDimensionRules(payload: Partial<RiskRecord>) {
+  for (const limitType of merchantLimitForm.limitTypes) {
+    const amount = merchantLimitAmountValue(merchantLimitForm.amounts[limitType]);
+    const row = merchantLimitDimensionRows.value[limitType];
+    const request = {
+      ...payload,
+      limitType,
+      amountMin: limitType === 'SINGLE_MIN' ? amount : undefined,
+      amountMax: limitType === 'SINGLE_MIN' ? undefined : amount,
+      currency: MERCHANT_LIMIT_CURRENCY,
+    };
+    if (row?.id) {
+      await updateRiskRule(current.value.functionCode, row.id, request);
+    } else {
+      await createRiskRule(current.value.functionCode, request);
+    }
+  }
+}
+
+async function loadMerchantLimitDimensionRows(row: RiskRecord) {
+  const result = await pageRiskRules(current.value.functionCode, {
+    merchantScope: row.merchantScope,
+    merchantId: row.merchantScope === 'MERCHANT' ? row.merchantId : undefined,
+    ruleName: row.ruleName,
+    matchValue: row.matchValue,
+    pageNo: 1,
+    pageSize: 5000,
+  });
+  return result.records.filter((item) => isSameMerchantLimitDimension(item, row));
+}
+
+function isSameMerchantLimitDimension(left: Partial<RiskRecord>, right: Partial<RiskRecord>) {
+  return String(left.merchantScope || '') === String(right.merchantScope || '')
+    && String(left.merchantId || '') === String(right.merchantId || '')
+    && String(left.ruleName || '') === String(right.ruleName || '')
+    && String(left.matchValue || '') === String(right.matchValue || '');
 }
 
 function buildSourceUrlPayload(payload: Partial<RiskRecord>) {
@@ -1376,7 +1443,7 @@ function handleFrequencyAllowedCountChange(value?: number) {
 }
 
 function validateLimitType(_rule: unknown, _value: unknown, callback: (error?: Error) => void) {
-  if (isMerchantLimitRule.value && formMode.value === 'add' && merchantLimitForm.limitTypes.length === 0) {
+  if (isMerchantLimitRule.value && isMerchantLimitMultiEdit.value && merchantLimitForm.limitTypes.length === 0) {
     callback(new Error(t('risk.validation.limitTypeRequired')));
     return;
   }
@@ -2016,14 +2083,15 @@ function frequencyWindowUnitLabel(value: string) {
 
 .limit-amount-row {
   display: inline-grid;
-  grid-template-columns: max-content minmax(200px, 260px) auto;
+  grid-template-columns: 150px minmax(220px, 320px) 56px;
   gap: 10px;
   align-items: center;
-  width: fit-content;
+  width: min(100%, 540px);
   max-width: 100%;
 }
 
 .limit-type-label {
+  justify-self: end;
   color: var(--el-text-color-regular);
   white-space: nowrap;
 }

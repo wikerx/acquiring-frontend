@@ -73,7 +73,7 @@
             />
         </div>
 
-        <DetailDescriptions v-model:visible="detailVisible" :title="$t('common.detail')" :data="detailData" :items="detailItems" :column="1">
+        <DetailDescriptions v-model:visible="detailVisible" :title="$t('common.detail')" :data="detailData" :items="detailItems" :column="1" size="lg">
             <template #cell-resultSummary="{ data }">
                 <pre class="result-summary">{{ formatResultSummary(data?.resultSummary) }}</pre>
             </template>

@@ -91,7 +91,7 @@
             />
         </div>
 
-        <DetailDescriptions v-model:visible="detailVisible" :title="$t('common.detail')" :data="detailData" :items="detailItems" :column="1">
+        <DetailDescriptions v-model:visible="detailVisible" :title="$t('common.detail')" :data="detailData" :items="detailItems" :column="1" size="lg">
             <template #cell-lastCheckTime="{ data }"><BaseDateTime :value="String(data?.lastCheckTime || '')" /></template>
             <template #cell-createdTime="{ data }"><BaseDateTime :value="String(data?.createdTime || '')" /></template>
         </DetailDescriptions>

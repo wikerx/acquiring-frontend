@@ -54,7 +54,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="$t('exchange.rawRate.detailTitle')" v-model="detailVisible" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('exchange.rawRate.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.source')">{{ detailRow.sourceCode }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.currencyPair')">{{ formatCurrencyPair(translate, detailRow.baseCurrency, detailRow.quoteCurrency) }}</el-descriptions-item>
@@ -73,8 +73,7 @@
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog :title="$t('exchange.rawRate.manualAddTitle')" v-model="formVisible" width="720px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="112px" size="small">
@@ -123,6 +122,7 @@ import { useI18n } from 'vue-i18n';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { CircleClose, Download, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createExchangeRawRate, exportExchangeRawRates, getExchangeRawRate, searchExchangeRawRates, voidExchangeRawRate, type ExchangeRawRate } from '@/api/exchange';

@@ -69,7 +69,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="t('email.record.detailTitle')" v-model="detailVisible" width="900px" top="5vh" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('email.record.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="t('email.record.emailNo')">{{ detailRow.emailNo }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.common.appCode')">{{ optionLabel(appOptions, detailRow.appCode) }}</el-descriptions-item>
@@ -101,8 +101,7 @@
                 <el-descriptions-item :label="t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -112,6 +111,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Refresh, RefreshRight, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getEmailRecord, resendEmailRecord, searchEmailRecords, type EmailRecord } from '@/api/email';

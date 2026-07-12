@@ -74,17 +74,14 @@
             />
         </div>
 
-        <el-dialog v-model="detailVisible" :title="$t('monitor.cacheList.detailTitle')" width="600px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('monitor.cacheList.detailTitle')" size="md">
             <el-form label-width="80px">
                 <el-form-item :label="$t('monitor.cacheList.cacheKey')"><el-input :model-value="activeRow?.key || ''" readonly /></el-form-item>
                 <el-form-item :label="$t('monitor.cacheList.type')"><el-input :model-value="activeRow?.type || ''" readonly /></el-form-item>
                 <el-form-item :label="$t('monitor.cacheList.ttl')"><el-input :model-value="formatTtl(activeRow?.ttl)" readonly /></el-form-item>
                 <el-form-item :label="$t('monitor.cacheList.value')"><el-input :model-value="detailValue" type="textarea" :rows="8" readonly /></el-form-item>
             </el-form>
-            <template #footer>
-                <div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div>
-            </template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -92,6 +89,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Delete, Refresh, Search, View } from '@element-plus/icons-vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { deleteCacheKey, getCacheKeys, getCacheValue, type CacheKeyRow } from '@/api/monitor/cache';

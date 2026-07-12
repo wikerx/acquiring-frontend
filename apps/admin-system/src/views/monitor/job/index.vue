@@ -198,6 +198,7 @@
             :data="detailData"
             :items="detailItems"
             :column="1"
+            size="lg"
         >
             <template #cell-status="{ data }">
                 <BaseStatusTag :value="String(data?.status || '') === 'ENABLED' ? 'ENABLED' : 'DISABLED'" :text="formatJobStatus(String(data?.status || ''))" />
