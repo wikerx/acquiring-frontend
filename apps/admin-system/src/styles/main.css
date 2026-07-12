@@ -859,15 +859,6 @@ textarea {
     pointer-events: auto;
 }
 
-body:has(.settings-drawer) > .el-overlay.el-modal-dialog {
-    pointer-events: none;
-    background: transparent !important;
-}
-
-body:has(.settings-drawer) > .el-overlay.el-modal-dialog .settings-drawer {
-    pointer-events: auto;
-}
-
 .el-dropdown__popper .el-dropdown-menu {
     border-radius: 8px;
 }
