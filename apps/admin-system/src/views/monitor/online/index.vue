@@ -27,7 +27,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="sessionId" @selection-change="handleSelectionChange">
+        <StandardTable table-key="monitor-online" v-loading="loading" :data="rows" row-key="sessionId" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="userName" :label="$t('monitor.online.userName')" min-width="120" align="center" />
             <el-table-column prop="deptName" :label="$t('monitor.online.deptName')" min-width="140" align="center" />
@@ -43,7 +43,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleForceLogout(row)" v-hasPermi="'system:online:forceLogout'">{{ $t('monitor.online.forceLogout') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -61,6 +61,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Delete } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getOnlineUsers, forceLogout, type OnlineUser } from '@/api/monitor/online';
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();

@@ -1,6 +1,6 @@
 <template>
     <div class="page system-page">
-        <el-form :model="query" inline size="small" class="search-form">
+        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
             <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
             <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
             <el-form-item :label="t('common.status')">
@@ -20,10 +20,10 @@
 
         <div class="toolbar">
             <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
-            <el-button plain size="small" :icon="Refresh" @click="loadData">{{ t('common.refresh') }}</el-button>
+            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
         </div>
 
-        <el-table v-loading="loading" :data="rows" row-key="roleId" size="small">
+        <StandardTable table-key="merchant-system-role" v-loading="loading" :data="rows" row-key="roleId" size="small">
             <el-table-column prop="roleName" :label="t('system.role.name')" min-width="150" show-overflow-tooltip />
             <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="180" show-overflow-tooltip />
             <el-table-column :label="t('system.role.dataScope')" width="110" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
@@ -34,7 +34,8 @@
                 </template>
             </el-table-column>
             <el-table-column prop="sortNo" :label="t('common.sortNo')" width="80" align="center" />
-            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
+            <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
+            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
             <el-table-column :label="t('common.operation')" width="260" align="center" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
                     <el-button v-if="canDetail" size="small" link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
@@ -44,7 +45,7 @@
                     <span v-if="!canDetail && !canEdit && !canGrant && !canDelete">-</span>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
@@ -56,8 +57,8 @@
                 <el-descriptions-item :label="t('system.role.dataScope')">{{ dataScopeLabel(activeRole?.dataScope) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('system.role.roleStatus')"><el-tag :type="activeRole?.status === 1 ? 'success' : 'info'" size="small">{{ activeRole?.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('common.sortNo')">{{ activeRole?.sortNo ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('system.role.createdTime')">{{ formatTime(activeRole?.createdAt) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('system.role.updatedTime')">{{ formatTime(activeRole?.updatedAt) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.createdTime')"><BaseDateTime :value="activeRole?.createdAt" /></el-descriptions-item>
+                <el-descriptions-item :label="t('system.role.updatedTime')"><BaseDateTime :value="activeRole?.updatedAt" /></el-descriptions-item>
                 <el-descriptions-item :label="t('system.role.description')">{{ activeRole?.description || '-' }}</el-descriptions-item>
             </el-descriptions>
             <div v-loading="grantLoading" class="grant-tree-box">
@@ -166,8 +167,11 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Edit, Key, Plus, Refresh, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
+import { Delete, Edit, Key, Plus, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
 
@@ -196,6 +200,7 @@ const GrantTreeNode = defineComponent({
 
 const { t } = useI18n();
 const loading = ref(false);
+const showSearch = ref(true);
 const detailVisible = ref(false);
 const editVisible = ref(false);
 const grantVisible = ref(false);
@@ -485,10 +490,6 @@ function isSystemRole(row?: RoleItem) {
 function dataScopeLabel(value?: string) {
     const labels: Record<string, string> = { ALL: t('system.role.dataAll'), SELF: t('system.role.dataSelf'), CUSTOM: t('system.role.dataCustom') };
     return value ? labels[value] || value : '-';
-}
-
-function formatTime(value?: string) {
-    return value ? value.replace('T', ' ').slice(0, 19) : '-';
 }
 
 function nodeTypeName(value?: string) {

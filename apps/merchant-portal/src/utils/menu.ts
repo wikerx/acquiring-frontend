@@ -1,8 +1,39 @@
 import type { Component } from 'vue';
 import type { AuthMenu } from '@acquiring/shared';
-import PlaceholderPage from '@/pages/PlaceholderPage.vue';
+import Forbidden from '@/pages/Forbidden.vue';
 
 const pageModules = import.meta.glob('../pages/**/index.vue');
+const MERCHANT_HOME_PATH = '/home';
+
+export function createMerchantHomeMenu(): AuthMenu {
+    return {
+        id: 0,
+        parentId: 0,
+        menuCode: 'merchant-home',
+        menuName: 'Home',
+        menuType: 'MENU',
+        routePath: MERCHANT_HOME_PATH,
+        componentPath: 'home',
+        icon: 'House',
+        visible: 1,
+        keepAlive: 1,
+        externalLink: 0,
+        sortNo: -1,
+        children: [],
+    };
+}
+
+export function withMerchantHomeMenu(menus: AuthMenu[]) {
+    const visibleMenus = menus || [];
+    if (visibleMenus.some((menu) => normalizeMenuPath(menu.routePath) === MERCHANT_HOME_PATH || menu.menuCode === 'merchant-home')) {
+        return visibleMenus;
+    }
+    return [createMerchantHomeMenu(), ...visibleMenus];
+}
+
+export function isMerchantHomePath(path?: string) {
+    return normalizeMenuPath(path) === MERCHANT_HOME_PATH;
+}
 
 export function flattenRouteMenus(menus: AuthMenu[]) {
     const result: AuthMenu[] = [];
@@ -38,7 +69,11 @@ export function resolveMenuComponent(menu: AuthMenu): Component {
     if (pagePath) {
         return pageModules[pagePath] as Component;
     }
-    return PlaceholderPage;
+    return Forbidden;
+}
+
+export function firstAvailableMenuPath(menus: AuthMenu[]) {
+    return flattenRouteMenus(withMerchantHomeMenu(menus)).map((menu) => normalizeMenuPath(menu.routePath)).find(Boolean) || MERCHANT_HOME_PATH;
 }
 
 function createPageCandidates(routePath: string, componentPath?: string) {

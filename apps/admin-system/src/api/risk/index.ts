@@ -1,7 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
-import { downloadBlob } from '@/utils/download';
+import { downloadExcel } from '@/utils/download';
 
 export interface RiskOption {
     label: string;
@@ -58,7 +58,11 @@ export interface RiskRecord {
     merchantScope?: string;
     merchantId?: string;
     merchantName?: string;
+    ruleGroupNo?: string;
     ruleName?: string;
+    sourceUrl?: string;
+    sourceUrls?: string[];
+    sourceHost?: string;
     matchValuePlain?: string;
     matchValueMasked?: string;
     matchValueHash?: string;
@@ -66,6 +70,14 @@ export interface RiskRecord {
     matchValueEnd?: string;
     ipVersion?: string;
     cardBrand?: string;
+    cardBrands?: string[];
+    ruleType?: string;
+    channelCode?: string;
+    paymentMethod?: string;
+    amountMatchType?: string;
+    riskCondition?: string;
+    triggerAction?: string;
+    priority?: number;
     countryAlpha2?: string;
     countryAlpha2List?: string[];
     countryAlpha3?: string;
@@ -101,6 +113,10 @@ export interface RiskRecord {
     timeWindowSeconds?: number;
     thresholdCount?: number;
     elementsJson?: string;
+    timeWindowValue?: number;
+    timeWindowUnit?: string;
+    statDimension?: string;
+    successCount?: number;
 }
 
 export interface RiskListQuery extends PageQuery {
@@ -112,15 +128,35 @@ export interface RiskListQuery extends PageQuery {
 }
 
 export interface RiskRuleQuery extends PageQuery {
+    merchantScope?: string;
     merchantId?: string;
     ruleName?: string;
     matchValue?: string;
+    sourceUrl?: string;
+    sourceHost?: string;
+    limitType?: string;
+    ruleType?: string;
+    channelCode?: string;
+    paymentMethod?: string;
+    cardBrand?: string;
     currency?: string;
+    triggerAction?: string;
     status?: number;
 }
 
 export type RiskListSaveRequest = Partial<RiskRecord>;
 export type RiskRuleSaveRequest = Partial<RiskRecord>;
+
+export interface RiskSourceUrlBatchSaveRequest {
+    merchantId?: string;
+    sourceUrls?: string[];
+    riskLevel?: string;
+    decisionAction?: string;
+    effectiveTime?: string;
+    expireTime?: string;
+    status?: number;
+    remark?: string;
+}
 
 export interface TradeBlackQuery extends PageQuery {
     merchantId?: string;
@@ -241,22 +277,27 @@ export async function createRiskRule(functionCode: string, data: RiskRuleSaveReq
     return unwrapResult(result.data);
 }
 
+export async function createRiskSourceUrls(data: RiskSourceUrlBatchSaveRequest) {
+    const result = await http.post<CommonResult<RiskRecord[]>>('/admin/risk/rule/sourceUrl/batch-create', data);
+    return unwrapResult(result.data);
+}
+
 export async function updateRiskRule(functionCode: string, id: number, data: RiskRuleSaveRequest) {
     const result = await http.put<CommonResult<RiskRecord>>(`/admin/risk/rule/${functionCode}/${id}`, data);
     return unwrapResult(result.data);
 }
 
-export async function exportRiskConfig(moduleType: string, functionCode: string) {
-    await downloadBlob(`/admin/risk/${moduleType}/${functionCode}/export`, {
+export async function exportRiskConfig(moduleType: string, functionCode: string, data: RiskListQuery | RiskRuleQuery = {}) {
+    await downloadExcel(`/admin/risk/${moduleType}/${functionCode}/export`, {
         method: 'post',
-        fileName: `${moduleType}-${functionCode}.csv`,
+        data,
     });
 }
 
 export async function downloadRiskTemplate(moduleType: string, functionCode: string) {
-    await downloadBlob(`/admin/risk/${moduleType}/${functionCode}/template`, {
+    await downloadExcel(`/admin/risk/${moduleType}/${functionCode}/template`, {
         method: 'get',
-        fileName: `${moduleType}-${functionCode}-template.csv`,
+        fileName: `${moduleType}-${functionCode}-template.xlsx`,
     });
 }
 

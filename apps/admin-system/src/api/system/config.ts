@@ -75,7 +75,6 @@ export async function exportConfigs(requestBody: SysConfigQuery) {
     await downloadExcel('/admin/system/configs/export', {
         method: 'post',
         data: requestBody,
-        fileName: '参数列表.xlsx',
     });
 }
 

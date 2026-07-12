@@ -79,7 +79,7 @@
             <div v-for="item in changes" :key="String(item.id || `${item.function_code}-${item.operation_time}`)" class="change-item">
               <div>
                 <strong>{{ functionName(item) }}</strong>
-                <span>{{ item.operation_type || '-' }} · {{ item.operator || '-' }}</span>
+                <span>{{ operationName(item.operation_type) }} · {{ item.operator || '-' }}</span>
               </div>
               <BaseDateTime :value="String(item.operation_time || '')" />
             </div>
@@ -99,6 +99,7 @@ import { ArrowRight, DataAnalysis, Histogram, Operation, TrendCharts } from '@el
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { getRiskDashboard, type RiskDashboardFunction } from '@/api/risk';
+import { riskFunctionName } from '@/views/risk/shared';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -106,6 +107,9 @@ const loading = ref(false);
 const functions = ref<RiskDashboardFunction[]>([]);
 const changes = ref<Record<string, unknown>[]>([]);
 
+/**
+ * 风控总览页聚合名单、规则和配置变更的概览数据，帮助运营先判断覆盖面再进入具体功能处理。
+ */
 const prioritySteps = computed(() => [
   { label: t('risk.dashboard.priorityAml'), tone: 'priority-danger' },
   { label: t('risk.dashboard.priorityStrongWhite'), tone: 'priority-success' },
@@ -179,7 +183,12 @@ function moduleSummary(type: string, label: string, desc: string, path: string, 
 
 function functionName(row: Record<string, unknown>) {
   const matched = functions.value.find((item) => item.moduleType === row.module_type && item.functionCode === row.function_code);
-  return matched?.functionName || String(row.function_code || '-');
+  return matched ? riskFunctionName(t, matched) : String(row.function_code || '-');
+}
+
+function operationName(value: unknown) {
+  const code = String(value || '');
+  return code ? t(`risk.operation.${code}`) : '-';
 }
 
 function go(path: string) {

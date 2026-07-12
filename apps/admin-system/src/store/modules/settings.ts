@@ -1,16 +1,33 @@
 import { defineStore } from 'pinia';
-import { DEFAULT_SETTINGS, SETTINGS_KEY, type AppSettings } from '@/constants/app';
+import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeNavigationTheme, type AppSettings } from '@/constants/app';
 
 function loadSettings(): AppSettings {
     try {
         const raw = localStorage.getItem(SETTINGS_KEY);
         if (raw) {
-            return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+            return normalizeSettings(JSON.parse(raw));
         }
     } catch {
         // corrupted data, fall through to defaults
     }
     return { ...DEFAULT_SETTINGS };
+}
+
+function normalizeSettings(value: unknown): AppSettings {
+    const source = value && typeof value === 'object' ? value as Partial<AppSettings> : {};
+    const layoutMode = source.layoutMode === 'top' ? 'top' : DEFAULT_SETTINGS.layoutMode;
+    const tagsViewStyle = source.tagsViewStyle === 'google' ? 'google' : DEFAULT_SETTINGS.tagsViewStyle;
+    return {
+        ...DEFAULT_SETTINGS,
+        ...source,
+        sideTheme: normalizeNavigationTheme(source.sideTheme),
+        layoutMode,
+        tagsViewStyle,
+        fixedHeader: typeof source.fixedHeader === 'boolean' ? source.fixedHeader : DEFAULT_SETTINGS.fixedHeader,
+        showLogo: typeof source.showLogo === 'boolean' ? source.showLogo : DEFAULT_SETTINGS.showLogo,
+        showTagsView: typeof source.showTagsView === 'boolean' ? source.showTagsView : DEFAULT_SETTINGS.showTagsView,
+        showFooter: typeof source.showFooter === 'boolean' ? source.showFooter : DEFAULT_SETTINGS.showFooter,
+    };
 }
 
 function persist(settings: AppSettings) {
@@ -37,7 +54,9 @@ export const useSettingsStore = defineStore('settings', {
     },
     actions: {
         updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
-            this.settings[key] = value;
+            this.settings[key] = key === 'sideTheme'
+                ? normalizeNavigationTheme(value) as AppSettings[K]
+                : value;
             persist(this.settings);
         },
         resetSettings() {

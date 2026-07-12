@@ -29,7 +29,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <StandardTable table-key="exchange-usage-snapshot" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="120" align="center"><template #default="{ row }">{{ optionLabel(rateTypeOptions, row.rateType) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usageScene')" min-width="110" align="center"><template #default="{ row }">{{ optionLabel(usageSceneOptions, row.usageScene) }}</template></el-table-column>
             <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="120" align="center" />
@@ -41,7 +41,7 @@
             <el-table-column :label="$t('common.operation')" width="110" align="center" fixed="right">
                 <template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'exchange:usage-snapshot:detail'">{{ $t('common.detail') }}</el-button></template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -73,6 +73,7 @@ import { useI18n } from 'vue-i18n';
 import { Download, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { exportExchangeUsageSnapshots, getExchangeUsageSnapshot, searchExchangeUsageSnapshots, type ExchangeRateUsageSnapshot } from '@/api/exchange';
 import CurrencySelect from '../CurrencySelect.vue';
 import { formatCurrencyPair, formatRate, normalizeCurrency, optionLabel, rateTypeOptions as buildRateTypeOptions, usageSceneOptions as buildUsageSceneOptions } from '../shared';

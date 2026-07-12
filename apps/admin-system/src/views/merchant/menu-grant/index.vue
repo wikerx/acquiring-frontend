@@ -4,7 +4,7 @@
             <section class="merchant-panel">
                 <div class="panel-header">
                     <span>选择商户</span>
-                    <el-button size="small" :icon="Refresh" @click="loadMerchants">刷新</el-button>
+                    <RightToolbar :show-search="false" @refresh="loadMerchants" />
                 </div>
                 <el-form :model="query" :inline="true" size="small" class="merchant-search">
                     <el-form-item>
@@ -14,7 +14,7 @@
                         <el-button type="primary" :icon="Search" @click="loadMerchants">搜索</el-button>
                     </el-form-item>
                 </el-form>
-                <el-table
+                <StandardTable table-key="merchant-menu-grant-merchants"
                     v-loading="merchantLoading"
                     :data="merchants"
                     row-key="merchantId"
@@ -24,7 +24,7 @@
                 >
                     <el-table-column prop="merchantId" label="商户号" min-width="120" />
                     <el-table-column prop="merchantName" label="商户名称" min-width="180" show-overflow-tooltip />
-                </el-table>
+                </StandardTable>
             </section>
 
             <section class="grant-panel">
@@ -84,8 +84,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, type ElTree } from 'element-plus';
-import { Check, Refresh, Search } from '@element-plus/icons-vue';
+import { Check, Search } from '@element-plus/icons-vue';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
+import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     queryMerchantMenuGrant,
     saveMerchantMenuGrant,

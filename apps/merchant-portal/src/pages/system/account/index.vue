@@ -1,19 +1,23 @@
 <template>
     <div class="page system-page">
-        <el-form :model="query" inline size="small" class="search-form">
+        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
             <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
             <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
             <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
             <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
         </el-form>
-        <div class="toolbar"><el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button><el-button plain size="small" :icon="Refresh" @click="loadData">{{ t('common.refresh') }}</el-button></div>
-        <el-table v-loading="loading" :data="rows" row-key="accountId" size="small">
+        <div class="toolbar">
+            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button>
+            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
+        </div>
+        <StandardTable table-key="merchant-system-account" v-loading="loading" :data="rows" row-key="accountId" size="small">
             <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
             <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
             <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
             <el-table-column prop="email" :label="t('system.account.email')" min-width="180" />
             <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
             <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
+            <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
             <el-table-column :label="t('common.operation')" width="240" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
                     <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
@@ -22,7 +26,7 @@
                     <span v-if="!canEdit && !canAssignRole && !canChangeStatus && !canDelete">-</span>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
@@ -46,14 +50,18 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { CircleCheck, CircleClose, Delete, Edit, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type AccountItem, type DeptItem, type PostItem, type RoleItem } from '@/api/systemApi';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
 const loading = ref(false);
 const visible = ref(false);
+const showSearch = ref(true);
 const rows = ref<AccountItem[]>([]);
 const total = ref(0);
 const page = ref(1);

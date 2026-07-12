@@ -62,7 +62,7 @@
           >
             <div class="function-card__top">
               <div class="function-card__title">
-                <strong>{{ item.functionName }}</strong>
+                <strong>{{ functionDisplayName(item) }}</strong>
                 <span>{{ functionHint(item) }}</span>
               </div>
               <div class="function-card__layer">
@@ -109,7 +109,9 @@
         </div>
       </div>
       <el-table v-loading="loading" :data="accessibleFunctions" size="small">
-        <el-table-column prop="functionName" :label="moduleMeta.functionNameLabel" min-width="190" align="center" show-overflow-tooltip />
+        <el-table-column :label="moduleMeta.functionNameLabel" min-width="190" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ functionDisplayName(row) }}</template>
+        </el-table-column>
         <el-table-column :label="$t('risk.layer.ownerLayer')" width="132" align="center">
           <template #default="{ row }">
             <span class="risk-layer-tag" :class="`risk-layer-tag--${riskLayer(row).tone}`">{{ t(riskLayer(row).labelKey) }}</span>
@@ -146,7 +148,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { getRiskDashboard, type RiskDashboardFunction } from '@/api/risk';
 import { useUserStore } from '@/store/modules/user';
-import { riskLayerMeta } from '@/views/risk/shared';
+import { riskFunctionName, riskLayerMeta } from '@/views/risk/shared';
 
 type ModuleType = 'AML' | 'BLACK' | 'WHITE' | 'RULE';
 
@@ -176,6 +178,9 @@ const loading = ref(false);
 const showNoPermission = ref(false);
 const functions = ref<RiskDashboardFunction[]>([]);
 
+/**
+ * 分模块总览页负责展示 AML、黑名单、白名单和规则的分层说明、快捷入口和配置明细。
+ */
 const moduleType = computed<ModuleType>(() => {
   if (route.path.startsWith('/risk/aml')) return 'AML';
   if (route.path.startsWith('/risk/whitelist')) return 'WHITE';
@@ -255,9 +260,9 @@ const layerCards = computed(() => {
   }
   if (moduleType.value === 'WHITE') {
     return [
-      { level: '强', title: t('risk.overview.layerStrongWhite'), desc: t('risk.overview.layerStrongWhiteDesc'), tone: 'layer-success-strong' },
-      { level: '优', title: t('risk.overview.layerPreferWhite'), desc: t('risk.overview.layerPreferWhiteDesc'), tone: 'layer-success' },
-      { level: '弱', title: t('risk.overview.layerWeakWhite'), desc: t('risk.overview.layerWeakWhiteDesc'), tone: 'layer-muted' },
+      { level: t('risk.layer.strongWhiteShort'), title: t('risk.overview.layerStrongWhite'), desc: t('risk.overview.layerStrongWhiteDesc'), tone: 'layer-success-strong' },
+      { level: t('risk.layer.preferWhiteShort'), title: t('risk.overview.layerPreferWhite'), desc: t('risk.overview.layerPreferWhiteDesc'), tone: 'layer-success' },
+      { level: t('risk.layer.weakWhiteShort'), title: t('risk.overview.layerWeakWhite'), desc: t('risk.overview.layerWeakWhiteDesc'), tone: 'layer-muted' },
     ];
   }
   if (moduleType.value === 'AML') {
@@ -273,7 +278,7 @@ const categoryGroups = computed<CategoryGroup[]>(() => {
     AML: [
       { name: t('risk.overview.categoryCard'), tone: 'card', codes: ['card', 'cardBin'] },
       { name: t('risk.overview.categoryNetwork'), tone: 'network', codes: ['ip', 'sourceUrl'] },
-      { name: t('risk.overview.categoryIdentity'), tone: 'identity', codes: ['country', 'email', 'phone', 'cardholderName'] },
+      { name: t('risk.overview.categoryIdentity'), tone: 'identity', codes: ['country', 'email', 'phone', 'cardholderName', 'legalPerson', 'enterprise', 'merchantBillingAddress'] },
     ],
     BLACK: [
       { name: t('risk.overview.categoryCard'), tone: 'card', codes: ['cardNo', 'cardFingerprint', 'cardBin', 'cardholderName'] },
@@ -291,7 +296,7 @@ const categoryGroups = computed<CategoryGroup[]>(() => {
       { name: t('risk.overview.categoryAccess'), tone: 'access', codes: ['sourceUrl', 'threeDs'] },
       { name: t('risk.overview.categoryAmount'), tone: 'amount', codes: ['merchantLimit'] },
       { name: t('risk.overview.categoryFrequency'), tone: 'frequency', codes: ['frequency'] },
-      { name: t('risk.overview.categoryCountryCard'), tone: 'countryCard', codes: ['tradeCountry', 'issuerCountry', 'cardBin'] },
+      { name: t('risk.overview.categoryCountryCard'), tone: 'countryCard', codes: ['issuerCountry', 'cardBin'] },
     ],
   };
   return map[moduleType.value];
@@ -334,6 +339,10 @@ function enterFunction(item: RiskDashboardFunction) {
     return;
   }
   router.push(item.routePath);
+}
+
+function functionDisplayName(item: RiskDashboardFunction) {
+  return riskFunctionName(t, item);
 }
 
 function statusTagType(item: RiskDashboardFunction) {

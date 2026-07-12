@@ -50,6 +50,5 @@ export async function changeRegionCurrencyStatus(id: number, status: number) {
 export async function exportRegionCurrencies() {
     await downloadExcel('/admin/base/region-currencies/export', {
         method: 'get',
-        fileName: '地区币种配置.xlsx',
     });
 }

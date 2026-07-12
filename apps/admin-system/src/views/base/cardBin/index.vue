@@ -68,7 +68,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+    <StandardTable table-key="base-cardbin" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="cardBinStart" :label="$t('base.cardBin.cardBinStart')" width="132" align="center" />
       <el-table-column prop="cardBinEnd" :label="$t('base.cardBin.cardBinEnd')" width="132" align="center" />
@@ -118,7 +118,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'base:cardBin:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -269,6 +269,7 @@ import { PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   addCardBin,
   deleteCardBin,

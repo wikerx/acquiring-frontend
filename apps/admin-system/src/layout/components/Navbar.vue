@@ -58,6 +58,12 @@
                             </div>
                         </div>
                     </div>
+                    <div class="user-menu__section">
+                        <button class="user-menu__action" type="button" @click="handleOpenProfile">
+                            <el-icon><User /></el-icon>
+                            <span>{{ $t('layout.profile') }}</span>
+                        </button>
+                    </div>
                     <div v-if="canViewLoginLog" class="user-menu__section">
                         <button class="user-menu__action" type="button" @click="handleOpenLoginLog">
                             <el-icon><Document /></el-icon>
@@ -79,7 +85,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { ArrowDown, Document, Expand, Fold, FullScreen, Setting, SwitchButton } from '@element-plus/icons-vue';
+import { ArrowDown, Document, Expand, Fold, FullScreen, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import Breadcrumb from './Breadcrumb.vue';
 import LanguageSwitch from '@/components/LanguageSwitch/index.vue';
@@ -102,6 +108,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     toggle: [];
     logout: [];
+    openProfile: [];
     openLoginLog: [];
 }>();
 
@@ -135,6 +142,11 @@ function handleLogout() {
 function handleOpenLoginLog() {
     menuVisible.value = false;
     emit('openLoginLog');
+}
+
+function handleOpenProfile() {
+    menuVisible.value = false;
+    emit('openProfile');
 }
 
 function syncFullscreenState() {

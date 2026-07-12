@@ -137,7 +137,6 @@ export async function exportCardBins(data: CardBinQuery = {}) {
     await downloadExcel('/admin/base/card-bin/export', {
         method: 'post',
         data,
-        fileName: 'card-bin.xlsx',
     });
 }
 

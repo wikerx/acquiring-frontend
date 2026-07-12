@@ -11,6 +11,8 @@ export interface SysUserAccount {
     deptName?: string;
     postIds?: number[];
     postNames?: string[];
+    roleIds?: number[];
+    roleNames?: string[];
     loginAccount: string;
     realName?: string;
     mobile?: string;
@@ -20,6 +22,7 @@ export interface SysUserAccount {
     locked?: number;
     lastLoginAt?: string;
     lastLoginIp?: string;
+    remark?: string;
     createdAt?: string;
 }
 
@@ -39,6 +42,8 @@ export interface SysUserAccountCreateRequest {
     postIds?: number[];
     mobile?: string;
     email?: string;
+    status?: number;
+    remark?: string;
 }
 
 export interface SysUserAccountUpdateRequest {
@@ -49,6 +54,7 @@ export interface SysUserAccountUpdateRequest {
     mobile?: string;
     email?: string;
     status?: number;
+    remark?: string;
 }
 
 export interface SysUserAccountStatusRequest {
@@ -140,6 +146,5 @@ export async function exportUsers(requestBody: SysUserAccountQuery) {
     await downloadExcel('/admin/system/users/export', {
         method: 'post',
         data: requestBody,
-        fileName: '用户列表.xlsx',
     });
 }

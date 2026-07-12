@@ -1,12 +1,12 @@
 <template>
   <div class="app-container risk-page">
     <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="76px">
-      <el-form-item :label="$t('risk.common.scope')">
+      <el-form-item v-if="showMerchantDimension" :label="$t('risk.common.scope')">
         <el-select v-model="query.merchantScope" :placeholder="t('risk.common.placeholderSelect')" clearable class="query-select">
           <el-option v-for="item in merchantScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item :label="$t('risk.common.merchantId')">
+      <el-form-item v-if="showMerchantDimension" :label="$t('risk.common.merchantId')">
         <el-select
           v-model="query.merchantId"
           filterable
@@ -25,8 +25,26 @@
           <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" />
         </el-select>
       </el-form-item>
-      <el-form-item :label="profile.valueLabel" v-if="profile.showValue || profile.showRange">
-        <el-input v-model.trim="query.matchValue" :placeholder="profile.valuePlaceholder" clearable @keyup.enter="handleSearch" />
+      <el-form-item :label="profileValueLabel" v-if="profile.showValue || profile.showRange">
+        <el-select
+          v-if="isMerchantProfile"
+          v-model="query.matchValue"
+          filterable
+          remote
+          clearable
+          reserve-keyword
+          remote-show-suffix
+          :remote-method="searchMerchantOptions"
+          :loading="merchantLoading"
+          :placeholder="t('risk.common.placeholderMerchant')"
+          :no-data-text="t('risk.common.noMerchantData')"
+          :loading-text="t('risk.common.loadingMerchant')"
+          class="query-merchant-select"
+          @visible-change="handleQueryMerchantVisibleChange"
+        >
+          <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" />
+        </el-select>
+        <el-input v-else v-model.trim="query.matchValue" :placeholder="profileValuePlaceholder" clearable @keyup.enter="handleSearch" />
       </el-form-item>
       <el-form-item :label="$t('risk.common.country')" v-if="profile.showCountry">
         <el-select v-model="query.countryAlpha2" :placeholder="t('risk.common.placeholderSelect')" filterable clearable class="query-select">
@@ -52,30 +70,109 @@
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="selectedRows.length === 0" @click="handleBatchDelete" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('risk.common.batchDelete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" @click="handleTemplate" v-hasPermi="`${current.permissionPrefix}:template`">{{ $t('risk.common.template') }}</el-button></el-col>
       <el-col :span="1.5">
-        <el-upload :show-file-list="false" accept=".csv" :auto-upload="false" :on-change="handleImport" v-hasPermi="`${current.permissionPrefix}:import`">
+        <el-upload :show-file-list="false" accept=".xlsx,.xls,.csv" :auto-upload="false" :on-change="handleImport" v-hasPermi="`${current.permissionPrefix}:import`">
           <el-button type="info" plain :icon="Upload" size="small">{{ $t('common.import') }}</el-button>
         </el-upload>
       </el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="`${current.permissionPrefix}:export`">{{ $t('common.export') }}</el-button></el-col>
-      <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
+      <el-col class="right-toolbar">
+        <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData">
+          <TableColumnSettings
+            v-if="isCardBlacklistPilot"
+            :columns="pilotColumns"
+            :fixed-columns="pilotFixedColumns"
+            @visible-change="handlePilotColumnVisibleChange"
+            @move-column="movePilotColumn"
+            @reset-columns="resetPilotColumns"
+          />
+        </RightToolbar>
+      </el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+    <StandardTable table-key="risk-list"
+      v-if="isCardBlacklistPilot"
+      v-loading="loading"
+      :data="rows"
+      row-key="id"
+      size="small"
+      class="standard-table risk-card-blacklist-table"
+      @selection-change="selectedRows = $event"
+      @header-dragend="handlePilotHeaderDragend"
+    >
+      <el-table-column type="selection" width="50" align="center" fixed="left" />
+      <template v-for="column in visiblePilotColumns" :key="column.key">
+        <el-table-column v-if="column.key === 'merchantScope'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ scopeText(row.merchantScope) }}</template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'merchantId'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.merchantId || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'merchantName'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center" show-overflow-tooltip />
+        <el-table-column v-else-if="column.key === 'cardNo'" prop="cardNo" :label="column.label" :width="column.width ?? column.defaultWidth" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ displayValue(row) }}</template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'cardBrand'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }">
+            <span class="card-brand-cell">
+              <PaymentLogoMark v-if="cardBrandLogo(row.cardBrand)" :logo-key="cardBrandLogo(row.cardBrand)" size="sm" compact fallback="text" />
+              <span v-else>{{ cardBrandDisplay(row.cardBrand) || '-' }}</span>
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'riskLevel'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }"><el-tag size="small" :type="riskLevelTagType(row.riskLevel)">{{ riskLevelText(row.riskLevel) }}</el-tag></template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'decisionAction'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }"><el-tag size="small" :type="decisionActionTagType(row.decisionAction)">{{ decisionActionText(row.decisionAction) }}</el-tag></template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'validity'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }">{{ validityText(row) }}</template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'sourceType'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }">{{ sourceText(row.sourceType) }}</template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'status'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" :disabled="isStatusUpdating(row.id)" @change="(status: number) => handleStatus(row, status)" v-hasPermi="`${current.permissionPrefix}:status`" /></template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'createTime'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }"><BaseDateTime :value="row.createTime" /></template>
+        </el-table-column>
+        <el-table-column v-else-if="column.key === 'expireTime'" :prop="column.key" :label="column.label" :width="column.width ?? column.defaultWidth" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="isNeverExpire(row)" class="never-expire-tag" type="success" effect="light" size="small">
+              {{ t('risk.common.neverExpire') }}
+            </el-tag>
+            <BaseDateTime v-else :value="row.expireTime" />
+          </template>
+        </el-table-column>
+      </template>
+      <el-table-column :label="$t('common.operation')" width="210" align="center" class-name="small-padding fixed-width" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="`${current.permissionPrefix}:detail`">{{ $t('common.detail') }}</el-button>
+          <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('common.edit') }}</el-button>
+          <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('common.delete') }}</el-button>
+        </template>
+      </el-table-column>
+    </StandardTable>
+
+    <StandardTable table-key="risk-list-2" v-else v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
       <el-table-column type="selection" width="50" align="center" />
-      <el-table-column prop="merchantScope" :label="$t('risk.common.scope')" width="118" align="center">
+      <el-table-column v-if="showMerchantDimension" prop="merchantScope" :label="$t('risk.common.scope')" width="118" align="center">
         <template #default="{ row }">{{ scopeText(row.merchantScope) }}</template>
       </el-table-column>
-      <el-table-column prop="merchantId" :label="$t('risk.common.merchantId')" min-width="150" align="center" show-overflow-tooltip>
+      <el-table-column v-if="showMerchantDimension" prop="merchantId" :label="$t('risk.common.merchantId')" min-width="150" align="center" show-overflow-tooltip>
         <template #default="{ row }">{{ row.merchantId || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="merchantName" :label="t('risk.common.merchantName')" min-width="150" align="center" show-overflow-tooltip />
-      <el-table-column v-if="!profile.showRegion && !isCountryProfile && profile.rangeKind !== 'cardBin' && profile.rangeKind !== 'ip'" prop="matchValueMasked" :label="profile.valueLabel" min-width="190" align="center" show-overflow-tooltip>
+      <el-table-column v-if="showMerchantDimension" prop="merchantName" :label="t('risk.common.merchantName')" min-width="150" align="center" show-overflow-tooltip />
+      <el-table-column v-if="!profile.showRegion && !isCountryProfile && profile.rangeKind !== 'cardBin' && profile.rangeKind !== 'ip'" prop="matchValueMasked" :label="profileValueLabel" min-width="190" align="center" show-overflow-tooltip>
         <template #default="{ row }">{{ displayValue(row) }}</template>
       </el-table-column>
+      <el-table-column v-if="isAmlSourceUrl" prop="sourceHost" :label="$t('risk.profile.rule.sourceHostLabel')" min-width="150" align="center" show-overflow-tooltip />
       <el-table-column v-if="profile.rangeKind === 'cardBin'" prop="matchValueStart" :label="$t('risk.common.startBin')" min-width="140" align="center" show-overflow-tooltip />
       <el-table-column v-if="profile.rangeKind === 'cardBin'" prop="matchValueEnd" :label="$t('risk.common.endBin')" min-width="140" align="center" show-overflow-tooltip />
-      <el-table-column v-if="profile.rangeKind === 'ip'" prop="matchValueStart" :label="$t('risk.common.startIp')" min-width="160" align="center" show-overflow-tooltip />
-      <el-table-column v-if="profile.rangeKind === 'ip'" prop="matchValueEnd" :label="$t('risk.common.endIp')" min-width="160" align="center" show-overflow-tooltip />
+      <el-table-column v-if="profile.rangeKind === 'ip' && !isSingleIpProfile" prop="matchValueStart" :label="$t('risk.common.startIp')" min-width="160" align="center" show-overflow-tooltip />
+      <el-table-column v-if="profile.rangeKind === 'ip' && !isSingleIpProfile" prop="matchValueEnd" :label="$t('risk.common.endIp')" min-width="160" align="center" show-overflow-tooltip />
+      <el-table-column v-if="isSingleIpProfile" prop="matchValueStart" :label="$t('risk.common.ipAddress')" min-width="180" align="center" show-overflow-tooltip />
       <template v-if="profile.showRegion">
         <el-table-column prop="regionMatchLevel" :label="$t('risk.common.regionLevel')" width="118" align="center">
           <template #default="{ row }">{{ regionLevelText(row.regionMatchLevel) }}</template>
@@ -132,7 +229,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -140,7 +237,7 @@
 
     <el-dialog :title="formTitle" v-model="formOpen" width="780px" append-to-body destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
-        <el-row :gutter="16">
+        <el-row v-if="showMerchantDimension" :gutter="16">
           <el-col :span="12">
             <el-form-item :label="$t('risk.common.scope')" prop="merchantScope">
               <el-select v-model="form.merchantScope" style="width:100%" @change="handleFormScopeChange">
@@ -237,7 +334,7 @@
         </template>
 
         <template v-else>
-          <el-form-item v-if="profile.valueInputType === 'country' && showCountryListMultiSelect" :label="profile.valueLabel" prop="countryAlpha2List">
+          <el-form-item v-if="profile.valueInputType === 'country' && showCountryListMultiSelect" :label="profileValueLabel" prop="countryAlpha2List">
             <el-popover v-model:visible="countryListPickerOpen" placement="bottom-start" trigger="click" width="520" popper-class="region-country-picker-popper">
               <template #reference>
                 <el-input
@@ -287,7 +384,7 @@
             </div>
           </el-form-item>
 
-          <el-form-item v-else-if="profile.valueInputType === 'country'" :label="profile.valueLabel" prop="countryAlpha2">
+          <el-form-item v-else-if="profile.valueInputType === 'country'" :label="profileValueLabel" prop="countryAlpha2">
             <el-select v-model="form.countryAlpha2" filterable clearable style="width:100%" @change="handleCountryChange">
               <template #prefix>
                 <span v-if="selectedFormCountryFlag" class="country-select-prefix">{{ selectedFormCountryFlag }}</span>
@@ -299,7 +396,10 @@
           </el-form-item>
 
           <template v-else-if="profile.valueInputType === 'range'">
-            <el-row :gutter="16" class="card-bin-range-row">
+            <el-form-item v-if="isSingleIpProfile" :label="$t('risk.common.ipAddress')" prop="matchValueStart">
+              <el-input v-model.trim="form.matchValueStart" :placeholder="rangeStartPlaceholder" @input="handleRangeStartInput" />
+            </el-form-item>
+            <el-row v-if="!isSingleIpProfile" :gutter="16" class="card-bin-range-row">
               <el-col :span="12">
                 <el-form-item :label="rangeStartLabel" prop="matchValueStart">
                   <el-input v-model.trim="form.matchValueStart" class="bin-range-input" :placeholder="rangeStartPlaceholder" @input="handleRangeStartInput" />
@@ -319,22 +419,42 @@
             </el-row>
           </template>
 
-          <el-form-item v-else :label="profile.valueLabel" prop="matchValuePlain">
+          <el-form-item v-else-if="isMerchantProfile" :label="profileValueLabel" prop="matchValuePlain">
+            <el-select
+              v-model="form.matchValuePlain"
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              remote-show-suffix
+              :remote-method="searchMerchantOptions"
+              :loading="merchantLoading"
+              :placeholder="t('risk.common.placeholderMerchant')"
+              :no-data-text="t('risk.common.noMerchantData')"
+              :loading-text="t('risk.common.loadingMerchant')"
+              style="width:100%"
+              @visible-change="handleTargetMerchantVisibleChange"
+            >
+              <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item v-else :label="profileValueLabel" prop="matchValuePlain">
             <div :class="['card-value-control', { 'is-card': isCardProfile, 'is-email-domain': isEmailDomainProfile }]">
               <el-input
                 v-model.trim="form.matchValuePlain"
                 class="card-value-input"
-                :placeholder="profile.valuePlaceholder"
+                :placeholder="profileValuePlaceholder"
                 :maxlength="plainInputMaxLength"
                 show-word-limit
                 @input="handlePlainValueInput"
               >
                 <template v-if="isEmailDomainProfile" #prepend>@</template>
               </el-input>
-              <span v-if="isCardProfile" class="card-brand-preview is-inline" :class="{ 'is-pending': !form.cardBrand }">
+              <div v-if="isCardProfile" class="card-brand-preview is-inline" :class="{ 'is-pending': !form.cardBrand }">
                 <PaymentLogoMark v-if="formCardBrandLogo" :logo-key="formCardBrandLogo" size="sm" compact fallback="text" />
                 <span v-else>{{ formCardBrandText }}</span>
-              </span>
+              </div>
             </div>
           </el-form-item>
 
@@ -403,6 +523,10 @@ import type { UploadFile } from 'element-plus';
 import { PaymentLogoMark } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import TableColumnSettings from '@/components/StandardTable/TableColumnSettings.vue';
+import { useTableColumnPreference } from '@/components/StandardTable/useTableColumnPreference';
+import type { StandardTableColumn } from '@/components/StandardTable/types';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
 import {
   batchRemoveRiskRecords,
@@ -423,12 +547,22 @@ import {
   type RiskOptions,
   type RiskRecord,
 } from '@/api/risk';
-import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOptions, localizeRiskOptions, resolveRiskFunction, resolveRiskListProfile, riskOptionLabel } from '@/views/risk/shared';
+import { useUserStore } from '@/store/modules/user';
+import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOptions, localizeRiskOptions, resolveRiskFunction, resolveRiskListProfile, riskFunctionName, riskOptionLabel } from '@/views/risk/shared';
 
 const route = useRoute();
 const { t } = useI18n();
+const user = useUserStore();
 const current = computed(() => resolveRiskFunction(route.path));
 const profile = computed(() => resolveRiskListProfile(current.value));
+const currentFunctionName = computed(() => riskFunctionName(t, current.value));
+const profileValueLabel = computed(() => t(profile.value.valueLabelKey));
+const profileValuePlaceholder = computed(() => t(profile.value.valuePlaceholderKey));
+
+/**
+ * AML、黑名单和白名单共享名单配置页；页面只做管理端录入、脱敏展示和基础校验，
+ * 敏感值哈希、IP/BIN 归一化等交易可检索字段由后端统一落库。
+ */
 const showSearch = ref(true);
 const loading = ref(false);
 const rows = ref<RiskRecord[]>([]);
@@ -462,6 +596,35 @@ const sourceTypeOptions = computed(() => localizeRiskOptions(options.value.sourc
 const emailUsernameRegex = /^(?!\.)(?!.*\.\.)(?!.*\.$)[A-Z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}$/i;
 const emailDomainRegex = /^(?=.{1,253}$)(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,63}$/i;
 const postalCodeRegex = /^(?=.{2,20}$)[A-Z0-9]+(?:[ -][A-Z0-9]+)*$/i;
+const isCardBlacklistPilot = computed(() => current.value.moduleType === 'BLACK' && current.value.functionCode === 'cardNo');
+const pilotTableKey = computed(() => 'risk-card-blacklist-main');
+const pilotUserKey = computed(() => user.userInfo?.userId || user.userInfo?.username);
+const pilotDefaultColumns = computed<StandardTableColumn[]>(() => [
+  { key: 'merchantScope', label: t('risk.common.scope'), defaultWidth: 118, minWidth: 110 },
+  { key: 'merchantId', label: t('risk.common.merchantId'), defaultWidth: 150, minWidth: 130 },
+  { key: 'merchantName', label: t('risk.common.merchantName'), defaultWidth: 180, minWidth: 150 },
+  { key: 'cardNo', label: t('risk.common.cardNo'), defaultWidth: 190, minWidth: 160 },
+  { key: 'cardBrand', label: t('risk.common.cardBrand'), defaultWidth: 124, minWidth: 110 },
+  { key: 'riskLevel', label: t('risk.common.riskLevel'), defaultWidth: 110, minWidth: 100 },
+  { key: 'decisionAction', label: t('risk.common.decisionAction'), defaultWidth: 112, minWidth: 104 },
+  { key: 'validity', label: t('risk.common.validity'), defaultWidth: 128, minWidth: 116 },
+  { key: 'sourceType', label: t('risk.common.sourceType'), defaultWidth: 110, minWidth: 100 },
+  { key: 'status', label: t('common.status'), defaultWidth: 92, minWidth: 86 },
+  { key: 'createTime', label: t('common.createTime'), defaultWidth: 170, minWidth: 160 },
+  { key: 'expireTime', label: t('risk.common.expireTime'), defaultWidth: 170, minWidth: 160 },
+]);
+const pilotFixedColumns = computed(() => [
+  { key: 'selection', label: t('table.selectionColumn') },
+  { key: 'operation', label: t('common.operation') },
+]);
+const {
+  columns: pilotColumns,
+  visibleColumns: visiblePilotColumns,
+  setColumnVisible: setPilotColumnVisible,
+  moveColumn: movePilotColumn,
+  resetColumns: resetPilotColumns,
+  handleHeaderDragend: handlePilotHeaderDragend,
+} = useTableColumnPreference(pilotTableKey, pilotDefaultColumns, pilotUserKey);
 
 const rules = computed<FormRules>(() => ({
   merchantScope: [{ required: true, message: t('risk.validation.scopeRequired'), trigger: 'change' }],
@@ -478,7 +641,7 @@ const rules = computed<FormRules>(() => ({
   validityDays: [{ validator: validateValidityDays, trigger: 'blur' }],
 }));
 
-const formTitle = computed(() => `${formMode.value === 'add' ? t('common.add') : t('common.edit')} - ${current.value.functionName}`);
+const formTitle = computed(() => `${formMode.value === 'add' ? t('common.add') : t('common.edit')} - ${currentFunctionName.value}`);
 const rangeStartLabel = computed(() => profile.value.rangeKind === 'cardBin' ? t('risk.common.startBin') : t('risk.common.startIp'));
 const rangeEndLabel = computed(() => profile.value.rangeKind === 'cardBin' ? t('risk.common.endBin') : t('risk.common.endIp'));
 const rangeStartPlaceholder = computed(() => profile.value.rangeKind === 'cardBin' ? t('risk.common.placeholderBinStart') : t('risk.common.placeholderIpStart'));
@@ -487,8 +650,13 @@ const rangeEndPlaceholder = computed(() => {
   return profile.value.allowIpRange ? t('risk.common.placeholderIpEnd') : t('risk.common.placeholderIpSingle');
 });
 const isCardProfile = computed(() => profile.value.kind === 'card');
+const isMerchantProfile = computed(() => profile.value.kind === 'merchant');
+const isAmlModule = computed(() => current.value.moduleType === 'AML');
+const isAmlSourceUrl = computed(() => isAmlModule.value && current.value.functionCode === 'sourceUrl');
+const showMerchantDimension = computed(() => !isMerchantProfile.value && !isAmlModule.value);
 const isEmailDomainProfile = computed(() => profile.value.kind === 'emailDomain');
 const isCountryProfile = computed(() => profile.value.valueInputType === 'country');
+const isSingleIpProfile = computed(() => profile.value.rangeKind === 'ip' && !profile.value.allowIpRange);
 const showCountryListMultiSelect = computed(() => isCountryProfile.value && formMode.value === 'add');
 const showRegionCountryMultiSelect = computed(() => profile.value.showRegion && formMode.value === 'add' && form.regionMatchLevel === 'COUNTRY');
 const showStateField = computed(() => profile.value.showRegion && ['STATE', 'CITY'].includes(String(form.regionMatchLevel || '')));
@@ -520,14 +688,18 @@ const selectedFormCountryFlag = computed(() => selectedFormCountryOption.value ?
 const detailItems = computed(() => {
   const row = (detailRow.value || {}) as Partial<RiskRecord>;
   return [
-    { label: t('risk.common.scope'), value: scopeText(row.merchantScope) },
-    { label: t('risk.common.merchantId'), value: row.merchantId },
-    { label: t('risk.common.merchantName'), value: row.merchantName },
+    ...(showMerchantDimension.value ? [
+      { label: t('risk.common.scope'), value: scopeText(row.merchantScope) },
+      { label: t('risk.common.merchantId'), value: row.merchantId },
+      { label: t('risk.common.merchantName'), value: row.merchantName },
+    ] : []),
     ...(profile.value.rangeKind === 'cardBin'
       ? [
           { label: t('risk.common.startBin'), value: row.matchValueStart },
           { label: t('risk.common.endBin'), value: row.matchValueEnd },
         ]
+      : profile.value.rangeKind === 'ip' && isSingleIpProfile.value
+        ? [{ label: t('risk.common.ipAddress'), value: row.matchValueStart }]
       : profile.value.rangeKind === 'ip'
         ? [
             { label: t('risk.common.startIp'), value: row.matchValueStart },
@@ -541,8 +713,9 @@ const detailItems = computed(() => {
             { label: t('risk.common.city'), value: row.cityName },
           ]
         : isCountryProfile.value
-          ? [{ label: profile.value.valueLabel, value: countryDisplay(row.countryAlpha2, row.countryAlpha3) }]
-          : [{ label: profile.value.valueLabel, value: displayValue(row as RiskRecord) }]),
+          ? [{ label: profileValueLabel.value, value: countryDisplay(row.countryAlpha2, row.countryAlpha3) }]
+          : [{ label: profileValueLabel.value, value: displayValue(row as RiskRecord) }]),
+    ...(isAmlSourceUrl.value ? [{ label: t('risk.profile.rule.sourceHostLabel'), value: row.sourceHost }] : []),
     ...(profile.value.showCardBrand ? [{ label: t('risk.common.cardBrand'), value: row.cardBrand, cardBrand: true }] : []),
     { label: t('risk.common.riskLevel'), value: row.riskLevel, riskLevel: true },
     { label: t('risk.common.decisionAction'), value: row.decisionAction, decisionAction: true },
@@ -594,7 +767,7 @@ async function loadData() {
   loading.value = true;
   try {
     const result = await pageRiskList(current.value.moduleType, current.value.functionCode, {
-      ...query,
+      ...sanitizeAmlQuery(query),
       pageNo: page.value,
       pageSize: pageSize.value,
     });
@@ -629,6 +802,15 @@ function resetForm(row?: RiskRecord) {
     regionMatchLevel: 'COUNTRY',
     ...row,
   });
+  if (isMerchantProfile.value) {
+    form.merchantScope = 'MERCHANT';
+    form.merchantId = String(form.matchValuePlain || form.matchValueMasked || form.merchantId || '');
+  }
+  if (isAmlModule.value) {
+    form.merchantScope = 'GLOBAL';
+    form.merchantId = undefined;
+    form.merchantName = undefined;
+  }
   regionSelectedCountries.value = formMode.value === 'add' && !row?.countryAlpha2 ? [] : row?.countryAlpha2 ? [row.countryAlpha2] : [];
   countryListSelectedCountries.value = formMode.value === 'add' && !row?.countryAlpha2 ? [] : row?.countryAlpha2 ? [row.countryAlpha2] : [];
   syncCountryListSelection();
@@ -638,6 +820,9 @@ function resetForm(row?: RiskRecord) {
   }
   if (isCardProfile.value) {
     form.cardBrand = detectCardBrand(form.matchValuePlain, options.value.cardBrandOptions) || form.cardBrand;
+  }
+  if (isMerchantProfile.value) {
+    syncCurrentTargetMerchantOption();
   }
   if (profile.value.rangeKind === 'cardBin') {
     form.cardBrand = detectCardBrand(form.matchValueStart, options.value.cardBrandOptions) || form.cardBrand;
@@ -664,7 +849,8 @@ async function openForm(mode: 'add' | 'edit', row?: RiskRecord) {
 }
 
 async function submitForm() {
-  await formRef.value?.validate();
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   try {
     if (profile.value.showRegion) {
       const payload = buildRegionPayload();
@@ -685,7 +871,12 @@ async function submitForm() {
 
 function buildRegionPayload() {
   const payload = { ...form };
-  if (payload.merchantScope === 'GLOBAL') {
+  if (isAmlModule.value) {
+    payload.merchantScope = 'GLOBAL';
+    payload.merchantId = undefined;
+    payload.merchantName = undefined;
+  }
+  if (!isMerchantProfile.value && payload.merchantScope === 'GLOBAL') {
     payload.merchantId = undefined;
     payload.merchantName = undefined;
   }
@@ -699,6 +890,16 @@ function buildRegionPayload() {
 
 function buildListPayload() {
   const payload = { ...form };
+  if (isMerchantProfile.value) {
+    payload.merchantScope = 'MERCHANT';
+    payload.merchantId = payload.matchValuePlain;
+    payload.merchantName = undefined;
+  }
+  if (isAmlModule.value) {
+    payload.merchantScope = 'GLOBAL';
+    payload.merchantId = undefined;
+    payload.merchantName = undefined;
+  }
   if (payload.merchantScope === 'GLOBAL') {
     payload.merchantId = undefined;
     payload.merchantName = undefined;
@@ -741,7 +942,7 @@ async function handleDelete(row?: RiskRecord) {
 async function handleBatchDelete() {
   const ids = selectedRows.value.map((item) => item.id).filter(Boolean);
   if (ids.length === 0) return;
-  await ElMessageBox.confirm(t('risk.common.batchDeleteConfirm', { count: ids.length, name: current.value.functionName }), t('common.operationConfirm'), { type: 'warning' });
+  await ElMessageBox.confirm(t('risk.common.batchDeleteConfirm', { count: ids.length, name: currentFunctionName.value }), t('common.operationConfirm'), { type: 'warning' });
   await batchRemoveRiskRecords(current.value.moduleType, current.value.functionCode, ids);
   ElMessage.success(t('common.deleteSuccess'));
   selectedRows.value = [];
@@ -750,7 +951,7 @@ async function handleBatchDelete() {
 
 function deleteTargetName(row: RiskRecord) {
   const value = displayValue(row);
-  return value && value !== '-' ? value : row.ruleName || current.value.functionName;
+  return value && value !== '-' ? value : row.ruleName || currentFunctionName.value;
 }
 
 async function handleStatus(row: RiskRecord, status: number) {
@@ -775,7 +976,7 @@ async function handleStatus(row: RiskRecord, status: number) {
 
 function statusTargetName(row: RiskRecord) {
   const value = displayValue(row);
-  return value && value !== '-' ? value : row.ruleName || current.value.functionName;
+  return value && value !== '-' ? value : row.ruleName || currentFunctionName.value;
 }
 
 function statusTargetType() {
@@ -796,11 +997,21 @@ function setStatusUpdating(id: number | undefined, loading: boolean) {
 }
 
 async function handleExport() {
-  await exportRiskConfig(current.value.moduleType, current.value.functionCode);
+  try {
+    await exportRiskConfig(current.value.moduleType, current.value.functionCode, sanitizeAmlQuery(query));
+    ElMessage.success(t('risk.common.exportStarted'));
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.exportFailed'));
+  }
 }
 
 async function handleTemplate() {
-  await downloadRiskTemplate(current.value.moduleType, current.value.functionCode);
+  try {
+    await downloadRiskTemplate(current.value.moduleType, current.value.functionCode);
+    ElMessage.success(t('risk.common.templateStarted'));
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('risk.common.templateFailed'));
+  }
 }
 
 async function handleImport(uploadFile: UploadFile) {
@@ -905,6 +1116,12 @@ function handleQueryMerchantVisibleChange(visible: boolean) {
   }
 }
 
+function handleTargetMerchantVisibleChange(visible: boolean) {
+  if (visible && merchantOptions.value.length === 0) {
+    loadMerchantOptions();
+  }
+}
+
 function handleMerchantChange(merchantId?: string) {
   const selected = merchantOptions.value.find((item) => item.merchantId === merchantId);
   form.merchantName = selected?.merchantName;
@@ -920,6 +1137,17 @@ function syncCurrentMerchantOption() {
   }
 }
 
+function syncCurrentTargetMerchantOption() {
+  if (!form.matchValuePlain) {
+    return;
+  }
+  const merchantId = String(form.matchValuePlain);
+  const exists = merchantOptions.value.some((item) => item.merchantId === merchantId);
+  if (!exists) {
+    merchantOptions.value = [{ id: 0, merchantId, merchantName: '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+  }
+}
+
 function mergeMerchantOptions(items: MerchantInfo[]) {
   const map = new Map<string, MerchantInfo>();
   merchantOptions.value.forEach((item) => map.set(item.merchantId, item));
@@ -932,11 +1160,25 @@ function merchantOptionLabel(item: MerchantInfo) {
 }
 
 function validateMerchant(_rule: unknown, _value: unknown, callback: (error?: Error) => void) {
+  if (isAmlModule.value) {
+    callback();
+    return;
+  }
   if (form.merchantScope === 'MERCHANT' && !form.merchantId) {
     callback(new Error(t('risk.validation.merchantRequired')));
     return;
   }
   callback();
+}
+
+function sanitizeAmlQuery<T extends Record<string, any>>(data: T): T {
+  if (!isAmlModule.value) {
+    return data;
+  }
+  const next = { ...data };
+  delete next.merchantScope;
+  delete next.merchantId;
+  return next as T;
 }
 
 function validateRegionState(_rule: unknown, _value: unknown, callback: (error?: Error) => void) {
@@ -962,7 +1204,7 @@ function validatePlainValue(_rule: unknown, _value: unknown, callback: (error?: 
   }
   const value = String(form.matchValuePlain || '').trim();
   if (!value) {
-    callback(new Error(t('risk.validation.matchValueRequired', { label: profile.value.valueLabel })));
+    callback(new Error(t('risk.validation.matchValueRequired', { label: profileValueLabel.value })));
     return;
   }
   if (isCardProfile.value && !/^\d{12,19}$/.test(value)) {
@@ -1264,16 +1506,7 @@ function buildCountryGroups(items: RiskOption[]) {
 }
 
 function continentNameByCode(code: string) {
-  const names: Record<string, string> = {
-    AS: '亚洲',
-    EU: '欧洲',
-    AF: '非洲',
-    NA: '北美洲',
-    SA: '南美洲',
-    OC: '大洋洲',
-    AN: '南极洲',
-  };
-  return names[code] || t('risk.common.country');
+  return t(`risk.common.continent.${code}`);
 }
 
 function isContinentSelected(group?: CountryGroup) {
@@ -1396,7 +1629,7 @@ function displayValue(row: RiskRecord) {
   if (profile.value.valueInputType === 'range' && row.matchValueStart) {
     return row.matchValueStart === row.matchValueEnd || !row.matchValueEnd ? row.matchValueStart : `${row.matchValueStart} - ${row.matchValueEnd}`;
   }
-  return row.matchValueMasked || row.countryAlpha2 || '-';
+  return row.matchValueMasked || row.sourceUrl || row.countryAlpha2 || '-';
 }
 
 function validityText(row: RiskRecord) {
@@ -1419,6 +1652,13 @@ function sourceText(value?: string) {
 
 function scopeText(value?: string) {
   return merchantScopeOptions.value.find((item) => item.value === value)?.label || riskOptionLabel(t, 'merchantScope', value);
+}
+
+function handlePilotColumnVisibleChange(key: string, visible: boolean) {
+  const applied = setPilotColumnVisible(key, visible);
+  if (!applied) {
+    ElMessage.warning(t('table.atLeastOneColumn'));
+  }
 }
 </script>
 
@@ -1569,14 +1809,14 @@ function scopeText(value?: string) {
 
 .card-value-control {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
-  gap: 12px;
+  gap: 6px;
 }
 
 .card-value-control.is-card .card-value-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .card-brand-cell {
@@ -1603,9 +1843,9 @@ function scopeText(value?: string) {
 }
 
 .card-brand-preview.is-inline {
-  flex: 0 0 136px;
-  width: 136px;
-  min-height: 32px;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 20px;
   padding: 0;
   border: 0;
   background: transparent;

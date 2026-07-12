@@ -34,13 +34,21 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="accountId" size="small" @selection-change="handleSelectionChange">
+        <StandardTable table-key="system-user" v-loading="loading" :data="rows" row-key="accountId" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="loginAccount" :label="$t('system.user.loginAccount')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="realName" :label="$t('system.user.realName')" min-width="120" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="deptName" :label="$t('system.user.dept')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('system.user.post')" min-width="160" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">{{ formatPostNames(row) }}</template>
+            </el-table-column>
+            <el-table-column :label="$t('system.user.role')" min-width="180" align="center">
+                <template #default="{ row }">
+                    <div v-if="row.roleNames?.length" class="role-tags">
+                        <el-tag v-for="role in row.roleNames" :key="role" size="small" effect="plain">{{ role }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </template>
             </el-table-column>
             <el-table-column prop="mobile" :label="$t('system.user.mobile')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="email" :label="$t('system.user.email')" min-width="160" align="center" :show-overflow-tooltip="true" />
@@ -58,7 +66,7 @@
                     <el-button size="small" type="primary" link :icon="Key" @click="openResetPassword(row)" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -79,7 +87,8 @@
                 </el-form-item>
                 <el-form-item :label="$t('system.user.mobile')" prop="mobile"><el-input v-model="userForm.mobile" maxlength="30" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.email')" prop="email"><el-input v-model="userForm.email" maxlength="150" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item v-if="formMode === 'edit'" :label="$t('common.status')" prop="status"><el-select v-model="userForm.status" :placeholder="$t('common.pleaseSelect')"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="userForm.status" :placeholder="$t('common.pleaseSelect')" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item :label="$t('system.user.remark')" prop="remark"><el-input v-model="userForm.remark" type="textarea" maxlength="500" show-word-limit :autosize="{ minRows: 2, maxRows: 4 }" :placeholder="$t('common.pleaseInput')" /></el-form-item>
             </el-form>
             <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitUserForm">{{ $t('common.confirm') }}</el-button><el-button @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
@@ -98,26 +107,48 @@
                 <el-descriptions-item :label="$t('system.user.userId')">{{ activeRow?.userId ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.loginAccount')">{{ activeRow?.loginAccount ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.realName')">{{ activeRow?.realName ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.user.dept')">{{ activeRow?.deptName ?? '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.user.post')">{{ activeRow ? formatPostNames(activeRow) : '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.dept')">
+                    <el-tag v-if="activeRow?.deptName" type="info" size="small" effect="plain">{{ activeRow.deptName }}</el-tag>
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.post')">
+                    <div v-if="activeRow?.postNames?.length" class="detail-tags">
+                        <el-tag v-for="post in activeRow.postNames" :key="post" type="success" size="small" effect="plain">{{ post }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.role')">
+                    <div v-if="activeRow?.roleNames?.length" class="detail-tags">
+                        <el-tag v-for="role in activeRow.roleNames" :key="role" type="primary" size="small" effect="plain">{{ role }}</el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.mobile')">{{ activeRow?.mobile ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.email')">{{ activeRow?.email ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')"><el-tag :type="activeRow?.status === 1 ? 'success' : 'danger'" size="small">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag></el-descriptions-item>
-                <el-descriptions-item :label="$t('system.user.locked')">{{ activeRow?.lockedText ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.locked')">
+                    <el-tag v-if="activeRow" :type="activeRow.locked === 1 ? 'danger' : 'success'" size="small" effect="plain">{{ activeRow.lockedText }}</el-tag>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.lastLogin')"><BaseDateTime :value="activeRow?.lastLoginAt" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.lastLoginIp')">{{ activeRow?.lastLoginIp ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.remark')">{{ activeRow?.remark || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="activeRow?.createdAt" /></el-descriptions-item>
             </el-descriptions>
             <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
 
-        <el-dialog v-model="roleAuthVisible" :title="$t('system.user.assignRole')" width="700px" append-to-body destroy-on-close>
+        <el-dialog v-model="roleAuthVisible" :title="$t('system.user.assignRole')" width="920px" class="role-auth-dialog" append-to-body destroy-on-close>
+            <el-alert class="role-auth-alert" :title="$t('system.user.assignRoleLimitTip')" type="info" show-icon :closable="false" />
             <el-table ref="roleTableRef" v-loading="roleAuthLoading" :data="roleRows" row-key="roleId" max-height="420" @selection-change="handleRoleSelection">
-                <el-table-column type="selection" width="50" align="center" />
+                <el-table-column type="selection" width="50" align="center" :selectable="isRoleSelectable" />
                 <el-table-column prop="roleCode" :label="$t('system.user.roleCode')" min-width="160" align="center" :show-overflow-tooltip="true" />
                 <el-table-column prop="roleName" :label="$t('system.user.roleName')" min-width="140" align="center" :show-overflow-tooltip="true" />
                 <el-table-column prop="roleType" :label="$t('system.user.roleType')" width="100" align="center" />
                 <el-table-column prop="dataScope" :label="$t('system.user.dataScope')" width="110" align="center" />
+                <el-table-column :label="$t('system.user.assignable')" width="110" align="center">
+                    <template #default="{ row }"><el-tag :type="row.assignable === false ? 'warning' : 'success'" size="small">{{ row.assignable === false ? $t('system.user.notAssignable') : $t('system.user.assignable') }}</el-tag></template>
+                </el-table-column>
                 <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag></template></el-table-column>
             </el-table>
             <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitRoleAuth">{{ $t('common.confirm') }}</el-button><el-button @click="roleAuthVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
@@ -133,15 +164,16 @@ import { useI18n } from 'vue-i18n';
 import { createUser, deleteUsers, exportUsers, getUserRoles, grantUserRoles, resetUserPassword, searchUsers, updateUser, updateUserStatus, type SysUserAccount } from '@/api/system/user';
 import { getDeptTree, type SysDept } from '@/api/system/dept';
 import { getAllPosts, type SysPost } from '@/api/system/post';
-import { searchRoles, type SysRole } from '@/api/system/role';
+import type { SysRole } from '@/api/system/role';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
 
 const { locale, t } = useI18n();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
-interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; }
+interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; remark: string; }
 type PostOption = SysPost & { id: number };
 
 const statusOptions = [{ label: t('common.enable'), value: 1 }, { label: t('common.disable'), value: 0 }];
@@ -158,16 +190,20 @@ const roleAuthLoading = ref(false); const roleAuthSaving = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<UserRow | null>(null);
 const userFormRef = ref<FormInstance>(); const resetFormRef = ref<FormInstance>(); const roleTableRef = ref<TableInstance>();
-const roleOptions = ref<SysRole[]>([]); const roleRows = ref<SysRole[]>([]); const selectedRoleIds = ref<number[]>([]); const roleLoading = ref(false);
+const roleRows = ref<SysRole[]>([]); const selectedRoleIds = ref<number[]>([]);
 const deptOptions = ref<SysDept[]>([]); const postOptions = ref<PostOption[]>([]);
 const dialogTitle = computed(() => formMode.value === 'create' ? t('system.user.addUser') : t('system.user.editUser'));
-const userForm = reactive<UserForm>({ loginAccount: '', password: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1 });
+const userForm = reactive<UserForm>({ loginAccount: '', password: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
 const resetForm = reactive({ password: '' });
 const userFormRules = computed<FormRules>(() => ({
     loginAccount: [{ required: true, message: t('login.accountRequired'), trigger: 'blur' }],
-    password: formMode.value === 'create' ? [{ required: true, min: 8, max: 64, message: t('common.pleaseInput'), trigger: 'blur' }] : [],
-    realName: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }],
-    email: [{ type: 'email', message: t('common.pleaseInput'), trigger: 'blur' }],
+    password: formMode.value === 'create' ? [{ required: true, min: 8, max: 64, message: t('system.user.passwordRequired'), trigger: 'blur' }] : [],
+    realName: [{ required: true, message: t('system.user.realNameRequired'), trigger: 'blur' }],
+    email: [
+        { required: true, message: t('system.user.emailRequired'), trigger: 'blur' },
+        { type: 'email', message: t('system.user.emailFormat'), trigger: 'blur' },
+    ],
+    status: [{ required: true, message: t('system.user.statusRequired'), trigger: 'change' }],
 }));
 const resetFormRules: FormRules = { password: [{ required: true, min: 8, max: 64, message: t('common.pleaseInput'), trigger: 'blur' }] };
 
@@ -204,12 +240,12 @@ function handleSelectionChange(selection: UserRow[]) { selectedRows.value = sele
 
 async function handleAdd() {
     formMode.value = 'create'; activeRow.value = null;
-    Object.assign(userForm, { accountId: undefined, loginAccount: '', password: 'Admin@123456', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1 });
+    Object.assign(userForm, { accountId: undefined, loginAccount: '', password: 'Admin@123456', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
     selectedRoleIds.value = []; userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
 }
 async function handleUpdate(row: UserRow) {
     formMode.value = 'edit'; activeRow.value = row;
-    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, password: '', realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1 });
+    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, password: '', realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1, remark: row.remark || '' });
     userDialogVisible.value = true; nextTick(() => userFormRef.value?.clearValidate());
 }
 function openDetail(row: UserRow) { activeRow.value = row; detailVisible.value = true; }
@@ -218,8 +254,8 @@ function openResetPassword(row: UserRow) { activeRow.value = row; resetForm.pass
 async function submitUserForm() {
     const valid = await userFormRef.value?.validate().catch(() => false); if (!valid) return;
     try {
-        if (formMode.value === 'create') { await createUser({ loginAccount: userForm.loginAccount.trim(), password: userForm.password, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email) }); ElMessage.success(t('common.addSuccess')); }
-        else if (userForm.accountId) { await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: trimOptional(userForm.email), status: userForm.status }); ElMessage.success(t('common.editSuccess')); }
+        if (formMode.value === 'create') { await createUser({ loginAccount: userForm.loginAccount.trim(), password: userForm.password, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) }); ElMessage.success(t('common.addSuccess')); }
+        else if (userForm.accountId) { await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) }); ElMessage.success(t('common.editSuccess')); }
         userDialogVisible.value = false; loadData();
     } catch (error) { ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed')); }
 }
@@ -268,6 +304,7 @@ async function openRoleAuth(row: UserRow) {
     finally { roleAuthLoading.value = false; }
 }
 function handleRoleSelection(selection: SysRole[]) { selectedRoleIds.value = selection.map((item) => item.roleId); }
+function isRoleSelectable(row: SysRole) { return row.assignable !== false; }
 async function submitRoleAuth() {
     if (!activeRow.value || roleAuthSaving.value) return; roleAuthSaving.value = true;
     try { await grantUserRoles({ accountId: activeRow.value.accountId, roleIds: selectedRoleIds.value }); ElMessage.success(t('common.saveSuccess')); roleAuthVisible.value = false; loadData(); }
@@ -286,5 +323,35 @@ function formatPostNames(row: SysUserAccount) {
     }
     return row.postNames.join(locale.value === 'zh-CN' ? '、' : ', ');
 }
+function formatRoleNames(row: SysUserAccount) {
+    if (!row.roleNames?.length) {
+        return '-';
+    }
+    return row.roleNames.join(locale.value === 'zh-CN' ? '、' : ', ');
+}
 function applyRoleSelection() { const checkedIdSet = new Set(selectedRoleIds.value); roleRows.value.forEach((row) => { roleTableRef.value?.toggleRowSelection(row, checkedIdSet.has(row.roleId)); }); }
 </script>
+
+<style scoped>
+.role-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+}
+
+.detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.role-auth-alert {
+    margin-bottom: 12px;
+}
+
+:deep(.role-auth-dialog) {
+    max-width: calc(100vw - 32px);
+}
+</style>

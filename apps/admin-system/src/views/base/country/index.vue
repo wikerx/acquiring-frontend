@@ -14,7 +14,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
+    <StandardTable table-key="base-country" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="alpha2Code" :label="$t('base.country.alpha2')" width="90" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="alpha3Code" :label="$t('base.country.alpha3')" width="90" align="center" :show-overflow-tooltip="true" />
@@ -32,7 +32,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'base:country:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -68,6 +68,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchCountries, createCountry, updateCountry, changeCountryStatus, deleteCountry, exportCountries, type IsoCountry } from '@/api/base/country';
 
 const { t } = useI18n();

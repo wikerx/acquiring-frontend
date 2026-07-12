@@ -31,8 +31,8 @@ export type RiskRuleProfileKind =
 
 export interface RiskListProfile {
     kind: RiskListProfileKind;
-    valueLabel: string;
-    valuePlaceholder: string;
+    valueLabelKey: string;
+    valuePlaceholderKey: string;
     showValue: boolean;
     showRange: boolean;
     showCountry: boolean;
@@ -47,8 +47,8 @@ export interface RiskListProfile {
 
 export interface RiskRuleProfile {
     kind: RiskRuleProfileKind;
-    matchLabel: string;
-    matchPlaceholder: string;
+    matchLabelKey: string;
+    matchPlaceholderKey: string;
     showMatchMode: boolean;
     showMatchValue: boolean;
     showLimitType: boolean;
@@ -58,6 +58,7 @@ export interface RiskRuleProfile {
     showElements: boolean;
     showCountry: boolean;
     showCardBrand: boolean;
+    showThreeDs: boolean;
 }
 
 export interface RiskLayerMeta {
@@ -66,8 +67,56 @@ export interface RiskLayerMeta {
     tone: 'danger' | 'warningStrong' | 'warning' | 'successStrong' | 'success' | 'muted' | 'rule';
 }
 
-export type RiskOptionKind = 'merchantScope' | 'riskLevel' | 'decisionAction' | 'status' | 'sourceType' | 'validityType';
+export type RiskOptionKind = 'merchantScope' | 'riskLevel' | 'decisionAction' | 'status' | 'sourceType' | 'validityType' | 'limitType';
 type RiskTranslate = (key: string) => string;
+
+export const RISK_FUNCTION_I18N_KEYS: Record<string, string> = {
+    'AML:card': 'risk.function.aml.card',
+    'AML:cardBin': 'risk.function.aml.cardBin',
+    'AML:ip': 'risk.function.aml.ip',
+    'AML:country': 'risk.function.aml.country',
+    'AML:email': 'risk.function.aml.email',
+    'AML:phone': 'risk.function.aml.phone',
+    'AML:cardholderName': 'risk.function.aml.cardholderName',
+    'AML:legalPerson': 'risk.function.aml.legalPerson',
+    'AML:enterprise': 'risk.function.aml.enterprise',
+    'AML:merchantBillingAddress': 'risk.function.aml.merchantBillingAddress',
+    'AML:sourceUrl': 'risk.function.aml.sourceUrl',
+    'BLACK:cardNo': 'risk.function.black.cardNo',
+    'BLACK:cardFingerprint': 'risk.function.black.cardFingerprint',
+    'BLACK:cardBin': 'risk.function.black.cardBin',
+    'BLACK:cardholderName': 'risk.function.black.cardholderName',
+    'BLACK:phone': 'risk.function.black.phone',
+    'BLACK:ip': 'risk.function.black.ip',
+    'BLACK:region': 'risk.function.black.region',
+    'BLACK:email': 'risk.function.black.email',
+    'BLACK:emailUsername': 'risk.function.black.emailUsername',
+    'BLACK:emailDomain': 'risk.function.black.emailDomain',
+    'BLACK:billingAddress': 'risk.function.black.billingAddress',
+    'BLACK:billingZip': 'risk.function.black.billingZip',
+    'BLACK:billingCountry': 'risk.function.black.billingCountry',
+    'BLACK:shippingAddress': 'risk.function.black.shippingAddress',
+    'BLACK:shippingZip': 'risk.function.black.shippingZip',
+    'BLACK:shippingCountry': 'risk.function.black.shippingCountry',
+    'BLACK:issuerCountry': 'risk.function.black.issuerCountry',
+    'BLACK:deviceFingerprint': 'risk.function.black.deviceFingerprint',
+    'WHITE:merchant': 'risk.function.white.merchant',
+    'WHITE:cardNo': 'risk.function.white.cardNo',
+    'WHITE:cardFingerprint': 'risk.function.white.cardFingerprint',
+    'WHITE:cardBin': 'risk.function.white.cardBin',
+    'WHITE:ip': 'risk.function.white.ip',
+    'WHITE:tradeCountry': 'risk.function.white.tradeCountry',
+    'WHITE:issuerCountry': 'risk.function.white.issuerCountry',
+    'WHITE:email': 'risk.function.white.email',
+    'WHITE:emailDomain': 'risk.function.white.emailDomain',
+    'WHITE:phone': 'risk.function.white.phone',
+    'WHITE:customerId': 'risk.function.white.customerId',
+    'WHITE:deviceFingerprint': 'risk.function.white.deviceFingerprint',
+    'RULE:sourceUrl': 'risk.function.rule.sourceUrl',
+    'RULE:merchantLimit': 'risk.function.rule.merchantLimit',
+    'RULE:frequency': 'risk.function.rule.frequency',
+    'RULE:threeDs': 'risk.function.rule.threeDs',
+};
 
 const RISK_OPTION_I18N_KEYS: Record<RiskOptionKind, Record<string, string>> = {
     merchantScope: {
@@ -101,55 +150,86 @@ const RISK_OPTION_I18N_KEYS: Record<RiskOptionKind, Record<string, string>> = {
         LONG: 'risk.option.validityType.LONG',
         LIMITED: 'risk.option.validityType.LIMITED',
     },
+    limitType: {
+        SINGLE_MIN: 'risk.option.limitType.SINGLE_MIN',
+        SINGLE_MAX: 'risk.option.limitType.SINGLE_MAX',
+        DAILY: 'risk.option.limitType.DAILY',
+        WEEKLY: 'risk.option.limitType.WEEKLY',
+        MONTHLY: 'risk.option.limitType.MONTHLY',
+    },
 };
 
+export function riskFunctionName(t: RiskTranslate, definition: Pick<RiskFunctionDefinition, 'moduleType' | 'functionCode' | 'functionName'>) {
+    const key = RISK_FUNCTION_I18N_KEYS[`${definition.moduleType}:${definition.functionCode}`];
+    return key ? t(key) : definition.functionName;
+}
+
 export const riskFunctions: RiskFunctionDefinition[] = [
-    { moduleType: 'AML', functionCode: 'card', functionName: '卡号/卡指纹AML', routePath: '/risk/aml/card', permissionPrefix: 'risk:aml:card', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'cardBin', functionName: '卡BIN/区间AML', routePath: '/risk/aml/card-bin', permissionPrefix: 'risk:aml:cardBin', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'ip', functionName: 'IP地址/区间AML', routePath: '/risk/aml/ip', permissionPrefix: 'risk:aml:ip', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'country', functionName: '国家/地区AML', routePath: '/risk/aml/country', permissionPrefix: 'risk:aml:country', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'email', functionName: '邮箱/域名AML', routePath: '/risk/aml/email', permissionPrefix: 'risk:aml:email', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'phone', functionName: '手机号AML', routePath: '/risk/aml/phone', permissionPrefix: 'risk:aml:phone', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'cardholderName', functionName: '持卡人姓名AML', routePath: '/risk/aml/cardholder-name', permissionPrefix: 'risk:aml:cardholderName', regionFunction: false, ruleFunction: false },
-    { moduleType: 'AML', functionCode: 'sourceUrl', functionName: '来源网址AML', routePath: '/risk/aml/source-url', permissionPrefix: 'risk:aml:sourceUrl', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'cardNo', functionName: '卡号黑名单', routePath: '/risk/blacklist/card-no', permissionPrefix: 'risk:blacklist:cardNo', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'cardFingerprint', functionName: '卡指纹黑名单', routePath: '/risk/blacklist/card-fingerprint', permissionPrefix: 'risk:blacklist:cardFingerprint', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'cardBin', functionName: '卡BIN/区间黑名单', routePath: '/risk/blacklist/card-bin', permissionPrefix: 'risk:blacklist:cardBin', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'cardholderName', functionName: '持卡人姓名黑名单', routePath: '/risk/blacklist/cardholder-name', permissionPrefix: 'risk:blacklist:cardholderName', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'phone', functionName: '电话号码黑名单', routePath: '/risk/blacklist/phone', permissionPrefix: 'risk:blacklist:phone', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'ip', functionName: 'IP地址/区间黑名单', routePath: '/risk/blacklist/ip', permissionPrefix: 'risk:blacklist:ip', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'region', functionName: '高风险区域黑名单', routePath: '/risk/blacklist/region', permissionPrefix: 'risk:blacklist:region', regionFunction: true, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'email', functionName: '邮箱地址黑名单', routePath: '/risk/blacklist/email', permissionPrefix: 'risk:blacklist:email', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'emailUsername', functionName: '邮箱用户名黑名单', routePath: '/risk/blacklist/email-username', permissionPrefix: 'risk:blacklist:emailUsername', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'emailDomain', functionName: '邮箱域名黑名单', routePath: '/risk/blacklist/email-domain', permissionPrefix: 'risk:blacklist:emailDomain', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'billingAddress', functionName: '账单地址黑名单', routePath: '/risk/blacklist/billing-address', permissionPrefix: 'risk:blacklist:billingAddress', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'billingZip', functionName: '账单邮编黑名单', routePath: '/risk/blacklist/billing-zip', permissionPrefix: 'risk:blacklist:billingZip', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'billingCountry', functionName: '账单国家/地区黑名单', routePath: '/risk/blacklist/billing-country', permissionPrefix: 'risk:blacklist:billingCountry', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'shippingAddress', functionName: '收货地址黑名单', routePath: '/risk/blacklist/shipping-address', permissionPrefix: 'risk:blacklist:shippingAddress', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'shippingZip', functionName: '收货邮编黑名单', routePath: '/risk/blacklist/shipping-zip', permissionPrefix: 'risk:blacklist:shippingZip', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'shippingCountry', functionName: '收货国家/地区黑名单', routePath: '/risk/blacklist/shipping-country', permissionPrefix: 'risk:blacklist:shippingCountry', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'issuerCountry', functionName: '发卡行国家/地区黑名单', routePath: '/risk/blacklist/issuer-country', permissionPrefix: 'risk:blacklist:issuerCountry', regionFunction: false, ruleFunction: false },
-    { moduleType: 'BLACK', functionCode: 'deviceFingerprint', functionName: '设备指纹黑名单', routePath: '/risk/blacklist/device-fingerprint', permissionPrefix: 'risk:blacklist:deviceFingerprint', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'merchant', functionName: '商户白名单', routePath: '/risk/whitelist/merchant', permissionPrefix: 'risk:whitelist:merchant', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'cardNo', functionName: '卡号白名单', routePath: '/risk/whitelist/card-no', permissionPrefix: 'risk:whitelist:cardNo', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'cardFingerprint', functionName: '卡指纹白名单', routePath: '/risk/whitelist/card-fingerprint', permissionPrefix: 'risk:whitelist:cardFingerprint', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'cardBin', functionName: '卡BIN/区间白名单', routePath: '/risk/whitelist/card-bin', permissionPrefix: 'risk:whitelist:cardBin', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'ip', functionName: 'IP地址白名单', routePath: '/risk/whitelist/ip', permissionPrefix: 'risk:whitelist:ip', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'tradeCountry', functionName: '交易国家/地区白名单', routePath: '/risk/whitelist/trade-country', permissionPrefix: 'risk:whitelist:tradeCountry', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'issuerCountry', functionName: '发卡行国家/地区白名单', routePath: '/risk/whitelist/issuer-country', permissionPrefix: 'risk:whitelist:issuerCountry', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'email', functionName: '邮箱地址白名单', routePath: '/risk/whitelist/email', permissionPrefix: 'risk:whitelist:email', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'emailDomain', functionName: '邮箱域名白名单', routePath: '/risk/whitelist/email-domain', permissionPrefix: 'risk:whitelist:emailDomain', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'phone', functionName: '手机号白名单', routePath: '/risk/whitelist/phone', permissionPrefix: 'risk:whitelist:phone', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'customerId', functionName: 'Customer ID 白名单', routePath: '/risk/whitelist/customer-id', permissionPrefix: 'risk:whitelist:customerId', regionFunction: false, ruleFunction: false },
-    { moduleType: 'WHITE', functionCode: 'deviceFingerprint', functionName: '设备指纹白名单', routePath: '/risk/whitelist/device-fingerprint', permissionPrefix: 'risk:whitelist:deviceFingerprint', regionFunction: false, ruleFunction: false },
-    { moduleType: 'RULE', functionCode: 'sourceUrl', functionName: '商户来源网址限定', routePath: '/risk/rule/source-url', permissionPrefix: 'risk:rule:sourceUrl', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'merchantLimit', functionName: '商户交易限额管理', routePath: '/risk/rule/merchant-limit', permissionPrefix: 'risk:rule:merchantLimit', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'frequency', functionName: '交易频率限定', routePath: '/risk/rule/frequency', permissionPrefix: 'risk:rule:frequency', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'tradeCountry', functionName: '商户交易国家限定', routePath: '/risk/rule/trade-country', permissionPrefix: 'risk:rule:tradeCountry', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'issuerCountry', functionName: '发卡行国家限定', routePath: '/risk/rule/issuer-country', permissionPrefix: 'risk:rule:issuerCountry', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'cardBin', functionName: '卡BIN交易规则', routePath: '/risk/rule/card-bin', permissionPrefix: 'risk:rule:cardBin', regionFunction: false, ruleFunction: true },
-    { moduleType: 'RULE', functionCode: 'threeDs', functionName: '3DS规则管理', routePath: '/risk/rule/3ds', permissionPrefix: 'risk:rule:threeDs', regionFunction: false, ruleFunction: true },
+    riskFunction('AML', 'card', '/risk/aml/card', 'risk:aml:card'),
+    riskFunction('AML', 'cardBin', '/risk/aml/card-bin', 'risk:aml:cardBin'),
+    riskFunction('AML', 'ip', '/risk/aml/ip', 'risk:aml:ip'),
+    riskFunction('AML', 'country', '/risk/aml/country', 'risk:aml:country'),
+    riskFunction('AML', 'email', '/risk/aml/email', 'risk:aml:email'),
+    riskFunction('AML', 'phone', '/risk/aml/phone', 'risk:aml:phone'),
+    riskFunction('AML', 'cardholderName', '/risk/aml/cardholder-name', 'risk:aml:cardholderName'),
+    riskFunction('AML', 'legalPerson', '/risk/aml/legal-person', 'risk:aml:legalPerson'),
+    riskFunction('AML', 'enterprise', '/risk/aml/enterprise', 'risk:aml:enterprise'),
+    riskFunction('AML', 'merchantBillingAddress', '/risk/aml/merchant-billing-address', 'risk:aml:merchantBillingAddress'),
+    riskFunction('AML', 'sourceUrl', '/risk/aml/source-url', 'risk:aml:sourceUrl'),
+    riskFunction('BLACK', 'cardNo', '/risk/blacklist/card-no', 'risk:blacklist:cardNo'),
+    riskFunction('BLACK', 'cardFingerprint', '/risk/blacklist/card-fingerprint', 'risk:blacklist:cardFingerprint'),
+    riskFunction('BLACK', 'cardBin', '/risk/blacklist/card-bin', 'risk:blacklist:cardBin'),
+    riskFunction('BLACK', 'cardholderName', '/risk/blacklist/cardholder-name', 'risk:blacklist:cardholderName'),
+    riskFunction('BLACK', 'phone', '/risk/blacklist/phone', 'risk:blacklist:phone'),
+    riskFunction('BLACK', 'ip', '/risk/blacklist/ip', 'risk:blacklist:ip'),
+    riskFunction('BLACK', 'region', '/risk/blacklist/region', 'risk:blacklist:region', true),
+    riskFunction('BLACK', 'email', '/risk/blacklist/email', 'risk:blacklist:email'),
+    riskFunction('BLACK', 'emailUsername', '/risk/blacklist/email-username', 'risk:blacklist:emailUsername'),
+    riskFunction('BLACK', 'emailDomain', '/risk/blacklist/email-domain', 'risk:blacklist:emailDomain'),
+    riskFunction('BLACK', 'billingAddress', '/risk/blacklist/billing-address', 'risk:blacklist:billingAddress'),
+    riskFunction('BLACK', 'billingZip', '/risk/blacklist/billing-zip', 'risk:blacklist:billingZip'),
+    riskFunction('BLACK', 'billingCountry', '/risk/blacklist/billing-country', 'risk:blacklist:billingCountry'),
+    riskFunction('BLACK', 'shippingAddress', '/risk/blacklist/shipping-address', 'risk:blacklist:shippingAddress'),
+    riskFunction('BLACK', 'shippingZip', '/risk/blacklist/shipping-zip', 'risk:blacklist:shippingZip'),
+    riskFunction('BLACK', 'shippingCountry', '/risk/blacklist/shipping-country', 'risk:blacklist:shippingCountry'),
+    riskFunction('BLACK', 'issuerCountry', '/risk/blacklist/issuer-country', 'risk:blacklist:issuerCountry'),
+    riskFunction('BLACK', 'deviceFingerprint', '/risk/blacklist/device-fingerprint', 'risk:blacklist:deviceFingerprint'),
+    riskFunction('WHITE', 'merchant', '/risk/whitelist/merchant', 'risk:whitelist:merchant'),
+    riskFunction('WHITE', 'cardNo', '/risk/whitelist/card-no', 'risk:whitelist:cardNo'),
+    riskFunction('WHITE', 'cardFingerprint', '/risk/whitelist/card-fingerprint', 'risk:whitelist:cardFingerprint'),
+    riskFunction('WHITE', 'cardBin', '/risk/whitelist/card-bin', 'risk:whitelist:cardBin'),
+    riskFunction('WHITE', 'ip', '/risk/whitelist/ip', 'risk:whitelist:ip'),
+    riskFunction('WHITE', 'tradeCountry', '/risk/whitelist/trade-country', 'risk:whitelist:tradeCountry'),
+    riskFunction('WHITE', 'issuerCountry', '/risk/whitelist/issuer-country', 'risk:whitelist:issuerCountry'),
+    riskFunction('WHITE', 'email', '/risk/whitelist/email', 'risk:whitelist:email'),
+    riskFunction('WHITE', 'emailDomain', '/risk/whitelist/email-domain', 'risk:whitelist:emailDomain'),
+    riskFunction('WHITE', 'phone', '/risk/whitelist/phone', 'risk:whitelist:phone'),
+    riskFunction('WHITE', 'customerId', '/risk/whitelist/customer-id', 'risk:whitelist:customerId'),
+    riskFunction('WHITE', 'deviceFingerprint', '/risk/whitelist/device-fingerprint', 'risk:whitelist:deviceFingerprint'),
+    riskFunction('RULE', 'sourceUrl', '/risk/rule/source-url', 'risk:rule:sourceUrl', false, true),
+    riskFunction('RULE', 'merchantLimit', '/risk/rule/merchant-limit', 'risk:rule:merchantLimit', false, true),
+    riskFunction('RULE', 'frequency', '/risk/rule/frequency', 'risk:rule:frequency', false, true),
+    riskFunction('RULE', 'threeDs', '/risk/rule/3ds', 'risk:rule:threeDs', false, true),
 ];
+
+function riskFunction(
+    moduleType: string,
+    functionCode: string,
+    routePath: string,
+    permissionPrefix: string,
+    regionFunction = false,
+    ruleFunction = false,
+): RiskFunctionDefinition {
+    return {
+        moduleType,
+        functionCode,
+        functionName: `${moduleType}:${functionCode}`,
+        routePath,
+        permissionPrefix,
+        regionFunction,
+        ruleFunction,
+    };
+}
 
 export function resolveRiskFunction(path: string, ruleOnly = false) {
     const normalized = path.replace(/\/$/, '');
@@ -163,47 +243,47 @@ export function resolveRiskFunction(path: string, ruleOnly = false) {
 export function resolveRiskListProfile(definition: RiskFunctionDefinition): RiskListProfile {
     const code = definition.functionCode;
     if (definition.regionFunction) {
-        return profile('region', '区域', '请选择国家、州/省、城市', false, false, true, false, false, true, 'region', false, false);
+        return profile('region', 'risk.common.region', 'risk.profile.placeholder.region', false, false, true, false, false, true, 'region', false, false);
     }
-    if (code === 'merchant') return profile('merchant', '商户号', '请选择商户', true, false, false, false, false, false, 'plain', false, false);
-    if (code === 'cardNo' || code === 'card') return profile('card', '卡号', '请输入完整卡号', true, false, false, true, false, false, 'plain', false, true);
-    if (code === 'cardFingerprint') return profile('cardFingerprint', '卡指纹', '请输入卡指纹', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'cardBin') return profile('cardBin', '卡BIN/区间', '请输入 6-11 位 BIN', true, true, false, true, false, false, 'range', false, false, 'cardBin');
-    if (code === 'ip') return profile('ip', definition.moduleType === 'WHITE' ? 'IP地址' : 'IP地址/区间', '请输入 IP 地址', true, definition.moduleType !== 'WHITE', definition.moduleType !== 'BLACK', false, false, false, 'range', definition.moduleType !== 'WHITE', false, 'ip');
-    if (code.includes('Country') || code === 'country') return profile('country', '国家/地区', '请选择国家/地区', false, false, true, false, false, false, 'country', false, false);
-    if (code === 'email') return profile('email', '邮箱地址', '请输入邮箱地址', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'emailDomain') return profile('emailDomain', '邮箱域名', '请输入邮箱域名', true, false, false, false, false, false, 'plain', false, false);
-    if (code === 'emailUsername') return profile('emailUsername', '邮箱用户名', '请输入邮箱用户名', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'phone') return profile('phone', '手机号', '请输入手机号', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'cardholderName') return profile('name', '持卡人姓名', '请输入持卡人姓名', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'billingAddress') return profile('address', '账单地址', '请输入账单地址', true, false, false, false, false, false, 'plain', false, false);
-    if (code === 'billingZip') return profile('zip', '账单邮编', '请输入账单邮编', true, false, false, false, false, false, 'plain', false, false);
-    if (code === 'shippingAddress') return profile('address', '收货地址', '请输入收货地址', true, false, false, false, false, false, 'plain', false, false);
-    if (code === 'shippingZip') return profile('zip', '收货邮编', '请输入收货邮编', true, false, false, false, false, false, 'plain', false, false);
-    if (code.includes('Address')) return profile('address', '地址', '请输入地址关键字', true, false, true, false, false, false, 'plain', false, true);
-    if (code.includes('Zip')) return profile('zip', '邮编', '请输入邮编', true, false, true, false, false, false, 'plain', false, false);
-    if (code === 'deviceFingerprint') return profile('device', '设备指纹', '请输入设备指纹', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'customerId') return profile('customer', 'Customer ID', '请输入 Customer ID', true, false, false, false, false, false, 'plain', false, true);
-    if (code === 'sourceUrl') return profile('sourceUrl', '来源网址', '请输入来源网址或域名', true, false, false, false, false, false, 'plain', false, false);
-    return profile('card', '匹配值', '请输入匹配值', true, false, true, false, false, false, 'plain', false, false);
+    if (code === 'merchant') return profile('merchant', 'risk.common.merchantId', 'risk.common.placeholderMerchant', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'cardNo' || code === 'card') return profile('card', 'risk.common.cardNo', 'risk.profile.placeholder.cardNo', true, false, false, true, false, false, 'plain', false, true);
+    if (code === 'cardFingerprint') return profile('cardFingerprint', 'risk.profile.label.cardFingerprint', 'risk.profile.placeholder.cardFingerprint', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'cardBin') return profile('cardBin', 'risk.profile.label.cardBinRange', 'risk.profile.placeholder.cardBin', true, true, false, true, false, false, 'range', false, false, 'cardBin');
+    if (code === 'ip') return profile('ip', definition.moduleType === 'WHITE' ? 'risk.common.ipAddress' : 'risk.profile.label.ipRange', 'risk.profile.placeholder.ip', true, definition.moduleType !== 'WHITE', false, false, false, false, 'range', definition.moduleType !== 'WHITE', false, 'ip');
+    if (code.includes('Country') || code === 'country') return profile('country', 'risk.common.country', 'risk.common.placeholderSelect', false, false, true, false, false, false, 'country', false, false);
+    if (code === 'email') return profile('email', 'risk.profile.label.email', 'risk.profile.placeholder.email', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'emailDomain') return profile('emailDomain', 'risk.profile.label.emailDomain', 'risk.profile.placeholder.emailDomain', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'emailUsername') return profile('emailUsername', 'risk.profile.label.emailUsername', 'risk.profile.placeholder.emailUsername', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'phone') return profile('phone', 'risk.profile.label.phone', 'risk.profile.placeholder.phone', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'cardholderName') return profile('name', 'risk.profile.label.cardholderName', 'risk.profile.placeholder.cardholderName', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'legalPerson') return profile('name', 'risk.profile.label.legalPerson', 'risk.profile.placeholder.legalPerson', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'enterprise') return profile('name', 'risk.profile.label.enterprise', 'risk.profile.placeholder.enterprise', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'merchantBillingAddress') return profile('address', 'risk.profile.label.merchantBillingAddress', 'risk.profile.placeholder.merchantBillingAddress', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'billingAddress') return profile('address', 'risk.common.billingAddress', 'risk.profile.placeholder.billingAddress', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'billingZip') return profile('zip', 'risk.profile.label.billingZip', 'risk.profile.placeholder.billingZip', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'shippingAddress') return profile('address', 'risk.common.shippingAddress', 'risk.profile.placeholder.shippingAddress', true, false, false, false, false, false, 'plain', false, false);
+    if (code === 'shippingZip') return profile('zip', 'risk.profile.label.shippingZip', 'risk.profile.placeholder.shippingZip', true, false, false, false, false, false, 'plain', false, false);
+    if (code.includes('Address')) return profile('address', 'risk.profile.label.address', 'risk.profile.placeholder.address', true, false, true, false, false, false, 'plain', false, true);
+    if (code.includes('Zip')) return profile('zip', 'risk.profile.label.zip', 'risk.profile.placeholder.zip', true, false, true, false, false, false, 'plain', false, false);
+    if (code === 'deviceFingerprint') return profile('device', 'risk.profile.label.deviceFingerprint', 'risk.profile.placeholder.deviceFingerprint', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'customerId') return profile('customer', 'risk.profile.label.customerId', 'risk.profile.placeholder.customerId', true, false, false, false, false, false, 'plain', false, true);
+    if (code === 'sourceUrl') return profile('sourceUrl', 'risk.profile.label.sourceUrl', 'risk.profile.placeholder.sourceUrl', true, false, false, false, false, false, 'plain', false, false);
+    return profile('card', 'risk.common.matchValue', 'risk.profile.placeholder.matchValue', true, false, true, false, false, false, 'plain', false, false);
 }
 
 export function resolveRiskRuleProfile(definition: RiskFunctionDefinition): RiskRuleProfile {
     const code = definition.functionCode;
-    if (code === 'sourceUrl') return ruleProfile('sourceUrl', '来源网址', '请输入来源网址或域名', true, true, false, false, false, false, false, false, false);
-    if (code === 'merchantLimit') return ruleProfile('merchantLimit', '限额对象', '可填写商户、卡品牌或场景', false, false, true, true, true, false, false, false, false);
-    if (code === 'frequency') return ruleProfile('frequency', '频率元素', '请输入卡号、IP、邮箱等元素', false, true, false, false, false, true, true, false, false);
-    if (code === 'tradeCountry') return ruleProfile('country', '交易国家/地区', '请选择交易国家/地区', false, false, false, false, false, false, false, true, false);
-    if (code === 'issuerCountry') return ruleProfile('issuerCountry', '发卡行国家/地区', '请选择发卡行国家/地区', false, false, false, false, false, false, false, true, false);
-    if (code === 'cardBin') return ruleProfile('cardBin', '卡BIN/区间', '请输入 BIN 或 BIN 区间', false, true, false, false, false, false, false, false, true);
-    if (code === 'threeDs') return ruleProfile('threeDs', '3DS触发条件', '请输入 3DS 条件', true, true, true, true, true, false, true, false, true);
-    return ruleProfile('sourceUrl', '规则匹配值', '请输入匹配值', true, true, true, true, true, true, true, true, false);
+    if (code === 'sourceUrl') return ruleProfile('sourceUrl', 'risk.profile.rule.sourceUrlLabel', 'risk.profile.rule.sourceUrlPlaceholder', false, true, false, false, false, false, false, false, false, false);
+    if (code === 'merchantLimit') return ruleProfile('merchantLimit', 'risk.profile.rule.limitSceneLabel', 'risk.profile.rule.limitScenePlaceholder', false, false, true, true, true, false, false, false, false, false);
+    if (code === 'frequency') return ruleProfile('frequency', 'risk.profile.rule.frequencyElementLabel', 'risk.profile.rule.frequencyElementPlaceholder', false, false, false, false, false, true, true, false, false, false);
+    if (code === 'threeDs') return ruleProfile('threeDs', 'risk.profile.rule.threeDsLabel', 'risk.profile.rule.threeDsPlaceholder', false, false, false, false, false, false, false, false, false, true);
+    return ruleProfile('sourceUrl', 'risk.common.matchValue', 'risk.profile.placeholder.matchValue', true, true, true, true, true, true, true, true, false, false);
 }
 
 function profile(
     kind: RiskListProfileKind,
-    valueLabel: string,
-    valuePlaceholder: string,
+    valueLabelKey: string,
+    valuePlaceholderKey: string,
     showValue: boolean,
     showRange: boolean,
     showCountry: boolean,
@@ -215,13 +295,13 @@ function profile(
     sensitive: boolean,
     rangeKind?: 'cardBin' | 'ip',
 ): RiskListProfile {
-    return { kind, valueLabel, valuePlaceholder, showValue, showRange, showCountry, showCardBrand, showHash, showRegion, valueInputType, allowIpRange, sensitive, rangeKind };
+    return { kind, valueLabelKey, valuePlaceholderKey, showValue, showRange, showCountry, showCardBrand, showHash, showRegion, valueInputType, allowIpRange, sensitive, rangeKind };
 }
 
 function ruleProfile(
     kind: RiskRuleProfileKind,
-    matchLabel: string,
-    matchPlaceholder: string,
+    matchLabelKey: string,
+    matchPlaceholderKey: string,
     showMatchMode: boolean,
     showMatchValue: boolean,
     showLimitType: boolean,
@@ -231,8 +311,9 @@ function ruleProfile(
     showElements: boolean,
     showCountry: boolean,
     showCardBrand: boolean,
+    showThreeDs: boolean,
 ): RiskRuleProfile {
-    return { kind, matchLabel, matchPlaceholder, showMatchMode, showMatchValue, showLimitType, showAmount, showCurrency, showFrequency, showElements, showCountry, showCardBrand };
+    return { kind, matchLabelKey, matchPlaceholderKey, showMatchMode, showMatchValue, showLimitType, showAmount, showCurrency, showFrequency, showElements, showCountry, showCardBrand, showThreeDs };
 }
 
 export function emptyRiskOptions(): RiskOptions {
@@ -353,7 +434,7 @@ export function detectCardBrand(value?: string, options: RiskOption[] = []) {
 }
 
 export function statusText(status: number | undefined, t?: RiskTranslate) {
-    return t ? riskOptionLabel(t, 'status', status) : status === 1 ? '启用' : '停用';
+    return t ? riskOptionLabel(t, 'status', status) : status === 1 ? 'Enabled' : 'Disabled';
 }
 
 export function statusTag(status?: number) {

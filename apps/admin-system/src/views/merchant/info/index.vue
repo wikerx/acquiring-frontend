@@ -32,7 +32,7 @@
       </el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+    <StandardTable table-key="merchant-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="merchantId" :label="$t('merchant.info.merchantId')" min-width="140" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="merchantName" :label="$t('merchant.info.merchantName')" min-width="190" align="center" :show-overflow-tooltip="true" />
@@ -72,7 +72,7 @@
           <el-button size="small" type="primary" link :icon="Key" @click="openMaterial(row)" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.material') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -433,6 +433,7 @@ import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   createMerchant,
   copyOpenApiKeyMaterial,

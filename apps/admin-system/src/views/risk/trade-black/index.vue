@@ -22,24 +22,30 @@
       </el-form-item>
       <el-form-item :label="$t('risk.trade.merchantOrderNo')"><el-input v-model.trim="query.merchantOrderNo" clearable @keyup.enter="handleSearch" /></el-form-item>
       <el-form-item :label="$t('risk.trade.paymentOrderNo')"><el-input v-model.trim="query.paymentOrderNo" clearable @keyup.enter="handleSearch" /></el-form-item>
-      <el-form-item :label="$t('common.status')"><el-select v-model="query.status" clearable><el-option label="已加黑" :value="1" /><el-option label="已解除" :value="0" /></el-select></el-form-item>
+      <el-form-item :label="$t('common.status')">
+        <el-select v-model="query.status" clearable>
+          <el-option v-for="item in tradeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="handleReset">{{ $t('common.reset') }}</el-button></el-form-item>
     </el-form>
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openForm" v-hasPermi="'risk:tradeBlack:system:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
     </el-row>
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+    <StandardTable table-key="risk-trade-black" v-loading="loading" :data="rows" row-key="id" size="small">
       <el-table-column prop="merchant_id" :label="$t('risk.common.merchantId')" width="130" align="center" />
       <el-table-column prop="merchant_order_no" :label="$t('risk.trade.merchantOrderNo')" min-width="150" align="center" show-overflow-tooltip />
       <el-table-column prop="payment_order_no" :label="$t('risk.trade.paymentOrderNo')" min-width="150" align="center" show-overflow-tooltip />
-      <el-table-column prop="black_target_type" :label="$t('risk.trade.targetType')" width="130" align="center" />
+      <el-table-column prop="black_target_type" :label="$t('risk.trade.targetType')" width="130" align="center">
+        <template #default="{ row }">{{ targetTypeText(row.black_target_type) }}</template>
+      </el-table-column>
       <el-table-column prop="black_target_value_masked" :label="$t('risk.trade.targetValue')" min-width="180" align="center" show-overflow-tooltip />
       <el-table-column prop="action_reason" :label="$t('risk.trade.reason')" min-width="180" align="center" show-overflow-tooltip />
-      <el-table-column :label="$t('common.status')" width="96" align="center"><template #default="{ row }"><el-tag :type="Number(row.status) === 1 ? 'danger' : 'info'" size="small">{{ Number(row.status) === 1 ? '已加黑' : '已解除' }}</el-tag></template></el-table-column>
+      <el-table-column :label="$t('common.status')" width="96" align="center"><template #default="{ row }"><el-tag :type="Number(row.status) === 1 ? 'danger' : 'info'" size="small">{{ tradeStatusText(row.status) }}</el-tag></template></el-table-column>
       <el-table-column :label="$t('common.updateTime')" width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.update_time" /></template></el-table-column>
       <el-table-column :label="$t('common.operation')" width="120" align="center" fixed="right"><template #default="{ row }"><el-button size="small" type="primary" link :disabled="Number(row.status) !== 1" @click="handleRelease(row)" v-hasPermi="'risk:tradeBlack:system:release'">{{ $t('risk.trade.release') }}</el-button></template></el-table-column>
-    </el-table>
+    </StandardTable>
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
     <el-dialog :title="$t('risk.trade.addTitle')" v-model="formOpen" width="640px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="130px">
@@ -65,7 +71,11 @@
         </el-form-item>
         <el-form-item :label="$t('risk.trade.merchantOrderNo')"><el-input v-model.trim="form.merchantOrderNo" /></el-form-item>
         <el-form-item :label="$t('risk.trade.paymentOrderNo')"><el-input v-model.trim="form.paymentOrderNo" /></el-form-item>
-        <el-form-item :label="$t('risk.trade.targetType')" prop="blackTargetType"><el-select v-model="form.blackTargetType" style="width:100%"><el-option label="CARD" value="CARD" /><el-option label="CARD_FINGERPRINT" value="CARD_FINGERPRINT" /><el-option label="EMAIL" value="EMAIL" /><el-option label="PHONE" value="PHONE" /><el-option label="IP" value="IP" /><el-option label="DEVICE" value="DEVICE" /><el-option label="CUSTOMER" value="CUSTOMER" /></el-select></el-form-item>
+        <el-form-item :label="$t('risk.trade.targetType')" prop="blackTargetType">
+          <el-select v-model="form.blackTargetType" style="width:100%">
+            <el-option v-for="item in targetTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="$t('risk.trade.targetValue')" prop="blackTargetValueMasked"><el-input v-model.trim="form.blackTargetValueMasked" /></el-form-item>
         <el-form-item :label="$t('risk.trade.targetHash')"><el-input v-model.trim="form.blackTargetHash" /></el-form-item>
         <el-form-item :label="$t('risk.trade.reason')"><el-input v-model.trim="form.actionReason" type="textarea" :rows="3" /></el-form-item>
@@ -76,12 +86,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
 import { createTradeBlack, pageTradeBlack, releaseTradeBlack, type TradeBlackQuery, type TradeBlackSaveRequest } from '@/api/risk';
 
@@ -98,6 +109,18 @@ const merchantLoading = ref(false);
 const merchantOptions = ref<MerchantInfo[]>([]);
 const query = reactive<TradeBlackQuery>({});
 const form = reactive<TradeBlackSaveRequest>({ blackTargetType: 'CARD_FINGERPRINT', blackTargetValueMasked: '', status: 1 });
+const tradeStatusOptions = computed(() => [
+  { label: t('risk.trade.status.blackened'), value: 1 },
+  { label: t('risk.trade.status.released'), value: 0 },
+]);
+const targetTypeOptions = computed(() => ['CARD', 'CARD_FINGERPRINT', 'EMAIL', 'PHONE', 'IP', 'DEVICE', 'CUSTOMER'].map((value) => ({
+  label: t(`risk.trade.targetTypeOption.${value}`),
+  value,
+})));
+
+/**
+ * 系统交易加黑页用于基于交易记录维护加黑和解除操作，敏感对象只展示脱敏值。
+ */
 const rules: FormRules = {
   blackTargetType: [{ required: true, message: t('risk.validation.tradeTargetTypeRequired'), trigger: 'change' }],
   blackTargetValueMasked: [{ required: true, message: t('risk.validation.tradeTargetValueRequired'), trigger: 'blur' }],
@@ -140,5 +163,14 @@ function handleMerchantChange(merchantId?: string) {
 
 function merchantOptionLabel(item: MerchantInfo) {
   return item.merchantName ? `${item.merchantId}（${item.merchantName}）` : item.merchantId;
+}
+
+function tradeStatusText(value: unknown) {
+  return Number(value) === 1 ? t('risk.trade.status.blackened') : t('risk.trade.status.released');
+}
+
+function targetTypeText(value: unknown) {
+  const text = String(value || '');
+  return text ? t(`risk.trade.targetTypeOption.${text}`) : '-';
 }
 </script>

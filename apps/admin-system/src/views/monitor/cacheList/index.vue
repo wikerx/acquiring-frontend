@@ -45,7 +45,7 @@
             style="margin-bottom: 12px"
         />
 
-        <el-table v-loading="loading" :data="rows" row-key="key" @selection-change="handleSelectionChange">
+        <StandardTable table-key="monitor-cachelist" v-loading="loading" :data="rows" row-key="key" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="key" :label="$t('monitor.cacheList.cacheKey')" align="center" min-width="280" :show-overflow-tooltip="true" />
             <el-table-column prop="type" :label="$t('monitor.cacheList.type')" width="100" align="center" />
@@ -59,7 +59,7 @@
                     <el-button v-hasPermi="'system:cache:clear'" size="small" type="primary" link :icon="Delete" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div v-show="total > 0" class="pagination-container">
             <el-pagination
@@ -93,6 +93,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Delete, Refresh, Search, View } from '@element-plus/icons-vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { deleteCacheKey, getCacheKeys, getCacheValue, type CacheKeyRow } from '@/api/monitor/cache';
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();

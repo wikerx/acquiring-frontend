@@ -1,8 +1,10 @@
 <template>
-    <el-sub-menu v-if="item.children?.length" :index="groupIndex(item)">
+    <el-sub-menu v-if="item.children?.length" :index="groupIndex(item)" popper-class="admin-nav-popper admin-sidebar-popper">
         <template #title>
             <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-            <span>{{ displayTitle(item) }}</span>
+            <el-tooltip :content="displayTitle(item)" placement="right" :show-after="500">
+                <span class="menu-title-text">{{ displayTitle(item) }}</span>
+            </el-tooltip>
         </template>
         <SidebarMenuNode
             v-for="child in item.children"
@@ -12,7 +14,9 @@
     </el-sub-menu>
     <el-menu-item v-else-if="item.path" :index="item.path">
         <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-        <span>{{ displayTitle(item) }}</span>
+        <el-tooltip :content="displayTitle(item)" placement="right" :show-after="500">
+            <span class="menu-title-text">{{ displayTitle(item) }}</span>
+        </el-tooltip>
     </el-menu-item>
 </template>
 
@@ -32,11 +36,27 @@ defineProps<{
 const { t, te } = useI18n();
 
 function displayTitle(item: AdminMenuItem): string {
-    if (item.titleKey) {
-        const key = 'route.' + item.titleKey;
-        return te(key) ? t(key) : item.title;
+    const keys = resolveRouteTitleKeys(item);
+    const matchedKey = keys.find((key) => te(key));
+    if (matchedKey) {
+        return t(matchedKey);
     }
     return item.title;
+}
+
+function resolveRouteTitleKeys(item: AdminMenuItem) {
+    const keys = [];
+    if (item.titleKey) {
+        keys.push('route.' + item.titleKey);
+    }
+    if (item.path) {
+        keys.push('route.' + toRouteTitleKey(item.path));
+    }
+    return Array.from(new Set(keys));
+}
+
+function toRouteTitleKey(path: string) {
+    return path.replace(/^\/+/, '').replace(/-/g, '_').replace(/\//g, '_');
 }
 
 function groupIndex(item: AdminMenuItem) {

@@ -54,6 +54,14 @@ function handleSwitch(lang: string) {
     color: var(--app-primary, #409eff);
 }
 
+:global(.top-mode) .lang-trigger {
+    color: var(--nav-text);
+}
+
+:global(.top-mode) .lang-trigger:hover {
+    color: var(--nav-hover-text);
+}
+
 .el-dropdown-menu__item.is-active {
     color: var(--app-primary, #409eff);
     font-weight: 600;

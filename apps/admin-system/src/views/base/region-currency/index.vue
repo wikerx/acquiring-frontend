@@ -12,7 +12,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+    <StandardTable table-key="base-region-currency" v-loading="loading" :data="rows" row-key="id" size="small">
       <el-table-column prop="alpha2Code" :label="$t('base.country.alpha2')" width="90" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="countryName" :label="$t('base.regionCurrency.countryRegion')" min-width="160" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="continentName" :label="$t('base.country.continent')" width="100" align="center" :show-overflow-tooltip="true" />
@@ -28,7 +28,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'base:countryCurrency:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -53,6 +53,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Edit, Delete, Download, Plus } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchRegionCurrencies, createRegionCurrency, updateRegionCurrency, deleteRegionCurrency, changeRegionCurrencyStatus, exportRegionCurrencies, type RegionCurrencyRow } from '@/api/base/regionCurrency';
 import { searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 import { searchCountries, type IsoCountry } from '@/api/base/country';

@@ -4,18 +4,16 @@ import { VEXRA_BRAND } from '@acquiring/shared';
 import { currentUser } from '@/api/authApi';
 import { i18n } from '@/i18n';
 import MerchantLayout from '@/layouts/MerchantLayout.vue';
-import Dashboard from '@/pages/Dashboard.vue';
 import Forbidden from '@/pages/Forbidden.vue';
 import Login from '@/pages/Login.vue';
 import OpenApiKeys from '@/pages/merchant-info/openapi-keys/index.vue';
-import PlaceholderPage from '@/pages/PlaceholderPage.vue';
 import SystemAccount from '@/pages/system/account/index.vue';
 import SystemDept from '@/pages/system/dept/index.vue';
 import SystemPost from '@/pages/system/post/index.vue';
 import SystemRole from '@/pages/system/role/index.vue';
 import SystemRoleAuth from '@/pages/system/role-auth/index.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { flattenRouteMenus, normalizeMenuPath, resolveMenuComponent } from '@/utils/menu';
+import { firstAvailableMenuPath, flattenRouteMenus, isMerchantHomePath, normalizeMenuPath, resolveMenuComponent } from '@/utils/menu';
 
 declare module 'vue-router' {
     interface RouteMeta {
@@ -26,10 +24,8 @@ declare module 'vue-router' {
 }
 
 const staticChildren: RouteRecordRaw[] = [
-    { path: 'dashboard', component: Dashboard, meta: { titleKey: 'layout.dashboard' } },
-    { path: 'transactions', component: PlaceholderPage, props: { pageKey: 'transactions' }, meta: { titleKey: 'layout.transactions' } },
-    { path: 'settlements', component: PlaceholderPage, props: { pageKey: 'settlements' }, meta: { titleKey: 'layout.settlements' } },
-    { path: 'account', component: PlaceholderPage, props: { pageKey: 'account' }, meta: { titleKey: 'layout.account' } },
+    { path: 'home', component: () => import('@/pages/home/index.vue'), meta: { titleKey: 'route.home' } },
+    { path: 'profile', component: () => import('@/pages/profile/index.vue'), meta: { titleKey: 'route.profile' } },
     { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
     { path: 'system/account', component: SystemAccount, meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },
     { path: 'system/dept', component: SystemDept, meta: { titleKey: 'route.systemDept', permission: 'merchant:system:dept:list' } },
@@ -48,7 +44,6 @@ export const router = createRouter({
             path: '/',
             name: 'MerchantRoot',
             component: MerchantLayout,
-            redirect: '/dashboard',
             children: staticChildren,
         },
     ],
@@ -66,9 +61,18 @@ async function refreshCurrentUserIfNeeded() {
         const response = await currentUser();
         auth.setCurrentUserResponse(response);
         syncDynamicRoutes(response.menus || []);
-    } catch {
-        auth.clearSession();
+    } catch (error) {
+        if (isUnauthorizedError(error)) {
+            auth.clearSession();
+            return;
+        }
+        auth.markHydrated();
+        syncDynamicRoutes(auth.session?.menus || []);
     }
+}
+
+function isUnauthorizedError(error: unknown) {
+    return Boolean((error as { response?: { status?: number } })?.response?.status === 401);
 }
 
 router.beforeEach(async (to) => {
@@ -93,8 +97,11 @@ router.beforeEach(async (to) => {
     if (to.path !== '/login' && !auth.session) {
         return '/login';
     }
+    if (to.path === '/' && auth.session) {
+        return firstAvailableMenuPath(auth.session.menus || []);
+    }
     if (to.path === '/login' && auth.session) {
-        return '/dashboard';
+        return firstAvailableMenuPath(auth.session.menus || []);
     }
     if (to.meta.permission && !auth.hasPermission(to.meta.permission as string)) {
         return '/403';
@@ -115,7 +122,7 @@ export function syncDynamicRoutes(menus: import('@acquiring/shared').AuthMenu[])
     resetDynamicRoutes();
     flattenRouteMenus(menus).forEach((menu) => {
         const runtimePath = normalizeMenuPath(menu.routePath);
-        if (!runtimePath || runtimePath === '/dashboard') {
+        if (!runtimePath || isMerchantHomePath(runtimePath)) {
             return;
         }
         if (router.resolve(runtimePath).name !== 'MerchantRuntimeFallback') {

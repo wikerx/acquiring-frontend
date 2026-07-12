@@ -29,7 +29,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="exchange-source" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.sourceCode')" min-width="120" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="sourceName" :label="$t('exchange.fields.sourceName')" min-width="150" align="center" :show-overflow-tooltip="true" />
@@ -50,7 +50,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'exchange:source:remove'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -104,6 +104,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createExchangeSource, deleteExchangeSource, exportExchangeSources, getExchangeSource, searchExchangeSources, updateExchangeSource, updateExchangeSourceStatus, type ExchangeRateSource } from '@/api/exchange';
 import { fetchStatusOptions as buildFetchStatusOptions, optionLabel, secondsText, sourceTypeOptions as buildSourceTypeOptions, statusText, statusType, yesNoText } from '../shared';
 

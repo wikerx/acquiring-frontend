@@ -25,7 +25,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+    <StandardTable table-key="base-ip-library" v-loading="loading" :data="rows" row-key="id" size="small">
       <el-table-column prop="ipType" :label="$t('base.ipLibrary.ipType')" width="90" align="center">
         <template #default="{ row }"><el-tag size="small" effect="plain">{{ row.ipType }}</el-tag></template>
       </el-table-column>
@@ -45,7 +45,7 @@
         <template #default="{ row }"><BaseDateTime :value="row.createTime" /></template>
       </el-table-column>
       <el-table-column prop="createBy" :label="$t('base.ipLibrary.createBy')" width="120" align="center" :show-overflow-tooltip="true" />
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -90,6 +90,7 @@ import { Aim, Refresh, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { lookupIpLibrary, pageIpLibrary, type IpLibraryQuery, type IpLibraryRecord } from '@/api/base/ipLibrary';
 
 const { t } = useI18n();

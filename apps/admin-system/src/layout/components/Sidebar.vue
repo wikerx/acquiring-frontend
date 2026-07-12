@@ -1,5 +1,5 @@
 <template>
-    <aside class="layout-sidebar" :class="{ collapsed, dark: sideTheme === 'dark' }">
+    <aside class="layout-sidebar" :class="[themeClass, { collapsed }]">
         <div v-if="showLogo !== false" class="brand">
             <img class="brand-mark brand-icon" :src="adminBrand.logos.icon" :alt="adminBrand.name" />
             <div v-if="!collapsed" class="brand-copy">
@@ -21,6 +21,7 @@
                 />
             </el-menu>
         </div>
+        <div v-if="!collapsed" class="sidebar-resize-handle" @mousedown="$emit('resizeStart', $event)" />
     </aside>
 </template>
 
@@ -32,19 +33,25 @@ import { useRoute, useRouter } from 'vue-router';
 import { getSystemBrand } from '@acquiring/shared';
 import type { AdminMenuItem } from '@/types/admin';
 import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
+import type { NavigationTheme } from '@/constants/app';
 import SidebarMenuNode from './SidebarMenuNode.vue';
 
 const props = defineProps<{
     menus: AdminMenuItem[];
     collapsed: boolean;
-    sideTheme?: 'dark' | 'light';
+    sideTheme?: NavigationTheme;
     showLogo?: boolean;
+}>();
+
+defineEmits<{
+    resizeStart: [event: MouseEvent];
 }>();
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const adminBrand = getSystemBrand('admin');
+const themeClass = computed(() => `theme-${props.sideTheme || 'light'}`);
 
 const activePath = computed(() => route.path || '/dashboard');
 

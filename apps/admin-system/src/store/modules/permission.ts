@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import type { AuthMenu } from '@acquiring/shared';
 import type { AdminMenuItem } from '@/types/admin';
-import { normalizeMenuPath, resolveRuntimeMenuPath } from '@/utils/external-menu';
+import { isDeprecatedRiskRuleMenu, normalizeMenuPath, resolveRuntimeMenuPath } from '@/utils/external-menu';
 
 export const usePermissionStore = defineStore('permission', {
     state: () => ({
@@ -21,7 +21,7 @@ export const usePermissionStore = defineStore('permission', {
 });
 
 function toAdminMenuItem(menu: AuthMenu): AdminMenuItem | null {
-    if (menu.visible === 0) {
+    if (menu.visible === 0 || isDeprecatedRiskRuleMenu(menu)) {
         return null;
     }
     const children = (menu.children || []).map(toAdminMenuItem).filter(Boolean) as AdminMenuItem[];

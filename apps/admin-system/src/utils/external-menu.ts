@@ -12,6 +12,9 @@ interface ExternalMenuLike {
  * 外链 iframe 页面统一使用固定前缀，避免把真实 URL 直接注册为前端路由。
  */
 export const EXTERNAL_FRAME_ROUTE_PREFIX = '/external-frame';
+const DEPRECATED_RISK_RULE_MENU_CODES = new Set(['risk_rule_issuer_country', 'risk_rule_card_bin']);
+const DEPRECATED_RISK_RULE_ROUTE_PATHS = new Set(['/risk/rule/issuer-country', '/risk/rule/card-bin']);
+const DEPRECATED_RISK_RULE_PERMISSION_PREFIXES = ['risk:rule:issuerCountry', 'risk:rule:cardBin'];
 
 /**
  * 判断菜单是否为外链菜单。
@@ -21,6 +24,21 @@ export const EXTERNAL_FRAME_ROUTE_PREFIX = '/external-frame';
  */
 export function isLinkMenu(menuType?: string) {
     return menuType === 'LINK';
+}
+
+/**
+ * 判断是否为已废弃的内风控规则菜单。旧数据库或本地会话缓存可能仍包含历史菜单，
+ * 前端展示和动态路由注册前需要统一过滤。
+ *
+ * @param menu 后端菜单节点
+ * @returns true 表示不应展示或注册路由
+ */
+export function isDeprecatedRiskRuleMenu(menu: Pick<AuthMenu, 'menuCode' | 'routePath' | 'permissionCode'>) {
+    const routePath = normalizeMenuPath(menu.routePath);
+    const permissionCode = menu.permissionCode || '';
+    return DEPRECATED_RISK_RULE_MENU_CODES.has(menu.menuCode)
+        || Boolean(routePath && DEPRECATED_RISK_RULE_ROUTE_PATHS.has(routePath))
+        || DEPRECATED_RISK_RULE_PERMISSION_PREFIXES.some((prefix) => permissionCode === prefix || permissionCode.startsWith(`${prefix}:`));
 }
 
 /**

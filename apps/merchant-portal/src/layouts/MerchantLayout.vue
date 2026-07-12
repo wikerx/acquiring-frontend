@@ -75,6 +75,12 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="merchant-user-menu__section">
+                                <button class="merchant-user-menu__action" type="button" @click="handleOpenProfile">
+                                    <el-icon><User /></el-icon>
+                                    <span>{{ t('layout.profile') }}</span>
+                                </button>
+                            </div>
                             <div class="merchant-user-menu__section merchant-user-menu__section--danger">
                                 <button class="merchant-user-menu__action merchant-user-menu__action--danger" type="button" @click="handleLogout">
                                     <el-icon><SwitchButton /></el-icon>
@@ -104,7 +110,7 @@
                 >
                     <el-icon v-if="tag.icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
                     <span>{{ tag.label }}</span>
-                    <el-icon v-if="tag.path !== '/dashboard'" class="merchant-tag__close" @click.stop="closeTag(tag.path)">
+                    <el-icon class="merchant-tag__close" @click.stop="closeTag(tag.path)">
                         <Close />
                     </el-icon>
                 </button>
@@ -119,13 +125,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowDown, Close, SwitchButton } from '@element-plus/icons-vue';
+import { ArrowDown, Close, SwitchButton, User } from '@element-plus/icons-vue';
 import { getSystemBrand, type AuthMenu } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { logout } from '@/api/authApi';
 import LanguageSwitch from '@/components/LanguageSwitch.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { normalizeMenuPath } from '@/utils/menu';
+import { firstAvailableMenuPath, normalizeMenuPath, withMerchantHomeMenu } from '@/utils/menu';
 import { resolveMenuIcon } from '@/utils/menuIcon';
 
 const router = useRouter();
@@ -133,21 +139,13 @@ const route = useRoute();
 const auth = useAuthStore();
 const { t } = useI18n();
 const merchantBrand = getSystemBrand('merchant');
+const PROFILE_PATH = '/profile';
 const menuVisible = ref(false);
-const fallbackMenus = computed<MenuItem[]>(() => [
-    { path: '/dashboard', label: t('layout.dashboard'), icon: 'House', children: [] },
-    { path: '/transactions', label: t('layout.transactions'), icon: 'Tickets', children: [] },
-    { path: '/settlements', label: t('layout.settlements'), icon: 'Money', children: [] },
-    { path: '/account', label: t('layout.account'), icon: 'User', children: [] },
-]);
 const menuItems = computed(() => {
-    const backendMenus = buildMenuItems(auth.session?.menus || []);
-    return backendMenus.length > 0 ? backendMenus : fallbackMenus.value;
+    return buildMenuItems(withMerchantHomeMenu(auth.session?.menus || []));
 });
-const currentTitle = computed(
-    () => findMenuLabel(menuItems.value, router.currentRoute.value.path) || t('layout.dashboard'),
-);
-const breadcrumbItems = computed(() => findMenuTrail(menuItems.value, route.path));
+const currentTitle = computed(() => currentRouteLabel(route.path) || merchantBrand.subtitleEn);
+const breadcrumbItems = computed(() => route.path === PROFILE_PATH ? [profileMenuItem()] : findMenuTrail(menuItems.value, route.path));
 const visitedTags = ref<MenuTag[]>([]);
 const loginAccount = computed(() => auth.session?.account.loginAccount || '');
 const displayName = computed(() =>
@@ -157,7 +155,10 @@ const displayName = computed(() =>
 );
 const avatarText = computed(() => buildAvatarText(displayName.value));
 const roleLabels = computed(() =>
-    Array.from(new Set((auth.session?.roles || []).map((role) => formatRoleLabel(role)).filter(Boolean))),
+    Array.from(new Set([
+        ...stringArray(toRecord(auth.session?.account)?.roleNames),
+        ...(auth.session?.roles || []).map((role) => formatRoleLabel(role)),
+    ].filter(Boolean))),
 );
 const visibleRoleLabels = computed(() => roleLabels.value.slice(0, 2));
 const hiddenRoleCount = computed(() => Math.max(roleLabels.value.length - visibleRoleLabels.value.length, 0));
@@ -169,7 +170,10 @@ watch(
             return;
         }
         const label = currentTitle.value;
-        const icon = findMenuIcon(menuItems.value, route.path);
+        const icon = route.path === PROFILE_PATH ? 'User' : findMenuIcon(menuItems.value, route.path);
+        if (!currentRouteLabel(route.path)) {
+            return;
+        }
         const existing = visitedTags.value.find((tag) => tag.path === route.path);
         if (existing) {
             existing.label = label;
@@ -187,6 +191,11 @@ async function handleLogout() {
     auth.clearSession();
     visitedTags.value = [];
     await router.push('/login');
+}
+
+async function handleOpenProfile() {
+    menuVisible.value = false;
+    await router.push(PROFILE_PATH);
 }
 
 interface MenuItem {
@@ -207,7 +216,7 @@ function buildMenuItems(menus: AuthMenu[]): MenuItem[] {
         .filter((menu) => menu.visible !== 0 && menu.menuType !== 'BUTTON')
         .map((menu) => ({
             path: normalizeMenuPath(menu.routePath) || `/${menu.menuCode}`,
-            label: menu.menuName,
+            label: menu.menuCode === 'merchant-home' ? t('layout.home') : menu.menuName,
             icon: menu.icon,
             children: buildMenuItems(menu.children || []),
         }))
@@ -254,11 +263,27 @@ function findMenuTrail(menus: MenuItem[], path: string, parents: MenuItem[] = []
     return [];
 }
 
+function currentRouteLabel(path: string) {
+    if (path === PROFILE_PATH) {
+        return t('route.profile');
+    }
+    return findMenuLabel(menuItems.value, path);
+}
+
+function profileMenuItem(): MenuItem {
+    return {
+        path: PROFILE_PATH,
+        label: t('route.profile'),
+        icon: 'User',
+        children: [],
+    };
+}
+
 async function closeTag(path: string) {
     visitedTags.value = visitedTags.value.filter((tag) => tag.path !== path);
     if (route.path === path) {
         const latest = visitedTags.value[visitedTags.value.length - 1];
-        await router.push(latest?.path || '/dashboard');
+        await router.push(latest?.path || firstAvailableMenuPath(auth.session?.menus || []));
     }
 }
 
@@ -269,6 +294,17 @@ function buildAvatarText(value: string) {
     }
     const first = source.charAt(0);
     return /^[A-Za-z]/.test(first) ? first.toUpperCase() : first;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function stringArray(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    }
+    return typeof value === 'string' && value.trim() ? [value] : [];
 }
 
 function formatRoleLabel(roleCode: string) {
@@ -303,7 +339,7 @@ function formatRoleLabel(roleCode: string) {
     height: 40px;
     padding: 0 12px 0 6px;
     color: #101828;
-    background: #eafaf4;
+    background: #ecfeff;
     border: 0;
     border-radius: 999px;
     cursor: pointer;
@@ -313,9 +349,9 @@ function formatRoleLabel(roleCode: string) {
 
 .merchant-user-trigger:hover,
 .merchant-user-trigger:focus-visible {
-    color: #047857;
-    background: #ddf7ec;
-    box-shadow: 0 8px 18px rgb(16 185 129 / 14%);
+    color: var(--merchant-primary-deep);
+    background: #e0f2fe;
+    box-shadow: 0 8px 18px rgb(14 116 144 / 14%);
     outline: none;
 }
 
@@ -327,11 +363,11 @@ function formatRoleLabel(roleCode: string) {
     height: 32px;
     border-radius: 50%;
     color: #fff;
-    background: linear-gradient(135deg, #10b981, #047857);
+    background: linear-gradient(135deg, var(--merchant-teal), var(--merchant-primary-deep));
     font-weight: 700;
     font-size: 14px;
     flex-shrink: 0;
-    box-shadow: 0 8px 16px rgb(16 185 129 / 24%);
+    box-shadow: 0 8px 16px rgb(14 116 144 / 24%);
 }
 
 .merchant-user-trigger__name {
@@ -344,7 +380,7 @@ function formatRoleLabel(roleCode: string) {
 
 .merchant-user-trigger__arrow {
     font-size: 12px;
-    color: #10b981;
+    color: var(--merchant-primary);
     transition: transform 0.2s ease, color 0.2s ease;
 }
 
@@ -379,11 +415,11 @@ function formatRoleLabel(roleCode: string) {
     height: 44px;
     border-radius: 50%;
     color: #fff;
-    background: linear-gradient(135deg, #10b981, #047857);
+    background: linear-gradient(135deg, var(--merchant-teal), var(--merchant-primary-deep));
     font-size: 18px;
     font-weight: 700;
     flex-shrink: 0;
-    box-shadow: 0 10px 18px rgb(16 185 129 / 24%);
+    box-shadow: 0 10px 18px rgb(14 116 144 / 24%);
 }
 
 .merchant-user-menu__identity {
@@ -420,8 +456,8 @@ function formatRoleLabel(roleCode: string) {
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
-    color: #047857;
-    background: rgb(16 185 129 / 12%);
+    color: var(--merchant-primary-deep);
+    background: rgb(14 165 233 / 12%);
 }
 
 .merchant-user-menu__role-tag--muted {
@@ -462,9 +498,15 @@ function formatRoleLabel(roleCode: string) {
 
 .merchant-user-menu__action:hover,
 .merchant-user-menu__action:focus-visible {
+    color: var(--merchant-primary-deep);
+    background: rgb(14 116 144 / 9%);
+    outline: none;
+}
+
+.merchant-user-menu__action--danger:hover,
+.merchant-user-menu__action--danger:focus-visible {
     color: #d92d20;
     background: rgb(217 45 32 / 8%);
-    outline: none;
 }
 
 @media (max-width: 768px) {

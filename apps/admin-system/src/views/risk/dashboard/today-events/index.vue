@@ -29,6 +29,9 @@ const { t } = useI18n();
 const loading = ref(false);
 const rows = ref<Record<string, unknown>[]>([]);
 
+/**
+ * 今日风险事件页展示当天风控评估结果，页面只做只读查询和状态文案映射。
+ */
 onMounted(loadData);
 
 async function loadData() {
