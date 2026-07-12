@@ -2,9 +2,14 @@
 Thumbs.db
 
 .idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
+.vscode/
+
+.agents/
+.claude/
+.codex-history/
+.github/
+.playwright-cli/
+audit/
 
 node_modules/
 apps/**/node_modules/
@@ -17,6 +22,7 @@ apps/**/.vite/
 .playwright-cli/
 coverage/
 reports/
+docs/sql/
 
 *.log
 logs/
