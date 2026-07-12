@@ -2,8 +2,17 @@
     <div class="admin-layout" :class="{
         'fixed-header': settings.fixedHeader,
         'top-mode': settings.layoutMode === 'top',
-    }">
-        <Sidebar v-if="settings.layoutMode !== 'top'" :menus="permission.menus" :collapsed="app.sidebarCollapsed" :side-theme="settings.sideTheme" :show-logo="settings.showLogo" />
+        'is-sidebar-resizing': isSidebarResizing,
+        [`nav-theme-${settings.sideTheme}`]: true,
+    }" :style="layoutStyle">
+        <Sidebar
+            v-if="settings.layoutMode !== 'top'"
+            :menus="permission.menus"
+            :collapsed="app.sidebarCollapsed"
+            :side-theme="settings.sideTheme"
+            :show-logo="settings.showLogo"
+            @resize-start="startSidebarResize"
+        />
         <section class="layout-main" :class="{ expanded: app.sidebarCollapsed }">
             <Navbar
                 :collapsed="app.sidebarCollapsed"
@@ -13,10 +22,11 @@
                 :roles="user.roles"
                 :can-view-login-log="user.hasPermission('system:login-log:list')"
                 @toggle="app.toggleSidebar"
+                @open-profile="handleOpenProfile"
                 @open-login-log="handleOpenLoginLog"
                 @logout="handleLogout"
             />
-            <TopNav v-if="settings.layoutMode === 'top'" :menus="permission.menus" />
+            <TopNav v-if="settings.layoutMode === 'top'" :menus="permission.menus" :nav-theme="settings.sideTheme" />
             <TagsView v-if="settings.showTagsView" :tags="tags.visitedViews" :tags-view-style="settings.tagsViewStyle" @close="handleCloseTag" @close-others="handleCloseOthers" @close-all="handleCloseAll" />
             <main class="layout-content">
                 <RouterView />
@@ -29,13 +39,14 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from '@/layout/components/Navbar.vue';
 import Sidebar from '@/layout/components/Sidebar.vue';
 import TopNav from '@/layout/components/TopNav/index.vue';
 import TagsView from '@/layout/components/TagsView.vue';
 import { useAppStore, usePermissionStore, useSettingsStore, useTagsViewStore, useUserStore } from '@/store';
+import { useResizableSidebar } from '@/hooks/useResizableSidebar';
 
 const app = useAppStore();
 const settings = useSettingsStore();
@@ -44,6 +55,8 @@ const tags = useTagsViewStore();
 const user = useUserStore();
 const route = useRoute();
 const router = useRouter();
+const sidebarPreferenceUserKey = computed(() => user.userInfo?.userId || user.userInfo?.username);
+const { isSidebarResizing, layoutStyle, startSidebarResize } = useResizableSidebar(sidebarPreferenceUserKey);
 
 watch(
     () => route.fullPath,
@@ -67,6 +80,10 @@ async function handleLogout() {
 
 function handleOpenLoginLog() {
     router.push('/system/log');
+}
+
+function handleOpenProfile() {
+    router.push('/profile');
 }
 
 function handleCloseTag(path: string) {

@@ -41,7 +41,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="email-template" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="templateCode" :label="t('email.template.templateCode')" min-width="170" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="templateName" :label="t('email.template.templateName')" min-width="180" align="center" :show-overflow-tooltip="true" />
@@ -73,7 +73,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'email:template:remove'">{{ t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -129,7 +129,7 @@
                     <div class="template-detail__remark">{{ detailRow.remark || '-' }}</div>
                 </section>
             </div>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? t('email.template.addTitle') : t('email.template.editTitle')" v-model="formVisible" width="980px" top="5vh" append-to-body destroy-on-close>
@@ -150,9 +150,11 @@
                 <el-form-item :label="t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" show-word-limit /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button @click="previewForm" v-hasPermi="'email:template:preview'">{{ t('email.template.preview') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                    <el-button @click="previewForm" v-hasPermi="'email:template:preview'">{{ t('email.template.preview') }}</el-button>
+                    <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
 
@@ -186,8 +188,10 @@
                 </section>
             </div>
             <template #footer>
-                <el-button @click="previewVisible = false">{{ t('common.close') }}</el-button>
-                <el-button type="primary" @click="submitPreview">{{ t('email.template.preview') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitPreview">{{ t('email.template.preview') }}</el-button>
+                    <el-button @click="previewVisible = false">{{ t('common.close') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -200,6 +204,7 @@ import { Delete, DocumentCopy, Edit, Plus, Refresh, Search, View } from '@elemen
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     copyEmailTemplate,
     createEmailTemplate,
@@ -372,8 +377,16 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: EmailTemplate) {
+    const nextStatus = row.status === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = row.templateName || row.templateCode || row.id;
     try {
-        await updateEmailTemplateStatus(row.id, row.status === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateEmailTemplateStatus(row.id, nextStatus);
         ElMessage.success(t('common.success'));
         loadData();
     } catch (error) {
@@ -696,10 +709,6 @@ function escapeHtml(value: string) {
     background: #fff;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 @media (max-width: 760px) {
     .form-grid {

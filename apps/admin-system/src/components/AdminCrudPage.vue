@@ -56,7 +56,8 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table
+        <StandardTable
+            :table-key="`admin-crud-${module.key}`"
             v-loading="loading"
             :data="pagedRows"
             row-key="code"
@@ -80,7 +81,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="permPrefix + ':delete'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="filteredRows.length > 0">
             <el-pagination
@@ -128,6 +129,7 @@ import { useI18n } from 'vue-i18n';
 import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue';
 import { getCrudModule } from '@/constants/adminModules';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 const { t } = useI18n();
 
 const props = defineProps<{

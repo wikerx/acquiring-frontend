@@ -35,7 +35,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="channel-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="channelCode" :label="t('channel.info.channelCode')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelCnName" :label="t('channel.info.channelCnName')" min-width="160" align="center" :show-overflow-tooltip="true" />
@@ -76,7 +76,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'channel:info:remove'">{{ t('channel.common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -111,7 +111,7 @@
                 <el-descriptions-item :label="t('channel.common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('channel.common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('channel.common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? t('channel.info.addTitle') : t('channel.info.editTitle')" v-model="formVisible" width="640px" append-to-body destroy-on-close>
@@ -129,8 +129,10 @@
                 <el-form-item :label="t('channel.common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -144,6 +146,7 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo } from '@/api/channel';
 import { loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
 
@@ -305,6 +308,12 @@ function syncChannelSupportFields() {
 
 async function toggleStatus(row: ChannelInfo) {
     const nextValue = row.channelStatus === 1 ? 0 : 1;
+    const action = nextValue === 1 ? t('common.enable') : t('common.disable');
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: channelStatusTargetName(row) }), t('common.operationConfirm'), { type: nextValue === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
     let confirmed = false;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { channelStatus: nextValue });
@@ -330,6 +339,12 @@ async function toggle3ds(row: ChannelInfo) {
         return;
     }
     const nextValue = row.support3ds === 1 ? 0 : 1;
+    const action = nextValue === 1 ? t('common.enable') : t('common.disable');
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: `${channelStatusTargetName(row)} ${t('channel.info.support3ds')}` }), t('common.operationConfirm'), { type: nextValue === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
     let confirmed = false;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { support3ds: nextValue });
@@ -442,6 +457,10 @@ function paymentMethodText(values?: string[]) {
     }
     return values.map((value) => optionLabel(paymentOptions.value, value)).join(', ');
 }
+
+function channelStatusTargetName(row: ChannelInfo) {
+    return row.channelCnName || row.channelEnName || row.channelCode || String(row.id);
+}
 </script>
 
 <style scoped>
@@ -450,10 +469,6 @@ function paymentMethodText(values?: string[]) {
     justify-content: center;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 .tag-list {
     display: flex;

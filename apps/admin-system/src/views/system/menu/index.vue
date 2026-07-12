@@ -11,7 +11,7 @@
             <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="toggleExpandAll">{{ $t('system.menu.expandCollapse') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
-        <el-table v-if="refreshTable" v-loading="loading" :data="rows" row-key="menuId" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
+        <StandardTable table-key="system-menu" v-if="refreshTable" v-loading="loading" :data="rows" row-key="menuId" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
             <el-table-column prop="menuName" :label="$t('system.menu.menuName')" min-width="200" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('system.menu.menuType')" width="90" align="center">
                 <template #default="{ row }"><el-tag v-if="row.menuType==='MENU'" type="success" size="small">{{ $t('system.menu.typeMenu') }}</el-tag><el-tag v-else-if="row.menuType==='CATALOG'" type="primary" size="small">{{ $t('system.menu.typeCatalog') }}</el-tag><el-tag v-else-if="row.menuType==='BUTTON'" type="warning" size="small">{{ $t('system.menu.typeButton') }}</el-tag><el-tag v-else type="danger" size="small">{{ $t('system.menu.typeLink') }}</el-tag></template>
@@ -25,7 +25,7 @@
             <el-table-column :label="$t('common.operation')" align="center" width="200" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }"><el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:menu:list'">{{ $t('common.detail') }}</el-button><el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:menu:edit'">{{ $t('common.edit') }}</el-button><el-button size="small" type="primary" link :icon="Plus" @click="handleAdd(row)" v-hasPermi="'system:menu:add'">{{ $t('common.add') }}</el-button></template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
         <div class="pagination-container" style="color:#909399;font-size:13px">{{ $t('system.menu.nodeCount', { count: total }) }}</div>
 
         <el-dialog v-model="detailVisible" :title="$t('system.menu.menuDetail')" width="700px" append-to-body destroy-on-close>
@@ -82,6 +82,7 @@ const menuIconMap = Object.fromEntries(
     .map(([k,v]) => [k, v as Component])
 ) as Record<string, Component>;
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createMenu, treeMenus, updateMenu, updateMenuStatus, type SysMenu } from '@/api/system/menu';
 import { CommonStatus } from '@/enums/status';
 import { useI18n } from 'vue-i18n';

@@ -50,7 +50,6 @@ export async function exportJobRunLogs(payload: JobRunLogQuery) {
     await downloadExcel('/admin/monitor/job-log/export', {
         method: 'post',
         data: payload,
-        fileName: '任务日志.xlsx',
     });
 }
 

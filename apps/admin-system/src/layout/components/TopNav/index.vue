@@ -1,70 +1,67 @@
 <template>
-    <nav class="top-nav">
+    <nav class="top-nav" :class="themeClass">
         <el-menu
+            ref="menuRef"
             :default-active="activePath"
             mode="horizontal"
             class="top-nav-menu"
             @select="handleSelect"
         >
-            <template v-for="item in menus" :key="item.path || item.title">
-                <!-- Category with children → dropdown -->
-                <el-sub-menu v-if="item.children?.length" :index="item.path || '__cat__' + item.title">
-                    <template #title>
-                        <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                        <span>{{ displayTitle(item) }}</span>
-                    </template>
-                    <el-menu-item
-                        v-for="child in item.children"
-                        :key="child.path || child.title"
-                        :index="child.path || child.title || child.titleKey || child.icon"
-                    >
-                        <el-icon v-if="child.icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
-                        <span>{{ displayTitle(child) }}</span>
-                    </el-menu-item>
-                </el-sub-menu>
-                <!-- Leaf menu → direct link -->
-                <el-menu-item v-else :index="item.path">
-                    <el-icon v-if="item.icon"><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                    <span>{{ displayTitle(item) }}</span>
-                </el-menu-item>
-            </template>
+            <TopNavMenuNode
+                v-for="item in menus"
+                :key="itemKey(item)"
+                :item="item"
+                :active-path="activePath"
+                @navigate="handleMenuNavigate"
+            />
         </el-menu>
     </nav>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import type { AdminMenuItem } from '@/types/admin';
+import type { NavigationTheme } from '@/constants/app';
 import { isExternalWindowMenu, openExternalMenu } from '@/utils/external-menu';
-import { resolveMenuIcon } from '@/utils/menu-icon';
+import TopNavMenuNode from './TopNavMenuNode.vue';
 
-const { t, te } = useI18n();
+const { t } = useI18n();
 
 const props = defineProps<{
     menus: AdminMenuItem[];
+    navTheme?: NavigationTheme;
 }>();
 
 const route = useRoute();
 const router = useRouter();
+const menuRef = ref<{ close: (index: string) => void }>();
+const themeClass = computed(() => `theme-${props.navTheme || 'light'}`);
+const popperClass = computed(() => `admin-nav-popper top-nav-submenu-popper top-nav-submenu-popper--${props.navTheme || 'light'}`);
+provide('topNavPopperClass', popperClass);
 
 const activePath = computed(() => route.path || '/dashboard');
-
-function displayTitle(item: AdminMenuItem): string {
-    if (item.titleKey) {
-        const key = 'route.' + item.titleKey;
-        return te(key) ? t(key) : item.title;
-    }
-    return item.title;
-}
 
 function handleSelect(index: string) {
     const menu = findMenuByPath(props.menus, index);
     if (!menu) {
         return;
     }
+    navigateToMenu(menu, index);
+}
+
+function itemKey(item: AdminMenuItem) {
+    return item.path || item.titleKey || item.title;
+}
+
+function handleMenuNavigate(menu: AdminMenuItem) {
+    closeTopMenuGroups();
+    navigateToMenu(menu, menu.path);
+}
+
+function navigateToMenu(menu: AdminMenuItem, path?: string) {
     if (isExternalWindowMenu({ menuType: menu.menuType, externalLink: menu.externalLink })) {
         if (openExternalMenu(menu.routePath)) {
             return;
@@ -72,9 +69,21 @@ function handleSelect(index: string) {
         ElMessage.warning(t('externalMonitor.urlNotConfigured'));
         return;
     }
-    if (index && index.startsWith('/')) {
-        router.push(index);
+    if (path && path.startsWith('/')) {
+        router.push(path);
     }
+}
+
+function closeTopMenuGroups() {
+    props.menus.forEach((item) => {
+        if (item.children?.length) {
+            menuRef.value?.close(groupIndex(item));
+        }
+    });
+}
+
+function groupIndex(item: AdminMenuItem) {
+    return `__top_group__${item.path || item.titleKey || item.title}`;
 }
 
 /**
@@ -103,48 +112,48 @@ function findMenuByPath(items: AdminMenuItem[], path: string): AdminMenuItem | u
 
 <style scoped>
 .top-nav {
-    background: #fff;
-    border-bottom: 1px solid #e8eaf0;
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--nav-border);
+    box-shadow: var(--nav-shadow);
 }
 
 .top-nav-menu {
+    --el-menu-bg-color: transparent;
+    --el-menu-text-color: var(--nav-text);
+    --el-menu-hover-bg-color: var(--nav-hover-bg);
+    --el-menu-hover-text-color: var(--nav-hover-text);
+    --el-menu-active-color: var(--nav-active-text);
     border-bottom: none !important;
     background: transparent;
     padding: 0 8px;
 }
 
-.top-nav-menu .el-menu-item,
-.top-nav-menu .el-sub-menu__title {
+.top-nav-menu :deep(.el-menu-item),
+.top-nav-menu :deep(.el-sub-menu__title) {
     height: 42px;
     line-height: 42px;
     font-size: 13px;
-    color: #606266;
+    color: var(--nav-text);
     border-bottom: 2px solid transparent;
-}
-
-.top-nav-menu .el-menu-item:hover,
-.top-nav-menu .el-sub-menu__title:hover {
-    color: var(--app-primary);
-    background: #f5f7fa;
-}
-
-.top-nav-menu .el-menu-item.is-active,
-.top-nav-menu .el-sub-menu.is-active > .el-sub-menu__title {
-    color: var(--app-primary);
-    border-bottom-color: var(--app-primary);
-    font-weight: 600;
+    white-space: nowrap;
     background: transparent;
 }
 
-/* Submenu dropdown items */
-.top-nav-menu .el-menu--horizontal .el-menu .el-menu-item {
-    height: 36px;
-    line-height: 36px;
-    border-bottom: none;
+.top-nav-menu :deep(.el-menu-item:hover),
+.top-nav-menu :deep(.el-sub-menu__title:hover) {
+    color: var(--nav-hover-text);
+    background: var(--nav-hover-bg);
 }
 
-.top-nav-menu .el-menu--horizontal .el-menu .el-menu-item:hover {
-    color: var(--app-primary);
-    background: #f5f7fa;
+.top-nav-menu :deep(.el-menu-item.is-active),
+.top-nav-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
+    color: var(--nav-active-text);
+    border-bottom-color: var(--nav-active-indicator);
+    font-weight: 600;
+    background: var(--nav-active-bg);
+}
+
+.top-nav-menu :deep(.el-icon) {
+    color: inherit;
 }
 </style>

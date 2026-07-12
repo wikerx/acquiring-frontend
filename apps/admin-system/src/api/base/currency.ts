@@ -58,6 +58,5 @@ export async function deleteCurrency(id: number) {
 export async function exportCurrencies() {
     await downloadExcel('/admin/base/currencies/export', {
         method: 'get',
-        fileName: '币种列表.xlsx',
     });
 }

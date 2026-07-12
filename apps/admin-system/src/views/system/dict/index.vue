@@ -17,7 +17,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="dictType" size="small" @selection-change="sel = $event">
+    <StandardTable table-key="system-dict" v-loading="loading" :data="rows" row-key="dictType" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="dictName" :label="$t('system.config.dictName')" min-width="180" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="dictType" :label="$t('system.config.dictType')" min-width="160" align="center" :show-overflow-tooltip="true" />
@@ -34,7 +34,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" :disabled="row.systemBuiltin === 1" v-hasPermi="'system:dict:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -76,6 +76,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchDictTypes, createDictType, updateDictType, deleteDictType, exportDictTypes, refreshDictCache, type SysDictType } from '@/api/system/dict';
 
 const { t } = useI18n();

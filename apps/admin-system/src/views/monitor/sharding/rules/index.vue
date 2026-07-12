@@ -22,7 +22,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="pagedRows" row-key="ruleKey" size="small">
+        <StandardTable table-key="monitor-sharding-rules" v-loading="loading" :data="pagedRows" row-key="ruleKey" size="small">
             <el-table-column prop="ruleKey" :label="$t('monitor.sharding.ruleKey')" min-width="130" />
             <el-table-column prop="logicalTable" :label="$t('monitor.sharding.logicalTable')" min-width="160" show-overflow-tooltip />
             <el-table-column prop="templateTable" :label="$t('monitor.sharding.templateTable')" min-width="160" show-overflow-tooltip />
@@ -41,7 +41,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:sharding:rule:query'">{{ $t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="filteredRows.length > 0">
             <el-pagination
@@ -66,6 +66,7 @@ import { useI18n } from 'vue-i18n';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getShardingRule, listShardingRules, type ShardingRuleRow } from '@/api/monitor/sharding';
 
 const { t } = useI18n();

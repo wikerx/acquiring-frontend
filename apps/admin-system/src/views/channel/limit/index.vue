@@ -36,7 +36,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="channel-limit" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true"><template #default="{ row }">{{ channelDisplayText(row) }}</template></el-table-column>
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center"><template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template></el-table-column>
@@ -63,7 +63,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'channel:limit:remove'">{{ t('channel.common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -83,7 +83,7 @@
                 <el-descriptions-item :label="t('channel.common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('channel.common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('channel.common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="dialogTitle" v-model="formVisible" width="680px" append-to-body destroy-on-close>
@@ -115,8 +115,10 @@
                 <el-form-item :label="t('channel.common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -130,6 +132,7 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createChannelLimits, deleteChannelLimit, getChannelLimit, saveChannelLimitDimension, searchChannelCapabilities, searchChannelLimits, updateChannelLimit, updateChannelLimitStatus, type ChannelCapability, type ChannelLimitRule, type ChannelOption } from '@/api/channel';
 import { cardLogoKeys, channelDisplayText, channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, type SelectOption } from '../shared';
 
@@ -679,8 +682,15 @@ function limitSummary(row: ChannelLimitRule) {
 }
 
 async function toggleStatus(row: ChannelLimitRule) {
+    const nextStatus = row.ruleStatus === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
     try {
-        await updateChannelLimitStatus(row.id, row.ruleStatus === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name: `${channelDisplayText(row)} ${limitSummary(row)}`.trim() }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateChannelLimitStatus(row.id, nextStatus);
     } catch (error) {
         await showChannelError(error, t('common.operationFailed'), t('common.saveFailed'));
         return;
@@ -711,10 +721,6 @@ async function handleDelete(target?: ChannelLimitRule | ChannelLimitRule[]) {
 </script>
 
 <style scoped>
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 .limit-amount-panel {
     margin: 0 0 18px 118px;

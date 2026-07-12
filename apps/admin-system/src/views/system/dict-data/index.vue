@@ -61,7 +61,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="system-dict-data" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="dictLabel" :label="$t('system.dictData.dictLabel')" min-width="220" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="dictValue" :label="$t('system.dictData.dictValue')" min-width="180" align="center" :show-overflow-tooltip="true" />
@@ -87,7 +87,7 @@
                     </div>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -172,6 +172,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     createDictData,
     deleteDictDataById,

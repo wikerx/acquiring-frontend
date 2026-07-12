@@ -49,7 +49,7 @@
                         <el-descriptions-item :label="t('openapiKeys.algorithm')">{{ material.jwtAlgorithm || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.version')">{{ material.jwtKeyVersion || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.fingerprint')">{{ material.jwtKeyFingerprint || '-' }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('openapiKeys.updateTime')">{{ formatTime(material.jwtUpdatedTime) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('openapiKeys.updateTime')"><BaseDateTime :value="material.jwtUpdatedTime" /></el-descriptions-item>
                     </el-descriptions>
                     <div class="key-panel__actions">
                         <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial" size="small" :loading="isActionLoading('copy', 'JWT_KEY')" @click="copyMaterial('JWT_KEY')">{{ t('openapiKeys.copy') }}</el-button>
@@ -70,7 +70,7 @@
                         <el-descriptions-item :label="t('openapiKeys.algorithm')">{{ material.platformPayloadAlgorithm || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.keySize')">{{ material.platformPayloadKeySize || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.publicFingerprint')">{{ material.platformPayloadPublicKeyFingerprint || '-' }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('openapiKeys.updateTime')">{{ formatTime(material.platformPayloadUpdatedTime) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('openapiKeys.updateTime')"><BaseDateTime :value="material.platformPayloadUpdatedTime" /></el-descriptions-item>
                     </el-descriptions>
                     <div class="key-panel__actions">
                         <el-button v-if="canCopyMaterial" size="small" :loading="isActionLoading('copy', 'PLATFORM_PUBLIC_KEY')" @click="copyMaterial('PLATFORM_PUBLIC_KEY')">{{ t('openapiKeys.copyBase64') }}</el-button>
@@ -92,7 +92,7 @@
                         <el-descriptions-item :label="t('openapiKeys.keySize')">{{ material.merchantResponseKeySize || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.publicFingerprint')">{{ material.merchantResponsePublicKeyFingerprint || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('openapiKeys.privateKeyAvailable')">{{ material.merchantResponsePrivateKeyAvailable ? t('openapiKeys.yes') : t('openapiKeys.no') }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('openapiKeys.updateTime')">{{ formatTime(material.merchantResponseUpdatedTime) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('openapiKeys.updateTime')"><BaseDateTime :value="material.merchantResponseUpdatedTime" /></el-descriptions-item>
                     </el-descriptions>
                     <div class="key-panel__actions">
                         <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial && responsePrivateKeyAvailable" size="small" :loading="isActionLoading('copy', 'MERCHANT_RESPONSE_PRIVATE_KEY')" @click="copyPrivateKey">{{ t('openapiKeys.copyBase64') }}</el-button>
@@ -106,9 +106,9 @@
             <section class="log-panel">
                 <div class="log-panel__head">
                     <h3>{{ t('openapiKeys.logsTitle') }}</h3>
-                    <el-button size="small" :icon="Refresh" @click="loadLogs">{{ t('openapiKeys.refresh') }}</el-button>
+                    <RightToolbar :show-search="false" @refresh="loadLogs" />
                 </div>
-                <el-table v-loading="logsLoading" :data="logs" size="small">
+                <StandardTable table-key="merchant-openapi-key-logs" v-loading="logsLoading" :data="logs" row-key="id" size="small">
                     <el-table-column prop="operationName" :label="t('openapiKeys.operation')" min-width="160" />
                     <el-table-column :label="t('openapiKeys.status')" width="90" align="center">
                         <template #default="{ row }">
@@ -120,11 +120,11 @@
                     <el-table-column :label="t('openapiKeys.costTime')" width="90">
                         <template #default="{ row }">{{ row.costTime ?? '-' }} ms</template>
                     </el-table-column>
-                    <el-table-column :label="t('openapiKeys.time')" min-width="160">
-                        <template #default="{ row }">{{ formatTime(row.operatedAt) }}</template>
+                    <el-table-column :label="t('openapiKeys.time')" min-width="170">
+                        <template #default="{ row }"><BaseDateTime :value="row.operatedAt" /></template>
                     </el-table-column>
                     <el-table-column prop="errorMsg" :label="t('openapiKeys.error')" min-width="180" show-overflow-tooltip />
-                </el-table>
+                </StandardTable>
                 <div class="log-panel__pager">
                     <el-pagination
                         v-model:current-page="logPage"
@@ -145,6 +145,9 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CopyDocument, Document, Download, Refresh } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     openapiKeysApi,
     type OpenApiKeyExportFormat,
@@ -302,11 +305,6 @@ function statusType(status?: string) {
     if (status === 'ENABLED') return 'success';
     if (status === 'DISABLED') return 'info';
     return 'warning';
-}
-
-function formatTime(value?: string) {
-    if (!value) return '-';
-    return value.replace('T', ' ').slice(0, 19);
 }
 
 onMounted(loadData);

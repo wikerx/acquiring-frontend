@@ -7,6 +7,7 @@ import Layout from '@/layout/index.vue';
 import { useUserStore } from '@/store';
 import {
     EXTERNAL_FRAME_ROUTE_PREFIX,
+    isDeprecatedRiskRuleMenu,
     isExternalFrameMenu,
     isExternalWindowMenu,
     normalizeMenuPath,
@@ -56,6 +57,7 @@ const legacyRedirects: Record<string, string> = {
     '/base/countries': '/base/country',
     '/base/currencies': '/base/currency',
     '/monitor/sharding': '/monitor/sharding/rules',
+    '/risk/rule/three-ds': '/risk/rule/3ds',
 };
 
 const redirectRoutes: RouteRecordRaw[] = Object.entries(legacyRedirects).map(([path, redirect]) => ({
@@ -88,6 +90,12 @@ export const routes: RouteRecordRaw[] = [
                 name: 'Dashboard',
                 component: () => import('@/views/dashboard/index.vue'),
                 meta: { title: '工作台', titleKey: 'Dashboard', icon: 'House' },
+            },
+            {
+                path: 'profile',
+                name: 'Profile',
+                component: () => import('@/views/profile/index.vue'),
+                meta: { title: '个人中心', titleKey: 'Profile', icon: 'User' },
             },
             {
                 path: 'system/dict-data',
@@ -201,7 +209,7 @@ function flattenRouteMenus(menus: AuthMenu[]) {
     const result: AuthMenu[] = [];
     const visit = (items: AuthMenu[]) => {
         items.forEach((item) => {
-            if (item.visible === 0) {
+            if (item.visible === 0 || isDeprecatedRiskRuleMenu(item)) {
                 return;
             }
             if ((item.menuType === 'MENU' || item.menuType === 'LINK') && resolveRuntimeMenuPath(item)) {

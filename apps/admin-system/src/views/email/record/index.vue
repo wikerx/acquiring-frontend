@@ -35,7 +35,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="email-record" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="emailNo" :label="t('email.record.emailNo')" min-width="180" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="t('email.common.appCode')" width="120" align="center">
@@ -63,7 +63,7 @@
                     <el-button size="small" type="primary" link :icon="RefreshRight" :disabled="row.sendStatus === 2" @click="handleResend(row)" v-hasPermi="'email:record:resend'">{{ t('email.record.resend') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -101,7 +101,7 @@
                 <el-descriptions-item :label="t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>
@@ -113,6 +113,7 @@ import { Refresh, RefreshRight, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getEmailRecord, resendEmailRecord, searchEmailRecords, type EmailRecord } from '@/api/email';
 import { loadEmailDictOptions, optionLabel, prettyJson, sendStatusType, showEmailError, type SelectOption } from '../shared';
 
@@ -230,8 +231,4 @@ async function handleResend(row: EmailRecord) {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 </style>

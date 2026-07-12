@@ -14,7 +14,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="roleId" size="small" @selection-change="handleSelectionChange">
+        <StandardTable table-key="system-role" v-loading="loading" :data="rows" row-key="roleId" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="roleCode" :label="$t('system.role.roleCode')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="roleName" :label="$t('system.role.roleName')" min-width="140" align="center" :show-overflow-tooltip="true" />
@@ -33,7 +33,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="removeRole(row)" v-hasPermi="'system:role:delete'" :disabled="row.roleType === 'SYSTEM'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -153,6 +153,7 @@ import { createRole, deleteRole, getRoleMenus, grantRoleMenus, searchRoles, upda
 import { treeMenus, type SysMenu } from '@/api/system/menu';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
 
 const { t } = useI18n();

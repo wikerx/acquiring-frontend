@@ -53,6 +53,5 @@ export async function deletePost(id: number): Promise<void> {
 export async function exportPosts() {
     await downloadExcel('/admin/system/post/export', {
         method: 'get',
-        fileName: '岗位列表.xlsx',
     });
 }

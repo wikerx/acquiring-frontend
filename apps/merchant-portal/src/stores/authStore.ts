@@ -39,15 +39,23 @@ export const useAuthStore = defineStore('merchantAuth', {
             if (!this.session) {
                 return;
             }
+            const token = response.accessToken || this.session.token;
+            if (!token) {
+                this.clearSession();
+                return;
+            }
             this.session = {
-                token: this.session.token,
+                token,
                 account: response.account,
-                menus: response.menus,
-                roles: response.roles,
-                permissions: response.permissions,
+                menus: response.menus || [],
+                roles: response.roles || [],
+                permissions: response.permissions || [],
             };
             this.hydrated = true;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
+        },
+        markHydrated() {
+            this.hydrated = true;
         },
         hasPermission(permissionCode?: string) {
             if (!permissionCode) {

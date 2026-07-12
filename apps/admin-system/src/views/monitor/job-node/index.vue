@@ -2,15 +2,11 @@
     <div class="app-container">
         <el-row :gutter="10" class="mb8">
             <el-col class="right-toolbar">
-                <div class="toolbar-actions">
-                    <el-tooltip :content="$t('common.refresh')" effect="dark" placement="bottom">
-                        <el-button :icon="Refresh" size="small" circle @click="loadData" v-hasPermi="'monitor:jobNode:refresh'" />
-                    </el-tooltip>
-                </div>
+                <RightToolbar :show-search="false" @refresh="loadData" v-hasPermi="'monitor:jobNode:refresh'" />
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <StandardTable table-key="monitor-job-node" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column prop="nodeId" :label="$t('monitor.jobNode.nodeId')" min-width="220" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="appName" :label="$t('monitor.jobNode.appName')" min-width="130" align="center" />
             <el-table-column prop="host" :label="$t('monitor.jobNode.host')" min-width="130" align="center" />
@@ -30,7 +26,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:jobNode:query'">{{ $t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <el-empty v-if="!loading && !rows.length" :description="$t('common.noData')" />
 
@@ -54,11 +50,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Refresh, View } from '@element-plus/icons-vue';
+import { View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
+import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getJobNodes, type JobNodeRow } from '@/api/monitor/jobNode';
 
 const { t } = useI18n();

@@ -52,7 +52,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <StandardTable table-key="monitor-sharding-physical-tables" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column prop="logicalTable" :label="$t('monitor.sharding.logicalTable')" min-width="160" show-overflow-tooltip />
             <el-table-column prop="physicalTable" :label="$t('monitor.sharding.physicalTable')" min-width="190" show-overflow-tooltip />
             <el-table-column prop="templateTable" :label="$t('monitor.sharding.templateTable')" min-width="160" show-overflow-tooltip />
@@ -76,7 +76,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:sharding:physical:query'">{{ $t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -123,6 +123,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     checkShardingPhysicalTableSchema,
     dryRunShardingTableCreate,

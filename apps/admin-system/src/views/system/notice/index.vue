@@ -32,7 +32,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" @selection-change="handleSelectionChange">
+        <StandardTable table-key="system-notice" v-loading="loading" :data="rows" row-key="id" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column :label="$t('common.index')" width="86" align="center">
                 <template #default="{ $index }">No.{{ (page - 1) * pageSize + $index + 1 }}</template>
@@ -63,7 +63,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'system:notice:remove'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -140,6 +140,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchNotices, createNotice, updateNotice, deleteNotice, getNotice, type SysNotice } from '@/api/system/notice';
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();

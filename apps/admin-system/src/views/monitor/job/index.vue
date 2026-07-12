@@ -37,7 +37,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
+        <StandardTable table-key="monitor-job" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="jobCode" :label="$t('monitor.job.jobCode')" min-width="150" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="jobName" :label="$t('monitor.job.jobName')" min-width="170" align="center" :show-overflow-tooltip="true" />
@@ -81,7 +81,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'monitor:job:remove'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -236,6 +236,7 @@ import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import CronExpressionGenerator from '@/components/CronExpressionGenerator/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     changeJobStatus,
     createJob,

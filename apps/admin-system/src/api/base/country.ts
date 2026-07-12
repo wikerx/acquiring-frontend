@@ -64,6 +64,5 @@ export async function deleteCountry(id: number) {
 export async function exportCountries() {
     await downloadExcel('/admin/base/countries/export', {
         method: 'get',
-        fileName: '国家地区.xlsx',
     });
 }

@@ -43,7 +43,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
+        <StandardTable table-key="monitor-job-log" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="runId" :label="$t('monitor.jobLog.runId')" min-width="190" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="jobCode" :label="$t('monitor.jobLog.jobCode')" min-width="140" align="center" :show-overflow-tooltip="true" />
@@ -71,7 +71,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:jobLog:query'">{{ $t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -119,6 +119,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { cleanJobRunLogs, deleteJobRunLog, exportJobRunLogs, searchJobRunLogs, type JobRunLogRow } from '@/api/monitor/jobLog';
 
 const { t } = useI18n();

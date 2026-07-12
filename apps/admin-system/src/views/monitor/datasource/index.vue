@@ -69,7 +69,7 @@
                     <span>{{ $t('monitor.datasource.groupSection') }}</span>
                 </div>
             </template>
-            <el-table :data="groups" size="small" row-key="groupName">
+            <StandardTable table-key="monitor-datasource-groups" :data="groups" size="small" row-key="groupName">
                 <el-table-column prop="groupName" :label="$t('monitor.datasource.groupName')" min-width="140" />
                 <el-table-column prop="memberCount" :label="$t('monitor.datasource.memberCount')" width="120" align="center" />
                 <el-table-column prop="strategyClassName" :label="$t('monitor.datasource.strategyClassName')" min-width="260" show-overflow-tooltip />
@@ -80,7 +80,7 @@
                         </el-space>
                     </template>
                 </el-table-column>
-            </el-table>
+            </StandardTable>
         </el-card>
 
         <el-card shadow="never" class="mb16">
@@ -89,7 +89,7 @@
                     <span>{{ $t('monitor.datasource.datasourceSection') }}</span>
                 </div>
             </template>
-            <el-table :data="pagedDataSources" size="small" row-key="dataSourceKey" :row-class-name="dataSourceRowClassName">
+            <StandardTable table-key="monitor-datasource-list" :data="pagedDataSources" size="small" row-key="dataSourceKey" :row-class-name="dataSourceRowClassName">
                 <el-table-column prop="dataSourceKey" :label="$t('monitor.datasource.datasourceKey')" min-width="150" fixed="left" />
                 <el-table-column prop="groupName" :label="$t('monitor.datasource.groupName')" width="120" align="center" />
                 <el-table-column prop="role" :label="$t('monitor.datasource.role')" width="130" align="center">
@@ -129,7 +129,7 @@
                         <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
                     </template>
                 </el-table-column>
-            </el-table>
+            </StandardTable>
             <div class="pagination-container" v-show="filteredDataSources.length > 0">
                 <el-pagination
                     v-model:current-page="page"
@@ -202,6 +202,7 @@ import { Search, Refresh, Download, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import {
     exportDatasourceSnapshot,

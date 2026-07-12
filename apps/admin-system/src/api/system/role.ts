@@ -14,6 +14,7 @@ export interface SysRole {
     sortNo?: number;
     menuCount?: number;
     permissionCount?: number;
+    assignable?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }

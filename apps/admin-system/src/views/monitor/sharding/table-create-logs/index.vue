@@ -33,7 +33,7 @@
             </el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <StandardTable table-key="monitor-sharding-table-create-logs" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column prop="batchNo" :label="$t('monitor.sharding.batchNo')" min-width="220" show-overflow-tooltip />
             <el-table-column prop="triggerType" :label="$t('monitor.sharding.triggerType')" width="120" align="center" />
             <el-table-column prop="dryRun" :label="$t('monitor.sharding.dryRun')" width="100" align="center">
@@ -58,7 +58,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:sharding:task:query'">{{ $t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination
@@ -91,6 +91,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getShardingCreateLog, searchShardingCreateLogs, type ShardingTableCreateLogRow } from '@/api/monitor/sharding';
 
 const { t } = useI18n();

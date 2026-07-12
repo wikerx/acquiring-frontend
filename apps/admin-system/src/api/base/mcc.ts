@@ -219,7 +219,6 @@ export async function exportMccCodes(requestBody: MccTreeQuery = {}) {
     await downloadExcel('/admin/base/mcc/code/export', {
         method: 'post',
         data: requestBody,
-        fileName: 'mcc-codes.xlsx',
     });
 }
 

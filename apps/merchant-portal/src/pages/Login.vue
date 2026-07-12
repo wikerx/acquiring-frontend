@@ -1,6 +1,6 @@
 <template>
     <main class="merchant-login-page">
-        <div class="merchant-login-page__orb merchant-login-page__orb--green"></div>
+        <div class="merchant-login-page__orb merchant-login-page__orb--accent"></div>
         <div class="merchant-login-page__orb merchant-login-page__orb--blue"></div>
         <div class="merchant-login-page__toolbar">
             <div class="merchant-login-hero__lang-switch">
@@ -103,6 +103,7 @@ import { useI18n } from 'vue-i18n';
 import { defaultLoginCredential, login, sendLoginVerifyCode } from '@/api/authApi';
 import LanguageSwitch from '@/components/LanguageSwitch.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { firstAvailableMenuPath } from '@/utils/menu';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -212,7 +213,7 @@ async function handleLogin() {
             verifyCode: form.verifyCode,
         });
         auth.setLoginResponse(response);
-        await router.push('/dashboard');
+        await router.push(firstAvailableMenuPath(response.menus || []));
     } catch (error) {
         const locale = document.documentElement.lang || navigator.language || 'zh-CN';
         ElMessage.error(resolveFriendlyRequestMessage(error, locale));

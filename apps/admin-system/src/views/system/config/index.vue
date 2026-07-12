@@ -12,14 +12,15 @@
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'system:config:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:config:export'">{{ $t('common.export') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:config:refresh'">刷新缓存</el-button></el-col>
+      <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:config:refresh'">{{ $t('system.config.refreshCache') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="configKey" size="small" @selection-change="sel = $event">
+    <StandardTable table-key="system-config" v-loading="loading" :data="rows" row-key="configKey" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="configKey" :label="$t('system.config.configKey')" min-width="200" align="center" :show-overflow-tooltip="true" />
-      <el-table-column prop="configName" :label="$t('system.config.configName')" min-width="180" :show-overflow-tooltip="true" />
+      <el-table-column prop="configName" :label="$t('system.config.configName')" min-width="180" align="center" :show-overflow-tooltip="true" />
+      <el-table-column prop="configValue" :label="$t('system.config.configValue')" min-width="220" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="configGroup" :label="$t('system.config.configGroup')" min-width="130" align="center" :show-overflow-tooltip="true" />
       <el-table-column :label="$t('system.config.valueType')" width="100" align="center"><template #default="{ row }">{{ vt(row.valueType) }}</template></el-table-column>
       <el-table-column :label="$t('common.status')" width="80" align="center">
@@ -32,7 +33,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'system:config:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -58,6 +59,7 @@ import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/ico
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchConfigs, saveConfig, updateConfig, deleteConfig, exportConfigs, refreshConfigCache, type SysConfig } from '@/api/system/config';
 
 const { t } = useI18n();
@@ -106,6 +108,9 @@ async function submit() {
 }
 async function toggleStatus(row: SysConfig) {
   const ns = row.status === 1 ? 0 : 1;
+  const action = ns === 1 ? t('common.enable') : t('common.disable');
+  const name = row.configName || row.configKey;
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: ns === 1 ? 'success' : 'warning' }); } catch { return; }
   try { await updateConfig(row.configKey, { ...row, status: ns } as any); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleDelete(target: SysConfig | SysConfig[]) {

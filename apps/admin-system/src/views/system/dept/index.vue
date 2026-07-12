@@ -6,7 +6,7 @@
             <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="toggleExpandAll">{{ $t('system.menu.expandCollapse') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar :show-search="false" @refresh="loadData" /></el-col>
         </el-row>
-        <el-table v-if="refreshTable" v-loading="loading" :data="rows" row-key="id" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
+        <StandardTable table-key="system-dept" v-if="refreshTable" v-loading="loading" :data="rows" row-key="id" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
             <el-table-column prop="deptName" :label="$t('system.dept.deptName')" min-width="200" :show-overflow-tooltip="true" />
             <el-table-column prop="sortNo" :label="$t('common.sort')" width="70" align="center" />
             <el-table-column prop="leader" :label="$t('system.dept.leader')" min-width="120" align="center" />
@@ -21,7 +21,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'system:dept:remove'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <el-dialog :title="dialogTitle" v-model="open" width="560px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="90px" style="padding:0 20px">
@@ -46,6 +46,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Plus, Edit, Delete, Sort, Refresh, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getDeptTree, createDept, updateDept, deleteDept, exportDepts, type SysDept } from '@/api/system/dept';
 
 const { t } = useI18n();

@@ -105,7 +105,6 @@ export async function exportDictTypes(requestBody: SysDictTypeQuery) {
     await downloadExcel('/admin/system/dicts/types/export', {
         method: 'post',
         data: requestBody,
-        fileName: '字典类型.xlsx',
     });
 }
 
@@ -155,6 +154,5 @@ export async function exportDictData(requestBody: SysDictDataQuery) {
     await downloadExcel('/admin/system/dicts/data/export', {
         method: 'post',
         data: requestBody,
-        fileName: '字典数据.xlsx',
     });
 }

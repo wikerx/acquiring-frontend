@@ -16,6 +16,34 @@ body {
         sans-serif;
 }
 
+:root {
+    --merchant-primary: #0f8fb3;
+    --merchant-primary-deep: #075985;
+    --merchant-teal: #0d9488;
+    --merchant-teal-soft: #ccfbf1;
+    --merchant-blue-soft: #dbeafe;
+    --merchant-ink: #0f172a;
+    --merchant-muted: #64748b;
+}
+
+.el-dialog__footer {
+    text-align: center;
+}
+
+.el-dialog .dialog-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 4px;
+    text-align: center;
+}
+
+.el-dialog__footer .el-button + .el-button,
+.el-dialog .dialog-footer .el-button + .el-button {
+    margin-left: 0;
+}
+
 .app-shell {
     min-height: 100vh;
 }
@@ -190,6 +218,13 @@ body {
     flex-wrap: wrap;
 }
 
+.right-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+}
+
 .system-page .el-button {
     font-weight: 500;
 }
@@ -226,10 +261,21 @@ body {
     line-height: 20px;
 }
 
+.merchant-main .el-table th.el-table__cell .cell {
+    white-space: nowrap;
+}
+
 .merchant-main .el-table .el-table__body td.el-table__cell {
     color: #606266;
     font-size: 12px;
     font-weight: 400;
+    text-align: center;
+}
+
+.merchant-main .el-table .el-table__body td.el-table__cell .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .merchant-main .el-table .el-table__body-wrapper .el-button [class*="el-icon-"] + span {
@@ -256,6 +302,12 @@ body {
 
 .merchant-main .el-table .small-padding.fixed-width .el-button + .el-button {
     margin-left: 0;
+}
+
+.merchant-main .el-table .fixed-width .el-button--small {
+    width: inherit;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .pagination-container {
@@ -328,7 +380,7 @@ body {
 
 .merchant-page__eyebrow {
     margin: 0 0 10px;
-    color: #047857;
+    color: var(--merchant-primary-deep);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -414,7 +466,7 @@ body {
 
 .merchant-metric-card small {
     margin-top: 8px;
-    color: #10b981;
+    color: var(--merchant-teal);
     font-size: 12px;
     font-weight: 600;
 }
@@ -492,7 +544,7 @@ body {
     display: grid;
     place-items: center;
     background: rgb(16 185 129 / 12%);
-    color: #047857;
+    color: var(--merchant-primary-deep);
     font-weight: 800;
 }
 
@@ -511,7 +563,7 @@ body {
 
 .merchant-status-tag--success {
     background: rgb(16 185 129 / 12%);
-    color: #047857;
+    color: var(--merchant-teal);
 }
 
 .merchant-status-tag--warning {
@@ -524,6 +576,196 @@ body {
     color: #b91c1c;
 }
 
+.merchant-home-page {
+    display: grid;
+    gap: 18px;
+}
+
+.merchant-home-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 22px;
+    padding: 28px;
+    border: 1px solid rgb(186 230 253 / 72%);
+    border-radius: 8px;
+    background:
+        linear-gradient(135deg, rgb(236 254 255 / 92%) 0%, rgb(239 246 255 / 94%) 58%, #ffffff 100%);
+    box-shadow: 0 16px 34px rgb(15 23 42 / 6%);
+}
+
+.merchant-home-hero__eyebrow {
+    margin: 0 0 10px;
+    color: var(--merchant-primary-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.merchant-home-hero h1 {
+    margin: 0;
+    color: var(--merchant-ink);
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.merchant-home-hero__description {
+    max-width: 720px;
+    margin: 12px 0 0;
+    color: var(--merchant-muted);
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.merchant-home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.merchant-home-identity {
+    display: grid;
+    align-content: center;
+    gap: 7px;
+    min-height: 150px;
+    padding: 22px;
+    border-radius: 8px;
+    color: #ffffff;
+    background: linear-gradient(145deg, #075985 0%, #0d9488 100%);
+}
+
+.merchant-home-identity span,
+.merchant-home-identity small {
+    color: rgb(255 255 255 / 76%);
+}
+
+.merchant-home-identity strong {
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.merchant-home-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.merchant-home-summary-card,
+.merchant-home-panel {
+    border: 1px solid #e4edf3;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgb(15 23 42 / 4%);
+}
+
+.merchant-home-summary-card {
+    display: grid;
+    gap: 8px;
+    min-height: 126px;
+    padding: 18px;
+}
+
+.merchant-home-summary-card span {
+    color: var(--merchant-muted);
+    font-size: 13px;
+}
+
+.merchant-home-summary-card strong {
+    color: var(--merchant-ink);
+    font-size: 24px;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.merchant-home-summary-card small {
+    color: var(--merchant-primary);
+    font-size: 12px;
+}
+
+.merchant-home-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px;
+}
+
+.merchant-home-panel {
+    padding: 20px;
+}
+
+.merchant-home-panel__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.merchant-home-panel__head h2 {
+    margin: 0;
+    color: var(--merchant-ink);
+    font-size: 18px;
+}
+
+.merchant-home-panel__head p {
+    margin: 7px 0 0;
+    color: var(--merchant-muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.merchant-home-entry-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.merchant-home-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #e4edf3;
+    border-radius: 6px;
+    color: #334155;
+    background: #f8fbfd;
+    cursor: pointer;
+    font-weight: 600;
+    text-align: left;
+}
+
+.merchant-home-entry:hover,
+.merchant-home-entry:focus-visible {
+    color: var(--merchant-primary-deep);
+    border-color: rgb(14 165 233 / 36%);
+    background: #eff6ff;
+    outline: none;
+}
+
+.merchant-home-profile {
+    display: grid;
+    gap: 10px;
+}
+
+.merchant-home-profile div {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border-radius: 6px;
+    background: #f8fbfd;
+}
+
+.merchant-home-profile span {
+    color: var(--merchant-muted);
+    font-size: 12px;
+}
+
+.merchant-home-profile strong {
+    color: var(--merchant-ink);
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
 .merchant-skeleton-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -533,7 +775,7 @@ body {
 }
 
 .merchant-skeleton-card span {
-    color: #10b981;
+    color: var(--merchant-teal);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -569,9 +811,9 @@ body {
     overflow: hidden;
     padding: 28px;
     background:
-        radial-gradient(circle at 14% 18%, rgb(16 185 129 / 14%), transparent 26%),
-        radial-gradient(circle at 82% 18%, rgb(30 58 255 / 10%), transparent 28%),
-        linear-gradient(135deg, #eefcf6 0%, #f5f9ff 52%, #ffffff 100%);
+        radial-gradient(circle at 14% 18%, rgb(13 148 136 / 16%), transparent 26%),
+        radial-gradient(circle at 82% 18%, rgb(37 99 235 / 14%), transparent 28%),
+        linear-gradient(135deg, #ecfeff 0%, #eff6ff 54%, #ffffff 100%);
 }
 
 .merchant-login-page__toolbar {
@@ -603,12 +845,12 @@ body {
     filter: blur(8px);
 }
 
-.merchant-login-page__orb--green {
+.merchant-login-page__orb--accent {
     left: -4%;
     top: 6%;
     width: 320px;
     height: 320px;
-    background: radial-gradient(circle, rgb(16 185 129 / 24%) 0%, rgb(16 185 129 / 0%) 70%);
+    background: radial-gradient(circle, rgb(13 148 136 / 24%) 0%, rgb(13 148 136 / 0%) 70%);
 }
 
 .merchant-login-page__orb--blue {
@@ -616,7 +858,7 @@ body {
     bottom: 8%;
     width: 340px;
     height: 340px;
-    background: radial-gradient(circle, rgb(30 58 255 / 18%) 0%, rgb(30 58 255 / 0%) 72%);
+    background: radial-gradient(circle, rgb(37 99 235 / 20%) 0%, rgb(37 99 235 / 0%) 72%);
 }
 
 .merchant-login-hero {
@@ -633,8 +875,8 @@ body {
     padding: 8px 14px;
     border-radius: 999px;
     background: rgb(255 255 255 / 78%);
-    border: 1px solid rgb(167 243 208 / 32%);
-    color: #047857;
+    border: 1px solid rgb(125 211 252 / 38%);
+    color: var(--merchant-primary-deep);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -647,14 +889,14 @@ body {
     padding: 8px 12px;
     border-radius: 999px;
     background: rgb(255 255 255 / 78%);
-    border: 1px solid rgb(209 250 229 / 62%);
+    border: 1px solid rgb(186 230 253 / 72%);
     box-shadow: 0 14px 26px rgb(15 23 42 / 5%);
 }
 
 .merchant-login-hero__logo {
     width: min(520px, 100%);
     height: auto;
-    filter: drop-shadow(0 18px 30px rgb(16 185 129 / 12%));
+    filter: drop-shadow(0 18px 30px rgb(14 116 144 / 14%));
 }
 
 .merchant-login-hero__title-group h1 {
@@ -683,8 +925,8 @@ body {
     padding: 10px 16px;
     border-radius: 999px;
     background: rgb(255 255 255 / 82%);
-    border: 1px solid rgb(209 250 229 / 62%);
-    color: #047857;
+    border: 1px solid rgb(186 230 253 / 72%);
+    color: var(--merchant-primary-deep);
     font-size: 13px;
     font-weight: 700;
 }
@@ -700,7 +942,7 @@ body {
     padding: 18px 18px 16px;
     border-radius: 22px;
     background: linear-gradient(180deg, rgb(255 255 255 / 94%), rgb(255 255 255 / 78%));
-    border: 1px solid rgb(220 252 231 / 84%);
+    border: 1px solid rgb(207 250 254 / 86%);
     box-shadow: 0 18px 44px rgb(15 23 42 / 5%);
 }
 
@@ -728,9 +970,9 @@ body {
     max-width: 460px;
     padding: 32px;
     border-radius: 28px;
-    border: 1px solid rgb(220 252 231 / 90%);
+    border: 1px solid rgb(207 250 254 / 90%);
     background:
-        linear-gradient(155deg, rgb(255 255 255 / 94%) 0%, rgb(244 253 248 / 86%) 62%, rgb(236 253 245 / 92%) 100%);
+        linear-gradient(155deg, rgb(255 255 255 / 94%) 0%, rgb(240 249 255 / 88%) 58%, rgb(236 253 245 / 86%) 100%);
     box-shadow:
         0 30px 90px rgb(15 23 42 / 10%),
         inset 0 1px 0 rgb(255 255 255 / 76%);
@@ -748,7 +990,7 @@ body {
     width: 56px;
     height: 56px;
     object-fit: contain;
-    filter: drop-shadow(0 14px 24px rgb(16 185 129 / 18%));
+    filter: drop-shadow(0 14px 24px rgb(14 116 144 / 18%));
 }
 
 .merchant-login-brand h2 {
@@ -782,13 +1024,13 @@ body {
     min-height: 50px;
     border-radius: 16px;
     background: rgb(255 255 255 / 90%);
-    box-shadow: inset 0 0 0 1px rgb(187 247 208 / 88%);
+    box-shadow: inset 0 0 0 1px rgb(165 243 252 / 88%);
 }
 
 .merchant-login-form .el-input__wrapper.is-focus {
     box-shadow:
-        inset 0 0 0 1px rgb(16 185 129 / 90%),
-        0 0 0 4px rgb(16 185 129 / 12%);
+        inset 0 0 0 1px rgb(14 165 233 / 90%),
+        0 0 0 4px rgb(14 165 233 / 12%);
 }
 
 .merchant-login-verify-code {
@@ -801,8 +1043,8 @@ body {
 .merchant-login-verify-code__button {
     min-height: 50px;
     border-radius: 16px !important;
-    border-color: rgb(16 185 129 / 24%) !important;
-    color: #047857 !important;
+    border-color: rgb(14 165 233 / 26%) !important;
+    color: var(--merchant-primary-deep) !important;
     font-size: 13px;
     font-weight: 800;
     white-space: normal;
@@ -813,8 +1055,8 @@ body {
     height: 52px;
     border: none !important;
     border-radius: 16px !important;
-    background: linear-gradient(135deg, #10b981 0%, #059669 52%, #1e3aff 100%) !important;
-    box-shadow: 0 18px 34px rgb(5 150 105 / 24%);
+    background: linear-gradient(135deg, #0d9488 0%, #0ea5e9 54%, #2563eb 100%) !important;
+    box-shadow: 0 18px 34px rgb(14 116 144 / 24%);
     font-size: 15px;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -823,13 +1065,13 @@ body {
 .merchant-login-footer {
     margin-top: 24px;
     padding-top: 18px;
-    border-top: 1px solid #dcfce7;
+    border-top: 1px solid #cffafe;
     display: grid;
     gap: 8px;
 }
 
 .merchant-login-footer span {
-    color: #047857;
+    color: var(--merchant-primary-deep);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -844,7 +1086,9 @@ body {
 
 @media (max-width: 1080px) {
     .merchant-page__hero,
-    .merchant-content-grid {
+    .merchant-content-grid,
+    .merchant-home-hero,
+    .merchant-home-content {
         grid-template-columns: 1fr;
     }
 
@@ -866,6 +1110,7 @@ body {
     }
 
     .merchant-metric-grid,
+    .merchant-home-grid,
     .merchant-skeleton-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -896,7 +1141,9 @@ body {
 
     .merchant-login-hero__metrics,
     .merchant-page__hero,
-    .merchant-page__hero {
+    .merchant-page__hero,
+    .merchant-home-hero,
+    .merchant-home-content {
         grid-template-columns: 1fr;
     }
 
@@ -906,6 +1153,7 @@ body {
 
     .merchant-login-hero__metrics,
     .merchant-metric-grid,
+    .merchant-home-grid,
     .merchant-skeleton-grid {
         grid-template-columns: 1fr;
     }

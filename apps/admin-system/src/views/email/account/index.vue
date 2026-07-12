@@ -41,7 +41,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="email-account" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="accountCode" :label="t('email.account.accountCode')" min-width="150" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="accountName" :label="t('email.account.accountName')" min-width="170" align="center" :show-overflow-tooltip="true" />
@@ -78,7 +78,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'email:account:remove'">{{ t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -110,7 +110,7 @@
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? t('email.account.addTitle') : t('email.account.editTitle')" v-model="formVisible" width="780px" top="5vh" append-to-body destroy-on-close>
@@ -163,8 +163,10 @@
                 <el-form-item :label="t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" show-word-limit :placeholder="t('email.account.placeholder.remark')" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ t('common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
 
@@ -175,8 +177,10 @@
                 <el-form-item :label="t('email.template.contentTemplate')"><el-input v-model="testForm.content" type="textarea" :rows="5" :placeholder="t('email.account.placeholder.testContent')" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="testVisible = false">{{ t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitTest">{{ t('email.account.sendTest') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitTest">{{ t('email.account.sendTest') }}</el-button>
+                    <el-button @click="testVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -189,6 +193,7 @@ import { Delete, Edit, Plus, Promotion, Refresh, Search, Star, View } from '@ele
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     createEmailAccount,
     deleteEmailAccount,
@@ -470,8 +475,16 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: EmailAccount) {
+    const nextStatus = row.status === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = row.accountName || row.fromEmail || row.accountCode || row.id;
     try {
-        await updateEmailAccountStatus(row.id, row.status === 1 ? 0 : 1);
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    try {
+        await updateEmailAccountStatus(row.id, nextStatus);
         ElMessage.success(t('common.success'));
         loadData();
     } catch (error) {
@@ -551,10 +564,6 @@ async function handleDelete(target?: EmailAccount | EmailAccount[]) {
     column-gap: 18px;
 }
 
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 @media (max-width: 760px) {
     .form-grid {

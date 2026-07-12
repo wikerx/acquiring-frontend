@@ -14,7 +14,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
+    <StandardTable table-key="base-currency" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="alpha3Code" :label="$t('base.currency.alphabeticCode')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="numericCode" :label="$t('base.currency.numericCode')" width="100" align="center" :show-overflow-tooltip="true" />
@@ -32,7 +32,7 @@
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'base:currency:remove'">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" /></div>
 
@@ -63,6 +63,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, exportCurrencies, type IsoCurrency } from '@/api/base/currency';
 
 const { t } = useI18n();
@@ -110,7 +111,11 @@ async function submit() {
   } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function toggleStatus(row: IsoCurrency) {
-  try { await changeCurrencyStatus(row.id, row.status === 1 ? 0 : 1); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
+  const newStatus = row.status === 1 ? 0 : 1;
+  const action = newStatus === 1 ? t('common.enable') : t('common.disable');
+  const name = row.chineseName || row.englishName || row.alpha3Code || row.id;
+  try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: newStatus === 1 ? 'success' : 'warning' }); } catch { return; }
+  try { await changeCurrencyStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleDelete(target: IsoCurrency | IsoCurrency[]) {
   const targets = Array.isArray(target) ? target : [target];

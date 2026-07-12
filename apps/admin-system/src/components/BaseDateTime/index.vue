@@ -1,5 +1,5 @@
 <template>
-    <span>{{ formatDateTime(value) }}</span>
+    <span class="base-date-time">{{ formatDateTime(value) }}</span>
 </template>
 
 <script setup lang="ts">
@@ -9,3 +9,11 @@ defineProps<{
     value: string | number | Date | null | undefined;
 }>();
 </script>
+
+<style scoped>
+.base-date-time {
+    display: inline-block;
+    min-width: 148px;
+    white-space: nowrap;
+}
+</style>

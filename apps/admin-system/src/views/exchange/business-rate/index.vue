@@ -32,7 +32,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small">
+        <StandardTable table-key="exchange-business-rate" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="120" align="center"><template #default="{ row }">{{ optionLabel(rateTypeOptions, row.rateType) }}</template></el-table-column>
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.source')" width="90" align="center" />
             <el-table-column :label="$t('exchange.fields.currencyPair')" width="150" align="center"><template #default="{ row }">{{ formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency) }}</template></el-table-column>
@@ -48,7 +48,7 @@
                     <el-button size="small" type="primary" link :disabled="row.rateStatus === 'EXPIRED'" @click="toggleStatus(row)" v-hasPermi="'exchange:business-rate:status'">{{ row.rateStatus === 'ENABLED' ? $t('common.disable') : $t('common.enable') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -71,7 +71,7 @@
                 <el-descriptions-item :label="$t('exchange.fields.adjustDescription')">{{ detailRow.adjustDescription || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="$t('exchange.businessRate.addTitle')" v-model="formVisible" width="760px" append-to-body destroy-on-close>
@@ -89,8 +89,10 @@
                 <el-form-item :label="$t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
 
@@ -126,8 +128,10 @@
             </el-table>
             <div class="batch-actions"><el-button :icon="Plus" size="small" @click="addBatchRow">{{ $t('exchange.businessRate.addRow') }}</el-button></div>
             <template #footer>
-                <el-button @click="batchVisible = false">{{ $t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitBatch">{{ $t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitBatch">{{ $t('common.confirm') }}</el-button>
+                    <el-button @click="batchVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -136,10 +140,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { batchCreateExchangeBusinessRates, createExchangeBusinessRate, exportExchangeBusinessRates, getExchangeBusinessRate, searchExchangeBusinessRates, updateExchangeBusinessRateStatus, type BusinessRateSaveRequest, type ExchangeBusinessRate } from '@/api/exchange';
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
@@ -259,7 +264,15 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ExchangeBusinessRate) {
-    await updateExchangeBusinessRateStatus(row.id, row.rateStatus === 'ENABLED' ? 0 : 1);
+    const nextStatus = row.rateStatus === 'ENABLED' ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = `${optionLabel(rateTypeOptions.value, row.rateType)} ${formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency)}`.trim();
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    await updateExchangeBusinessRateStatus(row.id, nextStatus);
     ElMessage.success(t('common.success'));
     loadData();
 }
@@ -317,10 +330,6 @@ function toBusinessRatePayload(source: BusinessRateSaveRequest) {
 </script>
 
 <style scoped>
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
 
 .batch-actions {
     margin-top: 12px;

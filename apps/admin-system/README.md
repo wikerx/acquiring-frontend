@@ -165,7 +165,7 @@ apps/admin-system/src/views/**/index.vue
 表格使用 Element Plus 原生表格，保持若依紧凑风格：
 
 ```vue
-<el-table v-loading="loading" :data="rows" row-key="id" size="small">
+<el-table v-standard-table="'system-user'" v-loading="loading" :data="rows" row-key="id" size="small">
   <el-table-column type="selection" width="50" align="center" />
   <el-table-column prop="userName" label="用户名称" align="center" show-overflow-tooltip />
   <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width" fixed="right">
@@ -180,6 +180,10 @@ apps/admin-system/src/views/**/index.vue
 规范：
 
 - 表格必须设置 `size="small"`。
+- 标准列表主表格必须设置 `v-standard-table`，并使用稳定的页面级 `tableKey`。
+- 列宽拖拽、编辑列、列显示隐藏、列顺序调整、重置和用户偏好持久化必须复用 `components/StandardTable` 公共能力。
+- 不允许在业务页面重复实现列设置面板或页面私有 localStorage key。
+- 弹窗结果表、诊断预览表等非标准主列表可不接入，但不能替代主列表接入要求。
 - 表头背景、行高、字号由 `main.css` 全局控制。
 - 列表正文的字号和颜色必须与查询条件一致，不在页面内单独加深、放大或加粗。
 - 列文本默认 `align="center"`，长文本列加 `show-overflow-tooltip`。

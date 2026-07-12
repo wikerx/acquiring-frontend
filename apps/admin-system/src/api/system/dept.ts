@@ -45,6 +45,5 @@ export async function deleteDept(id: number): Promise<void> {
 export async function exportDepts() {
     await downloadExcel('/admin/system/dept/export', {
         method: 'get',
-        fileName: '部门列表.xlsx',
     });
 }

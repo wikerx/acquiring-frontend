@@ -35,7 +35,7 @@
                     <el-col class="right-toolbar"><RightToolbar @toggle-search="showTreeSearch = !showTreeSearch" @refresh="loadTree" /></el-col>
                 </el-row>
 
-                <el-table
+                <StandardTable table-key="base-mcc-tree"
                     v-if="refreshTreeTable"
                     v-loading="treeLoading"
                     :data="treeRows"
@@ -83,7 +83,7 @@
                             <el-button size="small" type="primary" link :icon="Delete" @click="deleteTreeNode(row)" v-hasPermi="row.nodeType === 'MCC_CODE' ? 'base:mcc:code:delete' : 'base:mcc:category:delete'">{{ $t('common.delete') }}</el-button>
                         </template>
                     </el-table-column>
-                </el-table>
+                </StandardTable>
             </el-tab-pane>
 
             <el-tab-pane :label="$t('base.mcc.tab.policy')" name="policy">
@@ -102,7 +102,7 @@
                     <el-col class="right-toolbar"><RightToolbar @toggle-search="showPolicySearch = !showPolicySearch" @refresh="loadPolicies" /></el-col>
                 </el-row>
 
-                <el-table v-loading="policyLoading" :data="policyRows" row-key="id" size="small">
+                <StandardTable table-key="base-mcc-policy" v-loading="policyLoading" :data="policyRows" row-key="id" size="small">
                     <el-table-column prop="mccCode" :label="$t('base.mcc.code.mccCode')" width="100" align="center" />
                     <el-table-column prop="mccNameCn" :label="$t('base.mcc.code.nameCn')" min-width="160" show-overflow-tooltip />
                     <el-table-column :label="$t('base.mcc.policy.cardScheme')" min-width="150" show-overflow-tooltip><template #default="{ row }">{{ row.cardSchemeName || row.cardScheme }}</template></el-table-column>
@@ -123,7 +123,7 @@
                             <el-button size="small" type="primary" link :icon="Delete" @click="deletePolicyRow(row)" v-hasPermi="'base:mcc:policy:delete'">{{ $t('common.delete') }}</el-button>
                         </template>
                     </el-table-column>
-                </el-table>
+                </StandardTable>
                 <div class="pagination-container" v-show="policyTotal > 0"><el-pagination v-model:current-page="policyPage" v-model:page-size="policyPageSize" :total="policyTotal" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadPolicies" @current-change="loadPolicies" /></div>
             </el-tab-pane>
 
@@ -243,6 +243,7 @@ import { Delete, Download, Edit, Plus, Refresh, Search, Sort, SwitchButton, View
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     addMccCategory,
     addMccCode,

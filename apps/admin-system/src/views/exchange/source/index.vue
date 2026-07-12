@@ -29,7 +29,7 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+        <StandardTable table-key="exchange-source" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.sourceCode')" min-width="120" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="sourceName" :label="$t('exchange.fields.sourceName')" min-width="150" align="center" :show-overflow-tooltip="true" />
@@ -50,7 +50,7 @@
                     <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="'exchange:source:remove'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -72,7 +72,7 @@
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="center-dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog :title="formMode === 'create' ? $t('exchange.source.addTitle') : $t('exchange.source.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
@@ -88,8 +88,10 @@
                 <el-form-item :label="$t('common.remark')"><el-input v-model="form.remark" type="textarea" maxlength="500" /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-                <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                <div class="dialog-footer">
+                    <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+                    <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
             </template>
         </el-dialog>
     </div>
@@ -102,6 +104,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createExchangeSource, deleteExchangeSource, exportExchangeSources, getExchangeSource, searchExchangeSources, updateExchangeSource, updateExchangeSourceStatus, type ExchangeRateSource } from '@/api/exchange';
 import { fetchStatusOptions as buildFetchStatusOptions, optionLabel, secondsText, sourceTypeOptions as buildSourceTypeOptions, statusText, statusType, yesNoText } from '../shared';
 
@@ -202,7 +205,15 @@ async function submitForm() {
 }
 
 async function toggleStatus(row: ExchangeRateSource) {
-    await updateExchangeSourceStatus(row.id, row.sourceStatus === 1 ? 0 : 1);
+    const nextStatus = row.sourceStatus === 1 ? 0 : 1;
+    const action = nextStatus === 1 ? t('common.enable') : t('common.disable');
+    const name = row.sourceName || row.sourceCode || row.id;
+    try {
+        await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+    } catch {
+        return;
+    }
+    await updateExchangeSourceStatus(row.id, nextStatus);
     ElMessage.success(t('common.success'));
     loadData();
 }
@@ -226,10 +237,3 @@ async function handleExport() {
     await exportExchangeSources({ pageNo: page.value, pageSize: pageSize.value, ...query });
 }
 </script>
-
-<style scoped>
-.center-dialog-footer {
-    display: flex;
-    justify-content: center;
-}
-</style>

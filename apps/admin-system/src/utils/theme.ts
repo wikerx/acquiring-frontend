@@ -48,3 +48,18 @@ export function applyThemeColor(color: string) {
         document.documentElement.style.setProperty(key, value);
     });
 }
+
+/** Apply navigation theme tokens to the document root so teleported poppers can inherit them. */
+export function applyNavigationTheme(theme: NavigationTheme) {
+    const normalizedTheme = normalizeNavigationTheme(theme);
+    document.documentElement.dataset.navTheme = normalizedTheme;
+    Object.entries(navigationThemeCssVariables(normalizedTheme)).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+    });
+}
+
+/** Store the current navigation layout mode on the document root. */
+export function applyNavigationMode(mode: AppSettings['layoutMode']) {
+    document.documentElement.dataset.navMode = mode === 'top' ? 'top' : 'side';
+}
+import { navigationThemeCssVariables, normalizeNavigationTheme, type AppSettings, type NavigationTheme } from '@/constants/app';

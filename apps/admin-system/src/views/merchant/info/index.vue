@@ -32,7 +32,7 @@
       </el-col>
     </el-row>
 
-    <el-table v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
+    <StandardTable table-key="merchant-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="merchantId" :label="$t('merchant.info.merchantId')" min-width="140" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="merchantName" :label="$t('merchant.info.merchantName')" min-width="190" align="center" :show-overflow-tooltip="true" />
@@ -72,7 +72,7 @@
           <el-button size="small" type="primary" link :icon="Key" @click="openMaterial(row)" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.material') }}</el-button>
         </template>
       </el-table-column>
-    </el-table>
+    </StandardTable>
 
     <div class="pagination-container" v-show="total > 0">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -102,7 +102,7 @@
         <el-descriptions-item :label="$t('merchant.info.address')">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <div class="merchant-detail-footer">
+        <div class="dialog-footer">
           <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
         </div>
       </template>
@@ -152,8 +152,10 @@
         <el-form-item :label="$t('merchant.info.address')"><el-input v-model="form.addressLine" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -403,8 +405,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="responseKeyVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submitResponseKey">{{ $t('common.confirm') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitResponseKey">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="responseKeyVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -412,8 +416,10 @@
       <el-alert class="mb16" type="warning" :closable="false" :title="$t('merchant.info.viewedMaterialHint')" />
       <el-input :model-value="viewedMaterial.content" type="textarea" :autosize="{ minRows: 8, maxRows: 18 }" readonly />
       <template #footer>
-        <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
+          <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -427,6 +433,7 @@ import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   createMerchant,
   copyOpenApiKeyMaterial,
@@ -974,10 +981,6 @@ function businessTypeText(type?: number) {
   text-overflow: ellipsis;
 }
 
-.merchant-detail-footer {
-  display: flex;
-  justify-content: center;
-}
 
 .material-actions {
   display: grid;

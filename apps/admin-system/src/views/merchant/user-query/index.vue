@@ -38,7 +38,7 @@
             <el-col class="right-toolbar"><RightToolbar @refresh="handleQuery" /></el-col>
         </el-row>
 
-        <el-table v-loading="loading" :data="rows" row-key="accountId" size="small">
+        <StandardTable table-key="merchant-user-query" v-loading="loading" :data="rows" row-key="accountId" size="small">
             <el-table-column prop="merchantId" label="商户号" min-width="120" align="center" show-overflow-tooltip />
             <el-table-column prop="merchantName" label="商户名称" min-width="160" align="center" show-overflow-tooltip />
             <el-table-column prop="loginAccount" label="登录账号" min-width="150" align="center" show-overflow-tooltip />
@@ -58,7 +58,7 @@
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'admin:merchant:user:detail'">详情</el-button>
                 </template>
             </el-table-column>
-        </el-table>
+        </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
@@ -111,7 +111,7 @@
                 </section>
             </div>
 
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">关闭</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>
@@ -122,6 +122,7 @@ import { ElMessage, type FormInstance } from 'element-plus';
 import { Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
+import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getMerchantUserDetail, searchMerchantUsers, type MerchantUserDetail, type MerchantUserQuery, type MerchantUserRow } from '@/api/merchantUser';
 
 const queryFormRef = ref<FormInstance>();

@@ -103,6 +103,5 @@ export async function getDatasourceSnapshot(): Promise<DataSourceMonitorResponse
 export async function exportDatasourceSnapshot() {
     await downloadExcel('/admin/monitor/datasource/export', {
         method: 'get',
-        fileName: 'datasource-monitor.xlsx',
     });
 }
