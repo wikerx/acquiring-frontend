@@ -494,7 +494,7 @@
       <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button><el-button @click="formOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
-    <el-dialog :title="$t('common.detail')" v-model="detailOpen" width="760px" append-to-body>
+    <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('common.detail')" size="md">
       <el-descriptions v-if="detailRow" :column="1" border size="small">
         <el-descriptions-item v-for="item in detailItems" :key="item.label" :label="item.label">
           <BaseDateTime v-if="item.time" :value="String(item.value || '')" />
@@ -508,8 +508,7 @@
           <span v-else>{{ item.value || '-' }}</span>
         </el-descriptions-item>
       </el-descriptions>
-      <template #footer><div class="dialog-footer"><el-button @click="detailOpen = false">{{ $t('common.close') }}</el-button></div></template>
-    </el-dialog>
+    </CommonDetailDrawer>
   </div>
 </template>
 
@@ -522,6 +521,7 @@ import { useI18n } from 'vue-i18n';
 import type { UploadFile } from 'element-plus';
 import { PaymentLogoMark } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import TableColumnSettings from '@/components/StandardTable/TableColumnSettings.vue';

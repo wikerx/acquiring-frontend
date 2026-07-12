@@ -112,7 +112,7 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="detailVisible" :title="$t('system.notice.detailTitle')" width="min(980px, 90vw)" top="6vh" append-to-body destroy-on-close class="notice-detail-dialog">
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('system.notice.detailTitle')" size="full">
             <article v-if="activeRow" class="notice-detail">
                 <div class="notice-detail__type">
                     <el-tag :type="activeRow.noticeType === '1' ? 'warning' : 'success'" size="small">
@@ -127,10 +127,7 @@
                 </div>
                 <div class="notice-detail__content">{{ activeRow.noticeContent || '-' }}</div>
             </article>
-            <template #footer>
-                <div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div>
-            </template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -139,6 +136,7 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchNotices, createNotice, updateNotice, deleteNotice, getNotice, type SysNotice } from '@/api/system/notice';

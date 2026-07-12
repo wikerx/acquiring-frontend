@@ -46,7 +46,9 @@
                     size="small"
                 >
                     <el-table-column prop="label" :label="$t('base.mcc.name')" min-width="250" show-overflow-tooltip />
-                    <el-table-column prop="code" :label="$t('base.mcc.codeLabel')" width="120" align="center" />
+                    <el-table-column :label="$t('base.mcc.codeLabel')" width="120" align="center">
+                        <template #default="{ row }">{{ row.nodeType === 'MCC_CODE' ? row.code || row.mccCode || '-' : '-' }}</template>
+                    </el-table-column>
                     <el-table-column :label="$t('base.mcc.code.nameCn')" min-width="160" show-overflow-tooltip>
                         <template #default="{ row }">{{ row.nodeType === 'MCC_CODE' ? row.mccNameCn || row.nameCn || '-' : '-' }}</template>
                     </el-table-column>
@@ -205,7 +207,7 @@
             <template #footer><el-button type="primary" @click="submitPolicy">{{ $t('common.confirm') }}</el-button><el-button @click="policyDrawerVisible = false">{{ $t('common.cancel') }}</el-button></template>
         </el-drawer>
 
-        <el-dialog v-model="codeDetailVisible" :title="$t('base.mcc.code.detailTitle')" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="codeDetailVisible" :title="$t('base.mcc.code.detailTitle')" size="lg">
             <el-descriptions :column="1" border size="small" class="mcc-detail-descriptions">
                 <el-descriptions-item :label="$t('base.mcc.level1')">{{ activeCodeDetail?.level1Name || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('base.mcc.level2')">{{ activeCodeDetail?.level2Name || '-' }}</el-descriptions-item>
@@ -227,12 +229,7 @@
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="activeCodeDetail?.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="activeCodeDetail?.updateTime" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer>
-                <div class="mcc-detail-footer">
-                    <el-button @click="codeDetailVisible = false">{{ $t('common.close') }}</el-button>
-                </div>
-            </template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -242,6 +239,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Delete, Download, Edit, Plus, Refresh, Search, Sort, SwitchButton, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {

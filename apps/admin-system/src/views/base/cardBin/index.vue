@@ -198,7 +198,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog :title="$t('base.cardBin.detailTitle')" v-model="detailOpen" width="760px" append-to-body>
+    <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('base.cardBin.detailTitle')" size="lg">
       <el-descriptions v-if="detailRow" :column="1" border size="small" class="one-column-detail">
         <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ detailRow.cardBinStart }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardBinEnd')">{{ detailRow.cardBinEnd }}</el-descriptions-item>
@@ -226,8 +226,7 @@
         <el-descriptions-item :label="$t('base.cardBin.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
       </el-descriptions>
-      <template #footer><div class="dialog-footer centered"><el-button @click="detailOpen = false">{{ $t('common.close') }}</el-button></div></template>
-    </el-dialog>
+    </CommonDetailDrawer>
 
     <el-dialog :title="$t('base.cardBin.matchTest')" v-model="matchOpen" width="820px" append-to-body>
       <el-form :model="matchForm" inline size="small" class="match-form">
@@ -268,6 +267,7 @@ import { Aim, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from
 import { PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {

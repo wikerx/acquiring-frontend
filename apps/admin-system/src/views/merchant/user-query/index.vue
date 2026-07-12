@@ -64,8 +64,8 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog v-model="detailVisible" title="商户用户详情" width="880px" append-to-body destroy-on-close>
-            <el-descriptions :column="2" border size="small" class="detail-section">
+        <CommonDetailDrawer v-model:visible="detailVisible" title="商户用户详情" size="xl" :loading="detailLoading">
+            <el-descriptions v-if="detail" :column="2" border size="small" class="detail-section">
                 <el-descriptions-item label="账号 ID">{{ detail?.account?.accountId ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item label="用户 ID">{{ detail?.account?.userId ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item label="商户号">{{ detail?.merchant?.merchantId ?? detail?.account?.merchantId ?? '-' }}</el-descriptions-item>
@@ -110,9 +110,7 @@
                     </div>
                 </section>
             </div>
-
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -121,6 +119,7 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, type FormInstance } from 'element-plus';
 import { Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getMerchantUserDetail, searchMerchantUsers, type MerchantUserDetail, type MerchantUserQuery, type MerchantUserRow } from '@/api/merchantUser';
@@ -238,8 +237,8 @@ function menuTagType(type?: string) {
 
 .tree-wrapper,
 .permission-list {
-    min-height: 280px;
-    max-height: 420px;
+    min-height: 520px;
+    max-height: calc(100vh - 420px);
     overflow: auto;
     padding: 10px;
     border: 1px solid #dcdfe6;

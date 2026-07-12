@@ -166,7 +166,7 @@
         </el-card>
 
 
-        <el-drawer v-model="detailVisible" :title="$t('monitor.datasource.datasourceDetail')" size="680px" append-to-body>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('monitor.datasource.datasourceDetail')" size="md">
             <el-descriptions :column="1" border size="small" v-if="activeDataSource">
                 <el-descriptions-item :label="$t('monitor.datasource.datasourceKey')">{{ activeDataSource.dataSourceKey }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('monitor.datasource.groupName')">{{ activeDataSource.groupName || '-' }}</el-descriptions-item>
@@ -191,7 +191,7 @@
                     </el-space>
                 </el-descriptions-item>
             </el-descriptions>
-        </el-drawer>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -204,6 +204,7 @@ import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import {
     exportDatasourceSnapshot,
     getDatasourceSnapshot,

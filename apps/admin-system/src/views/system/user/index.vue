@@ -58,12 +58,14 @@
             <el-table-column prop="lockedText" :label="$t('system.user.locked')" width="60" align="center" />
             <el-table-column :label="$t('system.user.lastLogin')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.lastLoginAt" /></template></el-table-column>
             <el-table-column :label="$t('common.createTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="$t('common.operation')" align="center" width="240" class-name="small-padding fixed-width" fixed="right">
+            <el-table-column :label="$t('common.operation')" align="center" width="310" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:user:list'">{{ $t('common.detail') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:user:edit'">{{ $t('common.edit') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="UserFilled" @click="openRoleAuth(row)" v-hasPermi="'system:user:assign-role'">{{ $t('system.user.assignRole') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="Key" @click="openResetPassword(row)" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-button>
+                    <div class="operation-button-group">
+                        <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:user:list'">{{ $t('common.detail') }}</el-button>
+                        <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:user:edit'">{{ $t('common.edit') }}</el-button>
+                        <el-button size="small" type="primary" link :icon="UserFilled" @click="openRoleAuth(row)" v-hasPermi="'system:user:assign-role'">{{ $t('system.user.assignRole') }}</el-button>
+                        <el-button size="small" type="primary" link :icon="Key" @click="openResetPassword(row)" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-button>
+                    </div>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -101,7 +103,7 @@
             <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitResetPassword">{{ $t('common.confirm') }}</el-button><el-button @click="resetDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
 
-        <el-dialog v-model="detailVisible" :title="$t('system.user.userDetail')" width="620px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('system.user.userDetail')" size="md">
             <el-descriptions :column="1" border size="small">
                 <el-descriptions-item :label="$t('system.user.accountId')">{{ activeRow?.accountId ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.userId')">{{ activeRow?.userId ?? '-' }}</el-descriptions-item>
@@ -135,8 +137,7 @@
                 <el-descriptions-item :label="$t('system.user.remark')">{{ activeRow?.remark || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="activeRow?.createdAt" /></el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog v-model="roleAuthVisible" :title="$t('system.user.assignRole')" width="920px" class="role-auth-dialog" append-to-body destroy-on-close>
             <el-alert class="role-auth-alert" :title="$t('system.user.assignRoleLimitTip')" type="info" show-icon :closable="false" />
@@ -166,6 +167,7 @@ import { getDeptTree, type SysDept } from '@/api/system/dept';
 import { getAllPosts, type SysPost } from '@/api/system/post';
 import type { SysRole } from '@/api/system/role';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
@@ -345,6 +347,18 @@ function applyRoleSelection() { const checkedIdSet = new Set(selectedRoleIds.val
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+}
+
+.operation-button-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.operation-button-group :deep(.el-button + .el-button) {
+    margin-left: 0;
 }
 
 .role-auth-alert {

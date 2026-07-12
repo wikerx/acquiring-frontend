@@ -13,12 +13,29 @@ export interface ChannelInfo {
     support3ds: number;
     defaultRequestUrl?: string;
     defaultInteractionMode?: string;
+    connectTimeoutSeconds?: number;
+    readTimeoutSeconds?: number;
     sortOrder?: number;
     remark?: string;
     acquiringPaymentMethods?: string[];
     payoutPaymentMethods?: string[];
+    metadataSchemas?: ChannelMetadataSchema[];
     createTime?: string;
     updateTime?: string;
+}
+
+export interface ChannelMetadataSchema {
+    id?: number;
+    fieldKey: string;
+    fieldLabel: string;
+    fieldType: string;
+    requiredFlag: number;
+    sensitiveFlag: number;
+    validationRegex?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    sortOrder?: number;
+    fieldStatus: number;
 }
 
 export interface ChannelOption {
@@ -70,6 +87,52 @@ export interface ChannelLimitRule {
     updateTime?: string;
 }
 
+export interface ChannelMidConfig {
+    id: number;
+    channelId: number;
+    channelCode: string;
+    channelName: string;
+    channelMid: string;
+    midName: string;
+    terminalId?: string;
+    businessType: string;
+    paymentMethodScope: string;
+    cardBrandScope?: string;
+    transactionTypeScope: string;
+    currencyScope: string;
+    allowedCountryScope: string;
+    defaultSettlementCurrency: string;
+    settlementCycle: string;
+    settlementCutoffTime?: string;
+    settlementTimeZone: string;
+    mcc?: string;
+    statementDescriptor?: string;
+    metadataValueJson?: string;
+    midStatus: number;
+    effectiveTime?: string;
+    expireTime?: string;
+    remark?: string;
+    createTime?: string;
+    updateTime?: string;
+}
+
+export interface MerchantChannelMidBinding {
+    id: number;
+    merchantId: string;
+    channelId: number;
+    channelCode: string;
+    channelName: string;
+    midConfigId: number;
+    channelMid: string;
+    midName: string;
+    bindingStatus: number;
+    effectiveTime?: string;
+    expireTime?: string;
+    remark?: string;
+    createTime?: string;
+    updateTime?: string;
+}
+
 export interface ChannelInfoQuery extends PageQuery {
     keyword?: string;
     channelStatus?: number;
@@ -95,6 +158,22 @@ export interface ChannelLimitQuery extends PageQuery {
     cardBrand?: string;
     limitType?: string;
     ruleStatus?: number;
+}
+
+export interface ChannelMidConfigQuery extends PageQuery {
+    channelId?: number;
+    channelCode?: string;
+    channelMid?: string;
+    businessType?: string;
+    midStatus?: number;
+}
+
+export interface MerchantChannelMidBindingQuery extends PageQuery {
+    merchantId?: string;
+    channelId?: number;
+    channelCode?: string;
+    midConfigId?: number;
+    bindingStatus?: number;
 }
 
 export async function searchChannels(data: ChannelInfoQuery) {
@@ -204,5 +283,65 @@ export async function updateChannelLimitStatus(id: number, status: number) {
 
 export async function deleteChannelLimit(id: number) {
     const result = await http.delete<CommonResult<void>>(`/admin/channel/limits/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function searchChannelMids(data: ChannelMidConfigQuery) {
+    const result = await http.post<CommonResult<PageResult<ChannelMidConfig>>>('/admin/channel/mids/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getChannelMid(id: number) {
+    const result = await http.get<CommonResult<ChannelMidConfig>>(`/admin/channel/mids/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function createChannelMid(data: Partial<ChannelMidConfig>) {
+    const result = await http.post<CommonResult<ChannelMidConfig>>('/admin/channel/mids', data);
+    return unwrapResult(result.data);
+}
+
+export async function updateChannelMid(id: number, data: Partial<ChannelMidConfig>) {
+    const result = await http.put<CommonResult<ChannelMidConfig>>(`/admin/channel/mids/${id}`, data);
+    return unwrapResult(result.data);
+}
+
+export async function updateChannelMidStatus(id: number, status: number) {
+    const result = await http.put<CommonResult<ChannelMidConfig>>(`/admin/channel/mids/${id}/status`, { status });
+    return unwrapResult(result.data);
+}
+
+export async function deleteChannelMid(id: number) {
+    const result = await http.delete<CommonResult<void>>(`/admin/channel/mids/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function searchMerchantChannelMidBindings(data: MerchantChannelMidBindingQuery) {
+    const result = await http.post<CommonResult<PageResult<MerchantChannelMidBinding>>>('/admin/channel/mid-bindings/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getMerchantChannelMidBinding(id: number) {
+    const result = await http.get<CommonResult<MerchantChannelMidBinding>>(`/admin/channel/mid-bindings/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function createMerchantChannelMidBinding(data: Partial<MerchantChannelMidBinding>) {
+    const result = await http.post<CommonResult<MerchantChannelMidBinding>>('/admin/channel/mid-bindings', data);
+    return unwrapResult(result.data);
+}
+
+export async function updateMerchantChannelMidBinding(id: number, data: Partial<MerchantChannelMidBinding>) {
+    const result = await http.put<CommonResult<MerchantChannelMidBinding>>(`/admin/channel/mid-bindings/${id}`, data);
+    return unwrapResult(result.data);
+}
+
+export async function updateMerchantChannelMidBindingStatus(id: number, status: number) {
+    const result = await http.put<CommonResult<MerchantChannelMidBinding>>(`/admin/channel/mid-bindings/${id}/status`, { status });
+    return unwrapResult(result.data);
+}
+
+export async function deleteMerchantChannelMidBinding(id: number) {
+    const result = await http.delete<CommonResult<void>>(`/admin/channel/mid-bindings/${id}`);
     return unwrapResult(result.data);
 }

@@ -1,5 +1,5 @@
 <template>
-    <el-dialog v-model="dialogVisible" :title="title" width="620px" append-to-body destroy-on-close>
+    <CommonDetailDrawer v-model:visible="drawerVisible" :title="title" :size="size">
         <el-descriptions :column="column" border size="small">
             <el-descriptions-item v-for="item in items" :key="item.label" :label="item.label" :span="item.span || 1">
                 <slot :name="'cell-' + item.prop" :item="item" :data="data">
@@ -7,14 +7,12 @@
                 </slot>
             </el-descriptions-item>
         </el-descriptions>
-        <template #footer>
-            <div class="dialog-footer"><el-button @click="dialogVisible = false">{{ $t('common.close') }}</el-button></div>
-        </template>
-    </el-dialog>
+    </CommonDetailDrawer>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 
 const props = defineProps<{
     visible: boolean;
@@ -22,13 +20,14 @@ const props = defineProps<{
     data: Record<string, unknown> | null;
     items: Array<{ prop: string; label: string; span?: number }>;
     column?: number;
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }>();
 
 const emit = defineEmits<{
     'update:visible': [value: boolean];
 }>();
 
-const dialogVisible = computed({
+const drawerVisible = computed({
     get: () => props.visible,
     set: (value: boolean) => emit('update:visible', value),
 });

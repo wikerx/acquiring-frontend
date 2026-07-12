@@ -84,7 +84,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="t('email.account.detailTitle')" v-model="detailVisible" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('email.account.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="t('email.account.accountCode')">{{ detailRow.accountCode }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.account.accountName')">{{ detailRow.accountName }}</el-descriptions-item>
@@ -110,8 +110,7 @@
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog :title="formMode === 'create' ? t('email.account.addTitle') : t('email.account.editTitle')" v-model="formVisible" width="780px" top="5vh" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="126px" size="small">
@@ -192,6 +191,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Delete, Edit, Plus, Promotion, Refresh, Search, Star, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {

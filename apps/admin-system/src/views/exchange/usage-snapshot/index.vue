@@ -47,7 +47,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="$t('exchange.usageSnapshot.detailTitle')" v-model="detailVisible" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('exchange.usageSnapshot.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.rateType')">{{ optionLabel(rateTypeOptions, detailRow.rateType) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.usageScene')">{{ optionLabel(usageSceneOptions, detailRow.usageScene) }}</el-descriptions-item>
@@ -62,8 +62,7 @@
                 <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.calculationDescription')">{{ detailRow.calculationDescription || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
     </div>
 </template>
 
@@ -72,6 +71,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Download, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { exportExchangeUsageSnapshots, getExchangeUsageSnapshot, searchExchangeUsageSnapshots, type ExchangeRateUsageSnapshot } from '@/api/exchange';

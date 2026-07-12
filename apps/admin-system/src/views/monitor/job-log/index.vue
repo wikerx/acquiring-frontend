@@ -92,6 +92,7 @@
             :data="detailData"
             :items="detailItems"
             :column="1"
+            size="lg"
         >
             <template #cell-runStatus="{ data }">
                 <BaseStatusTag :value="statusTagValue(String(data?.runStatus || ''))" :text="formatRunStatus(String(data?.runStatus || ''))" />

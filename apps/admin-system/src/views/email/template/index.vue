@@ -79,7 +79,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="t('email.template.detailTitle')" v-model="detailVisible" width="min(1040px, 92vw)" top="5vh" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('email.template.detailTitle')" size="full">
             <div v-if="detailRow" class="template-detail">
                 <header class="template-detail__header">
                     <div>
@@ -129,8 +129,7 @@
                     <div class="template-detail__remark">{{ detailRow.remark || '-' }}</div>
                 </section>
             </div>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog :title="formMode === 'create' ? t('email.template.addTitle') : t('email.template.editTitle')" v-model="formVisible" width="980px" top="5vh" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="124px" size="small">
@@ -203,6 +202,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Delete, DocumentCopy, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
