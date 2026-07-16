@@ -4,9 +4,10 @@ import { http } from '@/api/http';
 import { downloadBlob } from '@/utils/download';
 
 export interface MerchantInfo {
-    id: number;
+    id: string;
     merchantId: string;
     merchantName: string;
+    billingDescriptor?: string;
     merchantShortName?: string;
     merchantStatus: number;
     merchantCategoryCode: string;
@@ -14,6 +15,8 @@ export interface MerchantInfo {
     regionCode?: string;
     city?: string;
     addressLine?: string;
+    postalCode?: string;
+    contactName?: string;
     contactEmail?: string;
     contactPhone?: string;
     settlementCurrency: string;
@@ -179,7 +182,7 @@ export async function searchMerchants(requestBody: MerchantQuery) {
     return unwrapResult(result.data);
 }
 
-export async function getMerchant(id: number) {
+export async function getMerchant(id: string) {
     const result = await http.get<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`);
     return unwrapResult(result.data);
 }
@@ -189,12 +192,12 @@ export async function createMerchant(requestBody: MerchantSaveRequest) {
     return unwrapResult(result.data);
 }
 
-export async function updateMerchant(id: number, requestBody: MerchantSaveRequest) {
+export async function updateMerchant(id: string, requestBody: MerchantSaveRequest) {
     const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}`, requestBody);
     return unwrapResult(result.data);
 }
 
-export async function changeMerchantStatus(id: number, merchantStatus: number) {
+export async function changeMerchantStatus(id: string, merchantStatus: number) {
     const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/status`, { merchantStatus });
     return unwrapResult(result.data);
 }

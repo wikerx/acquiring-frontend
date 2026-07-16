@@ -127,6 +127,7 @@ export const router = createRouter({
 
 let dynamicRouteSignature = '';
 const dynamicRouteRemovers: Array<() => void> = [];
+const dynamicRouteNames = new Set<string>();
 
 router.beforeEach(async (to) => {
     const user = useUserStore();
@@ -167,7 +168,7 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
         menu.menuType,
         menu.externalLink,
     ]));
-    if (signature === dynamicRouteSignature) {
+    if (signature === dynamicRouteSignature && hasRegisteredDynamicRoutes()) {
         return;
     }
     resetDynamicRoutes();
@@ -196,12 +197,14 @@ export function syncDynamicRoutes(menus: AuthMenu[]) {
                 },
             }),
         );
+        dynamicRouteNames.add(menu.menuCode);
     });
     dynamicRouteSignature = signature;
 }
 
 export function resetDynamicRoutes() {
     dynamicRouteRemovers.splice(0).forEach((removeRoute) => removeRoute());
+    dynamicRouteNames.clear();
     dynamicRouteSignature = '';
 }
 
@@ -272,6 +275,10 @@ function isMissingRoute(routeName: unknown) {
 
 function hasResolvedRoute(fullPath: string) {
     return !isMissingRoute(router.resolve(fullPath).name);
+}
+
+function hasRegisteredDynamicRoutes() {
+    return Array.from(dynamicRouteNames).some((routeName) => router.hasRoute(routeName));
 }
 
 export function isExternalFrameRoute(path?: string) {

@@ -420,7 +420,7 @@ function syncCurrentMerchantOption() {
         return;
     }
     merchantOptions.value = mergeMerchantOptions([{
-        id: 0,
+        id: '0',
         merchantId: form.merchantId,
         merchantName: form.merchantName || form.merchantNo || form.merchantId,
         merchantStatus: 1,

@@ -50,7 +50,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog v-model="detailVisible" :title="t('system.role.detailTitle')" width="760px" append-to-body destroy-on-close>
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('system.role.detailTitle')" size="xl">
             <el-descriptions :column="1" border size="small" class="role-desc">
                 <el-descriptions-item :label="t('system.role.name')">{{ activeRole?.roleName || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('system.role.code')">{{ activeRole?.roleCode || '-' }}</el-descriptions-item>
@@ -61,13 +61,12 @@
                 <el-descriptions-item :label="t('system.role.updatedTime')"><BaseDateTime :value="activeRole?.updatedAt" /></el-descriptions-item>
                 <el-descriptions-item :label="t('system.role.description')">{{ activeRole?.description || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <div v-loading="grantLoading" class="grant-tree-box">
+            <div v-loading="grantLoading" class="grant-tree-box grant-tree-box--detail">
                 <el-tree :data="grantTree" node-key="id" show-checkbox default-expand-all :default-checked-keys="checkedKeys" :props="{ label: 'name', children: 'children' }" disabled>
                     <template #default="{ data }"><GrantTreeNode :node="data" /></template>
                 </el-tree>
             </div>
-            <template #footer><div class="dialog-footer"><el-button @click="detailVisible = false">{{ t('common.close') }}</el-button></div></template>
-        </el-dialog>
+        </CommonDetailDrawer>
 
         <el-dialog v-model="editVisible" :title="form.roleId ? t('system.role.edit') : t('system.role.add')" width="840px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
@@ -170,6 +169,7 @@ import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type Fo
 import { Delete, Edit, Key, Plus, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
@@ -527,6 +527,11 @@ function tagType(value?: string) {
     padding: 10px;
     border: 1px solid var(--el-border-color);
     border-radius: 4px;
+}
+
+.grant-tree-box--detail {
+    min-height: 680px;
+    max-height: none;
 }
 
 .grant-tree-box--form {
