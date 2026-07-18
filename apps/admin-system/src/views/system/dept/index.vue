@@ -1,12 +1,27 @@
 <template>
     <div class="app-container">
+        <el-form ref="queryFormRef" :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
+            <el-form-item :label="$t('system.dept.deptName')" prop="deptName">
+                <el-input v-model.trim="query.deptName" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item :label="$t('common.status')" prop="status">
+                <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
+                    <el-option :label="$t('common.enable')" :value="1" />
+                    <el-option :label="$t('common.disable')" :value="0" />
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" :icon="Search" size="small" @click="handleQuery">{{ $t('common.search') }}</el-button>
+                <el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button>
+            </el-form-item>
+        </el-form>
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd()" v-hasPermi="'system:dept:add'">{{ $t('common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:dept:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="toggleExpandAll">{{ $t('system.menu.expandCollapse') }}</el-button></el-col>
-            <el-col class="right-toolbar"><RightToolbar :show-search="false" @refresh="loadData" /></el-col>
+            <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
-        <StandardTable table-key="system-dept" v-if="refreshTable" v-loading="loading" :data="rows" row-key="id" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
+        <StandardTable table-key="system-dept" v-if="refreshTable" v-loading="loading" :data="filteredRows" row-key="id" :default-expand-all="isExpandAll" :tree-props="{ children: 'children' }" size="small">
             <el-table-column prop="deptName" :label="$t('system.dept.deptName')" min-width="200" :show-overflow-tooltip="true" />
             <el-table-column prop="sortNo" :label="$t('common.sort')" width="70" align="center" />
             <el-table-column prop="leader" :label="$t('system.dept.leader')" min-width="120" align="center" />
@@ -22,6 +37,7 @@
                 </template>
             </el-table-column>
         </StandardTable>
+        <div class="pagination-container pagination-container--summary">{{ $t('system.dept.nodeCount', { count: filteredTotal }) }}</div>
 
         <el-dialog :title="dialogTitle" v-model="open" width="560px" append-to-body destroy-on-close>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="90px" style="padding:0 20px">
@@ -43,7 +59,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Plus, Edit, Delete, Sort, Refresh, Download } from '@element-plus/icons-vue';
+import { Plus, Edit, Delete, Sort, Search, Refresh, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -52,16 +68,22 @@ import { getDeptTree, createDept, updateDept, deleteDept, exportDepts, type SysD
 const { t } = useI18n();
 const loading = ref(false); const rows = ref<SysDept[]>([]); const open = ref(false);
 const formMode = ref<'create' | 'edit'>('create'); const activeRow = ref<SysDept | null>(null);
-const formRef = ref<FormInstance>();
+const formRef = ref<FormInstance>(); const queryFormRef = ref<FormInstance>();
+const showSearch = ref(true);
+const query = reactive<{ deptName: string; status: number | '' }>({ deptName: '', status: '' });
 const isExpandAll = ref(true); const refreshTable = ref(true);
 const dialogTitle = computed(() => formMode.value === 'create' ? t('common.add') : t('common.edit'));
 const form = reactive<SysDept>({ deptName: '', parentId: 0, sortNo: 100, leader: '', phone: '', email: '', status: 1 });
 const rules: FormRules = { deptName: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }] };
 const treeSelectData = computed(() => { const root: SysDept & { children?: SysDept[] } = { deptName: t('system.menu.rootDir'), id: 0, children: rows.value }; return [root]; });
+const filteredRows = computed(() => filterDeptTree(rows.value));
+const filteredTotal = computed(() => countDeptNodes(filteredRows.value));
 
 onMounted(() => loadData());
 
 async function loadData() { loading.value = true; try { rows.value = await getDeptTree(); } catch { rows.value = []; } finally { loading.value = false; } }
+function handleQuery() { refreshTable.value = false; nextTick(() => { refreshTable.value = true; }); }
+function resetQuery() { query.deptName = ''; query.status = ''; queryFormRef.value?.resetFields(); handleQuery(); }
 function toggleExpandAll() { refreshTable.value = false; isExpandAll.value = !isExpandAll.value; nextTick(() => { refreshTable.value = true; }); }
 
 function handleAdd(row?: SysDept) { formMode.value = 'create'; activeRow.value = null; Object.assign(form, { id: undefined, parentId: row ? row.id : 0, deptName: '', sortNo: 100, leader: '', phone: '', email: '', status: 1 }); open.value = true; nextTick(() => formRef.value?.clearValidate()); }
@@ -74,5 +96,26 @@ async function handleExport() {
         await exportDepts();
         ElMessage.success(t('common.export'));
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); }
+}
+
+function filterDeptTree(items: SysDept[]): SysDept[] {
+    const deptName = query.deptName.trim().toLowerCase();
+    const hasStatus = query.status !== '';
+    if (!deptName && !hasStatus) {
+        return items;
+    }
+    return items.reduce<SysDept[]>((result, item) => {
+        const children = filterDeptTree(item.children || []);
+        const nameMatched = !deptName || item.deptName.toLowerCase().includes(deptName);
+        const statusMatched = !hasStatus || item.status === query.status;
+        if ((nameMatched && statusMatched) || children.length) {
+            result.push({ ...item, children });
+        }
+        return result;
+    }, []);
+}
+
+function countDeptNodes(items: SysDept[]): number {
+    return items.reduce((count, item) => count + 1 + countDeptNodes(item.children || []), 0);
 }
 </script>

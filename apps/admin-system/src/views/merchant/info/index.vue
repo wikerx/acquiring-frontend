@@ -78,73 +78,116 @@
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
     </div>
 
-    <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('merchant.info.detailTitle')" size="lg">
-      <el-descriptions v-if="detailMerchant" :column="1" border size="small">
-        <el-descriptions-item :label="$t('merchant.info.merchantId')">{{ detailMerchant.merchantId }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.merchantName')">{{ detailMerchant.merchantName }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.shortName')">{{ detailMerchant.merchantShortName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="MCC">{{ detailMerchant.merchantCategoryCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.countryCode')">{{ detailMerchant.countryCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.settlementCurrency')">{{ detailMerchant.settlementCurrency || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.timezone')">{{ detailMerchant.timezone || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('common.status')">
-          <el-tag size="small" :type="statusType(detailMerchant.merchantStatus)">{{ statusText(detailMerchant.merchantStatus) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.riskLevel')">
-          <el-tag size="small" :type="riskType(detailMerchant.riskLevel)">{{ riskText(detailMerchant.riskLevel) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.contactEmail')">{{ detailMerchant.contactEmail || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.contactPhone')">{{ detailMerchant.contactPhone || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.regionCode')">{{ detailMerchant.regionCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.city')">{{ detailMerchant.city || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailMerchant.gmtCreate" /></el-descriptions-item>
-        <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailMerchant.gmtModified" /></el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.info.address')">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
-      </el-descriptions>
+    <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('merchant.info.detailTitle')" size="xl">
+      <div v-if="detailMerchant" class="merchant-detail">
+        <section class="merchant-detail__hero">
+          <div>
+            <span>{{ detailMerchant.merchantId || '-' }}</span>
+            <h3>{{ detailMerchant.merchantName || '-' }}</h3>
+            <p>{{ detailMerchant.merchantShortName || '-' }}</p>
+          </div>
+          <div class="merchant-detail__tags">
+            <el-tag size="small" :type="statusType(detailMerchant.merchantStatus)">{{ statusText(detailMerchant.merchantStatus) }}</el-tag>
+            <el-tag size="small" :type="riskType(detailMerchant.riskLevel)">{{ riskText(detailMerchant.riskLevel) }}</el-tag>
+          </div>
+        </section>
+
+        <section class="merchant-detail__section">
+          <h4>{{ $t('merchant.info.basicInfo') }}</h4>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item :label="$t('merchant.info.billingDescriptor')">{{ detailMerchant.billingDescriptor || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="MCC">{{ detailMerchant.merchantCategoryCode || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.countryCode')">{{ detailMerchant.countryCode || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.settlementCurrency')">{{ detailMerchant.settlementCurrency || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.timezone')">{{ detailMerchant.timezone || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailMerchant.gmtCreate" /></el-descriptions-item>
+            <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailMerchant.gmtModified" /></el-descriptions-item>
+          </el-descriptions>
+        </section>
+
+        <section class="merchant-detail__section">
+          <h4>{{ $t('merchant.info.contactInfo') }}</h4>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item :label="$t('merchant.info.contactName')">{{ detailMerchant.contactName || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.contactEmail')">{{ detailMerchant.contactEmail || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.contactPhone')">{{ detailMerchant.contactPhone || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.regionCode')">{{ detailMerchant.regionCode || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.city')">{{ detailMerchant.city || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.postalCode')">{{ detailMerchant.postalCode || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.address')" :span="2">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </section>
+      </div>
     </CommonDetailDrawer>
 
-    <el-dialog :title="formMode === 'add' ? $t('merchant.info.addTitle') : $t('merchant.info.editTitle')" v-model="formVisible" width="640px" append-to-body destroy-on-close>
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="112px" size="small">
-        <el-form-item v-if="formMode === 'edit'" :label="$t('merchant.info.merchantId')" prop="merchantId"><el-input v-model="form.merchantId" disabled maxlength="32" /></el-form-item>
-        <el-form-item v-else :label="$t('merchant.info.merchantId')"><el-input :model-value="$t('merchant.info.autoGenerateMerchantId')" disabled /></el-form-item>
-        <el-form-item :label="$t('merchant.info.merchantName')" prop="merchantName"><el-input v-model.trim="form.merchantName" maxlength="128" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.shortName')" prop="merchantShortName"><el-input v-model.trim="form.merchantShortName" maxlength="64" /></el-form-item>
-        <el-form-item label="MCC" prop="merchantCategoryCode">
-          <el-cascader
-            v-model="selectedMccPath"
-            :options="localizedMccOptions"
-            :props="mccCascaderProps"
-            :show-all-levels="false"
-            :placeholder="$t('common.pleaseSelect')"
-            :loading="formOptionsLoading"
-            filterable
-            clearable
-            style="width:100%"
-            @change="handleMccChange"
-          />
-        </el-form-item>
-        <el-form-item :label="$t('merchant.info.countryCode')" prop="countryCode">
-          <el-select v-model="form.countryCode" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
-            <el-option v-for="item in formOptions.countries" :key="item.value" :label="countryOptionLabel(item)" :value="item.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('merchant.info.settlementCurrency')" prop="settlementCurrency">
-          <el-select v-model="form.settlementCurrency" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
-            <el-option v-for="item in formOptions.currencies" :key="item.value" :label="currencyOptionLabel(item)" :value="item.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('merchant.info.timezone')" prop="timezone">
-          <el-select v-model="form.timezone" filterable clearable style="width:100%" :placeholder="$t('common.pleaseSelect')">
-            <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('common.status')" prop="merchantStatus"><el-select v-model="form.merchantStatus" style="width:100%"><el-option :label="$t('merchant.info.statusNormal')" :value="1" /><el-option :label="$t('merchant.info.statusFrozen')" :value="2" /><el-option :label="$t('merchant.info.statusClosed')" :value="3" /></el-select></el-form-item>
-        <el-form-item :label="$t('merchant.info.riskLevel')"><el-select v-model="form.riskLevel" style="width:100%"><el-option :label="$t('merchant.info.riskLow')" :value="1" /><el-option :label="$t('merchant.info.riskNormal')" :value="2" /><el-option :label="$t('merchant.info.riskHigh')" :value="3" /></el-select></el-form-item>
-        <el-form-item :label="$t('merchant.info.regionCode')"><el-input v-model="form.regionCode" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.contactEmail')" prop="contactEmail"><el-input v-model.trim="form.contactEmail" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.contactPhone')"><el-input v-model="form.contactPhone" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.city')"><el-input v-model="form.city" /></el-form-item>
-        <el-form-item :label="$t('merchant.info.address')"><el-input v-model="form.addressLine" type="textarea" :rows="2" /></el-form-item>
+    <el-drawer :title="formMode === 'add' ? $t('merchant.info.addTitle') : $t('merchant.info.editTitle')" v-model="formVisible" size="min(1040px, 94vw)" append-to-body destroy-on-close class="merchant-form-drawer">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="112px" size="small" class="merchant-form">
+        <section class="merchant-form__section">
+          <div class="merchant-form__section-title">{{ $t('merchant.info.basicInfo') }}</div>
+          <div class="merchant-form__grid">
+            <el-form-item v-if="formMode === 'edit'" :label="$t('merchant.info.merchantId')" prop="merchantId"><el-input v-model="form.merchantId" disabled maxlength="32" /></el-form-item>
+            <el-form-item v-else :label="$t('merchant.info.merchantId')"><el-input :model-value="$t('merchant.info.autoGenerateMerchantId')" disabled /></el-form-item>
+            <el-form-item :label="$t('merchant.info.merchantName')" prop="merchantName"><el-input v-model.trim="form.merchantName" maxlength="128" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.billingDescriptor')" prop="billingDescriptor"><el-input v-model.trim="form.billingDescriptor" maxlength="64" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.shortName')" prop="merchantShortName"><el-input v-model.trim="form.merchantShortName" maxlength="64" /></el-form-item>
+            <el-form-item label="MCC" prop="merchantCategoryCode">
+              <el-cascader
+                v-model="selectedMccPath"
+                :options="localizedMccOptions"
+                :props="mccCascaderProps"
+                :show-all-levels="false"
+                :placeholder="$t('common.pleaseSelect')"
+                :loading="formOptionsLoading"
+                filterable
+                clearable
+                style="width:100%"
+                @change="handleMccChange"
+              />
+            </el-form-item>
+            <el-form-item :label="$t('merchant.info.countryCode')" prop="countryCode">
+              <el-select v-model="form.countryCode" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
+                <el-option v-for="item in formOptions.countries" :key="item.value" :label="countryOptionLabel(item)" :value="item.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('merchant.info.settlementCurrency')" prop="settlementCurrency">
+              <el-select v-model="form.settlementCurrency" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
+                <el-option v-for="item in formOptions.currencies" :key="item.value" :label="currencyOptionLabel(item)" :value="item.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('merchant.info.timezone')" prop="timezone">
+              <el-select v-model="form.timezone" filterable clearable style="width:100%" :placeholder="$t('common.pleaseSelect')">
+                <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('common.status')" prop="merchantStatus">
+              <el-select v-model="form.merchantStatus" style="width:100%">
+                <el-option :label="$t('merchant.info.statusNormal')" :value="1" />
+                <el-option :label="$t('merchant.info.statusFrozen')" :value="2" />
+                <el-option :label="$t('merchant.info.statusClosed')" :value="3" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('merchant.info.riskLevel')">
+              <el-select v-model="form.riskLevel" style="width:100%">
+                <el-option :label="$t('merchant.info.riskLow')" :value="1" />
+                <el-option :label="$t('merchant.info.riskNormal')" :value="2" />
+                <el-option :label="$t('merchant.info.riskHigh')" :value="3" />
+              </el-select>
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="merchant-form__section">
+          <div class="merchant-form__section-title">{{ $t('merchant.info.contactInfo') }}</div>
+          <div class="merchant-form__grid">
+            <el-form-item :label="$t('merchant.info.regionCode')"><el-input v-model="form.regionCode" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.city')"><el-input v-model="form.city" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.postalCode')"><el-input v-model.trim="form.postalCode" maxlength="32" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.contactName')"><el-input v-model.trim="form.contactName" maxlength="64" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.contactEmail')" prop="contactEmail"><el-input v-model.trim="form.contactEmail" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.contactPhone')"><el-input v-model="form.contactPhone" /></el-form-item>
+            <el-form-item :label="$t('merchant.info.address')" class="merchant-form__full"><el-input v-model="form.addressLine" type="textarea" :rows="3" /></el-form-item>
+          </div>
+        </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -152,9 +195,9 @@
           <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
 
-    <el-drawer v-model="materialVisible" :title="$t('merchant.info.materialTitle')" size="760px" append-to-body>
+    <CommonDetailDrawer v-model:visible="materialVisible" :title="$t('merchant.info.materialTitle')" size="xl">
       <template v-if="currentMerchant">
         <el-alert class="mb16" type="warning" :closable="false" :title="$t('merchant.info.secretWarning')" />
         <el-descriptions :column="1" border size="small" class="mb16">
@@ -318,7 +361,7 @@
           </div>
         </div>
       </template>
-    </el-drawer>
+    </CommonDetailDrawer>
 
     <el-drawer v-model="keysVisible" :title="$t('merchant.info.keyManageTitle')" size="860px" append-to-body>
       <template v-if="keyBundle">
@@ -407,16 +450,16 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="viewedMaterialVisible" :title="viewedMaterial.name" width="760px" append-to-body destroy-on-close>
+    <CommonDetailDrawer v-model:visible="viewedMaterialVisible" :title="viewedMaterial.name" size="lg">
       <el-alert class="mb16" type="warning" :closable="false" :title="$t('merchant.info.viewedMaterialHint')" />
-      <el-input :model-value="viewedMaterial.content" type="textarea" :autosize="{ minRows: 8, maxRows: 18 }" readonly />
+      <el-input class="viewed-material-input" :model-value="viewedMaterial.content" type="textarea" :autosize="{ minRows: 12, maxRows: 28 }" readonly />
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="copyViewedMaterial">{{ $t('merchant.info.copy') }}</el-button>
           <el-button @click="viewedMaterialVisible = false">{{ $t('common.cancel') }}</el-button>
         </div>
       </template>
-    </el-dialog>
+    </CommonDetailDrawer>
   </div>
 </template>
 
@@ -434,6 +477,7 @@ import {
   createMerchant,
   copyOpenApiKeyMaterial,
   downloadOpenApiKeyMaterial,
+  getMerchant,
   getMerchantFormOptions,
   getMerchantKeys,
   getOpenApiKeyMaterialSummary,
@@ -482,6 +526,7 @@ const query = reactive<{ keyword: string; merchantStatus?: number; countryCode: 
 const emptyForm = (): MerchantSaveRequest => ({
   merchantId: '',
   merchantName: '',
+  billingDescriptor: '',
   merchantShortName: '',
   merchantStatus: 1,
   merchantCategoryCode: '',
@@ -489,6 +534,8 @@ const emptyForm = (): MerchantSaveRequest => ({
   regionCode: '',
   city: '',
   addressLine: '',
+  postalCode: '',
+  contactName: '',
   contactEmail: '',
   contactPhone: '',
   settlementCurrency: 'USD',
@@ -498,8 +545,20 @@ const emptyForm = (): MerchantSaveRequest => ({
 const form = reactive<MerchantSaveRequest>(emptyForm());
 const formRef = ref<FormInstance>();
 const requiredRule = (messageKey: string) => [{ required: true, message: () => t(messageKey), trigger: 'blur' }];
+const printableEnglishRule = (messageKey: string) => ({
+  pattern: /^[\x20-\x7E]+$/,
+  message: () => t(messageKey),
+  trigger: 'blur',
+});
 const formRules = computed<FormRules>(() => ({
-  merchantName: requiredRule('merchant.info.requiredMerchantName'),
+  merchantName: [
+    ...requiredRule('merchant.info.requiredMerchantName'),
+    printableEnglishRule('merchant.info.invalidMerchantName'),
+  ],
+  billingDescriptor: [
+    ...requiredRule('merchant.info.requiredBillingDescriptor'),
+    printableEnglishRule('merchant.info.invalidBillingDescriptor'),
+  ],
   merchantShortName: requiredRule('merchant.info.requiredShortName'),
   merchantCategoryCode: requiredRule('merchant.info.requiredMcc'),
   countryCode: [{ required: true, message: () => t('merchant.info.requiredCountryCode'), trigger: 'change' }],
@@ -513,7 +572,7 @@ const formRules = computed<FormRules>(() => ({
 }));
 const formVisible = ref(false);
 const formMode = ref<'add' | 'edit'>('add');
-const editingId = ref<number>();
+const editingId = ref<string>();
 const detailVisible = ref(false);
 const detailMerchant = ref<MerchantInfo>();
 const materialVisible = ref(false);
@@ -565,11 +624,32 @@ function resetQuery() { query.keyword = ''; query.merchantStatus = undefined; qu
 async function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
   await loadFormOptions();
   formMode.value = mode;
-  editingId.value = row?.id;
-  Object.assign(form, emptyForm(), row || {});
+  const formData = await loadFormData(mode, row);
+  if (!formData) return;
+  editingId.value = mode === 'edit' ? formData.id : undefined;
+  Object.assign(form, emptyForm(), formData);
+  if (!form.billingDescriptor && form.merchantName) {
+    form.billingDescriptor = form.merchantName;
+  }
   selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
   formVisible.value = true;
   formRef.value?.clearValidate();
+}
+
+async function loadFormData(mode: 'add' | 'edit', row?: MerchantInfo): Promise<Partial<MerchantInfo> | undefined> {
+  if (mode === 'add') {
+    return {};
+  }
+  if (!row?.id) {
+    ElMessage.error(t('merchant.info.missingMerchantId'));
+    return undefined;
+  }
+  try {
+    return await getMerchant(row.id);
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.loadFailed'));
+    return undefined;
+  }
 }
 function openDetail(row: MerchantInfo) {
   detailMerchant.value = row;
@@ -695,6 +775,10 @@ async function submitForm() {
     if (!valid) return;
     if (formMode.value === 'add') await createMerchant(form);
     else if (editingId.value) await updateMerchant(editingId.value, form);
+    else {
+      ElMessage.error(t('merchant.info.missingMerchantId'));
+      return;
+    }
     ElMessage.success(t('common.saveSuccess'));
     formVisible.value = false;
     loadData();
@@ -977,6 +1061,102 @@ function businessTypeText(type?: number) {
   text-overflow: ellipsis;
 }
 
+.merchant-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.merchant-detail__hero {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fafc, #eef6ff);
+}
+
+.merchant-detail__hero span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.merchant-detail__hero h3 {
+  margin: 6px 0 4px;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.merchant-detail__hero p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.merchant-detail__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.merchant-detail__section {
+  display: grid;
+  gap: 10px;
+}
+
+.merchant-detail__section h4 {
+  margin: 0;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.merchant-form-drawer :deep(.el-drawer__body) {
+  overflow: auto;
+  padding: 20px 28px 12px;
+}
+
+.merchant-form-drawer :deep(.el-drawer__footer) {
+  padding: 12px 28px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.merchant-form {
+  display: grid;
+  gap: 18px;
+}
+
+.merchant-form__section {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.merchant-form__section-title {
+  margin-bottom: 14px;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.merchant-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  column-gap: 18px;
+}
+
+.merchant-form__full {
+  grid-column: 1 / -1;
+}
+
+.merchant-form :deep(.el-form-item) {
+  min-width: 0;
+}
 
 .material-actions {
   display: grid;
@@ -991,6 +1171,10 @@ function businessTypeText(type?: number) {
 }
 
 @media (max-width: 720px) {
+  .merchant-form__grid {
+    grid-template-columns: 1fr;
+  }
+
   .material-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1080,5 +1264,10 @@ function businessTypeText(type?: number) {
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+}
+
+.viewed-material-input :deep(.el-textarea__inner) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  line-height: 1.6;
 }
 </style>

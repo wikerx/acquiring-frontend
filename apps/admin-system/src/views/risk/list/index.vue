@@ -471,9 +471,9 @@
           <el-col :span="12">
             <el-form-item :label="t('risk.common.validity')" prop="validityType">
               <el-radio-group v-model="form.validityType">
-                <el-radio-button label="SUPER_LONG">{{ t('risk.common.superLong') }}</el-radio-button>
-                <el-radio-button label="LONG">{{ t('risk.common.longTerm') }}</el-radio-button>
-                <el-radio-button label="LIMITED">{{ t('risk.common.limited') }}</el-radio-button>
+                <el-radio-button value="SUPER_LONG">{{ t('risk.common.superLong') }}</el-radio-button>
+                <el-radio-button value="LONG">{{ t('risk.common.longTerm') }}</el-radio-button>
+                <el-radio-button value="LIMITED">{{ t('risk.common.limited') }}</el-radio-button>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -1133,7 +1133,7 @@ function syncCurrentMerchantOption() {
   }
   const exists = merchantOptions.value.some((item) => item.merchantId === form.merchantId);
   if (!exists) {
-    merchantOptions.value = [{ id: 0, merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+    merchantOptions.value = [{ id: '0', merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
   }
 }
 
@@ -1144,7 +1144,7 @@ function syncCurrentTargetMerchantOption() {
   const merchantId = String(form.matchValuePlain);
   const exists = merchantOptions.value.some((item) => item.merchantId === merchantId);
   if (!exists) {
-    merchantOptions.value = [{ id: 0, merchantId, merchantName: '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+    merchantOptions.value = [{ id: '0', merchantId, merchantName: '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
   }
 }
 

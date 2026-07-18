@@ -6,13 +6,12 @@
         append-to-body
         destroy-on-close
         :close-on-click-modal="closeOnClickModal"
-        :close-on-press-escape="closeOnPressEscape"
-        class="common-detail-drawer"
+        class="merchant-detail-drawer"
     >
         <template v-if="$slots.header" #header>
             <slot name="header" />
         </template>
-        <div v-loading="loading" class="common-detail-drawer__body">
+        <div v-loading="loading" class="merchant-detail-drawer__body">
             <slot />
         </div>
         <template #footer>
@@ -35,13 +34,11 @@ const props = withDefaults(defineProps<{
     loading?: boolean;
     closeText?: string;
     closeOnClickModal?: boolean;
-    closeOnPressEscape?: boolean;
 }>(), {
     size: 'md',
     loading: false,
     closeText: '',
-    closeOnClickModal: true,
-    closeOnPressEscape: true,
+    closeOnClickModal: false,
 });
 
 const emit = defineEmits<{
@@ -66,35 +63,37 @@ const drawerSize = computed(() => {
 </script>
 
 <style scoped>
-.common-detail-drawer :deep(.el-drawer__header) {
-    min-height: 56px;
+.merchant-detail-drawer :deep(.el-drawer__header) {
+    min-height: 58px;
     margin-bottom: 0;
     padding: 18px 24px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    border-bottom: 1px solid rgba(20, 184, 166, .16);
 }
 
-.common-detail-drawer :deep(.el-drawer__title) {
-    color: var(--el-text-color-primary);
+.merchant-detail-drawer :deep(.el-drawer__title) {
+    color: #0f172a;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 650;
 }
 
-.common-detail-drawer :deep(.el-drawer__body) {
+.merchant-detail-drawer :deep(.el-drawer__body) {
     overflow: auto;
     padding: 20px 24px;
+    background: linear-gradient(180deg, rgba(240, 253, 250, .55), #fff 180px);
 }
 
-.common-detail-drawer :deep(.el-drawer__footer) {
+.merchant-detail-drawer :deep(.el-drawer__footer) {
     padding: 12px 24px 18px;
     border-top: 1px solid var(--el-border-color-lighter);
+    background: #fff;
 }
 
-.common-detail-drawer__body {
+.merchant-detail-drawer__body {
     min-height: 120px;
 }
 
 @media (max-width: 768px) {
-    .common-detail-drawer :deep(.el-drawer) {
+    .merchant-detail-drawer :deep(.el-drawer) {
         width: 100vw !important;
     }
 }

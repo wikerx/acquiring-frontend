@@ -8,6 +8,14 @@
     --app-primary: #2563eb;
     --app-primary-dark: #1d4ed8;
     --app-primary-light: #eff6ff;
+    --admin-panel-bg: #ffffff;
+    --admin-panel-border: #dbe3ef;
+    --admin-panel-border-soft: #e8eef7;
+    --admin-panel-header-bg: #f8fafc;
+    --admin-panel-muted-bg: #fbfdff;
+    --admin-panel-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
+    --admin-panel-radius: 6px;
+    --admin-control-height: 28px;
     --app-sidebar-width: 216px;
     --app-sidebar-collapsed-width: 54px;
     --nav-bg: #ffffff;
@@ -1031,67 +1039,98 @@ textarea {
     flex-shrink: 0;
 }
 
-/* ===== App Container (RuoYi page wrapper) ===== */
+/* ===== App Container ===== */
 .app-container {
-    padding: 10px;
-    background: #fff;
+    min-height: 100%;
+    padding: 12px;
+    background: #f6f8fb;
 }
 
-/* ===== Search Form (RuoYi inline style) ===== */
+/* ===== Search Form ===== */
 .search-form {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    min-height: 32px;
-    margin-bottom: 6px;
-    padding: 0;
-    background: transparent;
+    align-items: flex-start;
+    gap: 8px 12px;
+    min-height: 42px;
+    margin-bottom: 10px;
+    border: 1px solid var(--admin-panel-border);
+    border-radius: var(--admin-panel-radius);
+    padding: 12px 12px 4px;
+    background: var(--admin-panel-bg);
+    box-shadow: var(--admin-panel-shadow);
 }
 
 .search-form .el-form-item {
-    margin-right: 10px;
+    margin-right: 0;
     margin-bottom: 8px;
 }
 
 .search-form .el-form-item .el-input,
 .search-form .el-form-item .el-select,
 .search-form .el-form-item .el-date-editor {
-    width: 205px;
+    width: 200px;
 }
 
 .search-form .el-form-item__label {
-    height: 28px;
-    line-height: 28px;
+    height: var(--admin-control-height);
+    line-height: var(--admin-control-height);
     padding-right: 8px;
-    font-weight: normal;
-    color: #606266;
+    color: #566173;
+    font-weight: 500;
 }
 
 .search-form .el-input__inner,
 .search-form .el-select__placeholder,
 .search-form .el-select__selected-item {
     font-size: 12px;
-    color: #606266;
+    color: #475569;
 }
 
 .search-form .el-input__wrapper,
 .search-form .el-select__wrapper {
-    min-height: 28px;
+    min-height: var(--admin-control-height);
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px var(--admin-panel-border) inset;
+    transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.search-form .el-input__wrapper:hover,
+.search-form .el-select__wrapper:hover {
+    box-shadow: 0 0 0 1px #c8d5e7 inset;
+}
+
+.search-form .el-input__wrapper.is-focus,
+.search-form .el-select__wrapper.is-focused {
+    box-shadow: 0 0 0 1px var(--app-primary) inset, 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
 .search-form .el-button {
     min-width: 60px;
+    border-radius: 4px;
 }
 
-/* ===== Toolbar (RuoYi row/col style) ===== */
+.search-form:not(.transaction-search) .el-form-item:last-child {
+    margin-left: auto;
+}
+
+/* ===== Toolbar ===== */
 .mb8,
 .toolbar-row {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .mb8.el-row {
     align-items: center;
-    min-height: 28px;
+    width: 100%;
+    min-height: 34px;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    border: 1px solid var(--admin-panel-border);
+    border-radius: var(--admin-panel-radius) var(--admin-panel-radius) 0 0;
+    padding: 7px 10px;
+    background: linear-gradient(180deg, var(--admin-panel-bg) 0%, var(--admin-panel-muted-bg) 100%);
+    box-shadow: var(--admin-panel-shadow);
 }
 
 .mb8 .el-col {
@@ -1117,45 +1156,88 @@ textarea {
 .top-right-btn,
 .right-toolbar {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 6px;
     margin-left: auto;
 }
 
-/* ===== Table (RuoYi clean style) ===== */
+.standard-right-toolbar .el-button.is-circle {
+    width: 26px;
+    height: 26px;
+    border-color: var(--admin-panel-border);
+    color: #64748b;
+    background: #ffffff;
+}
+
+.standard-right-toolbar .el-button.is-circle:hover,
+.standard-right-toolbar .el-button.is-circle:focus-visible {
+    border-color: #bfdbfe;
+    color: var(--app-primary);
+    background: var(--app-primary-light);
+}
+
+/* ===== Table ===== */
+.standard-table-wrapper {
+    border: 1px solid var(--admin-panel-border);
+    border-radius: var(--admin-panel-radius);
+    background: var(--admin-panel-bg);
+    box-shadow: var(--admin-panel-shadow);
+    overflow: hidden;
+}
+
+.mb8.el-row + .standard-table-wrapper {
+    margin-top: -1px;
+    border-top: 0;
+    border-radius: 0 0 var(--admin-panel-radius) var(--admin-panel-radius);
+}
+
+.transaction-page .transaction-table-toolbar.el-row {
+    margin-bottom: 0;
+    padding: 7px 8px;
+    border-color: var(--admin-panel-border);
+    border-radius: var(--admin-panel-radius) var(--admin-panel-radius) 0 0;
+}
+
+.transaction-page .transaction-table-toolbar.el-row + .standard-table-wrapper {
+    margin-top: -1px;
+    border-top: 0;
+    border-radius: 0 0 var(--admin-panel-radius) var(--admin-panel-radius);
+}
+
 .el-table {
     font-size: 12px;
-    color: #606266;
-    border-top: 1px solid #ebeef5;
-    --el-table-border-color: #ebeef5;
-    --el-table-header-bg-color: #f8f8f9;
+    color: #475569;
+    border-top: 0;
+    --el-table-border-color: var(--admin-panel-border-soft);
+    --el-table-header-bg-color: var(--admin-panel-header-bg);
 }
 
 .el-table .el-table__header-wrapper th,
 .el-table .el-table__fixed-header-wrapper th {
     word-break: break-word;
-    background-color: #f8f8f9;
-    color: #515a6e;
-    height: 34px;
+    background-color: var(--admin-panel-header-bg);
+    color: #364152;
+    height: 36px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     text-align: center;
 }
 
 .el-table td.el-table__cell,
 .el-table th.el-table__cell {
-    padding: 5px 0;
+    padding: 6px 0;
 }
 
 .el-table .cell {
     padding-left: 10px;
     padding-right: 10px;
     line-height: 20px;
-    color: #606266;
+    color: #475569;
 }
 
 .el-table .el-table__body td.el-table__cell {
-    color: #606266;
+    color: #475569;
     font-size: 12px;
     font-weight: 400;
 }
@@ -1163,7 +1245,7 @@ textarea {
 /* Compact table: even tighter rows */
 .el-table--small td.el-table__cell,
 .el-table--small th.el-table__cell {
-    padding: 4px 0;
+    padding: 5px 0;
 }
 
 .el-table .el-table__body-wrapper .el-button [class*="el-icon-"] + span {
@@ -1202,18 +1284,30 @@ textarea {
 
 /* Striped row */
 .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-    background: #fafafa;
+    background: #fbfcfe;
 }
 
-/* ===== Pagination (RuoYi style) ===== */
+.el-table .el-table__body tr:nth-child(even) td.el-table__cell {
+    background: #fbfcfe;
+}
+
+.el-table .el-table__body tr:hover > td.el-table__cell {
+    background: #f3f7ff;
+}
+
+/* ===== Pagination ===== */
 .pagination-container {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-height: 42px;
+    min-height: 40px;
     margin-top: 8px;
-    padding: 4px 0 0;
-    color: #606266;
+    border: 1px solid var(--admin-panel-border);
+    border-radius: var(--admin-panel-radius);
+    padding: 5px 10px;
+    color: #475569;
+    background: var(--admin-panel-bg);
+    box-shadow: var(--admin-panel-shadow);
 }
 
 .pagination-container .el-pagination {
@@ -1224,7 +1318,7 @@ textarea {
 
 .pagination-container .el-pagination.is-background .el-pager li {
     min-width: 28px;
-    border-radius: 2px;
+    border-radius: 4px;
 }
 
 /* ===== Dialog (RuoYi style) ===== */

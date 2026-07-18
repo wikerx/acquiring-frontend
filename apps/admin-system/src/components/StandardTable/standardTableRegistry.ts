@@ -1,4 +1,5 @@
 import { computed, ref, shallowReactive, type ComputedRef, type Ref } from 'vue';
+import { i18n } from '@/i18n';
 import { useTableColumnPreference } from './useTableColumnPreference';
 import type { StandardTableColumn, StandardTableColumnState } from './types';
 
@@ -96,11 +97,34 @@ function columnPreferredWidth(item: ColumnLayoutItem) {
 }
 
 function columnKey(column: ElementTableColumn, index = 0) {
+    if (!column.property && column.type) {
+        return `__${column.type}_column__-${index}`;
+    }
     return column.property || `${columnLabel(column)}-${index}`;
 }
 
 function columnLabel(column: ElementTableColumn) {
-    return column.label || column.property || column.id;
+    if (column.label) {
+        return column.label;
+    }
+    if (column.property) {
+        return column.property;
+    }
+    if (column.type === 'selection') {
+        return translateTableLabel('selectionColumn', 'Selection');
+    }
+    if (column.type === 'index') {
+        return translateTableLabel('indexColumn', 'Index');
+    }
+    if (column.type === 'expand') {
+        return translateTableLabel('expandColumn', 'Expand');
+    }
+    return column.id;
+}
+
+function translateTableLabel(key: string, fallback: string) {
+    const fullKey = `table.${key}`;
+    return i18n.global.te(fullKey) ? String(i18n.global.t(fullKey)) : fallback;
 }
 
 function isTimeColumn(column: ElementTableColumn, label = columnLabel(column)) {
