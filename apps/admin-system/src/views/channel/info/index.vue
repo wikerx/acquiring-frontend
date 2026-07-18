@@ -282,14 +282,16 @@ const formOverlayProps = computed(() => (
     formMode.value === 'edit'
         ? {
             appendToBody: true,
-            closeOnClickModal: false,
+            closeOnClickModal: true,
+            closeOnPressEscape: true,
             destroyOnClose: true,
             direction: 'rtl',
             size: 'min(1320px, 92vw)',
         }
         : {
             appendToBody: true,
-            closeOnClickModal: false,
+            closeOnClickModal: true,
+            closeOnPressEscape: true,
             destroyOnClose: true,
             width: 'min(1320px, calc(100vw - 40px))',
         }

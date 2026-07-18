@@ -90,6 +90,14 @@
 
         <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
 
+        <el-row class="mb8 transaction-table-toolbar">
+            <el-col :span="1.5">
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'transaction:operation:export'">
+                    {{ t('common.export') }}
+                </el-button>
+            </el-col>
+        </el-row>
+
         <StandardTable table-key="transaction-operation" v-loading="loading" :data="rows" row-key="transactionId" size="small" class="transaction-page__table">
             <el-table-column :label="t('transaction.fields.transactionId')" min-width="214" fixed="left" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">
@@ -298,12 +306,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { View } from '@element-plus/icons-vue';
+import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
+    exportTransactionOperations,
     getTransactionOperationDetail,
     refundTransactionOperation,
     searchTransactionOperationsWithSummary,
@@ -312,6 +321,7 @@ import {
     type TransactionDetail,
     type TransactionOperation,
     type TransactionOperationSummary,
+    type TransactionPageQuery,
     type TransactionPaymentMethodSummary,
 } from '@/api/transaction';
 import type { ChannelOption } from '@/api/channel';
@@ -348,6 +358,7 @@ import {
 const { t, locale } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const refundVisible = ref(false);
@@ -422,35 +433,77 @@ const successRateText = computed(() => {
     return `${((summary.value.successCount / summary.value.totalCount) * 100).toFixed(2)}%`;
 });
 
+const failedRateText = computed(() => {
+    if (!summary.value.totalCount) {
+        return '0.00%';
+    }
+    return `${((summary.value.failedCount / summary.value.totalCount) * 100).toFixed(2)}%`;
+});
+
+function rateTone(rate: number) {
+    if (rate < 60) {
+        return 'danger' as const;
+    }
+    if (rate < 70) {
+        return 'warning' as const;
+    }
+    if (rate < 80) {
+        return 'primary' as const;
+    }
+    return 'success' as const;
+}
+
+const successRateTone = computed(() => {
+    if (!summary.value.totalCount) {
+        return 'danger' as const;
+    }
+    return rateTone((summary.value.successCount / summary.value.totalCount) * 100);
+});
+
+const failedRateTone = computed(() => {
+    if (!summary.value.totalCount) {
+        return 'danger' as const;
+    }
+    return rateTone((summary.value.failedCount / summary.value.totalCount) * 100);
+});
+
 const summaryItems = computed(() => [
     {
         key: 'total',
         label: t('transaction.summary.total'),
-        value: total.value.toLocaleString(),
-        description: t('transaction.summary.matched', { count: total.value }),
+        value: t('transaction.summary.countUnit', { count: total.value.toLocaleString() }),
+        description: '',
         details: amountSummaryDetails(summary.value.amountSummaries),
     },
     {
         key: 'success',
         label: t('transaction.summary.success'),
-        value: summary.value.successCount.toLocaleString(),
-        description: t('transaction.summary.successRate', { rate: successRateText.value }),
+        value: t('transaction.summary.countUnit', { count: summary.value.successCount.toLocaleString() }),
+        description: '',
         tone: 'success' as const,
+        badge: {
+            text: `${t('transaction.summary.ratio')} ${successRateText.value}`,
+            tone: successRateTone.value,
+        },
         details: amountSummaryDetails(summary.value.successAmountSummaries),
     },
     {
         key: 'failed',
         label: t('transaction.summary.failed'),
-        value: summary.value.failedCount.toLocaleString(),
-        description: t('transaction.summary.matchedFailed'),
+        value: t('transaction.summary.countUnit', { count: summary.value.failedCount.toLocaleString() }),
+        description: '',
         tone: 'danger' as const,
+        badge: {
+            text: `${t('transaction.summary.ratio')} ${failedRateText.value}`,
+            tone: failedRateTone.value,
+        },
         details: amountSummaryDetails(summary.value.failedAmountSummaries),
     },
     {
         key: 'paymentMethod',
         label: t('transaction.summary.paymentMethod'),
         value: '',
-        description: t('transaction.summary.matchedPaymentMethod'),
+        description: '',
         tone: 'balance' as const,
         details: paymentMethodSummaryDetails(),
     },
@@ -502,36 +555,49 @@ async function loadDictionaries() {
 async function loadData() {
     loading.value = true;
     try {
-        const range = splitDateRange(dateRange.value);
-        const result = await searchTransactionOperationsWithSummary({
-            pageNo: page.value,
-            pageSize: pageSize.value,
-            merchantId: query.merchantId || undefined,
-            merchantOrderNo: query.merchantOrderNo || undefined,
-            transactionId: query.transactionId || undefined,
-            transactionType: query.transactionType || undefined,
-            transactionStatus: query.transactionStatus || undefined,
-            channelCode: query.channelCode || undefined,
-            paymentMethod: query.paymentMethod || undefined,
-            paymentBrand: query.paymentBrand || undefined,
-            cardBin: query.cardBin || undefined,
-            channelOrderNo: query.channelOrderNo || undefined,
-            merchantResponseCode: query.merchantResponseCode || undefined,
-            channelResponseCode: query.channelResponseCode || undefined,
-            authCode: query.authCode || undefined,
-            acquirerReferenceNo: query.acquirerReferenceNo || undefined,
-            channelMatchStatus: query.channelMatchStatus || undefined,
-            reconciliationStatus: query.reconciliationStatus || undefined,
-            settlementStatus: query.settlementStatus || undefined,
-            queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-            ...range,
-        });
+        const result = await searchTransactionOperationsWithSummary(buildQuery(page.value, pageSize.value));
         rows.value = result.page.records;
         total.value = result.page.total;
         operationSummary.value = result.summary || emptySummary();
     } finally {
         loading.value = false;
     }
+}
+
+async function handleExport() {
+    exporting.value = true;
+    try {
+        await exportTransactionOperations(buildQuery());
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
+    const range = splitDateRange(dateRange.value);
+    return {
+        pageNo,
+        pageSize: currentPageSize,
+        merchantId: query.merchantId || undefined,
+        merchantOrderNo: query.merchantOrderNo || undefined,
+        transactionId: query.transactionId || undefined,
+        transactionType: query.transactionType || undefined,
+        transactionStatus: query.transactionStatus || undefined,
+        channelCode: query.channelCode || undefined,
+        paymentMethod: query.paymentMethod || undefined,
+        paymentBrand: query.paymentBrand || undefined,
+        cardBin: query.cardBin || undefined,
+        channelOrderNo: query.channelOrderNo || undefined,
+        merchantResponseCode: query.merchantResponseCode || undefined,
+        channelResponseCode: query.channelResponseCode || undefined,
+        authCode: query.authCode || undefined,
+        acquirerReferenceNo: query.acquirerReferenceNo || undefined,
+        channelMatchStatus: query.channelMatchStatus || undefined,
+        reconciliationStatus: query.reconciliationStatus || undefined,
+        settlementStatus: query.settlementStatus || undefined,
+        queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+        ...range,
+    };
 }
 
 function handleSearch() {
@@ -606,17 +672,33 @@ function amountSummaryDetails(amountSummaries: TransactionAmountSummary[]) {
         key: item.currency || '-',
         value: amountSummaryText(item),
         description: '',
+        amountMeta: {
+            currency: item.currency || '-',
+            amountText: amountText(item.amount ?? 0, item.currencyExponent),
+        },
     }));
 }
 
 function paymentMethodSummaryDetails() {
-    const details = summary.value.paymentMethodSummaries.slice(0, 4).map((item) => ({
-        key: paymentSummaryKey(item),
-        label: paymentSummaryLabel(item),
-        value: `${t('transaction.summary.countUnit', { count: item.count })}  ${amountSummaryInlineText(item.amountSummaries)}`,
-        description: '',
-        logoKeys: transactionPaymentLogoKeys(item.paymentMethod, item.paymentBrand),
-    }));
+    const details = summary.value.paymentMethodSummaries.slice(0, 2).map((item) => {
+        const logoKeys = transactionPaymentLogoKeys(item.paymentMethod, item.paymentBrand);
+        const primaryAmount = item.amountSummaries[0];
+        return {
+            key: paymentSummaryKey(item),
+            label: '',
+            value: `${item.count}笔 ${amountSummaryInlineText(item.amountSummaries)}`,
+            description: `${paymentSummaryLabel(item)} ${t('transaction.summary.countUnit', { count: item.count })} ${amountSummaryInlineText(item.amountSummaries)}`,
+            logoKeys,
+            logoPlaceholder: !logoKeys.length,
+            amountMeta: primaryAmount
+                ? {
+                    countText: t('transaction.summary.countUnit', { count: item.count }),
+                    currency: primaryAmount.currency || '-',
+                    amountText: amountText(primaryAmount.amount ?? 0, primaryAmount.currencyExponent),
+                }
+                : undefined,
+        };
+    });
     if (!details.length) {
         return [];
     }
@@ -633,6 +715,11 @@ function amountSummaryInlineText(amountSummaries: TransactionAmountSummary[]) {
 
 function amountSummaryText(item: TransactionAmountSummary) {
     return moneyText(item.amount ?? 0, item.currency || '-', item.currencyExponent);
+}
+
+function amountText(amount?: number | string | null, currencyExponent?: number | null) {
+    const text = moneyText(amount ?? 0, undefined, currencyExponent);
+    return text || '-';
 }
 
 function paymentSummaryKey(item: TransactionPaymentMethodSummary) {

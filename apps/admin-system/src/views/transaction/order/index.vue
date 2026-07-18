@@ -36,6 +36,14 @@
 
         <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
 
+        <el-row class="mb8 transaction-table-toolbar">
+            <el-col :span="1.5">
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'transaction:order:export'">
+                    {{ t('common.export') }}
+                </el-button>
+            </el-col>
+        </el-row>
+
         <StandardTable table-key="transaction-order" v-loading="loading" :data="rows" row-key="operationId" size="small" class="transaction-page__table">
             <el-table-column :label="t('transaction.fields.rootTransactionId')" min-width="220" fixed="left" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">
@@ -131,11 +139,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { View } from '@element-plus/icons-vue';
+import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { getTransactionOrderDetail, searchTransactionOrders, type TransactionDetail, type TransactionOrder } from '@/api/transaction';
+import { exportTransactionOrders, getTransactionOrderDetail, searchTransactionOrders, type TransactionDetail, type TransactionOrder, type TransactionPageQuery } from '@/api/transaction';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
@@ -165,6 +173,7 @@ import {
 const { t, locale } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const merchantVisible = ref(false);
@@ -255,22 +264,35 @@ async function loadDictionaries() {
 async function loadData() {
     loading.value = true;
     try {
-        const range = splitDateRange(dateRange.value);
-        const result = await searchTransactionOrders({
-            pageNo: page.value,
-            pageSize: pageSize.value,
-            merchantId: query.merchantId || undefined,
-            merchantOrderNo: query.merchantOrderNo || undefined,
-            transactionId: query.transactionId || undefined,
-            transactionStatus: query.transactionStatus || undefined,
-            queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-            ...range,
-        });
+        const result = await searchTransactionOrders(buildQuery(page.value, pageSize.value));
         rows.value = result.records;
         total.value = result.total;
     } finally {
         loading.value = false;
     }
+}
+
+async function handleExport() {
+    exporting.value = true;
+    try {
+        await exportTransactionOrders(buildQuery());
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
+    const range = splitDateRange(dateRange.value);
+    return {
+        pageNo,
+        pageSize: currentPageSize,
+        merchantId: query.merchantId || undefined,
+        merchantOrderNo: query.merchantOrderNo || undefined,
+        transactionId: query.transactionId || undefined,
+        transactionStatus: query.transactionStatus || undefined,
+        queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+        ...range,
+    };
 }
 
 function handleSearch() {

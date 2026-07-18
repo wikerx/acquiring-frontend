@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import { downloadExcel } from '@/utils/download';
 
 export interface TransactionPageQuery extends PageQuery {
     merchantId?: string;
@@ -217,9 +218,17 @@ export async function searchTransactionOrders(data: TransactionPageQuery) {
     return unwrapResult(result.data);
 }
 
+export async function exportTransactionOrders(data: TransactionPageQuery) {
+    await downloadExcel('/admin/transactions/orders/export', { data });
+}
+
 export async function searchTransactionOperations(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<PageResult<TransactionOperation>>>('/admin/transactions/operations/search', data);
     return unwrapResult(result.data);
+}
+
+export async function exportTransactionOperations(data: TransactionPageQuery) {
+    await downloadExcel('/admin/transactions/operations/export', { data });
 }
 
 export async function searchTransactionOperationsWithSummary(data: TransactionPageQuery) {
@@ -260,4 +269,8 @@ export async function searchTransactionChannelCallbacks(data: ChannelCallbackQue
 export async function searchMerchantNotifications(data: MerchantNotificationQuery) {
     const result = await http.post<CommonResult<PageResult<TransactionRecord>>>('/admin/transactions/merchant-notifications/search', data);
     return unwrapResult(result.data);
+}
+
+export async function exportMerchantNotifications(data: MerchantNotificationQuery) {
+    await downloadExcel('/admin/transactions/merchant-notifications/export', { data });
 }

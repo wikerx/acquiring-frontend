@@ -30,6 +30,14 @@
             @refresh="loadData"
         />
 
+        <el-row class="mb8 transaction-table-toolbar">
+            <el-col :span="1.5">
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'transaction:merchant-notification:export'">
+                    {{ t('common.export') }}
+                </el-button>
+            </el-col>
+        </el-row>
+
         <StandardTable table-key="transaction-merchant-notification" v-loading="loading" :data="rows" row-key="notifyId" size="small" class="transaction-page__table">
             <el-table-column :label="t('transaction.fields.notifyId')" min-width="210" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">
@@ -77,13 +85,13 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { View } from '@element-plus/icons-vue';
+import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
-import { searchMerchantNotifications, type TransactionRecord } from '@/api/transaction';
+import { exportMerchantNotifications, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionRecordList from '../components/TransactionRecordList.vue';
@@ -95,6 +103,7 @@ import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensu
 const { t, locale } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<TransactionRecord[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -118,20 +127,33 @@ async function loadTimezones() {
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchMerchantNotifications({
-            pageNo: page.value,
-            pageSize: pageSize.value,
-            merchantId: query.merchantId || undefined,
-            transactionId: query.transactionId || undefined,
-            notifyStatus: query.notifyStatus || undefined,
-            queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-            ...splitDateRange(dateRange.value),
-        });
+        const result = await searchMerchantNotifications(buildQuery(page.value, pageSize.value));
         rows.value = result.records;
         total.value = result.total;
     } finally {
         loading.value = false;
     }
+}
+
+async function handleExport() {
+    exporting.value = true;
+    try {
+        await exportMerchantNotifications(buildQuery());
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function buildQuery(pageNo?: number, currentPageSize?: number): MerchantNotificationQuery {
+    return {
+        pageNo,
+        pageSize: currentPageSize,
+        merchantId: query.merchantId || undefined,
+        transactionId: query.transactionId || undefined,
+        notifyStatus: query.notifyStatus || undefined,
+        queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+        ...splitDateRange(dateRange.value),
+    };
 }
 
 function handleSearch() {
