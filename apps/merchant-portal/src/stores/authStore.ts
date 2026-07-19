@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia';
 import type { AuthLoginResponse, AuthSession } from '@acquiring/shared';
+import {
+    confirmMfaBind,
+    getMfaBindInfo,
+    verifyMfa,
+} from '@/api/authApi';
 
 const STORAGE_KEY = 'acquiring_merchant_session';
 
@@ -22,18 +27,37 @@ export const useAuthStore = defineStore('merchantAuth', {
     }),
     actions: {
         setLoginResponse(response: AuthLoginResponse) {
-            if (!response.accessToken) {
+            if (!response.accessToken || !response.account) {
                 return;
             }
             this.session = {
                 token: response.accessToken,
                 account: response.account,
-                menus: response.menus,
-                roles: response.roles,
-                permissions: response.permissions,
+                menus: response.menus || [],
+                roles: response.roles || [],
+                permissions: response.permissions || [],
             };
             this.hydrated = true;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
+        },
+        setFinalLoginResponse(response: AuthLoginResponse) {
+            if (!response.accessToken || !response.account) {
+                throw new Error('MFA verification did not return a login session');
+            }
+            this.setLoginResponse(response);
+        },
+        async getMfaBindInfo(loginTicket: string) {
+            return getMfaBindInfo(loginTicket);
+        },
+        async confirmMfaBind(loginTicket: string, totpCode: string) {
+            const response = await confirmMfaBind({ loginTicket, totpCode });
+            this.setFinalLoginResponse(response);
+            return response;
+        },
+        async verifyMfa(loginTicket: string, totpCode: string) {
+            const response = await verifyMfa({ loginTicket, totpCode });
+            this.setFinalLoginResponse(response);
+            return response;
         },
         setCurrentUserResponse(response: AuthLoginResponse) {
             if (!this.session) {
@@ -44,9 +68,10 @@ export const useAuthStore = defineStore('merchantAuth', {
                 this.clearSession();
                 return;
             }
+            const account = response.account || this.session.account;
             this.session = {
                 token,
-                account: response.account,
+                account,
                 menus: response.menus || [],
                 roles: response.roles || [],
                 permissions: response.permissions || [],

@@ -25,44 +25,50 @@
         </section>
 
         <section class="dashboard-page__upper">
-            <DashboardQuickAccess
-                :title="$t('dashboard.quickAccessTitle')"
-                :description="$t('dashboard.quickAccessDescription')"
-                :items="quickAccessItems"
-                @navigate="navigate"
-            />
-            <DashboardTrendChart
-                :title="$t('dashboard.trendTitle')"
-                :description="$t('dashboard.trendDescription')"
-                :login-label="$t('dashboard.loginTrend')"
-                :oper-label="$t('dashboard.operTrend')"
-                :empty-text="$t('common.noData')"
-                :active-metric="activeMetric"
-                :points="trendPoints"
-                @metric-change="activeMetric = $event"
-            />
+            <div class="dashboard-page__access-stack">
+                <DashboardQuickAccess
+                    variant="security"
+                    :title="$t('dashboard.securityFocusTitle')"
+                    :description="$t('dashboard.securityFocusDescription')"
+                    :items="securityAccessItems"
+                    @navigate="navigate"
+                />
+                <DashboardQuickAccess
+                    :title="$t('dashboard.quickAccessTitle')"
+                    :description="$t('dashboard.quickAccessDescription')"
+                    :items="quickAccessItems"
+                    @navigate="navigate"
+                />
+                <DashboardActivityFeed
+                    :title="$t('dashboard.activityTitle')"
+                    :description="$t('dashboard.activityDescription')"
+                    :login-more-text="$t('dashboard.loginAudit')"
+                    :operation-more-text="$t('dashboard.operationAuditEntry')"
+                    :empty-text="$t('common.noData')"
+                    :items="activityItems"
+                    @more-login="navigate('/system/log?tab=login')"
+                    @more-operation="navigate('/system/log?tab=oper')"
+                />
+            </div>
+            <aside class="dashboard-page__side-stack">
+                <DashboardTrendChart
+                    :title="$t('dashboard.trendTitle')"
+                    :description="$t('dashboard.trendDescription')"
+                    :login-label="$t('dashboard.loginTrend')"
+                    :oper-label="$t('dashboard.operTrend')"
+                    :empty-text="$t('common.noData')"
+                    :active-metric="activeMetric"
+                    :points="trendPoints"
+                    @metric-change="activeMetric = $event"
+                />
+                <DashboardMonitorEntry
+                    :title="$t('dashboard.systemHealthTitle')"
+                    :description="$t('dashboard.systemHealthDescription')"
+                    :items="monitorEntries"
+                    @navigate="navigate"
+                />
+            </aside>
         </section>
-
-        <section class="dashboard-page__lower">
-            <DashboardRecentLogin
-                :title="$t('dashboard.recentLoginTitle')"
-                :description="$t('dashboard.recentLoginDescription')"
-                :more-text="$t('dashboard.viewMore')"
-                :empty-text="$t('common.noData')"
-                :rows="recentLoginRows"
-                @more="navigate('/system/log?tab=login')"
-            />
-            <DashboardRecentOperation
-                :title="$t('dashboard.recentOperationTitle')"
-                :description="$t('dashboard.recentOperationDescription')"
-                :more-text="$t('dashboard.viewMore')"
-                :empty-text="$t('common.noData')"
-                :rows="recentOperationRows"
-                @more="navigate('/system/log?tab=oper')"
-            />
-        </section>
-
-        <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
 
         <CommonDetailDrawer v-model:visible="noticeDetailVisible" :title="$t('system.notice.detailTitle')" size="full">
             <article v-if="activeNotice" class="dashboard-notice-detail">
@@ -89,10 +95,13 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     Bell,
+    CircleCheckFilled,
+    CircleCloseFilled,
     DataBoard,
     DataLine,
     DocumentChecked,
     Grid,
+    Key,
     Location,
     Lock,
     Monitor,
@@ -100,6 +109,7 @@ import {
     SetUp,
     Shop,
     User,
+    WarnTriangleFilled,
 } from '@element-plus/icons-vue';
 import type { SysLoginLog } from '@/api/audit/login-log';
 import { searchLoginLogs } from '@/api/audit/login-log';
@@ -117,12 +127,12 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useUserStore } from '@/store/modules/user';
 import { formatDateTime } from '@/utils/format';
+import DashboardActivityFeed from './components/DashboardActivityFeed.vue';
+import type { DashboardActivityItem } from './components/DashboardActivityFeed.vue';
 import DashboardMetricCard from './components/DashboardMetricCard.vue';
 import DashboardMonitorEntry from './components/DashboardMonitorEntry.vue';
 import DashboardQuickAccess from './components/DashboardQuickAccess.vue';
-import DashboardRecentLogin from './components/DashboardRecentLogin.vue';
 import type { RecentOperationRow } from './components/DashboardRecentOperation.vue';
-import DashboardRecentOperation from './components/DashboardRecentOperation.vue';
 import DashboardTrendChart from './components/DashboardTrendChart.vue';
 import DashboardWelcome from './components/DashboardWelcome.vue';
 import type { DashboardNoticeItem } from './components/DashboardWelcome.vue';
@@ -147,6 +157,7 @@ interface QuickAccessItem {
     description: string;
     path: string;
     permission?: string;
+    requirePermission?: boolean;
     icon: Component;
     iconBackground: string;
     iconColor: string;
@@ -157,6 +168,8 @@ interface MonitorEntryItem {
     description: string;
     summary: string;
     path: string;
+    permission?: string;
+    requirePermission?: boolean;
     icon: Component;
     iconBackground: string;
     iconColor: string;
@@ -200,6 +213,34 @@ const dashboardNotices = computed<DashboardNoticeItem[]>(() => latestNotices.val
     typeText: noticeTypeText(notice.noticeType),
     createdAtText: formatDateTime(notice.createdAt),
 })));
+
+const activityItems = computed<DashboardActivityItem[]>(() => {
+    const loginItems = recentLoginRows.value.map((row) => ({
+        id: `login-${row.id}`,
+        title: row.loginStatus === 1 ? t('dashboard.activityLoginSuccess') : t('dashboard.activityLoginFailed'),
+        description: row.failReason || t('dashboard.activityLoginDescription', { account: row.loginAccount || '-' }),
+        actor: row.loginAccount || '-',
+        source: row.loginIp || '-',
+        statusText: row.loginStatus === 1 ? t('status.success') : t('status.failed'),
+        time: row.loginAt,
+        tone: row.loginStatus === 1 ? 'success' as const : 'danger' as const,
+        icon: row.loginStatus === 1 ? CircleCheckFilled : CircleCloseFilled,
+    }));
+    const operationItems = recentOperationRows.value.map((row) => ({
+        id: `operation-${row.id}`,
+        title: row.moduleName || t('dashboard.operationUnknown'),
+        description: `${row.operatorName || '-'} · ${row.businessTypeText}`,
+        actor: row.operatorName || '-',
+        source: t('dashboard.activityOperationSource'),
+        statusText: row.status === 1 ? t('status.success') : t('status.failed'),
+        time: row.operatedAt,
+        tone: row.status === 1 ? operationTone(row.businessTypeText) : 'danger' as const,
+        icon: row.status === 1 ? DocumentChecked : WarnTriangleFilled,
+    }));
+    return [...loginItems, ...operationItems]
+        .sort((left, right) => timestamp(right.time) - timestamp(left.time))
+        .slice(0, 5);
+});
 
 const metricCards = computed<MetricCardItem[]>(() => [
     {
@@ -249,13 +290,22 @@ const quickAccessItems = computed(() => {
         createQuickAccess('merchant', '/merchant/info', 'merchant:info:list', Shop, 'rgba(37, 99, 235, 0.12)', '#2563eb', t('dashboard.merchantInfo'), t('dashboard.merchantInfoDesc')),
         createQuickAccess('user', '/system/user', 'system:user:list', User, 'rgba(14, 165, 164, 0.12)', '#0f766e', t('dashboard.userManagement'), t('dashboard.userManagementDesc')),
         createQuickAccess('role', '/system/role', 'system:role:list', Lock, 'rgba(245, 158, 11, 0.12)', '#d97706', t('dashboard.roleManagement'), t('dashboard.roleManagementDesc')),
+        createQuickAccess('sharding', '/monitor/sharding/rules', 'monitor:sharding:rule:list', DataBoard, 'rgba(236, 72, 153, 0.12)', '#db2777', t('dashboard.shardingManagement'), t('dashboard.shardingManagementDesc')),
         createQuickAccess('country', '/base/country', 'base:country:list', Location, 'rgba(16, 185, 129, 0.12)', '#059669', t('dashboard.country'), t('dashboard.countryDesc')),
         createQuickAccess('dict', '/system/dict', 'system:dict:list', Grid, 'rgba(99, 102, 241, 0.12)', '#4f46e5', t('dashboard.dictManagement'), t('dashboard.dictManagementDesc')),
         createQuickAccess('config', '/system/config', 'system:config:query', SetUp, 'rgba(148, 163, 184, 0.16)', '#475569', t('dashboard.configManagement'), t('dashboard.configManagementDesc')),
-        createQuickAccess('log', '/system/log', 'system:login-log:list', DocumentChecked, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.logManagement'), t('dashboard.logManagementDesc')),
-        createQuickAccess('sharding', '/monitor/sharding/rules', 'monitor:sharding:rule:list', DataBoard, 'rgba(236, 72, 153, 0.12)', '#db2777', t('dashboard.shardingManagement'), t('dashboard.shardingManagementDesc')),
     ];
-    return items.filter((item) => hasMenuAccess(item.path, item.permission)).slice(0, 8);
+    return items.filter(canShowQuickAccess).slice(0, 8);
+});
+
+const securityAccessItems = computed(() => {
+    const items: QuickAccessItem[] = [
+        createQuickAccess('mfaSecurity', '/system/user', 'sys:user:mfa:view', Key, 'rgba(15, 23, 42, 0.08)', '#0f172a', t('dashboard.mfaSecurity'), t('dashboard.mfaSecurityDesc'), true),
+        createQuickAccess('securityIntercept', '/security/intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
+        createQuickAccess('loginAudit', '/system/log?tab=login', 'system:login-log:list', Monitor, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.loginAudit'), t('dashboard.loginAuditDesc')),
+        createQuickAccess('operationAudit', '/system/log?tab=oper', 'system:oper-log:list', DocumentChecked, 'rgba(124, 58, 237, 0.1)', '#7c3aed', t('dashboard.operationAuditEntry'), t('dashboard.operationAuditEntryDesc')),
+    ];
+    return items.filter(canShowQuickAccess);
 });
 
 const monitorEntries = computed<MonitorEntryItem[]>(() => {
@@ -270,6 +320,27 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             iconColor: '#d97706',
         },
         {
+            title: t('dashboard.securityIntercept'),
+            description: t('dashboard.securityInterceptMonitorDesc'),
+            summary: t('dashboard.securityInterceptSummary'),
+            path: '/security/intercept-event',
+            permission: 'security:intercept-event:list',
+            icon: WarnTriangleFilled,
+            iconBackground: 'rgba(220, 38, 38, 0.1)',
+            iconColor: '#dc2626',
+        },
+        {
+            title: t('dashboard.mfaProtection'),
+            description: t('dashboard.mfaProtectionDesc'),
+            summary: t('dashboard.mfaProtectionSummary'),
+            path: '/system/user',
+            permission: 'sys:user:mfa:view',
+            requirePermission: true,
+            icon: Key,
+            iconBackground: 'rgba(15, 23, 42, 0.08)',
+            iconColor: '#0f172a',
+        },
+        {
             title: t('dashboard.resourceMonitor'),
             description: t('dashboard.resourceMonitorDesc'),
             summary: resourceHealthy.value ? t('dashboard.resourceHealthy') : t('dashboard.resourceWarning'),
@@ -279,7 +350,7 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             iconColor: '#2563eb',
         },
     ];
-    return items.filter((item) => hasMenuAccess(item.path));
+    return items.filter(canShowMonitorEntry);
 });
 
 onMounted(() => {
@@ -402,8 +473,9 @@ function createQuickAccess(
     iconColor: string,
     title: string,
     description: string,
+    requirePermission = false,
 ): QuickAccessItem {
-    return { key, path, permission, icon, iconBackground, iconColor, title, description };
+    return { key, path, permission, requirePermission, icon, iconBackground, iconColor, title, description };
 }
 
 function resolveBusinessTypeText(row: SysOperLog) {
@@ -420,6 +492,17 @@ function resolveBusinessTypeText(row: SysOperLog) {
     return row.businessType ? (mapping[row.businessType] || t('dashboard.operationUnknown')) : t('dashboard.operationUnknown');
 }
 
+function operationTone(text: string) {
+    if ([t('dashboard.operationDelete'), t('dashboard.operationFreeze'), t('dashboard.operationAudit')].includes(text)) {
+        return 'warning' as const;
+    }
+    return 'info' as const;
+}
+
+function timestamp(value?: string) {
+    return value ? new Date(value).getTime() || 0 : 0;
+}
+
 function hasMenuAccess(path: string, permission?: string) {
     const pathMatched = findMenuPath(permissionStore.menus, path);
     if (pathMatched) {
@@ -429,6 +512,20 @@ function hasMenuAccess(path: string, permission?: string) {
         return userStore.hasPermission(permission);
     }
     return false;
+}
+
+function canShowQuickAccess(item: QuickAccessItem) {
+    if (item.requirePermission && item.permission) {
+        return userStore.hasPermission(item.permission);
+    }
+    return hasMenuAccess(item.path, item.permission);
+}
+
+function canShowMonitorEntry(item: MonitorEntryItem) {
+    if (item.requirePermission && item.permission) {
+        return userStore.hasPermission(item.permission);
+    }
+    return hasMenuAccess(item.path, item.permission);
 }
 
 function findMenuPath(items: Array<{ path?: string; children?: Array<{ path?: string; children?: unknown[] }> }>, path: string): boolean {
@@ -449,7 +546,7 @@ function navigate(path: string) {
 .dashboard-page {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
     padding-bottom: 24px;
 }
 
@@ -459,11 +556,24 @@ function navigate(path: string) {
     gap: 16px;
 }
 
-.dashboard-page__upper,
-.dashboard-page__lower {
+.dashboard-page__upper {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 20px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+    gap: 16px;
+}
+
+.dashboard-page__access-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.dashboard-page__side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
 }
 
 .dashboard-notice-detail {
@@ -517,8 +627,7 @@ function navigate(path: string) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .dashboard-page__upper,
-    .dashboard-page__lower {
+    .dashboard-page__upper {
         grid-template-columns: 1fr;
     }
 }

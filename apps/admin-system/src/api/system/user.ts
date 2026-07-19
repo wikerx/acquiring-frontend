@@ -22,6 +22,12 @@ export interface SysUserAccount {
     locked?: number;
     lastLoginAt?: string;
     lastLoginIp?: string;
+    mfaPolicy?: string;
+    mfaStatus?: string;
+    mfaBindTime?: string;
+    mfaLastVerifyTime?: string;
+    mfaExemptUntil?: string;
+    mfaLockedUntil?: string;
     remark?: string;
     createdAt?: string;
 }
@@ -76,6 +82,52 @@ export interface SysUserRoleAuth {
 export interface SysUserRoleGrantRequest {
     accountId: number;
     roleIds: number[];
+}
+
+export interface SysUserMfaActionRequest {
+    accountId: number;
+    reason: string;
+}
+
+export interface SysUserMfaExemptRequest extends SysUserMfaActionRequest {
+    exemptUntil?: string;
+}
+
+export interface SysUserMfaStatusResponse {
+    accountId: number;
+    loginAccount: string;
+    mfaPolicy: string;
+    mfaStatus: string;
+    bindTime?: string;
+    lastVerifyTime?: string;
+    lockedUntil?: string;
+    exemptUntil?: string;
+}
+
+export interface SysUserMfaLogQuery extends PageQuery {
+    accountId?: number;
+    loginAccount?: string;
+    actionType?: string;
+    result?: string;
+    queryTimeZone?: string;
+    beginTime?: string;
+    endTime?: string;
+}
+
+export interface SysUserMfaLog {
+    id: number;
+    accountId: number;
+    loginAccount?: string;
+    actionType?: string;
+    result?: string;
+    reason?: string;
+    beforePolicy?: string;
+    beforeStatus?: string;
+    afterPolicy?: string;
+    afterStatus?: string;
+    operatorLoginAccount?: string;
+    clientIp?: string;
+    eventTime?: string;
 }
 
 export async function searchUsers(requestBody: SysUserAccountQuery) {
@@ -147,4 +199,60 @@ export async function exportUsers(requestBody: SysUserAccountQuery) {
         method: 'post',
         data: requestBody,
     });
+}
+
+export async function requireUserMfa(requestBody: SysUserMfaActionRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/require',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function resetUserMfa(requestBody: SysUserMfaActionRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/reset',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function exemptUserMfa(requestBody: SysUserMfaExemptRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/exempt',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function disableUserMfa(requestBody: SysUserMfaActionRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/disable',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function unlockUserMfa(requestBody: SysUserMfaActionRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/unlock',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function resendUserMfaBindMail(requestBody: SysUserMfaActionRequest) {
+    const result = await http.post<CommonResult<SysUserMfaStatusResponse>>(
+        '/admin/system/users/mfa/resend-bind-mail',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchUserMfaLogs(requestBody: SysUserMfaLogQuery) {
+    const result = await http.post<CommonResult<PageResult<SysUserMfaLog>>>(
+        '/admin/system/users/mfa/logs/search',
+        requestBody,
+    );
+    return unwrapResult(result.data);
 }

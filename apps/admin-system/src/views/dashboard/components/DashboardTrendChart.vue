@@ -11,6 +11,20 @@
             </el-radio-group>
         </header>
         <div v-if="points.length" class="dashboard-trend">
+            <div class="dashboard-trend__summary">
+                <div>
+                    <strong>{{ currentTotal }}</strong>
+                    <span>{{ activeMetric === 'login' ? loginLabel : operLabel }}</span>
+                </div>
+                <div>
+                    <strong>{{ currentAverage }}</strong>
+                    <span>{{ $t('dashboard.trendDailyAverage') }}</span>
+                </div>
+                <div>
+                    <strong>{{ peakValue }}</strong>
+                    <span>{{ $t('dashboard.trendPeakValue') }}</span>
+                </div>
+            </div>
             <div class="dashboard-trend__legend">
                 <span class="dashboard-trend__legend-dot" :class="`dashboard-trend__legend-dot--${activeMetric}`" />
                 <strong>{{ activeMetric === 'login' ? loginLabel : operLabel }}</strong>
@@ -71,6 +85,11 @@ const bars = computed(() => {
     });
 });
 
+const currentValues = computed(() => props.points.map((point) => props.activeMetric === 'login' ? point.loginCount : point.operCount));
+const currentTotal = computed(() => currentValues.value.reduce((sum, value) => sum + value, 0));
+const currentAverage = computed(() => Math.round(currentTotal.value / Math.max(currentValues.value.length, 1)));
+const peakValue = computed(() => Math.max(...currentValues.value, 0));
+
 function onMetricChange(value: string | number | boolean) {
     if (value === 'login' || value === 'oper') {
         emit('metricChange', value);
@@ -80,14 +99,14 @@ function onMetricChange(value: string | number | boolean) {
 
 <style scoped>
 .dashboard-panel {
-    border: 1px solid #e7edf4;
-    border-radius: 18px;
+    border: 1px solid #dfe8f4;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
 }
 
 .dashboard-panel__header {
-    padding: 22px 24px 0;
+    padding: 18px 20px 0;
 }
 
 .dashboard-panel__header--with-actions {
@@ -111,14 +130,50 @@ function onMetricChange(value: string | number | boolean) {
 }
 
 .dashboard-trend {
-    padding: 18px 24px 24px;
+    padding: 14px 20px 18px;
+}
+
+.dashboard-trend__summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 14px;
+    border: 1px solid #edf2f7;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+.dashboard-trend__summary div {
+    min-width: 0;
+    padding: 12px 14px;
+}
+
+.dashboard-trend__summary div + div {
+    border-left: 1px solid #e2e8f0;
+}
+
+.dashboard-trend__summary strong {
+    display: block;
+    color: #0f172a;
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 760;
+}
+
+.dashboard-trend__summary span {
+    display: block;
+    margin-top: 7px;
+    overflow: hidden;
+    color: #64748b;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .dashboard-trend__legend {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     color: #334155;
     font-size: 13px;
 }
@@ -142,7 +197,7 @@ function onMetricChange(value: string | number | boolean) {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 14px;
     align-items: end;
-    min-height: 280px;
+    min-height: 176px;
 }
 
 .dashboard-trend__bar-item {
@@ -158,9 +213,9 @@ function onMetricChange(value: string | number | boolean) {
     align-items: flex-end;
     justify-content: center;
     width: 100%;
-    height: 220px;
+    height: 130px;
     padding: 12px 0;
-    border-radius: 14px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);
 }
 
@@ -191,6 +246,15 @@ function onMetricChange(value: string | number | boolean) {
 
     .dashboard-trend__chart {
         gap: 8px;
+    }
+
+    .dashboard-trend__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-trend__summary div + div {
+        border-top: 1px solid #e2e8f0;
+        border-left: 0;
     }
 
     .dashboard-trend__bar {

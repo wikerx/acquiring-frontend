@@ -51,7 +51,7 @@ defineEmits<{ more: [] }>();
 <style scoped>
 .dashboard-panel {
     border: 1px solid #e7edf4;
-    border-radius: 18px;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
 }

@@ -1,6 +1,6 @@
 <template>
-    <el-breadcrumb separator="/">
-        <el-breadcrumb-item>{{ $t('layout.adminConsole') }}</el-breadcrumb-item>
+    <el-breadcrumb separator="/" class="app-breadcrumb">
+        <el-breadcrumb-item class="app-breadcrumb__root">{{ $t('layout.adminConsole') }}</el-breadcrumb-item>
         <el-breadcrumb-item v-for="item in matched" :key="item.path">
             {{ $te('route.' + item.meta.titleKey) ? $t('route.' + item.meta.titleKey) : item.meta.title }}
         </el-breadcrumb-item>

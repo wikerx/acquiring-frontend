@@ -1,9 +1,19 @@
-import axios, { type AxiosInstance } from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 export * from './brand';
 export * from './paymentBrand';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
+
+declare module 'axios' {
+    export interface AxiosRequestConfig<D = any> {
+        skipAuth?: boolean;
+    }
+
+    export interface InternalAxiosRequestConfig<D = any> {
+        skipAuth?: boolean;
+    }
+}
 
 export interface CommonResult<T> {
     code: string;
@@ -31,6 +41,7 @@ export interface AuthAccount {
     appCode: string;
     loginAccount: string;
     realName: string;
+    nickname?: string | null;
     mobile?: string | null;
     phone?: string | null;
     phoneNumber?: string | null;
@@ -55,6 +66,17 @@ export interface AuthAccount {
     status: number;
 }
 
+export interface AuthProfileUpdateRequest {
+    nickname: string;
+    mobile?: string | null;
+    email: string;
+}
+
+export interface AuthPasswordChangeRequest {
+    oldPassword: string;
+    newPassword: string;
+}
+
 export interface AuthMenu {
     id: number;
     parentId: number;
@@ -75,13 +97,21 @@ export interface AuthMenu {
 
 export interface AuthLoginResponse {
     accessToken?: string | null;
-    tokenType: string;
-    expiresIn: number;
-    expireAt: string;
-    account: AuthAccount;
-    menus: AuthMenu[];
+    tokenType?: string | null;
+    expiresIn?: number | null;
+    expireAt?: string | null;
+    account?: AuthAccount | null;
+    menus?: AuthMenu[] | null;
     roles?: string[];
-    permissions: string[];
+    permissions?: string[];
+    loginStatus?: 'SUCCESS' | 'MFA_REQUIRED' | string;
+    mfaRequired?: boolean;
+    mfaChallengeType?: 'BIND_REQUIRED' | 'VERIFY_REQUIRED' | 'RESET_BIND_REQUIRED' | 'LOCKED' | string;
+    loginTicket?: string | null;
+    loginTicketExpireAt?: string | null;
+    mfaPolicy?: 'OPTIONAL' | 'REQUIRED' | 'EXEMPT' | string;
+    mfaStatus?: 'NOT_ENABLED' | 'PENDING_BIND' | 'ENABLED' | 'RESET_REQUIRED' | 'EXEMPT' | 'LOCKED' | 'DISABLED' | string;
+    mfaLockedUntil?: string | null;
 }
 
 export interface LoginRequest {
@@ -94,10 +124,32 @@ export interface LoginRequest {
 
 export interface AuthVerifyCodeSendResponse {
     verifyCodeId: string;
-    receiverType: 'SMS' | 'EMAIL' | 'TOTP';
+    receiverType: 'CAPTCHA' | 'SMS' | 'EMAIL' | 'TOTP';
     maskedReceiver: string;
+    captchaImage?: string | null;
     expireSeconds: number;
-    devCode?: string;
+}
+
+export interface AuthMfaBindInfoResponse {
+    mfaType: 'TOTP' | string;
+    mfaStatus: string;
+    issuer: string;
+    accountLabel: string;
+    otpauthUri: string;
+    digits: number;
+    periodSeconds: number;
+    maskedLoginAccount: string;
+    loginTicketExpireAt?: string | null;
+}
+
+export interface AuthMfaBindConfirmRequest {
+    loginTicket: string;
+    totpCode: string;
+}
+
+export interface AuthMfaVerifyRequest {
+    loginTicket: string;
+    totpCode: string;
 }
 
 export interface AuthSession {
@@ -112,6 +164,20 @@ export type SessionReader = () => AuthSession | null;
 export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
 export type ErrorMessageResolver = (error: unknown) => string;
+
+export class BusinessResultError extends Error {
+    public readonly resultCode: string;
+
+    public constructor(resultCode: string, message: string) {
+        super(message);
+        this.name = 'BusinessResultError';
+        this.resultCode = resultCode;
+    }
+}
+
+export interface AuthAwareAxiosRequestConfig<D = unknown> extends AxiosRequestConfig<D> {
+    skipAuth?: boolean;
+}
 
 export interface IdleLogoutOptions {
     readSession: SessionReader;
@@ -142,11 +208,11 @@ export function createHttpClient(
     client.interceptors.request.use((config) => {
         const session = readSession();
         const token = session?.token;
-        if (token) {
+        config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
+        if (!config.skipAuth && token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
-        config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
-        if (session?.account) {
+        if (!config.skipAuth && session?.account) {
             config.headers['X-Operator-Id'] = String(session.account.accountId);
             config.headers['X-Operator-Name'] =
                 session.account.realName || session.account.loginAccount;
@@ -185,7 +251,7 @@ export function setupIdleLogout(options: IdleLogoutOptions): () => void {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     let lastActiveAt = Date.now();
     let hasActiveSession = false;
-    let timer: ReturnType<typeof window.setTimeout> | undefined;
+    let timer: number | undefined;
 
     const clearTimer = () => {
         if (timer) {
@@ -268,12 +334,42 @@ export function resolveFriendlyRequestMessage(
         };
     };
     const backendMessage = axiosLikeError.response?.data?.message;
+    const errorMessage = axiosLikeError.message;
     const status = axiosLikeError.response?.status;
     const code = axiosLikeError.code;
+    const businessCode = error instanceof BusinessResultError ? error.resultCode : undefined;
+    const businessMessage = backendMessage || errorMessage;
 
-    if (status === 401) {
-        return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
+    if (businessCode === 'F401' || status === 401) {
+        if (businessMessage === 'account disabled or not found') {
+            return isChinese ? '账号不存在或已停用。' : 'The account does not exist or has been disabled.';
+        }
+        if (businessMessage === 'account locked') {
+            return isChinese ? '账号已锁定，请联系管理员处理。' : 'The account is locked. Please contact an administrator.';
+        }
+        if (businessMessage === 'merchant mismatch') {
+            return isChinese ? '商户号与账号不匹配。' : 'The merchant ID does not match this account.';
+        }
+        if (businessMessage === 'account or password is invalid') {
+            return isChinese ? '账号或密码错误。' : 'The account or password is incorrect.';
+        }
+        if (businessMessage === 'verify code is required') {
+            return isChinese ? '请输入图形验证码。' : 'Please enter the captcha code.';
+        }
+        if (businessMessage === 'verify code is invalid or expired') {
+            return isChinese ? '图形验证码错误或已过期，请重新输入。' : 'The captcha code is incorrect or has expired.';
+        }
+        if (businessMessage === 'verify code retry limit exceeded') {
+            return isChinese ? '图形验证码错误次数过多，请重新获取。' : 'Too many incorrect captcha attempts. Please refresh the captcha.';
+        }
+        if (businessMessage === 'mfa is not enabled') {
+            return isChinese ? '当前账号未启用 MFA。' : 'MFA is not enabled for this account.';
+        }
+        if (status === 401) {
+            return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
+        }
     }
+
     if (status === 403) {
         return isChinese ? '当前账号暂无权限执行此操作。' : 'Your account does not have permission to perform this action.';
     }
@@ -296,12 +392,15 @@ export function resolveFriendlyRequestMessage(
     if (backendMessage && !/^Request failed with status code \d+$/.test(backendMessage)) {
         return backendMessage;
     }
+    if (errorMessage && !/^Request failed with status code \d+$/.test(errorMessage)) {
+        return errorMessage;
+    }
     return defaultMessage;
 }
 
 export function unwrapResult<T>(result: CommonResult<T>): T {
     if (result.code !== 'T200') {
-        throw new Error(result.message || 'Request failed');
+        throw new BusinessResultError(result.code, result.message || 'Request failed');
     }
     return result.data;
 }

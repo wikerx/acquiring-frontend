@@ -1035,19 +1035,50 @@ body {
 
 .merchant-login-verify-code {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 128px;
+    grid-template-columns: minmax(0, 1fr) 150px;
     gap: 10px;
     width: 100%;
 }
 
-.merchant-login-verify-code__button {
+.merchant-login-verify-code__image {
     min-height: 50px;
+    padding: 0;
     border-radius: 16px !important;
-    border-color: rgb(14 165 233 / 26%) !important;
+    border: 1px solid rgb(14 165 233 / 26%) !important;
+    background: linear-gradient(135deg, #f8fafc, #ecfeff);
     color: var(--merchant-primary-deep) !important;
     font-size: 13px;
     font-weight: 800;
     white-space: normal;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.merchant-login-verify-code__image:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+.merchant-login-verify-code__image img {
+    display: block;
+    width: 100%;
+    height: 50px;
+    object-fit: cover;
+}
+
+.merchant-login-verify-code__image span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 10px;
+    line-height: 1.2;
+}
+
+.merchant-login-verify-code__image span.is-error {
+    color: #dc2626;
+    background: rgb(254 242 242 / 78%);
 }
 
 .merchant-login-submit {
@@ -1060,6 +1091,199 @@ body {
     font-size: 15px;
     font-weight: 800;
     letter-spacing: 0.08em;
+}
+
+.merchant-mfa-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.merchant-mfa-panel__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--merchant-primary-deep);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.merchant-mfa-panel__back:focus-visible {
+    outline: 2px solid rgb(13 148 136 / 30%);
+    outline-offset: 4px;
+    border-radius: 8px;
+}
+
+.merchant-mfa-panel__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgb(125 211 252 / 48%);
+    border-radius: 16px;
+    background: rgb(240 253 250 / 72%);
+}
+
+.merchant-mfa-panel__status span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.merchant-mfa-panel__status strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 13px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.merchant-mfa-bind {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.merchant-mfa-bind__visual {
+    display: grid;
+    grid-template-columns: 178px minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid rgb(125 211 252 / 46%);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgb(255 255 255 / 94%), rgb(236 253 245 / 82%));
+}
+
+.merchant-mfa-bind__qr {
+    display: grid;
+    place-items: center;
+    width: 178px;
+    height: 178px;
+    padding: 10px;
+    border: 1px solid rgb(207 250 254 / 90%);
+    border-radius: 16px;
+    background: #fff;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 1px rgb(240 253 250 / 86%);
+}
+
+.merchant-mfa-bind__qr img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.merchant-mfa-bind__qr-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    color: #b45309;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.merchant-mfa-bind__qr-error button {
+    padding: 6px 10px;
+    border: 1px solid rgb(13 148 136 / 35%);
+    border-radius: 10px;
+    background: rgb(240 253 250 / 90%);
+    color: var(--merchant-primary-deep);
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.merchant-mfa-bind__qr-error button:disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
+}
+
+.merchant-mfa-bind__steps strong,
+.merchant-mfa-verify h3 {
+    display: block;
+    margin: 0;
+    color: #0f172a;
+    font-size: 20px;
+    line-height: 1.35;
+    font-weight: 900;
+}
+
+.merchant-mfa-bind__steps p,
+.merchant-mfa-verify p {
+    margin: 10px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.merchant-mfa-bind__manual {
+    padding: 11px 12px;
+    border: 1px dashed rgb(14 116 144 / 42%);
+    border-radius: 16px;
+    background: rgb(248 250 252 / 76%);
+}
+
+.merchant-mfa-bind__manual span {
+    display: block;
+    margin-bottom: 6px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.merchant-mfa-bind__manual code {
+    display: block;
+    color: #111827;
+    font-size: 13px;
+    font-family: SFMono-Regular, Consolas, Menlo, monospace;
+    word-break: break-all;
+}
+
+.merchant-mfa-verify {
+    padding: 24px 18px;
+    border: 1px solid rgb(125 211 252 / 46%);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgb(255 255 255 / 94%), rgb(236 253 245 / 82%));
+    text-align: center;
+}
+
+.merchant-mfa-verify__seal {
+    display: inline-grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 12px;
+    border-radius: 50%;
+    background: #0f766e;
+    color: #fff;
+    box-shadow: 0 18px 34px rgb(15 118 110 / 20%);
+}
+
+.merchant-mfa-code-input .el-input__inner {
+    font-family: SFMono-Regular, Consolas, Menlo, monospace;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-align: center;
+}
+
+.merchant-mfa-form {
+    margin-top: 0;
 }
 
 .merchant-login-footer {
@@ -1107,6 +1331,18 @@ body {
 
     .merchant-login-verify-code {
         grid-template-columns: 1fr;
+    }
+
+    .merchant-mfa-bind__visual {
+        grid-template-columns: 1fr;
+    }
+
+    .merchant-mfa-bind__qr {
+        width: 100%;
+        max-width: 220px;
+        height: auto;
+        aspect-ratio: 1;
+        justify-self: center;
     }
 
     .merchant-metric-grid,

@@ -14,17 +14,17 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
 
-        <StandardTable table-key="system-role" v-loading="loading" :data="rows" row-key="roleId" size="small" @selection-change="handleSelectionChange">
+        <StandardTable table-key="system-role-v2" v-loading="loading" :data="rows" row-key="roleId" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column prop="roleCode" :label="$t('system.role.roleCode')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="roleName" :label="$t('system.role.roleName')" min-width="140" align="center" :show-overflow-tooltip="true" />
-            <el-table-column prop="roleType" :label="$t('system.role.roleType')" width="100" align="center" />
+            <el-table-column prop="roleCode" :label="$t('system.role.roleCode')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('system.role.dataScope')" width="100" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
+            <el-table-column :label="$t('system.role.roleType')" width="100" align="center"><template #default="{ row }">{{ roleTypeLabel(row.roleType) }}</template></el-table-column>
+            <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" v-hasPermi="'system:role:edit'" /></template></el-table-column>
+            <el-table-column :label="$t('common.updateTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
             <el-table-column prop="menuCount" :label="$t('system.role.menuCount')" width="80" align="center" />
             <el-table-column prop="permissionCount" :label="$t('system.role.permissionCount')" width="80" align="center" />
-            <el-table-column :label="$t('common.status')" width="80" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" v-hasPermi="'system:role:edit'" /></template></el-table-column>
             <el-table-column prop="sortNo" :label="$t('system.role.sortNo')" width="70" align="center" />
-            <el-table-column :label="$t('common.updateTime')" min-width="160" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
             <el-table-column :label="$t('common.operation')" align="center" width="230" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:role:assign-menu'">{{ $t('common.detail') }}</el-button>
@@ -75,7 +75,7 @@
                 <el-descriptions-item :label="$t('system.role.roleName')">{{ activeRow?.roleName || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.role.roleCode')">{{ activeRow?.roleCode || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.role.dataScope')">{{ dataScopeLabel(activeRow?.dataScope) }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('system.role.roleType')">{{ activeRow?.roleType || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.role.roleType')">{{ roleTypeLabel(activeRow?.roleType) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.role.sortNo')">{{ activeRow?.sortNo ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')"><el-tag :type="activeRow?.status === 1 ? 'success' : 'danger'" size="small">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="activeRow?.updatedAt" /></el-descriptions-item>
@@ -256,6 +256,7 @@ function nr(row: SysRole): RoleRow { return { ...row, statusTag: row.status === 
 function to(v: string) { return v.trim() || undefined; }
 function ni(keys: Array<string | number>) { return Array.from(new Set(keys.map(Number).filter(i => Number.isInteger(i) && i > 0))); }
 function dataScopeLabel(v?: string) { const m: Record<string, string> = { ALL: t('system.role.allData'), SELF: t('system.role.selfData'), CUSTOM: t('system.role.customData') }; return v ? (m[v] || v) : '-'; }
+function roleTypeLabel(v?: string) { const m: Record<string, string> = { SYSTEM: t('system.role.systemRole'), CUSTOM: t('system.role.customRole') }; return v ? (m[v] || v) : '-'; }
 </script>
 
 <style scoped>

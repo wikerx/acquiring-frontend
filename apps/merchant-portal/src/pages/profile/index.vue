@@ -32,13 +32,6 @@
                         <el-form-item :label="t('profile.email')" prop="email">
                             <el-input v-model.trim="basicForm.email" :placeholder="t('common.pleaseInput')" />
                         </el-form-item>
-                        <el-form-item :label="t('profile.gender')">
-                            <el-radio-group v-model="basicForm.gender">
-                                <el-radio value="male">{{ t('profile.male') }}</el-radio>
-                                <el-radio value="female">{{ t('profile.female') }}</el-radio>
-                                <el-radio value="unknown">{{ t('profile.unknown') }}</el-radio>
-                            </el-radio-group>
-                        </el-form-item>
                         <el-form-item>
                             <el-button type="primary" @click="handleSaveBasic">{{ t('common.save') }}</el-button>
                             <el-button @click="router.back()">{{ t('common.close') }}</el-button>
@@ -73,7 +66,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { Calendar, CollectionTag, Iphone, Message, OfficeBuilding, User, UserFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { currentUser } from '@/api/authApi';
+import { changePassword, currentUser, updateProfile } from '@/api/authApi';
 import { useAuthStore } from '@/stores/authStore';
 
 const router = useRouter();
@@ -84,7 +77,7 @@ const activeTab = ref('basic');
 const basicFormRef = ref<FormInstance>();
 const passwordFormRef = ref<FormInstance>();
 const account = computed(() => auth.session?.account);
-const displayName = computed(() => account.value?.realName?.trim() || account.value?.loginAccount?.trim() || t('layout.fallbackMerchant'));
+const displayName = computed(() => account.value?.nickname?.trim() || account.value?.realName?.trim() || account.value?.loginAccount?.trim() || t('layout.fallbackMerchant'));
 const avatarText = computed(() => buildAvatarText(displayName.value));
 const profileSources = computed(() => collectProfileSources(account.value));
 const roleText = computed(() => buildRoleText(auth.session?.roles || [], profileSources.value));
@@ -96,7 +89,6 @@ const basicForm = reactive({
     nickname: '',
     mobile: '',
     email: '',
-    gender: 'unknown',
 });
 
 const passwordForm = reactive({
@@ -165,7 +157,13 @@ async function handleSaveBasic() {
     if (!valid) {
         return;
     }
-    ElMessage.info(t('profile.localSaveOnly'));
+    const response = await updateProfile({
+        nickname: basicForm.nickname,
+        mobile: basicForm.mobile || null,
+        email: basicForm.email,
+    });
+    auth.setCurrentUserResponse(response);
+    ElMessage.success(t('profile.profileSaveSuccess'));
 }
 
 async function handleSavePassword() {
@@ -173,7 +171,15 @@ async function handleSavePassword() {
     if (!valid) {
         return;
     }
-    ElMessage.info(t('profile.passwordApiPending'));
+    await changePassword({
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword,
+    });
+    passwordForm.oldPassword = '';
+    passwordForm.newPassword = '';
+    passwordForm.confirmPassword = '';
+    passwordFormRef.value?.clearValidate();
+    ElMessage.success(t('profile.passwordSaveSuccess'));
 }
 
 function validateNewPassword(_rule: unknown, value: string, callback: (error?: Error) => void) {

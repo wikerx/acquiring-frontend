@@ -1,10 +1,13 @@
 import { defineStore } from 'pinia';
 import type { AuthAccount, AuthLoginResponse, AuthMenu, AuthSession } from '@acquiring/shared';
 import {
+    confirmMfaBindApi,
+    getMfaBindInfoApi,
     getUserInfoApi,
     loginApi,
     logoutApi,
     sendLoginVerifyCodeApi,
+    verifyMfaApi,
     type LoginParams,
 } from '@/api/auth';
 import { getToken, removeAuthStorage, setToken } from '@/utils/auth';
@@ -80,13 +83,29 @@ export const useUserStore = defineStore('user', {
         },
     },
     actions: {
-        async sendLoginVerifyCode(loginAccount: string) {
+        async sendLoginVerifyCode(loginAccount?: string) {
             return sendLoginVerifyCodeApi({ loginAccount, scene: 'LOGIN' });
         },
         async login(params: LoginParams) {
             const result = await loginApi(params);
-            this.applyLoginResponse(result);
-            this.persistSession();
+            if (result.accessToken) {
+                this.applyLoginResponse(result);
+                this.persistSession();
+            }
+            return result;
+        },
+        async getMfaBindInfo(loginTicket: string) {
+            return getMfaBindInfoApi(loginTicket);
+        },
+        async confirmMfaBind(loginTicket: string, totpCode: string) {
+            const result = await confirmMfaBindApi({ loginTicket, totpCode });
+            this.applyFinalLoginResponse(result);
+            return result;
+        },
+        async verifyMfa(loginTicket: string, totpCode: string) {
+            const result = await verifyMfaApi({ loginTicket, totpCode });
+            this.applyFinalLoginResponse(result);
+            return result;
         },
         async logout() {
             await logoutApi().catch(() => undefined);
@@ -106,6 +125,9 @@ export const useUserStore = defineStore('user', {
         },
         applyLoginResponse(response: AuthLoginResponse, fallbackToken?: string) {
             const token = response.accessToken || fallbackToken || this.token;
+            if (!token || !response.account) {
+                return;
+            }
             this.token = token;
             this.account = response.account;
             this.userInfo = toUserInfo(response.account);
@@ -115,6 +137,13 @@ export const useUserStore = defineStore('user', {
             this.hydrated = true;
             setToken(token);
             usePermissionStore().setBackendMenus(this.menus);
+        },
+        applyFinalLoginResponse(response: AuthLoginResponse) {
+            if (!response.accessToken) {
+                throw new Error('MFA verification did not return a login session');
+            }
+            this.applyLoginResponse(response);
+            this.persistSession();
         },
         reset() {
             this.token = '';
