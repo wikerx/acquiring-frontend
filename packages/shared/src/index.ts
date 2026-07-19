@@ -165,6 +165,16 @@ export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
 export type ErrorMessageResolver = (error: unknown) => string;
 
+export class BusinessResultError extends Error {
+    public readonly resultCode: string;
+
+    public constructor(resultCode: string, message: string) {
+        super(message);
+        this.name = 'BusinessResultError';
+        this.resultCode = resultCode;
+    }
+}
+
 export interface AuthAwareAxiosRequestConfig<D = unknown> extends AxiosRequestConfig<D> {
     skipAuth?: boolean;
 }
@@ -324,12 +334,42 @@ export function resolveFriendlyRequestMessage(
         };
     };
     const backendMessage = axiosLikeError.response?.data?.message;
+    const errorMessage = axiosLikeError.message;
     const status = axiosLikeError.response?.status;
     const code = axiosLikeError.code;
+    const businessCode = error instanceof BusinessResultError ? error.resultCode : undefined;
+    const businessMessage = backendMessage || errorMessage;
 
-    if (status === 401) {
-        return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
+    if (businessCode === 'F401' || status === 401) {
+        if (businessMessage === 'account disabled or not found') {
+            return isChinese ? '账号不存在或已停用。' : 'The account does not exist or has been disabled.';
+        }
+        if (businessMessage === 'account locked') {
+            return isChinese ? '账号已锁定，请联系管理员处理。' : 'The account is locked. Please contact an administrator.';
+        }
+        if (businessMessage === 'merchant mismatch') {
+            return isChinese ? '商户号与账号不匹配。' : 'The merchant ID does not match this account.';
+        }
+        if (businessMessage === 'account or password is invalid') {
+            return isChinese ? '账号或密码错误。' : 'The account or password is incorrect.';
+        }
+        if (businessMessage === 'verify code is required') {
+            return isChinese ? '请输入图形验证码。' : 'Please enter the captcha code.';
+        }
+        if (businessMessage === 'verify code is invalid or expired') {
+            return isChinese ? '图形验证码错误或已过期，请重新输入。' : 'The captcha code is incorrect or has expired.';
+        }
+        if (businessMessage === 'verify code retry limit exceeded') {
+            return isChinese ? '图形验证码错误次数过多，请重新获取。' : 'Too many incorrect captcha attempts. Please refresh the captcha.';
+        }
+        if (businessMessage === 'mfa is not enabled') {
+            return isChinese ? '当前账号未启用 MFA。' : 'MFA is not enabled for this account.';
+        }
+        if (status === 401) {
+            return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
+        }
     }
+
     if (status === 403) {
         return isChinese ? '当前账号暂无权限执行此操作。' : 'Your account does not have permission to perform this action.';
     }
@@ -352,12 +392,15 @@ export function resolveFriendlyRequestMessage(
     if (backendMessage && !/^Request failed with status code \d+$/.test(backendMessage)) {
         return backendMessage;
     }
+    if (errorMessage && !/^Request failed with status code \d+$/.test(errorMessage)) {
+        return errorMessage;
+    }
     return defaultMessage;
 }
 
 export function unwrapResult<T>(result: CommonResult<T>): T {
     if (result.code !== 'T200') {
-        throw new Error(result.message || 'Request failed');
+        throw new BusinessResultError(result.code, result.message || 'Request failed');
     }
     return result.data;
 }
