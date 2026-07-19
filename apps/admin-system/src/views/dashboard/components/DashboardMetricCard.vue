@@ -35,11 +35,12 @@ defineEmits<{ click: [] }>();
     align-items: center;
     width: 100%;
     gap: 16px;
-    padding: 20px;
-    border: 1px solid #e8edf3;
+    min-height: 126px;
+    padding: 18px;
+    border: 1px solid #dfe8f4;
     border-radius: 8px;
     background: #ffffff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.045);
     text-align: left;
     cursor: pointer;
     transition:
@@ -81,7 +82,7 @@ defineEmits<{ click: [] }>();
     display: block;
     margin-top: 10px;
     color: #0f172a;
-    font-size: 30px;
+    font-size: 28px;
     line-height: 1;
     font-weight: 700;
 }

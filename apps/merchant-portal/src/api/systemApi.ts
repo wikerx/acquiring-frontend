@@ -96,7 +96,32 @@ export interface AccountItem {
     roleNames: string[];
     deptIds: number[];
     postIds: number[];
+    mfaPolicy?: string;
+    mfaStatus?: string;
+    mfaBindTime?: string;
+    mfaLastVerifyTime?: string;
+    mfaExemptUntil?: string;
+    mfaLockedUntil?: string;
     createdAt?: string;
+}
+
+export interface AccountMfaActionPayload {
+    reason: string;
+}
+
+export interface AccountMfaExemptPayload extends AccountMfaActionPayload {
+    exemptUntil?: string;
+}
+
+export interface AccountMfaStatus {
+    accountId: number;
+    loginAccount: string;
+    mfaPolicy: string;
+    mfaStatus: string;
+    bindTime?: string;
+    lastVerifyTime?: string;
+    lockedUntil?: string;
+    exemptUntil?: string;
 }
 
 export interface PermissionItem {
@@ -267,6 +292,30 @@ export const systemApi = {
     },
     async assignAccountPosts(id: number, ids: number[]) {
         const result = await http.post<CommonResult<void>>(`/merchant/system/accounts/${id}/posts`, { ids });
+        return unwrapResult(result.data);
+    },
+    async requireAccountMfa(id: number, payload: AccountMfaActionPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/require`, payload);
+        return unwrapResult(result.data);
+    },
+    async resetAccountMfa(id: number, payload: AccountMfaActionPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/reset`, payload);
+        return unwrapResult(result.data);
+    },
+    async exemptAccountMfa(id: number, payload: AccountMfaExemptPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/exempt`, payload);
+        return unwrapResult(result.data);
+    },
+    async disableAccountMfa(id: number, payload: AccountMfaActionPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/disable`, payload);
+        return unwrapResult(result.data);
+    },
+    async unlockAccountMfa(id: number, payload: AccountMfaActionPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/unlock`, payload);
+        return unwrapResult(result.data);
+    },
+    async resendAccountMfaBindMail(id: number, payload: AccountMfaActionPayload) {
+        const result = await http.post<CommonResult<AccountMfaStatus>>(`/merchant/system/accounts/${id}/mfa/resend-bind-mail`, payload);
         return unwrapResult(result.data);
     },
 };

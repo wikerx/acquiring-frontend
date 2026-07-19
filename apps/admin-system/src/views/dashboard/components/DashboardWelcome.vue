@@ -74,17 +74,19 @@ defineEmits<{
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.9fr) minmax(320px, 1fr);
     gap: 20px;
-    padding: 24px 28px;
-    border: 1px solid #e6ebf2;
+    padding: 26px 28px;
+    border: 1px solid #dfe8f4;
     border-radius: 8px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(14, 165, 164, 0.08) 44%, rgba(255, 255, 255, 0.92)),
+        #ffffff;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
 }
 
 .dashboard-welcome__notice {
     min-height: 140px;
     padding: 18px;
-    border: 1px solid rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(14, 116, 144, 0.2);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.72);
 }
@@ -106,7 +108,7 @@ defineEmits<{
 .dashboard-welcome__notice-head button {
     border: 0;
     background: transparent;
-    color: #2563eb;
+    color: #0f766e;
     font-size: 12px;
     cursor: pointer;
 }
@@ -140,8 +142,8 @@ defineEmits<{
 .dashboard-welcome__notice-type {
     padding: 2px 6px;
     border-radius: 4px;
-    background: #eff6ff;
-    color: #2563eb;
+    background: #ecfeff;
+    color: #0e7490;
     font-size: 12px;
     white-space: nowrap;
 }
@@ -172,7 +174,7 @@ defineEmits<{
 
 .dashboard-welcome__eyebrow {
     margin: 0 0 10px;
-    color: #2563eb;
+    color: #0f766e;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0;

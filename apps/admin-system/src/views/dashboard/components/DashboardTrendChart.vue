@@ -80,7 +80,7 @@ function onMetricChange(value: string | number | boolean) {
 
 <style scoped>
 .dashboard-panel {
-    border: 1px solid #e7edf4;
+    border: 1px solid #dfe8f4;
     border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
@@ -142,7 +142,7 @@ function onMetricChange(value: string | number | boolean) {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 14px;
     align-items: end;
-    min-height: 280px;
+    min-height: 248px;
 }
 
 .dashboard-trend__bar-item {
@@ -158,7 +158,7 @@ function onMetricChange(value: string | number | boolean) {
     align-items: flex-end;
     justify-content: center;
     width: 100%;
-    height: 220px;
+    height: 190px;
     padding: 12px 0;
     border-radius: 8px;
     background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);

@@ -52,26 +52,20 @@
             />
         </section>
 
-        <section class="dashboard-page__lower">
-            <DashboardRecentLogin
-                :title="$t('dashboard.recentLoginTitle')"
-                :description="$t('dashboard.recentLoginDescription')"
-                :more-text="$t('dashboard.viewMore')"
+        <section class="dashboard-page__operations">
+            <DashboardActivityFeed
+                :eyebrow="$t('dashboard.activityEyebrow')"
+                :title="$t('dashboard.activityTitle')"
+                :description="$t('dashboard.activityDescription')"
+                :login-more-text="$t('dashboard.loginAudit')"
+                :operation-more-text="$t('dashboard.operationAuditEntry')"
                 :empty-text="$t('common.noData')"
-                :rows="recentLoginRows"
-                @more="navigate('/system/log?tab=login')"
+                :items="activityItems"
+                @more-login="navigate('/system/log?tab=login')"
+                @more-operation="navigate('/system/log?tab=oper')"
             />
-            <DashboardRecentOperation
-                :title="$t('dashboard.recentOperationTitle')"
-                :description="$t('dashboard.recentOperationDescription')"
-                :more-text="$t('dashboard.viewMore')"
-                :empty-text="$t('common.noData')"
-                :rows="recentOperationRows"
-                @more="navigate('/system/log?tab=oper')"
-            />
+            <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
         </section>
-
-        <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
 
         <CommonDetailDrawer v-model:visible="noticeDetailVisible" :title="$t('system.notice.detailTitle')" size="full">
             <article v-if="activeNotice" class="dashboard-notice-detail">
@@ -98,6 +92,8 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     Bell,
+    CircleCheckFilled,
+    CircleCloseFilled,
     DataBoard,
     DataLine,
     DocumentChecked,
@@ -128,12 +124,12 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useUserStore } from '@/store/modules/user';
 import { formatDateTime } from '@/utils/format';
+import DashboardActivityFeed from './components/DashboardActivityFeed.vue';
+import type { DashboardActivityItem } from './components/DashboardActivityFeed.vue';
 import DashboardMetricCard from './components/DashboardMetricCard.vue';
 import DashboardMonitorEntry from './components/DashboardMonitorEntry.vue';
 import DashboardQuickAccess from './components/DashboardQuickAccess.vue';
-import DashboardRecentLogin from './components/DashboardRecentLogin.vue';
 import type { RecentOperationRow } from './components/DashboardRecentOperation.vue';
-import DashboardRecentOperation from './components/DashboardRecentOperation.vue';
 import DashboardTrendChart from './components/DashboardTrendChart.vue';
 import DashboardWelcome from './components/DashboardWelcome.vue';
 import type { DashboardNoticeItem } from './components/DashboardWelcome.vue';
@@ -214,6 +210,34 @@ const dashboardNotices = computed<DashboardNoticeItem[]>(() => latestNotices.val
     typeText: noticeTypeText(notice.noticeType),
     createdAtText: formatDateTime(notice.createdAt),
 })));
+
+const activityItems = computed<DashboardActivityItem[]>(() => {
+    const loginItems = recentLoginRows.value.map((row) => ({
+        id: `login-${row.id}`,
+        title: row.loginStatus === 1 ? t('dashboard.activityLoginSuccess') : t('dashboard.activityLoginFailed'),
+        description: row.failReason || t('dashboard.activityLoginDescription', { account: row.loginAccount || '-' }),
+        actor: row.loginAccount || '-',
+        source: row.loginIp || '-',
+        statusText: row.loginStatus === 1 ? t('status.success') : t('status.failed'),
+        time: row.loginAt,
+        tone: row.loginStatus === 1 ? 'success' as const : 'danger' as const,
+        icon: row.loginStatus === 1 ? CircleCheckFilled : CircleCloseFilled,
+    }));
+    const operationItems = recentOperationRows.value.map((row) => ({
+        id: `operation-${row.id}`,
+        title: row.moduleName || t('dashboard.operationUnknown'),
+        description: `${row.operatorName || '-'} · ${row.businessTypeText}`,
+        actor: row.operatorName || '-',
+        source: t('dashboard.activityOperationSource'),
+        statusText: row.status === 1 ? t('status.success') : t('status.failed'),
+        time: row.operatedAt,
+        tone: row.status === 1 ? operationTone(row.businessTypeText) : 'danger' as const,
+        icon: row.status === 1 ? DocumentChecked : WarnTriangleFilled,
+    }));
+    return [...loginItems, ...operationItems]
+        .sort((left, right) => timestamp(right.time) - timestamp(left.time))
+        .slice(0, 8);
+});
 
 const metricCards = computed<MetricCardItem[]>(() => [
     {
@@ -465,6 +489,17 @@ function resolveBusinessTypeText(row: SysOperLog) {
     return row.businessType ? (mapping[row.businessType] || t('dashboard.operationUnknown')) : t('dashboard.operationUnknown');
 }
 
+function operationTone(text: string) {
+    if ([t('dashboard.operationDelete'), t('dashboard.operationFreeze'), t('dashboard.operationAudit')].includes(text)) {
+        return 'warning' as const;
+    }
+    return 'info' as const;
+}
+
+function timestamp(value?: string) {
+    return value ? new Date(value).getTime() || 0 : 0;
+}
+
 function hasMenuAccess(path: string, permission?: string) {
     const pathMatched = findMenuPath(permissionStore.menus, path);
     if (pathMatched) {
@@ -518,10 +553,15 @@ function navigate(path: string) {
     gap: 16px;
 }
 
-.dashboard-page__upper,
-.dashboard-page__lower {
+.dashboard-page__upper {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 20px;
+}
+
+.dashboard-page__operations {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
     gap: 20px;
 }
 
@@ -584,7 +624,7 @@ function navigate(path: string) {
     }
 
     .dashboard-page__upper,
-    .dashboard-page__lower {
+    .dashboard-page__operations {
         grid-template-columns: 1fr;
     }
 }

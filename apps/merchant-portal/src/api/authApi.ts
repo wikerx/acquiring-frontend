@@ -1,5 +1,8 @@
 import type {
     AuthLoginResponse,
+    AuthMfaBindConfirmRequest,
+    AuthMfaBindInfoResponse,
+    AuthMfaVerifyRequest,
     AuthPasswordChangeRequest,
     AuthProfileUpdateRequest,
     AuthVerifyCodeSendResponse,
@@ -33,6 +36,23 @@ export async function sendLoginVerifyCode(request: SendLoginVerifyCodeRequest): 
 
 export async function login(request: LoginRequest): Promise<AuthLoginResponse> {
     const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/login', request);
+    return unwrapResult(result.data);
+}
+
+export async function getMfaBindInfo(loginTicket: string): Promise<AuthMfaBindInfoResponse> {
+    const result = await http.get<CommonResult<AuthMfaBindInfoResponse>>('/merchant/auth/mfa/bind-info', {
+        params: { loginTicket },
+    });
+    return unwrapResult(result.data);
+}
+
+export async function confirmMfaBind(request: AuthMfaBindConfirmRequest): Promise<AuthLoginResponse> {
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/bind-confirm', request);
+    return unwrapResult(result.data);
+}
+
+export async function verifyMfa(request: AuthMfaVerifyRequest): Promise<AuthLoginResponse> {
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/verify', request);
     return unwrapResult(result.data);
 }
 

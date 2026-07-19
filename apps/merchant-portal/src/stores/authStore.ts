@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia';
 import type { AuthLoginResponse, AuthSession } from '@acquiring/shared';
+import {
+    confirmMfaBind,
+    getMfaBindInfo,
+    verifyMfa,
+} from '@/api/authApi';
 
 const STORAGE_KEY = 'acquiring_merchant_session';
 
@@ -34,6 +39,25 @@ export const useAuthStore = defineStore('merchantAuth', {
             };
             this.hydrated = true;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
+        },
+        setFinalLoginResponse(response: AuthLoginResponse) {
+            if (!response.accessToken || !response.account) {
+                throw new Error('MFA verification did not return a login session');
+            }
+            this.setLoginResponse(response);
+        },
+        async getMfaBindInfo(loginTicket: string) {
+            return getMfaBindInfo(loginTicket);
+        },
+        async confirmMfaBind(loginTicket: string, totpCode: string) {
+            const response = await confirmMfaBind({ loginTicket, totpCode });
+            this.setFinalLoginResponse(response);
+            return response;
+        },
+        async verifyMfa(loginTicket: string, totpCode: string) {
+            const response = await verifyMfa({ loginTicket, totpCode });
+            this.setFinalLoginResponse(response);
+            return response;
         },
         setCurrentUserResponse(response: AuthLoginResponse) {
             if (!this.session) {

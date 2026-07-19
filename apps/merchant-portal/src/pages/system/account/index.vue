@@ -16,14 +16,42 @@
             <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
             <el-table-column prop="email" :label="t('system.account.email')" min-width="180" />
             <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
+            <el-table-column :label="t('system.account.mfaPolicy')" min-width="120" align="center">
+                <template #default="{ row }">
+                    <el-tag size="small" :type="mfaPolicyTag(row.mfaPolicy)" effect="plain">{{ mfaPolicyText(row.mfaPolicy) }}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column :label="t('system.account.mfaStatus')" min-width="130" align="center">
+                <template #default="{ row }">
+                    <el-tag size="small" :type="mfaStatusTag(row.mfaStatus)" effect="plain">{{ mfaStatusText(row.mfaStatus) }}</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
             <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="240" align="center" class-name="small-padding fixed-width">
+            <el-table-column :label="t('common.operation')" width="190" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
-                    <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
-                    <el-button v-if="canChangeStatus" size="small" link type="primary" :icon="row.status === 1 ? CircleClose : CircleCheck" @click="toggleStatus(row)">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-button>
-                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">{{ t('common.delete') }}</el-button>
-                    <span v-if="!canEdit && !canAssignRole && !canChangeStatus && !canDelete">-</span>
+                    <div class="account-operation-group">
+                        <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
+                        <el-dropdown v-if="hasMoreActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
+                            <el-button size="small" link type="primary">
+                                {{ t('system.account.moreActions') }}
+                                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+                            </el-button>
+                            <template #dropdown>
+                                <el-dropdown-menu>
+                                    <el-dropdown-item v-if="canChangeStatus" command="status">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" divided>{{ t('system.account.mfaRequire') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaReset" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaExempt" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaDisable" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                                </el-dropdown-menu>
+                            </template>
+                        </el-dropdown>
+                        <span v-if="!canEdit && !canAssignRole && !hasMoreActions">-</span>
+                    </div>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -44,13 +72,31 @@
             </el-form>
             <template #footer><div class="dialog-footer"><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
         </el-dialog>
+        <el-dialog v-model="mfaActionVisible" :title="mfaActionTitle" width="560px" destroy-on-close>
+            <el-alert class="mfa-action-alert" :title="mfaActionTip" type="warning" show-icon :closable="false" />
+            <el-form ref="mfaActionFormRef" :model="mfaActionForm" :rules="mfaActionRules" label-width="96px">
+                <el-form-item :label="t('system.account.loginAccount')"><el-input :model-value="activeMfaRow?.loginAccount || '-'" disabled /></el-form-item>
+                <el-form-item v-if="mfaActionType === 'exempt'" :label="t('system.account.mfaExemptUntil')" prop="exemptUntil">
+                    <el-date-picker v-model="mfaActionForm.exemptUntil" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" :placeholder="t('system.account.mfaLongTermExempt')" style="width:100%" />
+                </el-form-item>
+                <el-form-item :label="t('common.remark')" prop="reason">
+                    <el-input v-model="mfaActionForm.reason" type="textarea" maxlength="500" show-word-limit :autosize="{ minRows: 3, maxRows: 5 }" :placeholder="t('system.account.mfaReasonPlaceholder')" />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="mfaActionSaving" @click="submitMfaAction">{{ t('common.confirm') }}</el-button>
+                    <el-button size="small" @click="mfaActionVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { CircleCheck, CircleClose, Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { Edit, MoreFilled, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -71,12 +117,33 @@ const posts = ref<PostItem[]>([]);
 const deptTree = ref<DeptItem[]>([]);
 const query = reactive<{ keyword: string; roleId?: number; status?: number }>({ keyword: '' });
 const form = reactive<Partial<AccountItem> & { password?: string }>({ status: 1, roleIds: [], deptIds: [], postIds: [] });
+type MfaActionType = 'require' | 'reset' | 'exempt' | 'disable' | 'unlock' | 'resend';
+const mfaActionVisible = ref(false);
+const mfaActionSaving = ref(false);
+const mfaActionType = ref<MfaActionType>('require');
+const activeMfaRow = ref<AccountItem | null>(null);
+const mfaActionFormRef = ref<FormInstance>();
+const mfaActionForm = reactive({ reason: '', exemptUntil: '' });
+const mfaActionRules = computed<FormRules>(() => ({
+    reason: [{ required: true, message: t('system.account.mfaReasonRequired'), trigger: 'blur' }],
+}));
 const canAdd = hasPermission('merchant:system:account:add');
 const canEdit = hasPermission('merchant:system:account:edit');
 const canDelete = hasPermission('merchant:system:account:delete');
 const canChangeStatus = hasPermission('merchant:system:account:status');
 const canAssignRole = hasPermission('merchant:system:account:assignRole');
+const canMfaRequire = hasPermission('merchant:system:account:mfa:require');
+const canMfaReset = hasPermission('merchant:system:account:mfa:reset');
+const canMfaExempt = hasPermission('merchant:system:account:mfa:exempt');
+const canMfaDisable = hasPermission('merchant:system:account:mfa:disable');
+const canMfaUnlock = hasPermission('merchant:system:account:mfa:unlock');
+const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
+const hasMoreActions = computed(() =>
+    canChangeStatus || canDelete || canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend,
+);
+const mfaActionTitle = computed(() => t(`system.account.${mfaActionTitleKey(mfaActionType.value)}`));
+const mfaActionTip = computed(() => t(`system.account.${mfaActionTipKey(mfaActionType.value)}`));
 
 async function loadData() {
     loading.value = true;
@@ -152,5 +219,140 @@ async function remove(row: AccountItem) {
     await loadData();
 }
 
+function handleAccountCommand(command: string, row: AccountItem) {
+    if (command === 'status') {
+        toggleStatus(row);
+        return;
+    }
+    if (command === 'delete') {
+        remove(row);
+        return;
+    }
+    const actionMap: Record<string, MfaActionType> = {
+        mfaRequire: 'require',
+        mfaReset: 'reset',
+        mfaUnlock: 'unlock',
+        mfaResend: 'resend',
+        mfaExempt: 'exempt',
+        mfaDisable: 'disable',
+    };
+    const action = actionMap[command];
+    if (action) {
+        openMfaAction(row, action);
+    }
+}
+
+function openMfaAction(row: AccountItem, action: MfaActionType) {
+    activeMfaRow.value = row;
+    mfaActionType.value = action;
+    mfaActionForm.reason = '';
+    mfaActionForm.exemptUntil = '';
+    mfaActionVisible.value = true;
+    nextTick(() => mfaActionFormRef.value?.clearValidate());
+}
+
+async function submitMfaAction() {
+    const valid = await mfaActionFormRef.value?.validate().catch(() => false);
+    if (!valid || !activeMfaRow.value) {
+        return;
+    }
+    mfaActionSaving.value = true;
+    try {
+        const id = activeMfaRow.value.accountId;
+        const payload = { reason: mfaActionForm.reason.trim() };
+        if (mfaActionType.value === 'require') await systemApi.requireAccountMfa(id, payload);
+        if (mfaActionType.value === 'reset') await systemApi.resetAccountMfa(id, payload);
+        if (mfaActionType.value === 'unlock') await systemApi.unlockAccountMfa(id, payload);
+        if (mfaActionType.value === 'resend') await systemApi.resendAccountMfaBindMail(id, payload);
+        if (mfaActionType.value === 'disable') await systemApi.disableAccountMfa(id, payload);
+        if (mfaActionType.value === 'exempt') {
+            await systemApi.exemptAccountMfa(id, { ...payload, exemptUntil: mfaActionForm.exemptUntil || undefined });
+        }
+        ElMessage.success(t('common.operationSuccess'));
+        mfaActionVisible.value = false;
+        await loadData();
+    } catch (error) {
+        ElMessage.error(resolveMfaActionErrorMessage(error));
+    } finally {
+        mfaActionSaving.value = false;
+    }
+}
+
+function mfaPolicyText(value?: string) {
+    return value ? t(`system.account.mfaPolicy_${value}`, value) : t('system.account.mfaPolicy_OPTIONAL');
+}
+
+function mfaStatusText(value?: string) {
+    return value ? t(`system.account.mfaStatus_${value}`, value) : t('system.account.mfaStatus_NOT_ENABLED');
+}
+
+function mfaPolicyTag(value?: string) {
+    if (value === 'REQUIRED') return 'warning';
+    if (value === 'EXEMPT') return 'info';
+    return 'primary';
+}
+
+function mfaStatusTag(value?: string) {
+    if (value === 'ENABLED') return 'success';
+    if (value === 'LOCKED') return 'danger';
+    if (value === 'PENDING_BIND' || value === 'RESET_REQUIRED') return 'warning';
+    return 'info';
+}
+
+function mfaActionTitleKey(value: MfaActionType) {
+    return ({
+        require: 'mfaRequireTitle',
+        reset: 'mfaResetTitle',
+        exempt: 'mfaExemptTitle',
+        disable: 'mfaDisableTitle',
+        unlock: 'mfaUnlockTitle',
+        resend: 'mfaResendTitle',
+    })[value];
+}
+
+function mfaActionTipKey(value: MfaActionType) {
+    return ({
+        require: 'mfaRequireTip',
+        reset: 'mfaResetTip',
+        exempt: 'mfaExemptTip',
+        disable: 'mfaDisableTip',
+        unlock: 'mfaUnlockTip',
+        resend: 'mfaResendTip',
+    })[value];
+}
+
+function resolveMfaActionErrorMessage(error: unknown) {
+    const message = error instanceof Error ? error.message : '';
+    const key = ({
+        '不能重置当前登录账号自己的 OTP': 'mfaCannotResetSelf',
+        '不能豁免当前登录账号自己的 OTP': 'mfaCannotExemptSelf',
+        '不能停用当前登录账号自己的 OTP': 'mfaCannotDisableSelf',
+        'OTP 绑定邮件只能对待绑定或需重绑用户重发': 'mfaBindMailOnlyPending',
+        'can not reset own mfa': 'mfaCannotResetSelf',
+        'can not exempt own mfa': 'mfaCannotExemptSelf',
+        'can not disable own mfa': 'mfaCannotDisableSelf',
+        'mfa bind mail can only resend for pending users': 'mfaBindMailOnlyPending',
+    } as Record<string, string>)[message];
+    return key ? t(`system.account.${key}`) : (message || t('system.account.mfaActionFailed'));
+}
+
 onMounted(loadData);
 </script>
+
+<style scoped>
+.account-operation-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.account-operation-group :deep(.el-button + .el-button) {
+    margin-left: 0;
+}
+
+.mfa-action-alert {
+    margin-bottom: 14px;
+}
+</style>

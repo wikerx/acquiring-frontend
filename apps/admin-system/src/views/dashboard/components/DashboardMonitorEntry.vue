@@ -43,16 +43,17 @@ defineEmits<{ navigate: [path: string] }>();
 <style scoped>
 .dashboard-monitor {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: 1fr;
+    gap: 14px;
 }
 
 .dashboard-monitor__card {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 18px 20px;
-    border: 1px solid #e7edf4;
+    min-height: 112px;
+    padding: 18px;
+    border: 1px solid #dfe8f4;
     border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
@@ -103,9 +104,4 @@ defineEmits<{ navigate: [path: string] }>();
     font-weight: 600;
 }
 
-@media (max-width: 768px) {
-    .dashboard-monitor {
-        grid-template-columns: 1fr;
-    }
-}
 </style>

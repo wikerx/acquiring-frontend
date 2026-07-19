@@ -51,7 +51,7 @@ defineEmits<{ navigate: [path: string] }>();
 
 <style scoped>
 .dashboard-panel {
-    border: 1px solid #e7edf4;
+    border: 1px solid #dfe8f4;
     border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
@@ -60,7 +60,7 @@ defineEmits<{ navigate: [path: string] }>();
 .dashboard-panel--security {
     border-color: #dbe7f6;
     background:
-        linear-gradient(90deg, rgba(15, 23, 42, 0.035), rgba(255, 255, 255, 0) 42%),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.04), rgba(14, 165, 164, 0.05) 46%, rgba(255, 255, 255, 0) 72%),
         #ffffff;
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.065);
 }
@@ -77,7 +77,7 @@ defineEmits<{ navigate: [path: string] }>();
     bottom: 2px;
     width: 3px;
     border-radius: 999px;
-    background: #0f172a;
+    background: #0f766e;
 }
 
 .dashboard-panel--security .dashboard-panel__header > div {
