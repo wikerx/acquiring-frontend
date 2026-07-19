@@ -28,7 +28,7 @@
             </el-table-column>
             <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
             <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="190" align="center" class-name="small-padding fixed-width">
+            <el-table-column :label="t('common.operation')" width="280" align="center" class-name="small-padding fixed-width">
                 <template #default="{ row }">
                     <div class="account-operation-group">
                         <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
@@ -378,8 +378,12 @@ onMounted(loadData);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     white-space: nowrap;
+}
+
+.account-operation-group :deep(.el-dropdown) {
+    display: inline-flex;
 }
 
 .account-operation-group :deep(.el-button + .el-button) {
