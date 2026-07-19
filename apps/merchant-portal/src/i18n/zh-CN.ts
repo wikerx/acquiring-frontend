@@ -132,6 +132,7 @@ export default {
             post: '岗位',
             deleteConfirm: '确认删除员工 {name}？',
             moreActions: '更多',
+            actionMenu: '操作',
             mfaManage: 'OTP管理',
             mfaPolicy: 'OTP策略',
             mfaStatus: 'OTP状态',

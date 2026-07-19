@@ -28,40 +28,30 @@
             </el-table-column>
             <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
             <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="280" align="center" class-name="small-padding fixed-width">
+            <el-table-column :label="t('common.operation')" width="120" align="center">
                 <template #default="{ row }">
                     <div class="account-operation-group">
-                        <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
-                        <el-dropdown v-if="hasMfaActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
+                        <el-dropdown v-if="hasActionMenu" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
                             <el-button size="small" link type="primary">
-                                {{ t('system.account.mfaManage') }}
+                                {{ t('system.account.actionMenu') }}
                                 <el-icon class="el-icon--right"><MoreFilled /></el-icon>
                             </el-button>
                             <template #dropdown>
                                 <el-dropdown-menu>
-                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canEdit || canAssignRole" command="edit">{{ t('common.edit') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
-                                </el-dropdown-menu>
-                            </template>
-                        </el-dropdown>
-                        <el-dropdown v-if="hasAccountMoreActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
-                            <el-button size="small" link type="primary">
-                                {{ t('system.account.moreActions') }}
-                                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
-                            </el-button>
-                            <template #dropdown>
-                                <el-dropdown-menu>
-                                    <el-dropdown-item v-if="canChangeStatus" command="status">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canChangeStatus" command="status" :divided="hasMfaActions">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
                         </el-dropdown>
-                        <span v-if="!canEdit && !canAssignRole && !hasMfaActions && !hasAccountMoreActions">-</span>
+                        <span v-if="!hasActionMenu">-</span>
                     </div>
                 </template>
             </el-table-column>
@@ -107,7 +97,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Edit, MoreFilled, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { MoreFilled, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -162,6 +152,7 @@ const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
 const hasAccountMoreActions = computed(() => canChangeStatus || canDelete);
 const hasMfaActions = computed(() => canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend);
+const hasActionMenu = computed(() => canEdit || canAssignRole || hasAccountMoreActions.value || hasMfaActions.value);
 const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
 const mfaActionTitle = computed(() => t(`system.account.${mfaActionTitleKey(mfaActionType.value)}`));
 const mfaActionTip = computed(() => t(`system.account.${mfaActionTipKey(mfaActionType.value)}`));
@@ -246,6 +237,10 @@ async function remove(row: AccountItem) {
 }
 
 function handleAccountCommand(command: string, row: AccountItem) {
+    if (command === 'edit') {
+        openForm(row);
+        return;
+    }
     if (command === 'status') {
         toggleStatus(row);
         return;

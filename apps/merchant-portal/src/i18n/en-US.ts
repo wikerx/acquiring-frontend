@@ -132,6 +132,7 @@ export default {
             post: 'Post',
             deleteConfirm: 'Delete employee {name}?',
             moreActions: 'More',
+            actionMenu: 'Actions',
             mfaManage: 'OTP',
             mfaPolicy: 'OTP Policy',
             mfaStatus: 'OTP Status',
