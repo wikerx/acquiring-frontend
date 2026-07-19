@@ -702,10 +702,10 @@ function resolveMfaActionErrorMessage(error: unknown) {
         'can not exempt own mfa': 'mfaCannotExemptSelf',
         'can not disable own mfa': 'mfaCannotDisableSelf',
         'mfa bind mail can only resend for pending users': 'mfaBindMailOnlyPending',
-        '不能重置当前登录账号自己的 OTP': 'mfaCannotResetSelf',
-        '不能豁免当前登录账号自己的 OTP': 'mfaCannotExemptSelf',
-        '不能停用当前登录账号自己的 OTP': 'mfaCannotDisableSelf',
-        'OTP 绑定邮件只能对待绑定或需重绑用户重发': 'mfaBindMailOnlyPending',
+        '不能重置当前登录账号自己的 MFA': 'mfaCannotResetSelf',
+        '不能豁免当前登录账号自己的 MFA': 'mfaCannotExemptSelf',
+        '不能停用当前登录账号自己的 MFA': 'mfaCannotDisableSelf',
+        'MFA 绑定邮件只能对待绑定或需重绑用户重发': 'mfaBindMailOnlyPending',
     } as Record<string, string>)[message];
     return key ? t(`system.user.${key}`) : (message || t('common.saveFailed'));
 }
