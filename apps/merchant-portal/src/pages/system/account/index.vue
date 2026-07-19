@@ -39,7 +39,9 @@
                             <template #dropdown>
                                 <el-dropdown-menu>
                                     <el-dropdown-item v-if="canEdit || canAssignRole" command="edit">{{ t('common.edit') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canResetPassword && !row.currentAccount" command="resetPassword" :divided="canEdit || canAssignRole">{{ t('system.account.resetPassword') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="row.currentAccount && canResetPassword" disabled :divided="canEdit || canAssignRole">{{ t('system.account.passwordSelfProtected') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="hasPasswordActions || canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
@@ -72,6 +74,20 @@
                 <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" /></el-form-item>
             </el-form>
             <template #footer><div class="dialog-footer"><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
+        </el-dialog>
+        <el-dialog v-model="resetPasswordVisible" :title="t('system.account.resetPasswordTitle')" width="520px" destroy-on-close>
+            <el-alert class="reset-password-alert" :title="t('system.account.resetPasswordTip')" type="warning" show-icon :closable="false" />
+            <el-form ref="resetPasswordFormRef" :model="resetPasswordForm" :rules="resetPasswordRules" label-width="96px">
+                <el-form-item :label="t('system.account.loginAccount')"><el-input :model-value="activePasswordRow?.loginAccount || '-'" disabled /></el-form-item>
+                <el-form-item :label="t('system.account.newPassword')" prop="password"><el-input v-model="resetPasswordForm.password" type="password" show-password autocomplete="new-password" /></el-form-item>
+                <el-form-item :label="t('system.account.confirmPassword')" prop="confirmPassword"><el-input v-model="resetPasswordForm.confirmPassword" type="password" show-password autocomplete="new-password" /></el-form-item>
+            </el-form>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="resetPasswordSaving" @click="submitResetPassword">{{ t('common.confirm') }}</el-button>
+                    <el-button size="small" @click="resetPasswordVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
+            </template>
         </el-dialog>
         <el-dialog v-model="mfaActionVisible" :title="mfaActionTitle" width="560px" destroy-on-close>
             <el-alert class="mfa-action-alert" :title="mfaActionTip" type="warning" show-icon :closable="false" />
@@ -126,6 +142,11 @@ const mfaActionType = ref<MfaActionType>('require');
 const activeMfaRow = ref<AccountItem | null>(null);
 const mfaActionFormRef = ref<FormInstance>();
 const mfaActionForm = reactive({ reason: '', exemptUntil: '' });
+const resetPasswordVisible = ref(false);
+const resetPasswordSaving = ref(false);
+const activePasswordRow = ref<AccountItem | null>(null);
+const resetPasswordFormRef = ref<FormInstance>();
+const resetPasswordForm = reactive({ password: '', confirmPassword: '' });
 const rules = computed<FormRules>(() => ({
     loginAccount: [{ required: true, message: t('system.account.loginAccountRequired'), trigger: 'blur' }],
     password: [{ required: !form.accountId, message: t('system.account.initialPasswordRequired'), trigger: 'blur' }],
@@ -138,9 +159,26 @@ const rules = computed<FormRules>(() => ({
 const mfaActionRules = computed<FormRules>(() => ({
     reason: [{ required: true, message: t('system.account.mfaReasonRequired'), trigger: 'blur' }],
 }));
+const resetPasswordRules = computed<FormRules>(() => ({
+    password: [
+        { required: true, message: t('system.account.newPasswordRequired'), trigger: 'blur' },
+        { min: 8, max: 64, message: t('system.account.passwordLength'), trigger: 'blur' },
+    ],
+    confirmPassword: [
+        { required: true, message: t('system.account.confirmPasswordRequired'), trigger: 'blur' },
+        {
+            validator: (_rule, value, callback) => {
+                if (value !== resetPasswordForm.password) callback(new Error(t('system.account.passwordMismatch')));
+                else callback();
+            },
+            trigger: 'blur',
+        },
+    ],
+}));
 const canAdd = hasPermission('merchant:system:account:add');
 const canEdit = hasPermission('merchant:system:account:edit');
 const canDelete = hasPermission('merchant:system:account:delete');
+const canResetPassword = hasPermission('merchant:system:account:resetPassword');
 const canChangeStatus = hasPermission('merchant:system:account:status');
 const canAssignRole = hasPermission('merchant:system:account:assignRole');
 const canMfaRequire = hasPermission('merchant:system:account:mfa:require');
@@ -150,7 +188,8 @@ const canMfaDisable = hasPermission('merchant:system:account:mfa:disable');
 const canMfaUnlock = hasPermission('merchant:system:account:mfa:unlock');
 const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
-const hasAccountMoreActions = computed(() => canChangeStatus || canDelete);
+const hasPasswordActions = computed(() => canResetPassword);
+const hasAccountMoreActions = computed(() => canChangeStatus || canDelete || hasPasswordActions.value);
 const hasMfaActions = computed(() => canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend);
 const hasActionMenu = computed(() => canEdit || canAssignRole || hasAccountMoreActions.value || hasMfaActions.value);
 const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
@@ -249,6 +288,10 @@ function handleAccountCommand(command: string, row: AccountItem) {
         remove(row);
         return;
     }
+    if (command === 'resetPassword') {
+        openResetPassword(row);
+        return;
+    }
     const actionMap: Record<string, MfaActionType> = {
         mfaRequire: 'require',
         mfaReset: 'reset',
@@ -264,6 +307,36 @@ function handleAccountCommand(command: string, row: AccountItem) {
             return;
         }
         openMfaAction(row, action);
+    }
+}
+
+function openResetPassword(row: AccountItem) {
+    if (row.currentAccount) {
+        ElMessage.warning(t('system.account.passwordSelfProtectedTip'));
+        return;
+    }
+    activePasswordRow.value = row;
+    resetPasswordForm.password = '';
+    resetPasswordForm.confirmPassword = '';
+    resetPasswordVisible.value = true;
+    nextTick(() => resetPasswordFormRef.value?.clearValidate());
+}
+
+async function submitResetPassword() {
+    const valid = await resetPasswordFormRef.value?.validate().catch(() => false);
+    if (!valid || !activePasswordRow.value) {
+        return;
+    }
+    resetPasswordSaving.value = true;
+    try {
+        await systemApi.resetAccountPassword(activePasswordRow.value.accountId, { password: resetPasswordForm.password });
+        ElMessage.success(t('system.account.resetPasswordSuccess'));
+        resetPasswordVisible.value = false;
+        await loadData();
+    } catch (error) {
+        ElMessage.error(resolveResetPasswordErrorMessage(error));
+    } finally {
+        resetPasswordSaving.value = false;
     }
 }
 
@@ -365,6 +438,15 @@ function resolveMfaActionErrorMessage(error: unknown) {
     return key ? t(`system.account.${key}`) : (message || t('system.account.mfaActionFailed'));
 }
 
+function resolveResetPasswordErrorMessage(error: unknown) {
+    const message = error instanceof Error ? error.message : '';
+    const key = ({
+        '不能重置当前登录账号密码，请在个人中心修改密码': 'passwordCannotResetSelf',
+        'can not reset current account password': 'passwordCannotResetSelf',
+    } as Record<string, string>)[message];
+    return key ? t(`system.account.${key}`) : (message || t('system.account.resetPasswordFailed'));
+}
+
 onMounted(loadData);
 </script>
 
@@ -386,6 +468,10 @@ onMounted(loadData);
 }
 
 .mfa-action-alert {
+    margin-bottom: 14px;
+}
+
+.reset-password-alert {
     margin-bottom: 14px;
 }
 </style>

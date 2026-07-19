@@ -110,6 +110,10 @@ export interface AccountMfaActionPayload {
     reason: string;
 }
 
+export interface AccountResetPasswordPayload {
+    password: string;
+}
+
 export interface AccountMfaExemptPayload extends AccountMfaActionPayload {
     exemptUntil?: string;
 }
@@ -277,6 +281,10 @@ export const systemApi = {
     },
     async deleteAccount(id: number) {
         const result = await http.delete<CommonResult<void>>(`/merchant/system/accounts/${id}`);
+        return unwrapResult(result.data);
+    },
+    async resetAccountPassword(id: number, payload: AccountResetPasswordPayload) {
+        const result = await http.post<CommonResult<void>>(`/merchant/system/accounts/${id}/reset-password`, payload);
         return unwrapResult(result.data);
     },
     async changeAccountStatus(id: number, status: number) {
