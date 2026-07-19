@@ -395,6 +395,8 @@ export default {
             allData: 'All',
             selfData: 'Self',
             customData: 'Custom',
+            systemRole: 'System role',
+            customRole: 'Custom role',
             desc: 'Description',
         },
         menu: {

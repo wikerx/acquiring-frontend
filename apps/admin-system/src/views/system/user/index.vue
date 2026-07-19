@@ -79,6 +79,7 @@
                                 <el-dropdown-menu>
                                     <el-dropdown-item command="role" v-hasPermi="'system:user:assign-role'">{{ $t('system.user.assignRole') }}</el-dropdown-item>
                                     <el-dropdown-item command="password" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-dropdown-item>
+                                    <el-dropdown-item command="delete" divided v-hasPermi="'system:user:remove'">{{ $t('common.delete') }}</el-dropdown-item>
                                     <el-dropdown-item command="mfaLogs" v-hasPermi="'sys:user:mfa:log'">{{ $t('system.user.mfaLogs') }}</el-dropdown-item>
                                     <el-dropdown-item command="mfaRequire" divided v-hasPermi="'sys:user:mfa:require'">{{ $t('system.user.mfaRequire') }}</el-dropdown-item>
                                     <el-dropdown-item command="mfaReset" v-hasPermi="'sys:user:mfa:reset'">{{ $t('system.user.mfaReset') }}</el-dropdown-item>
@@ -507,6 +508,10 @@ function handleUserCommand(command: string, row: UserRow) {
     }
     if (command === 'password') {
         openResetPassword(row);
+        return;
+    }
+    if (command === 'delete') {
+        handleDelete([row]);
         return;
     }
     if (command === 'mfaLogs') {

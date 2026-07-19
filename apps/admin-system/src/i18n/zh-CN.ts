@@ -395,6 +395,8 @@ export default {
             allData: '全部',
             selfData: '本人',
             customData: '自定义',
+            systemRole: '系统角色',
+            customRole: '自定义角色',
             desc: '说明',
         },
         menu: {
