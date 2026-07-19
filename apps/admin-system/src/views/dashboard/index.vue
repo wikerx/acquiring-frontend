@@ -39,32 +39,35 @@
                     :items="quickAccessItems"
                     @navigate="navigate"
                 />
+                <DashboardActivityFeed
+                    :title="$t('dashboard.activityTitle')"
+                    :description="$t('dashboard.activityDescription')"
+                    :login-more-text="$t('dashboard.loginAudit')"
+                    :operation-more-text="$t('dashboard.operationAuditEntry')"
+                    :empty-text="$t('common.noData')"
+                    :items="activityItems"
+                    @more-login="navigate('/system/log?tab=login')"
+                    @more-operation="navigate('/system/log?tab=oper')"
+                />
             </div>
-            <DashboardTrendChart
-                :title="$t('dashboard.trendTitle')"
-                :description="$t('dashboard.trendDescription')"
-                :login-label="$t('dashboard.loginTrend')"
-                :oper-label="$t('dashboard.operTrend')"
-                :empty-text="$t('common.noData')"
-                :active-metric="activeMetric"
-                :points="trendPoints"
-                @metric-change="activeMetric = $event"
-            />
-        </section>
-
-        <section class="dashboard-page__operations">
-            <DashboardActivityFeed
-                :eyebrow="$t('dashboard.activityEyebrow')"
-                :title="$t('dashboard.activityTitle')"
-                :description="$t('dashboard.activityDescription')"
-                :login-more-text="$t('dashboard.loginAudit')"
-                :operation-more-text="$t('dashboard.operationAuditEntry')"
-                :empty-text="$t('common.noData')"
-                :items="activityItems"
-                @more-login="navigate('/system/log?tab=login')"
-                @more-operation="navigate('/system/log?tab=oper')"
-            />
-            <DashboardMonitorEntry :items="monitorEntries" @navigate="navigate" />
+            <aside class="dashboard-page__side-stack">
+                <DashboardTrendChart
+                    :title="$t('dashboard.trendTitle')"
+                    :description="$t('dashboard.trendDescription')"
+                    :login-label="$t('dashboard.loginTrend')"
+                    :oper-label="$t('dashboard.operTrend')"
+                    :empty-text="$t('common.noData')"
+                    :active-metric="activeMetric"
+                    :points="trendPoints"
+                    @metric-change="activeMetric = $event"
+                />
+                <DashboardMonitorEntry
+                    :title="$t('dashboard.systemHealthTitle')"
+                    :description="$t('dashboard.systemHealthDescription')"
+                    :items="monitorEntries"
+                    @navigate="navigate"
+                />
+            </aside>
         </section>
 
         <CommonDetailDrawer v-model:visible="noticeDetailVisible" :title="$t('system.notice.detailTitle')" size="full">
@@ -236,7 +239,7 @@ const activityItems = computed<DashboardActivityItem[]>(() => {
     }));
     return [...loginItems, ...operationItems]
         .sort((left, right) => timestamp(right.time) - timestamp(left.time))
-        .slice(0, 8);
+        .slice(0, 5);
 });
 
 const metricCards = computed<MetricCardItem[]>(() => [
@@ -298,7 +301,7 @@ const quickAccessItems = computed(() => {
 const securityAccessItems = computed(() => {
     const items: QuickAccessItem[] = [
         createQuickAccess('mfaSecurity', '/system/user', 'sys:user:mfa:view', Key, 'rgba(15, 23, 42, 0.08)', '#0f172a', t('dashboard.mfaSecurity'), t('dashboard.mfaSecurityDesc'), true),
-        createQuickAccess('securityIntercept', '/monitor/security-intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
+        createQuickAccess('securityIntercept', '/security/intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
         createQuickAccess('loginAudit', '/system/log?tab=login', 'system:login-log:list', Monitor, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.loginAudit'), t('dashboard.loginAuditDesc')),
         createQuickAccess('operationAudit', '/system/log?tab=oper', 'system:oper-log:list', DocumentChecked, 'rgba(124, 58, 237, 0.1)', '#7c3aed', t('dashboard.operationAuditEntry'), t('dashboard.operationAuditEntryDesc')),
     ];
@@ -320,7 +323,7 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             title: t('dashboard.securityIntercept'),
             description: t('dashboard.securityInterceptMonitorDesc'),
             summary: t('dashboard.securityInterceptSummary'),
-            path: '/monitor/security-intercept-event',
+            path: '/security/intercept-event',
             permission: 'security:intercept-event:list',
             icon: WarnTriangleFilled,
             iconBackground: 'rgba(220, 38, 38, 0.1)',
@@ -543,7 +546,7 @@ function navigate(path: string) {
 .dashboard-page {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
     padding-bottom: 24px;
 }
 
@@ -555,17 +558,18 @@ function navigate(path: string) {
 
 .dashboard-page__upper {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 20px;
-}
-
-.dashboard-page__operations {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
-    gap: 20px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+    gap: 16px;
 }
 
 .dashboard-page__access-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.dashboard-page__side-stack {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -623,8 +627,7 @@ function navigate(path: string) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .dashboard-page__upper,
-    .dashboard-page__operations {
+    .dashboard-page__upper {
         grid-template-columns: 1fr;
     }
 }

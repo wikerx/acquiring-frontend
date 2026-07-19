@@ -34,13 +34,13 @@ defineEmits<{ click: [] }>();
     display: flex;
     align-items: center;
     width: 100%;
-    gap: 16px;
-    min-height: 126px;
-    padding: 18px;
+    gap: 14px;
+    min-height: 94px;
+    padding: 14px 16px;
     border: 1px solid #dfe8f4;
     border-radius: 8px;
     background: #ffffff;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.045);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
     text-align: left;
     cursor: pointer;
     transition:
@@ -59,10 +59,10 @@ defineEmits<{ click: [] }>();
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 50px;
-    height: 50px;
+    width: 46px;
+    height: 46px;
     border-radius: 8px;
-    font-size: 22px;
+    font-size: 21px;
     flex-shrink: 0;
 }
 
@@ -74,25 +74,25 @@ defineEmits<{ click: [] }>();
 .dashboard-metric-card__label {
     display: block;
     color: #475569;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .dashboard-metric-card__value {
     display: block;
-    margin-top: 10px;
+    margin-top: 7px;
     color: #0f172a;
-    font-size: 28px;
+    font-size: 25px;
     line-height: 1;
     font-weight: 700;
 }
 
 .dashboard-metric-card__hint {
     display: block;
-    margin-top: 10px;
+    margin-top: 7px;
     color: #64748b;
     font-size: 12px;
-    line-height: 1.6;
+    line-height: 1.45;
 }
 
 .dashboard-metric-card__arrow {

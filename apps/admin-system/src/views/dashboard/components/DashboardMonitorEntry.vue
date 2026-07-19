@@ -1,5 +1,9 @@
 <template>
     <section class="dashboard-monitor">
+        <header class="dashboard-monitor__header">
+            <h2>{{ title }}</h2>
+            <p>{{ description }}</p>
+        </header>
         <button
             v-for="item in items"
             :key="item.path"
@@ -33,6 +37,8 @@ export interface MonitorEntryItem {
 }
 
 interface Props {
+    title: string;
+    description: string;
     items: MonitorEntryItem[];
 }
 
@@ -42,21 +48,41 @@ defineEmits<{ navigate: [path: string] }>();
 
 <style scoped>
 .dashboard-monitor {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
+    border: 1px solid #dfe8f4;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-monitor__header {
+    padding: 18px 20px 10px;
+}
+
+.dashboard-monitor__header h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.dashboard-monitor__header p {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .dashboard-monitor__card {
     display: flex;
     align-items: center;
-    gap: 16px;
-    min-height: 112px;
-    padding: 18px;
-    border: 1px solid #dfe8f4;
-    border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    gap: 14px;
+    width: calc(100% - 40px);
+    min-height: 76px;
+    margin: 0 20px;
+    padding: 12px 0;
+    border: 0;
+    border-top: 1px solid #edf2f7;
+    background: transparent;
     text-align: left;
     cursor: pointer;
     transition:
@@ -66,42 +92,39 @@ defineEmits<{ navigate: [path: string] }>();
 }
 
 .dashboard-monitor__card:hover {
-    transform: translateY(-2px);
-    border-color: #cfe1ff;
-    box-shadow: 0 18px 28px rgba(37, 99, 235, 0.08);
+    transform: translateX(2px);
 }
 
 .dashboard-monitor__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     border-radius: 8px;
-    font-size: 22px;
+    font-size: 20px;
     flex-shrink: 0;
 }
 
 .dashboard-monitor__content strong {
     display: block;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
 }
 
 .dashboard-monitor__content span {
     display: block;
-    margin-top: 8px;
+    margin-top: 6px;
     color: #64748b;
     font-size: 12px;
 }
 
 .dashboard-monitor__content small {
     display: block;
-    margin-top: 10px;
+    margin-top: 8px;
     color: #2563eb;
     font-size: 12px;
     font-weight: 600;
 }
-
 </style>

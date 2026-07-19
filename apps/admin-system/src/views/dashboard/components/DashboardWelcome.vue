@@ -1,13 +1,15 @@
 <template>
     <section class="dashboard-welcome">
         <div class="dashboard-welcome__main">
-            <p class="dashboard-welcome__eyebrow">{{ $t('dashboard.workspace') }}</p>
             <h1 class="dashboard-welcome__title">{{ $t('dashboard.welcomeBack', { name: displayName }) }}</h1>
             <p class="dashboard-welcome__description">{{ $t('dashboard.welcomeDescription') }}</p>
         </div>
         <div class="dashboard-welcome__notice">
             <div class="dashboard-welcome__notice-head">
-                <span>{{ $t('dashboard.noticeBoard') }}</span>
+                <span>
+                    <el-icon><Bell /></el-icon>
+                    {{ $t('dashboard.noticeBoard') }}
+                </span>
                 <button type="button" @click="$emit('more-notices')">{{ $t('dashboard.viewMore') }}</button>
             </div>
             <div v-if="notices.length" class="dashboard-welcome__notice-list">
@@ -47,6 +49,8 @@
 </template>
 
 <script setup lang="ts">
+import { Bell } from '@element-plus/icons-vue';
+
 interface Props {
     displayName: string;
     todayText: string;
@@ -72,20 +76,27 @@ defineEmits<{
 <style scoped>
 .dashboard-welcome {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.9fr) minmax(320px, 1fr);
-    gap: 20px;
-    padding: 26px 28px;
+    grid-template-columns: minmax(280px, 0.95fr) minmax(360px, 1.05fr) minmax(320px, 0.92fr);
+    gap: 16px;
+    padding: 18px 20px;
     border: 1px solid #dfe8f4;
     border-radius: 8px;
     background:
-        linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(14, 165, 164, 0.08) 44%, rgba(255, 255, 255, 0.92)),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.035), rgba(14, 165, 164, 0.075) 42%, rgba(255, 255, 255, 0.92)),
         #ffffff;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
+}
+
+.dashboard-welcome__main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
 }
 
 .dashboard-welcome__notice {
-    min-height: 140px;
-    padding: 18px;
+    min-height: 118px;
+    padding: 14px;
     border: 1px solid rgba(14, 116, 144, 0.2);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.72);
@@ -96,10 +107,13 @@ defineEmits<{
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .dashboard-welcome__notice-head span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: #0f172a;
     font-size: 14px;
     font-weight: 700;
@@ -116,7 +130,7 @@ defineEmits<{
 .dashboard-welcome__notice-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
 }
 
 .dashboard-welcome__notice-item {
@@ -125,7 +139,7 @@ defineEmits<{
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 9px 10px;
+    padding: 8px 10px;
     border: 1px solid #edf1f7;
     border-radius: 6px;
     background: #fff;
@@ -172,26 +186,17 @@ defineEmits<{
     font-size: 13px;
 }
 
-.dashboard-welcome__eyebrow {
-    margin: 0 0 10px;
-    color: #0f766e;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0;
-    text-transform: uppercase;
-}
-
 .dashboard-welcome__title {
     margin: 0;
     color: #0f172a;
-    font-size: 30px;
+    font-size: 26px;
     line-height: 1.2;
     font-weight: 700;
 }
 
 .dashboard-welcome__description {
     margin: 12px 0 0;
-    max-width: 680px;
+    max-width: 620px;
     color: #64748b;
     font-size: 14px;
     line-height: 1.7;
@@ -200,15 +205,15 @@ defineEmits<{
 .dashboard-welcome__meta {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
 }
 
 .dashboard-welcome__meta-item {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 92px;
-    padding: 16px 18px;
+    min-height: 76px;
+    padding: 12px 14px;
     border: 1px solid #e8eef6;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.78);
@@ -235,7 +240,7 @@ defineEmits<{
 
 @media (max-width: 768px) {
     .dashboard-welcome {
-        padding: 20px;
+        padding: 16px;
         gap: 16px;
         border-radius: 8px;
     }

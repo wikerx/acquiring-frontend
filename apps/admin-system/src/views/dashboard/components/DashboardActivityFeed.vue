@@ -2,7 +2,6 @@
     <section class="dashboard-activity">
         <header class="dashboard-activity__header">
             <div>
-                <p>{{ eyebrow }}</p>
                 <h2>{{ title }}</h2>
                 <span>{{ description }}</span>
             </div>
@@ -12,29 +11,35 @@
             </div>
         </header>
 
-        <div v-if="items.length" class="dashboard-activity__timeline">
-            <article
+        <div v-if="items.length" class="dashboard-activity__table">
+            <div class="dashboard-activity__row dashboard-activity__row--head">
+                <span>{{ $t('dashboard.activityTime') }}</span>
+                <span>{{ $t('dashboard.activityEvent') }}</span>
+                <span>{{ $t('dashboard.activityAccount') }}</span>
+                <span>{{ $t('dashboard.activitySource') }}</span>
+                <span>{{ $t('dashboard.activityStatus') }}</span>
+            </div>
+            <button
                 v-for="item in items"
                 :key="item.id"
-                class="dashboard-activity__item"
-                :class="`dashboard-activity__item--${item.tone}`"
+                class="dashboard-activity__row"
+                :class="`dashboard-activity__row--${item.tone}`"
+                type="button"
             >
-                <div class="dashboard-activity__marker">
-                    <component :is="item.icon" />
-                </div>
-                <div class="dashboard-activity__content">
-                    <div class="dashboard-activity__line">
+                <span class="dashboard-activity__time"><BaseDateTime :value="item.time" /></span>
+                <div class="dashboard-activity__event">
+                    <span class="dashboard-activity__marker">
+                        <component :is="item.icon" />
+                    </span>
+                    <div>
                         <strong>{{ item.title }}</strong>
-                        <el-tag size="small" effect="light" :type="tagType(item.tone)">{{ item.statusText }}</el-tag>
-                    </div>
-                    <p>{{ item.description }}</p>
-                    <div class="dashboard-activity__meta">
-                        <span>{{ item.actor }}</span>
-                        <span>{{ item.source }}</span>
-                        <BaseDateTime :value="item.time" />
+                        <small>{{ item.description }}</small>
                     </div>
                 </div>
-            </article>
+                <span class="dashboard-activity__plain">{{ item.actor }}</span>
+                <span class="dashboard-activity__plain">{{ item.source }}</span>
+                <span><el-tag size="small" effect="light" :type="tagType(item.tone)">{{ item.statusText }}</el-tag></span>
+            </button>
         </div>
         <el-empty v-else :description="emptyText" :image-size="86" />
     </section>
@@ -59,7 +64,6 @@ export interface DashboardActivityItem {
 }
 
 interface Props {
-    eyebrow: string;
     title: string;
     description: string;
     loginMoreText: string;
@@ -90,7 +94,6 @@ function tagType(tone: ActivityTone) {
 
 <style scoped>
 .dashboard-activity {
-    min-height: 100%;
     border: 1px solid #dfe8f4;
     border-radius: 8px;
     background:
@@ -104,14 +107,8 @@ function tagType(tone: ActivityTone) {
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 22px 24px 8px;
-}
-
-.dashboard-activity__header p {
-    margin: 0 0 8px;
-    color: #0f766e;
-    font-size: 12px;
-    font-weight: 700;
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid #edf2f7;
 }
 
 .dashboard-activity__header h2 {
@@ -135,100 +132,110 @@ function tagType(tone: ActivityTone) {
     gap: 8px;
 }
 
-.dashboard-activity__timeline {
-    position: relative;
-    padding: 8px 24px 24px;
+.dashboard-activity__table {
+    padding: 0 20px 18px;
 }
 
-.dashboard-activity__timeline::before {
-    content: '';
-    position: absolute;
-    top: 20px;
-    bottom: 34px;
-    left: 43px;
-    width: 1px;
-    background: #dbe5f0;
-}
-
-.dashboard-activity__item {
-    position: relative;
+.dashboard-activity__row {
     display: grid;
-    grid-template-columns: 38px minmax(0, 1fr);
-    gap: 14px;
-    padding: 12px 0;
+    grid-template-columns: minmax(116px, 0.8fr) minmax(190px, 1.6fr) minmax(82px, 0.55fr) minmax(78px, 0.55fr) minmax(58px, 0.35fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 58px;
+    padding: 9px 10px;
+    border: 0;
+    border-bottom: 1px solid #edf2f7;
+    background: transparent;
+    text-align: left;
+}
+
+.dashboard-activity__row:not(.dashboard-activity__row--head) {
+    cursor: default;
+}
+
+.dashboard-activity__row:not(.dashboard-activity__row--head):hover {
+    background: #f8fbff;
+}
+
+.dashboard-activity__row--head {
+    min-height: 42px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dashboard-activity__event {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 10px;
 }
 
 .dashboard-activity__marker {
-    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #ffffff;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #f1f5f9;
     color: #64748b;
-    font-size: 18px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    font-size: 15px;
+    flex-shrink: 0;
 }
 
-.dashboard-activity__item--success .dashboard-activity__marker {
-    border-color: #bbf7d0;
+.dashboard-activity__row--success .dashboard-activity__marker {
+    background: #dcfce7;
     color: #15803d;
 }
 
-.dashboard-activity__item--danger .dashboard-activity__marker {
-    border-color: #fecaca;
+.dashboard-activity__row--danger .dashboard-activity__marker {
+    background: #fee2e2;
     color: #dc2626;
 }
 
-.dashboard-activity__item--warning .dashboard-activity__marker {
-    border-color: #fde68a;
+.dashboard-activity__row--warning .dashboard-activity__marker {
+    background: #fef3c7;
     color: #d97706;
 }
 
-.dashboard-activity__content {
+.dashboard-activity__event div {
     min-width: 0;
-    padding: 12px 14px;
-    border: 1px solid #edf2f7;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
 }
 
-.dashboard-activity__line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.dashboard-activity__line strong {
+.dashboard-activity__event strong,
+.dashboard-activity__event small,
+.dashboard-activity__plain,
+.dashboard-activity__time {
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-activity__event strong {
+    display: block;
     color: #0f172a;
-    font-size: 14px;
-    font-weight: 740;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
 }
 
-.dashboard-activity__content p {
-    margin: 8px 0 0;
-    overflow: hidden;
-    color: #475569;
+.dashboard-activity__event small {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
     font-size: 12px;
-    line-height: 1.6;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.dashboard-activity__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    margin-top: 10px;
-    color: #94a3b8;
+.dashboard-activity__plain,
+.dashboard-activity__time {
+    display: block;
+    color: #64748b;
     font-size: 12px;
+}
+
+.dashboard-activity__row > span:last-child {
+    justify-self: end;
 }
 
 @media (max-width: 768px) {
@@ -244,9 +251,36 @@ function tagType(tone: ActivityTone) {
         flex: 1;
     }
 
-    .dashboard-activity__line {
-        align-items: flex-start;
-        flex-direction: column;
+    .dashboard-activity__table {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .dashboard-activity__row {
+        grid-template-columns: 1fr auto;
+        gap: 8px 12px;
+        min-width: 0;
+        padding: 12px 0;
+    }
+
+    .dashboard-activity__row--head {
+        display: none;
+    }
+
+    .dashboard-activity__time {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-activity__event {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-activity__plain {
+        white-space: normal;
+    }
+
+    .dashboard-activity__row > span:last-child {
+        justify-self: end;
     }
 }
 </style>

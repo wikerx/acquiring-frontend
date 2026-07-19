@@ -88,7 +88,7 @@ defineEmits<{ navigate: [path: string] }>();
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 22px 24px 0;
+    padding: 18px 20px 0;
 }
 
 .dashboard-panel__header h2 {
@@ -107,15 +107,16 @@ defineEmits<{ navigate: [path: string] }>();
 .dashboard-quick-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    padding: 20px 24px 24px;
+    gap: 12px;
+    padding: 16px 20px 20px;
 }
 
 .dashboard-quick-card {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 16px;
+    min-height: 72px;
+    padding: 12px 14px;
     border: 1px solid #edf2f7;
     border-radius: 8px;
     background: #ffffff;
@@ -146,10 +147,10 @@ defineEmits<{ navigate: [path: string] }>();
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     border-radius: 8px;
-    font-size: 20px;
+    font-size: 19px;
     flex-shrink: 0;
 }
 
@@ -160,16 +161,22 @@ defineEmits<{ navigate: [path: string] }>();
 .dashboard-quick-card__content strong {
     display: block;
     color: #0f172a;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
 }
 
 .dashboard-quick-card__content span {
     display: block;
-    margin-top: 8px;
+    margin-top: 5px;
     color: #64748b;
     font-size: 12px;
-    line-height: 1.6;
+    line-height: 1.45;
+}
+
+@media (min-width: 1440px) {
+    .dashboard-panel:not(.dashboard-panel--security) .dashboard-quick-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
