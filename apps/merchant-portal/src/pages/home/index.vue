@@ -18,14 +18,20 @@
                 <span>{{ t('home.currentMerchant') }}</span>
                 <strong>{{ merchantId }}</strong>
                 <small>{{ loginAccount }}</small>
+                <div class="merchant-home-identity__mark">{{ merchantBrand.name }}</div>
             </div>
         </section>
 
         <section class="merchant-home-grid">
             <article v-for="item in summaryCards" :key="item.label" class="merchant-home-summary-card">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
-                <small>{{ item.hint }}</small>
+                <div class="merchant-home-summary-card__icon" :class="`merchant-home-summary-card__icon--${item.tone}`">
+                    <el-icon><component :is="item.icon" /></el-icon>
+                </div>
+                <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.hint }}</small>
+                </div>
             </article>
         </section>
 
@@ -39,8 +45,14 @@
                 </div>
                 <div class="merchant-home-entry-list">
                     <button v-for="entry in menuEntries" :key="entry.path" class="merchant-home-entry" type="button" @click="router.push(entry.path)">
-                        <el-icon><component :is="resolveMenuIcon(entry.icon)" /></el-icon>
-                        <span>{{ entry.label }}</span>
+                        <span class="merchant-home-entry__icon">
+                            <el-icon><component :is="resolveMenuIcon(entry.icon)" /></el-icon>
+                        </span>
+                        <span>
+                            <strong>{{ entry.label }}</strong>
+                            <small>{{ entry.description }}</small>
+                        </span>
+                        <el-icon class="merchant-home-entry__arrow"><ArrowRight /></el-icon>
                     </button>
                 </div>
             </article>
@@ -53,18 +65,22 @@
                     </div>
                 </div>
                 <div class="merchant-home-profile">
-                    <div>
+                    <div class="merchant-home-profile__item">
                         <span>{{ t('home.roles') }}</span>
                         <strong>{{ roleText }}</strong>
                     </div>
-                    <div>
+                    <div class="merchant-home-profile__item">
                         <span>{{ t('home.permissions') }}</span>
                         <strong>{{ permissionCount }}</strong>
                     </div>
-                    <div>
+                    <div class="merchant-home-profile__item">
                         <span>{{ t('home.menuCount') }}</span>
                         <strong>{{ featureCount }}</strong>
                     </div>
+                    <el-button v-if="roleEntry" class="merchant-home-profile__button" text type="primary" @click="router.push(roleEntry.path)">
+                        {{ t('home.viewPermissionDetail') }}
+                        <el-icon><ArrowRight /></el-icon>
+                    </el-button>
                 </div>
             </article>
         </section>
@@ -74,15 +90,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { ArrowRight, Grid, Key, Shop, User } from '@element-plus/icons-vue';
 import { getSystemBrand } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/authStore';
-import { flattenRouteMenus, normalizeMenuPath, withMerchantHomeMenu } from '@/utils/menu';
+import { flattenRouteMenus, normalizeMenuPath, resolveMerchantMenuLabel, withMerchantHomeMenu } from '@/utils/menu';
 import { resolveMenuIcon } from '@/utils/menuIcon';
 
 const router = useRouter();
 const auth = useAuthStore();
-const { t } = useI18n();
+const { t, te } = useI18n();
 const merchantBrand = getSystemBrand('merchant');
 
 const account = computed(() => auth.session?.account);
@@ -96,24 +113,40 @@ const menuEntries = computed(() =>
     flattenRouteMenus(menus.value)
         .map((menu) => ({
             path: normalizeMenuPath(menu.routePath),
-            label: menu.menuName,
+            label: resolveMerchantMenuLabel(menu, t, te),
+            description: menuEntryDescription(normalizeMenuPath(menu.routePath)),
             icon: menu.icon,
         }))
         .filter((menu) => menu.path && menu.path !== '/home')
         .map((menu) => ({
             path: menu.path,
             label: menu.label,
+            description: menu.description,
             icon: menu.icon,
         })),
 );
 const primaryEntries = computed(() => menuEntries.value.slice(0, 3));
+const roleEntry = computed(() => menuEntries.value.find((entry) => entry.path === '/system/role' || entry.path === '/system/role-auth'));
 const featureCount = computed(() => String(menuEntries.value.length));
 const permissionCount = computed(() => permissions.value.includes('*:*:*') ? t('home.allPermissions') : String(permissions.value.length));
 const roleText = computed(() => roles.value.length ? roles.value.join(', ') : t('layout.noRole'));
 const summaryCards = computed(() => [
-    { label: t('home.merchantId'), value: merchantId.value, hint: t('home.merchantIdHint') },
-    { label: t('home.loginAccount'), value: loginAccount.value, hint: t('home.loginAccountHint') },
-    { label: t('home.availableFeatures'), value: featureCount.value, hint: t('home.availableFeaturesHint') },
-    { label: t('home.permissionScope'), value: permissionCount.value, hint: t('home.permissionScopeHint') },
+    { label: t('home.merchantId'), value: merchantId.value, hint: t('home.merchantIdHint'), icon: Shop, tone: 'blue' },
+    { label: t('home.loginAccount'), value: loginAccount.value, hint: t('home.loginAccountHint'), icon: User, tone: 'green' },
+    { label: t('home.availableFeatures'), value: featureCount.value, hint: t('home.availableFeaturesHint'), icon: Grid, tone: 'indigo' },
+    { label: t('home.permissionScope'), value: permissionCount.value, hint: t('home.permissionScopeHint'), icon: Key, tone: 'violet' },
 ]);
+
+function menuEntryDescription(path: string) {
+    const descriptions: Record<string, string> = {
+        '/merchant-info': t('home.entryMerchantInfoDesc'),
+        '/merchant-info/openapi-keys': t('home.entryOpenapiKeysDesc'),
+        '/system/dept': t('home.entryDeptDesc'),
+        '/system/post': t('home.entryPostDesc'),
+        '/system/account': t('home.entryAccountDesc'),
+        '/system/role': t('home.entryRoleDesc'),
+        '/system/role-auth': t('home.entryRoleAuthDesc'),
+    };
+    return descriptions[path] || t('home.entryDefaultDesc');
+}
 </script>

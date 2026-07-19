@@ -16,7 +16,7 @@
             <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
             <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
             <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="180" align="center" class-name="small-padding fixed-width">
+            <el-table-column :label="t('common.operation')" width="160" align="center" class-name="small-padding fixed-width" fixed="right">
                 <template #default="{ row }">
                     <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
                     <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">{{ t('common.delete') }}</el-button>

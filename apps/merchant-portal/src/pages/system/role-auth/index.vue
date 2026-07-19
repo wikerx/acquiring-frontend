@@ -92,6 +92,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
+import { resolveMerchantMenuLabel } from '@/utils/menu';
 import { hasAnyPermission } from '@/utils/permission';
 
 const GrantTreeNode = defineComponent({
@@ -100,7 +101,7 @@ const GrantTreeNode = defineComponent({
     setup(props) {
         return () => h('span', { class: 'grant-node' }, [
             h(ElTag, { size: 'small', type: tagType(props.node.nodeType), class: 'grant-node__tag' }, () => nodeTypeName(props.node.nodeType)),
-            h('span', { class: 'grant-node__name' }, props.node.name),
+            h('span', { class: 'grant-node__name' }, grantNodeLabel(props.node)),
             props.node.code ? h('code', { class: 'grant-node__code' }, props.node.code) : null,
         ]);
     },
@@ -269,6 +270,12 @@ function dataScopeLabel(value?: string) {
 function nodeTypeName(value?: string) {
     const labels: Record<string, string> = { DIR: t('system.role.dir'), MENU: t('system.role.menu'), BTN: t('system.role.button') };
     return value ? labels[value] || value : '-';
+}
+
+function grantNodeLabel(node: RoleGrantNode) {
+    return node.nodeType === 'BTN'
+        ? node.name
+        : resolveMerchantMenuLabel({ code: node.code, name: node.name }, t);
 }
 
 function tagType(value?: string) {

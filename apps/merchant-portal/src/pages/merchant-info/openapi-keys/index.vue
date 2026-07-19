@@ -129,7 +129,7 @@
                     <el-pagination
                         v-model:current-page="logPage"
                         v-model:page-size="logPageSize"
-                        small
+                        size="small"
                         layout="total, prev, pager, next"
                         :total="logTotal"
                         @current-change="loadLogs"

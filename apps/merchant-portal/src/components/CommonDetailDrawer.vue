@@ -6,6 +6,7 @@
         append-to-body
         destroy-on-close
         :close-on-click-modal="closeOnClickModal"
+        :close-on-press-escape="closeOnPressEscape"
         class="merchant-detail-drawer"
     >
         <template v-if="$slots.header" #header>
@@ -34,11 +35,13 @@ const props = withDefaults(defineProps<{
     loading?: boolean;
     closeText?: string;
     closeOnClickModal?: boolean;
+    closeOnPressEscape?: boolean;
 }>(), {
     size: 'md',
     loading: false,
     closeText: '',
-    closeOnClickModal: false,
+    closeOnClickModal: true,
+    closeOnPressEscape: true,
 });
 
 const emit = defineEmits<{

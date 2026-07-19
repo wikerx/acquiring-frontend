@@ -13,7 +13,7 @@ import SystemPost from '@/pages/system/post/index.vue';
 import SystemRole from '@/pages/system/role/index.vue';
 import SystemRoleAuth from '@/pages/system/role-auth/index.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { firstAvailableMenuPath, flattenRouteMenus, isMerchantHomePath, normalizeMenuPath, resolveMenuComponent } from '@/utils/menu';
+import { firstAvailableMenuPath, flattenRouteMenus, isMerchantHomePath, normalizeMenuPath, resolveMerchantMenuI18nKey, resolveMenuComponent } from '@/utils/menu';
 
 declare module 'vue-router' {
     interface RouteMeta {
@@ -135,6 +135,7 @@ export function syncDynamicRoutes(menus: import('@acquiring/shared').AuthMenu[])
                 component: resolveMenuComponent(menu),
                 props: menu.componentPath ? undefined : { pageKey: menu.menuCode },
                 meta: {
+                    titleKey: resolveMerchantMenuI18nKey(menu),
                     title: menu.menuName,
                     permission: menu.permissionCode,
                 },
