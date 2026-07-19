@@ -1,9 +1,19 @@
-import axios, { type AxiosInstance } from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 export * from './brand';
 export * from './paymentBrand';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
+
+declare module 'axios' {
+    export interface AxiosRequestConfig<D = any> {
+        skipAuth?: boolean;
+    }
+
+    export interface InternalAxiosRequestConfig<D = any> {
+        skipAuth?: boolean;
+    }
+}
 
 export interface CommonResult<T> {
     code: string;
@@ -155,6 +165,10 @@ export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
 export type ErrorMessageResolver = (error: unknown) => string;
 
+export interface AuthAwareAxiosRequestConfig<D = unknown> extends AxiosRequestConfig<D> {
+    skipAuth?: boolean;
+}
+
 export interface IdleLogoutOptions {
     readSession: SessionReader;
     onIdle: UnauthorizedHandler;
@@ -184,11 +198,11 @@ export function createHttpClient(
     client.interceptors.request.use((config) => {
         const session = readSession();
         const token = session?.token;
-        if (token) {
+        config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
+        if (!config.skipAuth && token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
-        config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
-        if (session?.account) {
+        if (!config.skipAuth && session?.account) {
             config.headers['X-Operator-Id'] = String(session.account.accountId);
             config.headers['X-Operator-Name'] =
                 session.account.realName || session.account.loginAccount;

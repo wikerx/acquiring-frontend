@@ -12,6 +12,8 @@ import type {
 import { unwrapResult } from '@acquiring/shared';
 import { http } from './http';
 
+const SKIP_AUTH_CONFIG = { skipAuth: true };
+
 export interface MerchantDefaultLoginCredential {
     merchantId?: string | null;
     loginAccount?: string | null;
@@ -25,34 +27,35 @@ export interface SendLoginVerifyCodeRequest {
 }
 
 export async function defaultLoginCredential(): Promise<MerchantDefaultLoginCredential> {
-    const result = await http.get<CommonResult<MerchantDefaultLoginCredential>>('/merchant/auth/default-login-credential');
+    const result = await http.get<CommonResult<MerchantDefaultLoginCredential>>('/merchant/auth/default-login-credential', SKIP_AUTH_CONFIG);
     return unwrapResult(result.data);
 }
 
 export async function sendLoginVerifyCode(request: SendLoginVerifyCodeRequest): Promise<AuthVerifyCodeSendResponse> {
-    const result = await http.post<CommonResult<AuthVerifyCodeSendResponse>>('/merchant/auth/verify-code/send', request);
+    const result = await http.post<CommonResult<AuthVerifyCodeSendResponse>>('/merchant/auth/verify-code/send', request, SKIP_AUTH_CONFIG);
     return unwrapResult(result.data);
 }
 
 export async function login(request: LoginRequest): Promise<AuthLoginResponse> {
-    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/login', request);
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/login', request, SKIP_AUTH_CONFIG);
     return unwrapResult(result.data);
 }
 
 export async function getMfaBindInfo(loginTicket: string): Promise<AuthMfaBindInfoResponse> {
     const result = await http.get<CommonResult<AuthMfaBindInfoResponse>>('/merchant/auth/mfa/bind-info', {
         params: { loginTicket },
+        skipAuth: true,
     });
     return unwrapResult(result.data);
 }
 
 export async function confirmMfaBind(request: AuthMfaBindConfirmRequest): Promise<AuthLoginResponse> {
-    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/bind-confirm', request);
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/bind-confirm', request, SKIP_AUTH_CONFIG);
     return unwrapResult(result.data);
 }
 
 export async function verifyMfa(request: AuthMfaVerifyRequest): Promise<AuthLoginResponse> {
-    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/verify', request);
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/mfa/verify', request, SKIP_AUTH_CONFIG);
     return unwrapResult(result.data);
 }
 
