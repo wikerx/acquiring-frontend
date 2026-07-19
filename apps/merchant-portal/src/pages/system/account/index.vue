@@ -32,7 +32,24 @@
                 <template #default="{ row }">
                     <div class="account-operation-group">
                         <el-button v-if="canEdit || canAssignRole" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
-                        <el-dropdown v-if="hasMoreActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
+                        <el-dropdown v-if="hasMfaActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
+                            <el-button size="small" link type="primary">
+                                {{ t('system.account.mfaManage') }}
+                                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+                            </el-button>
+                            <template #dropdown>
+                                <el-dropdown-menu>
+                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
+                                </el-dropdown-menu>
+                            </template>
+                        </el-dropdown>
+                        <el-dropdown v-if="hasAccountMoreActions" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
                             <el-button size="small" link type="primary">
                                 {{ t('system.account.moreActions') }}
                                 <el-icon class="el-icon--right"><MoreFilled /></el-icon>
@@ -40,18 +57,11 @@
                             <template #dropdown>
                                 <el-dropdown-menu>
                                     <el-dropdown-item v-if="canChangeStatus" command="status">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" divided>{{ t('system.account.mfaRequire') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
                         </el-dropdown>
-                        <span v-if="!canEdit && !canAssignRole && !hasMoreActions">-</span>
+                        <span v-if="!canEdit && !canAssignRole && !hasMfaActions && !hasAccountMoreActions">-</span>
                     </div>
                 </template>
             </el-table-column>
@@ -60,12 +70,12 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
         <el-dialog v-model="visible" :title="form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee')" width="560px">
-            <el-form :model="form" label-width="92px">
-                <el-form-item :label="t('system.account.loginAccount')"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item v-if="!form.accountId" :label="t('system.account.initialPassword')"><el-input v-model="form.password" type="password" show-password /></el-form-item>
-                <el-form-item :label="t('system.account.realName')"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
+            <el-form ref="formRef" :model="form" :rules="rules" label-width="92px">
+                <el-form-item :label="t('system.account.loginAccount')" prop="loginAccount"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item v-if="!form.accountId" :label="t('system.account.initialPassword')" prop="password"><el-input v-model="form.password" type="password" show-password /></el-form-item>
+                <el-form-item :label="t('system.account.realName')" prop="realName"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
                 <el-form-item :label="t('system.account.mobile')"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.email')"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
+                <el-form-item :label="t('system.account.email')" prop="email"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
                 <el-form-item :label="t('system.account.role')"><el-select v-model="form.roleIds" multiple style="width:100%" :disabled="!canAssignRole"><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
                 <el-form-item :label="t('system.account.dept')"><el-tree-select v-model="form.deptIds" multiple :data="deptTree" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" :disabled="!canSaveAccountBase" /></el-form-item>
                 <el-form-item :label="t('system.account.post')"><el-select v-model="form.postIds" multiple style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
@@ -118,6 +128,7 @@ const posts = ref<PostItem[]>([]);
 const deptTree = ref<DeptItem[]>([]);
 const query = reactive<{ keyword: string; roleId?: number; status?: number }>({ keyword: '' });
 const form = reactive<Partial<AccountItem> & { password?: string }>({ status: 1, roleIds: [], deptIds: [], postIds: [] });
+const formRef = ref<FormInstance>();
 type MfaActionType = 'require' | 'reset' | 'exempt' | 'disable' | 'unlock' | 'resend';
 const mfaActionVisible = ref(false);
 const mfaActionSaving = ref(false);
@@ -125,6 +136,15 @@ const mfaActionType = ref<MfaActionType>('require');
 const activeMfaRow = ref<AccountItem | null>(null);
 const mfaActionFormRef = ref<FormInstance>();
 const mfaActionForm = reactive({ reason: '', exemptUntil: '' });
+const rules = computed<FormRules>(() => ({
+    loginAccount: [{ required: true, message: t('system.account.loginAccountRequired'), trigger: 'blur' }],
+    password: [{ required: !form.accountId, message: t('system.account.initialPasswordRequired'), trigger: 'blur' }],
+    realName: [{ required: true, message: t('system.account.realNameRequired'), trigger: 'blur' }],
+    email: [
+        { required: true, message: t('system.account.emailRequired'), trigger: 'blur' },
+        { type: 'email', message: t('system.account.emailFormat'), trigger: ['blur', 'change'] },
+    ],
+}));
 const mfaActionRules = computed<FormRules>(() => ({
     reason: [{ required: true, message: t('system.account.mfaReasonRequired'), trigger: 'blur' }],
 }));
@@ -140,9 +160,8 @@ const canMfaDisable = hasPermission('merchant:system:account:mfa:disable');
 const canMfaUnlock = hasPermission('merchant:system:account:mfa:unlock');
 const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
-const hasMoreActions = computed(() =>
-    canChangeStatus || canDelete || canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend,
-);
+const hasAccountMoreActions = computed(() => canChangeStatus || canDelete);
+const hasMfaActions = computed(() => canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend);
 const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
 const mfaActionTitle = computed(() => t(`system.account.${mfaActionTitleKey(mfaActionType.value)}`));
 const mfaActionTip = computed(() => t(`system.account.${mfaActionTipKey(mfaActionType.value)}`));
@@ -187,9 +206,14 @@ function resetQuery() {
 function openForm(row?: AccountItem) {
     Object.assign(form, row ? { ...row, password: undefined } : { accountId: undefined, loginAccount: '', password: '', realName: '', mobile: '', email: '', status: 1, roleIds: [], deptIds: [], postIds: [] });
     visible.value = true;
+    nextTick(() => formRef.value?.clearValidate());
 }
 
 async function submit() {
+    const valid = await formRef.value?.validate().catch(() => false);
+    if (!valid) {
+        return;
+    }
     if (!form.accountId) {
         await systemApi.saveAccount(form);
     } else {
