@@ -81,7 +81,7 @@ function onMetricChange(value: string | number | boolean) {
 <style scoped>
 .dashboard-panel {
     border: 1px solid #e7edf4;
-    border-radius: 18px;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
 }
@@ -160,7 +160,7 @@ function onMetricChange(value: string | number | boolean) {
     width: 100%;
     height: 220px;
     padding: 12px 0;
-    border-radius: 14px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);
 }
 

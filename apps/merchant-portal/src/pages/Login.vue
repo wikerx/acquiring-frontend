@@ -68,14 +68,18 @@
                                     :placeholder="t('login.verifyCodePlaceholder')"
                                     @keyup.enter="handleLogin"
                                 />
-                                <el-button
-                                    class="merchant-login-verify-code__button"
-                                    :loading="sendingCode"
-                                    :disabled="loading || loadingCredential"
-                                    @click="handleSendVerifyCode"
+                                <button
+                                    class="merchant-login-verify-code__image"
+                                    type="button"
+                                    :disabled="sendingCode || loading || loadingCredential"
+                                    :title="t('login.refreshCaptcha')"
+                                    @click="handleSendVerifyCode()"
                                 >
-                                    {{ t('login.getVerifyCode') }}
-                                </el-button>
+                                    <img v-if="captchaImage" :src="captchaImage" :alt="t('login.captchaAlt')" />
+                                    <span v-else :class="{ 'is-error': captchaLoadStatus === 'error' }">
+                                        {{ captchaFallbackText }}
+                                    </span>
+                                </button>
                             </div>
                         </el-form-item>
                         <el-button type="primary" class="merchant-login-submit" :loading="loading || loadingCredential" @click="handleLogin">
@@ -112,8 +116,9 @@ const { t } = useI18n();
 const loading = ref(false);
 const loadingCredential = ref(false);
 const sendingCode = ref(false);
-const credentialLoaded = ref(false);
-const verifyCodeReceiver = ref('');
+const captchaImage = ref('');
+const captchaLoadStatus = ref<'loading' | 'ready' | 'error' | 'rateLimited'>('loading');
+const captchaRetryTimer = ref<number | undefined>();
 const heroTags = computed(() => [t('login.tagTransaction'), t('login.tagSettlement'), t('login.tagOperation')]);
 const heroMetrics = computed(() => [
     { value: '24/7', label: t('login.metricAccess') },
@@ -128,20 +133,36 @@ const form = reactive({
     verifyCode: '',
 });
 const loginHint = computed(() => {
-    if (verifyCodeReceiver.value) {
-        return `${t('login.verifyCodeSentTo')} ${verifyCodeReceiver.value}`;
+    if (captchaLoadStatus.value === 'rateLimited') {
+        return t('login.captchaRateLimited');
     }
-    return credentialLoaded.value ? t('login.defaultCredentialLoaded') : t('login.footerDescription');
+    if (captchaLoadStatus.value === 'error') {
+        return t('login.captchaLoadFailed');
+    }
+    if (captchaImage.value) {
+        return t('login.captchaLoaded');
+    }
+    return t('login.footerDescription');
+});
+const captchaFallbackText = computed(() => {
+    if (captchaLoadStatus.value === 'rateLimited') {
+        return t('login.captchaWait');
+    }
+    if (captchaLoadStatus.value === 'error') {
+        return t('login.reloadCaptcha');
+    }
+    return t('login.loadingCaptcha');
 });
 
-onMounted(loadDefaultCredential);
+onMounted(async () => {
+    await loadDefaultCredential();
+    await loadInitialCaptcha();
+});
 
 watch(
     () => [form.merchantId, form.loginAccount],
     () => {
-        form.verifyCodeId = '';
         form.verifyCode = '';
-        verifyCodeReceiver.value = '';
     },
 );
 
@@ -158,36 +179,88 @@ async function loadDefaultCredential() {
         if (credential.password) {
             form.password = credential.password;
         }
-        credentialLoaded.value = Boolean(credential.merchantId && credential.loginAccount && credential.password);
     } catch {
-        credentialLoaded.value = false;
+        // 生产环境不会依赖默认凭据，失败时保持空表单即可。
     } finally {
         loadingCredential.value = false;
     }
 }
 
-async function handleSendVerifyCode() {
-    if (!form.merchantId || !form.loginAccount) {
-        ElMessage.warning(t('login.accountRequired'));
+async function loadInitialCaptcha() {
+    await handleSendVerifyCode({ showError: false });
+    if (captchaImage.value) {
+        return;
+    }
+    window.setTimeout(() => {
+        handleSendVerifyCode({ showError: false });
+    }, 600);
+}
+
+async function handleSendVerifyCode(options: { showError?: boolean } = {}) {
+    if (sendingCode.value) {
         return;
     }
     sendingCode.value = true;
+    captchaLoadStatus.value = 'loading';
+    captchaImage.value = '';
+    form.verifyCodeId = '';
     try {
+        if (captchaRetryTimer.value) {
+            window.clearTimeout(captchaRetryTimer.value);
+            captchaRetryTimer.value = undefined;
+        }
         const result = await sendLoginVerifyCode({
             loginAccount: form.loginAccount,
             merchantId: form.merchantId,
             scene: 'LOGIN',
         });
         form.verifyCodeId = result.verifyCodeId;
-        form.verifyCode = result.devCode || '';
-        verifyCodeReceiver.value = result.maskedReceiver;
-        ElMessage.success(t('login.verifyCodeSent'));
+        captchaImage.value = result.captchaImage || '';
+        form.verifyCode = '';
+        captchaLoadStatus.value = captchaImage.value ? 'ready' : 'error';
+        if (!captchaImage.value && options.showError !== false) {
+            ElMessage.error(t('login.captchaLoadFailed'));
+        }
     } catch (error) {
-        const locale = document.documentElement.lang || navigator.language || 'zh-CN';
-        ElMessage.error(resolveFriendlyRequestMessage(error, locale));
+        if (isRateLimitedError(error)) {
+            captchaLoadStatus.value = 'rateLimited';
+            scheduleCaptchaRetry();
+        } else {
+            captchaLoadStatus.value = 'error';
+        }
+        if (options.showError !== false) {
+            const locale = document.documentElement.lang || navigator.language || 'zh-CN';
+            ElMessage.error(resolveFriendlyRequestMessage(error, locale));
+        }
     } finally {
         sendingCode.value = false;
     }
+}
+
+function scheduleCaptchaRetry() {
+    if (captchaRetryTimer.value) {
+        window.clearTimeout(captchaRetryTimer.value);
+    }
+    captchaRetryTimer.value = window.setTimeout(() => {
+        captchaRetryTimer.value = undefined;
+        handleSendVerifyCode({ showError: false });
+    }, 3000);
+}
+
+function isRateLimitedError(error: unknown) {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+    const errorObject = error as {
+        code?: string;
+        message?: string;
+        response?: { data?: { code?: string; message?: string } };
+    };
+    const responseData = errorObject.response?.data;
+    return responseData?.code === 'F429'
+        || responseData?.message === 'verify code send too frequently'
+        || errorObject.code === 'F429'
+        || errorObject.message === 'verify code send too frequently';
 }
 
 async function handleLogin() {
@@ -215,6 +288,7 @@ async function handleLogin() {
         auth.setLoginResponse(response);
         await router.push(firstAvailableMenuPath(response.menus || []));
     } catch (error) {
+        await handleSendVerifyCode({ showError: false });
         const locale = document.documentElement.lang || navigator.language || 'zh-CN';
         ElMessage.error(resolveFriendlyRequestMessage(error, locale));
     } finally {

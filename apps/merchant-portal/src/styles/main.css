@@ -1035,19 +1035,50 @@ body {
 
 .merchant-login-verify-code {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 128px;
+    grid-template-columns: minmax(0, 1fr) 150px;
     gap: 10px;
     width: 100%;
 }
 
-.merchant-login-verify-code__button {
+.merchant-login-verify-code__image {
     min-height: 50px;
+    padding: 0;
     border-radius: 16px !important;
-    border-color: rgb(14 165 233 / 26%) !important;
+    border: 1px solid rgb(14 165 233 / 26%) !important;
+    background: linear-gradient(135deg, #f8fafc, #ecfeff);
     color: var(--merchant-primary-deep) !important;
     font-size: 13px;
     font-weight: 800;
     white-space: normal;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.merchant-login-verify-code__image:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+.merchant-login-verify-code__image img {
+    display: block;
+    width: 100%;
+    height: 50px;
+    object-fit: cover;
+}
+
+.merchant-login-verify-code__image span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 10px;
+    line-height: 1.2;
+}
+
+.merchant-login-verify-code__image span.is-error {
+    color: #dc2626;
+    background: rgb(254 242 242 / 78%);
 }
 
 .merchant-login-submit {

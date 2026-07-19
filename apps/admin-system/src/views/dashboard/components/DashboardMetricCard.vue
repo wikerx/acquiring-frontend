@@ -37,7 +37,7 @@ defineEmits<{ click: [] }>();
     gap: 16px;
     padding: 20px;
     border: 1px solid #e8edf3;
-    border-radius: 16px;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
     text-align: left;
@@ -60,7 +60,7 @@ defineEmits<{ click: [] }>();
     justify-content: center;
     width: 50px;
     height: 50px;
-    border-radius: 14px;
+    border-radius: 8px;
     font-size: 22px;
     flex-shrink: 0;
 }

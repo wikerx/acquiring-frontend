@@ -25,12 +25,21 @@
         </section>
 
         <section class="dashboard-page__upper">
-            <DashboardQuickAccess
-                :title="$t('dashboard.quickAccessTitle')"
-                :description="$t('dashboard.quickAccessDescription')"
-                :items="quickAccessItems"
-                @navigate="navigate"
-            />
+            <div class="dashboard-page__access-stack">
+                <DashboardQuickAccess
+                    variant="security"
+                    :title="$t('dashboard.securityFocusTitle')"
+                    :description="$t('dashboard.securityFocusDescription')"
+                    :items="securityAccessItems"
+                    @navigate="navigate"
+                />
+                <DashboardQuickAccess
+                    :title="$t('dashboard.quickAccessTitle')"
+                    :description="$t('dashboard.quickAccessDescription')"
+                    :items="quickAccessItems"
+                    @navigate="navigate"
+                />
+            </div>
             <DashboardTrendChart
                 :title="$t('dashboard.trendTitle')"
                 :description="$t('dashboard.trendDescription')"
@@ -93,6 +102,7 @@ import {
     DataLine,
     DocumentChecked,
     Grid,
+    Key,
     Location,
     Lock,
     Monitor,
@@ -100,6 +110,7 @@ import {
     SetUp,
     Shop,
     User,
+    WarnTriangleFilled,
 } from '@element-plus/icons-vue';
 import type { SysLoginLog } from '@/api/audit/login-log';
 import { searchLoginLogs } from '@/api/audit/login-log';
@@ -147,6 +158,7 @@ interface QuickAccessItem {
     description: string;
     path: string;
     permission?: string;
+    requirePermission?: boolean;
     icon: Component;
     iconBackground: string;
     iconColor: string;
@@ -157,6 +169,8 @@ interface MonitorEntryItem {
     description: string;
     summary: string;
     path: string;
+    permission?: string;
+    requirePermission?: boolean;
     icon: Component;
     iconBackground: string;
     iconColor: string;
@@ -249,13 +263,22 @@ const quickAccessItems = computed(() => {
         createQuickAccess('merchant', '/merchant/info', 'merchant:info:list', Shop, 'rgba(37, 99, 235, 0.12)', '#2563eb', t('dashboard.merchantInfo'), t('dashboard.merchantInfoDesc')),
         createQuickAccess('user', '/system/user', 'system:user:list', User, 'rgba(14, 165, 164, 0.12)', '#0f766e', t('dashboard.userManagement'), t('dashboard.userManagementDesc')),
         createQuickAccess('role', '/system/role', 'system:role:list', Lock, 'rgba(245, 158, 11, 0.12)', '#d97706', t('dashboard.roleManagement'), t('dashboard.roleManagementDesc')),
+        createQuickAccess('sharding', '/monitor/sharding/rules', 'monitor:sharding:rule:list', DataBoard, 'rgba(236, 72, 153, 0.12)', '#db2777', t('dashboard.shardingManagement'), t('dashboard.shardingManagementDesc')),
         createQuickAccess('country', '/base/country', 'base:country:list', Location, 'rgba(16, 185, 129, 0.12)', '#059669', t('dashboard.country'), t('dashboard.countryDesc')),
         createQuickAccess('dict', '/system/dict', 'system:dict:list', Grid, 'rgba(99, 102, 241, 0.12)', '#4f46e5', t('dashboard.dictManagement'), t('dashboard.dictManagementDesc')),
         createQuickAccess('config', '/system/config', 'system:config:query', SetUp, 'rgba(148, 163, 184, 0.16)', '#475569', t('dashboard.configManagement'), t('dashboard.configManagementDesc')),
-        createQuickAccess('log', '/system/log', 'system:login-log:list', DocumentChecked, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.logManagement'), t('dashboard.logManagementDesc')),
-        createQuickAccess('sharding', '/monitor/sharding/rules', 'monitor:sharding:rule:list', DataBoard, 'rgba(236, 72, 153, 0.12)', '#db2777', t('dashboard.shardingManagement'), t('dashboard.shardingManagementDesc')),
     ];
-    return items.filter((item) => hasMenuAccess(item.path, item.permission)).slice(0, 8);
+    return items.filter(canShowQuickAccess).slice(0, 8);
+});
+
+const securityAccessItems = computed(() => {
+    const items: QuickAccessItem[] = [
+        createQuickAccess('mfaSecurity', '/system/user', 'sys:user:mfa:view', Key, 'rgba(15, 23, 42, 0.08)', '#0f172a', t('dashboard.mfaSecurity'), t('dashboard.mfaSecurityDesc'), true),
+        createQuickAccess('securityIntercept', '/monitor/security-intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
+        createQuickAccess('loginAudit', '/system/log?tab=login', 'system:login-log:list', Monitor, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.loginAudit'), t('dashboard.loginAuditDesc')),
+        createQuickAccess('operationAudit', '/system/log?tab=oper', 'system:oper-log:list', DocumentChecked, 'rgba(124, 58, 237, 0.1)', '#7c3aed', t('dashboard.operationAuditEntry'), t('dashboard.operationAuditEntryDesc')),
+    ];
+    return items.filter(canShowQuickAccess);
 });
 
 const monitorEntries = computed<MonitorEntryItem[]>(() => {
@@ -270,6 +293,27 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             iconColor: '#d97706',
         },
         {
+            title: t('dashboard.securityIntercept'),
+            description: t('dashboard.securityInterceptMonitorDesc'),
+            summary: t('dashboard.securityInterceptSummary'),
+            path: '/monitor/security-intercept-event',
+            permission: 'security:intercept-event:list',
+            icon: WarnTriangleFilled,
+            iconBackground: 'rgba(220, 38, 38, 0.1)',
+            iconColor: '#dc2626',
+        },
+        {
+            title: t('dashboard.mfaProtection'),
+            description: t('dashboard.mfaProtectionDesc'),
+            summary: t('dashboard.mfaProtectionSummary'),
+            path: '/system/user',
+            permission: 'sys:user:mfa:view',
+            requirePermission: true,
+            icon: Key,
+            iconBackground: 'rgba(15, 23, 42, 0.08)',
+            iconColor: '#0f172a',
+        },
+        {
             title: t('dashboard.resourceMonitor'),
             description: t('dashboard.resourceMonitorDesc'),
             summary: resourceHealthy.value ? t('dashboard.resourceHealthy') : t('dashboard.resourceWarning'),
@@ -279,7 +323,7 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             iconColor: '#2563eb',
         },
     ];
-    return items.filter((item) => hasMenuAccess(item.path));
+    return items.filter(canShowMonitorEntry);
 });
 
 onMounted(() => {
@@ -402,8 +446,9 @@ function createQuickAccess(
     iconColor: string,
     title: string,
     description: string,
+    requirePermission = false,
 ): QuickAccessItem {
-    return { key, path, permission, icon, iconBackground, iconColor, title, description };
+    return { key, path, permission, requirePermission, icon, iconBackground, iconColor, title, description };
 }
 
 function resolveBusinessTypeText(row: SysOperLog) {
@@ -429,6 +474,20 @@ function hasMenuAccess(path: string, permission?: string) {
         return userStore.hasPermission(permission);
     }
     return false;
+}
+
+function canShowQuickAccess(item: QuickAccessItem) {
+    if (item.requirePermission && item.permission) {
+        return userStore.hasPermission(item.permission);
+    }
+    return hasMenuAccess(item.path, item.permission);
+}
+
+function canShowMonitorEntry(item: MonitorEntryItem) {
+    if (item.requirePermission && item.permission) {
+        return userStore.hasPermission(item.permission);
+    }
+    return hasMenuAccess(item.path, item.permission);
 }
 
 function findMenuPath(items: Array<{ path?: string; children?: Array<{ path?: string; children?: unknown[] }> }>, path: string): boolean {
@@ -464,6 +523,13 @@ function navigate(path: string) {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: 20px;
+}
+
+.dashboard-page__access-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
 }
 
 .dashboard-notice-detail {

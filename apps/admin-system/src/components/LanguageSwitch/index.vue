@@ -1,7 +1,8 @@
 <template>
     <el-dropdown trigger="click" @command="handleSwitch">
         <span class="lang-trigger">
-            {{ currentFlag }} {{ currentLabel }}
+            <span class="lang-trigger__flag">{{ currentFlag }}</span>
+            <span class="lang-trigger__label">{{ currentLabel }}</span>
         </span>
         <template #dropdown>
             <el-dropdown-menu>
@@ -47,11 +48,18 @@ function handleSwitch(lang: string) {
     color: #606266;
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
     padding: 0 4px;
 }
 
 .lang-trigger:hover {
     color: var(--app-primary, #409eff);
+}
+
+.lang-trigger__flag,
+.lang-trigger__label {
+    display: inline-flex;
+    align-items: center;
 }
 
 :global(.top-mode) .lang-trigger {
@@ -65,5 +73,15 @@ function handleSwitch(lang: string) {
 .el-dropdown-menu__item.is-active {
     color: var(--app-primary, #409eff);
     font-weight: 600;
+}
+
+@media (max-width: 480px) {
+    .lang-trigger {
+        padding: 0 2px;
+    }
+
+    .lang-trigger__label {
+        display: none;
+    }
 }
 </style>

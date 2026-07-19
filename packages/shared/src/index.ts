@@ -31,6 +31,7 @@ export interface AuthAccount {
     appCode: string;
     loginAccount: string;
     realName: string;
+    nickname?: string | null;
     mobile?: string | null;
     phone?: string | null;
     phoneNumber?: string | null;
@@ -55,6 +56,17 @@ export interface AuthAccount {
     status: number;
 }
 
+export interface AuthProfileUpdateRequest {
+    nickname: string;
+    mobile?: string | null;
+    email: string;
+}
+
+export interface AuthPasswordChangeRequest {
+    oldPassword: string;
+    newPassword: string;
+}
+
 export interface AuthMenu {
     id: number;
     parentId: number;
@@ -75,13 +87,21 @@ export interface AuthMenu {
 
 export interface AuthLoginResponse {
     accessToken?: string | null;
-    tokenType: string;
-    expiresIn: number;
-    expireAt: string;
-    account: AuthAccount;
-    menus: AuthMenu[];
+    tokenType?: string | null;
+    expiresIn?: number | null;
+    expireAt?: string | null;
+    account?: AuthAccount | null;
+    menus?: AuthMenu[] | null;
     roles?: string[];
-    permissions: string[];
+    permissions?: string[];
+    loginStatus?: 'SUCCESS' | 'MFA_REQUIRED' | string;
+    mfaRequired?: boolean;
+    mfaChallengeType?: 'BIND_REQUIRED' | 'VERIFY_REQUIRED' | 'RESET_BIND_REQUIRED' | 'LOCKED' | string;
+    loginTicket?: string | null;
+    loginTicketExpireAt?: string | null;
+    mfaPolicy?: 'OPTIONAL' | 'REQUIRED' | 'EXEMPT' | string;
+    mfaStatus?: 'NOT_ENABLED' | 'PENDING_BIND' | 'ENABLED' | 'RESET_REQUIRED' | 'EXEMPT' | 'LOCKED' | 'DISABLED' | string;
+    mfaLockedUntil?: string | null;
 }
 
 export interface LoginRequest {
@@ -94,10 +114,32 @@ export interface LoginRequest {
 
 export interface AuthVerifyCodeSendResponse {
     verifyCodeId: string;
-    receiverType: 'SMS' | 'EMAIL' | 'TOTP';
+    receiverType: 'CAPTCHA' | 'SMS' | 'EMAIL' | 'TOTP';
     maskedReceiver: string;
+    captchaImage?: string | null;
     expireSeconds: number;
-    devCode?: string;
+}
+
+export interface AuthMfaBindInfoResponse {
+    mfaType: 'TOTP' | string;
+    mfaStatus: string;
+    issuer: string;
+    accountLabel: string;
+    otpauthUri: string;
+    digits: number;
+    periodSeconds: number;
+    maskedLoginAccount: string;
+    loginTicketExpireAt?: string | null;
+}
+
+export interface AuthMfaBindConfirmRequest {
+    loginTicket: string;
+    totpCode: string;
+}
+
+export interface AuthMfaVerifyRequest {
+    loginTicket: string;
+    totpCode: string;
 }
 
 export interface AuthSession {
@@ -185,7 +227,7 @@ export function setupIdleLogout(options: IdleLogoutOptions): () => void {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     let lastActiveAt = Date.now();
     let hasActiveSession = false;
-    let timer: ReturnType<typeof window.setTimeout> | undefined;
+    let timer: number | undefined;
 
     const clearTimer = () => {
         if (timer) {

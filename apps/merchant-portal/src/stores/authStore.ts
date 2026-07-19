@@ -22,15 +22,15 @@ export const useAuthStore = defineStore('merchantAuth', {
     }),
     actions: {
         setLoginResponse(response: AuthLoginResponse) {
-            if (!response.accessToken) {
+            if (!response.accessToken || !response.account) {
                 return;
             }
             this.session = {
                 token: response.accessToken,
                 account: response.account,
-                menus: response.menus,
-                roles: response.roles,
-                permissions: response.permissions,
+                menus: response.menus || [],
+                roles: response.roles || [],
+                permissions: response.permissions || [],
             };
             this.hydrated = true;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
@@ -44,9 +44,10 @@ export const useAuthStore = defineStore('merchantAuth', {
                 this.clearSession();
                 return;
             }
+            const account = response.account || this.session.account;
             this.session = {
                 token,
-                account: response.account,
+                account,
                 menus: response.menus || [],
                 roles: response.roles || [],
                 permissions: response.permissions || [],

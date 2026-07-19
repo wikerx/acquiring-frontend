@@ -1,4 +1,11 @@
-import type { AuthLoginResponse, AuthVerifyCodeSendResponse, CommonResult, LoginRequest } from '@acquiring/shared';
+import type {
+    AuthLoginResponse,
+    AuthPasswordChangeRequest,
+    AuthProfileUpdateRequest,
+    AuthVerifyCodeSendResponse,
+    CommonResult,
+    LoginRequest,
+} from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from './http';
 
@@ -9,7 +16,7 @@ export interface MerchantDefaultLoginCredential {
 }
 
 export interface SendLoginVerifyCodeRequest {
-    loginAccount: string;
+    loginAccount?: string;
     scene: 'LOGIN';
     merchantId?: string;
 }
@@ -31,6 +38,16 @@ export async function login(request: LoginRequest): Promise<AuthLoginResponse> {
 
 export async function currentUser(): Promise<AuthLoginResponse> {
     const result = await http.get<CommonResult<AuthLoginResponse>>('/merchant/auth/me');
+    return unwrapResult(result.data);
+}
+
+export async function updateProfile(request: AuthProfileUpdateRequest): Promise<AuthLoginResponse> {
+    const result = await http.post<CommonResult<AuthLoginResponse>>('/merchant/auth/profile', request);
+    return unwrapResult(result.data);
+}
+
+export async function changePassword(request: AuthPasswordChangeRequest): Promise<void> {
+    const result = await http.post<CommonResult<void>>('/merchant/auth/password/change', request);
     return unwrapResult(result.data);
 }
 

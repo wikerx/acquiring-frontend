@@ -76,11 +76,9 @@ defineEmits<{
     gap: 20px;
     padding: 24px 28px;
     border: 1px solid #e6ebf2;
-    border-radius: 18px;
-    background:
-        radial-gradient(circle at top right, rgba(64, 158, 255, 0.14), transparent 32%),
-        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
 }
 
 .dashboard-welcome__notice {
@@ -177,7 +175,7 @@ defineEmits<{
     color: #2563eb;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0;
     text-transform: uppercase;
 }
 
@@ -210,7 +208,7 @@ defineEmits<{
     min-height: 92px;
     padding: 16px 18px;
     border: 1px solid #e8eef6;
-    border-radius: 14px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.78);
 }
 
@@ -237,7 +235,7 @@ defineEmits<{
     .dashboard-welcome {
         padding: 20px;
         gap: 16px;
-        border-radius: 16px;
+        border-radius: 8px;
     }
 
     .dashboard-welcome__title {

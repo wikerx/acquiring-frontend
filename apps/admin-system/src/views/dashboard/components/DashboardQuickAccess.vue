@@ -1,5 +1,5 @@
 <template>
-    <section class="dashboard-panel">
+    <section class="dashboard-panel" :class="{ 'dashboard-panel--security': variant === 'security' }">
         <header class="dashboard-panel__header">
             <div>
                 <h2>{{ title }}</h2>
@@ -42,6 +42,7 @@ interface Props {
     title: string;
     description: string;
     items: QuickAccessItem[];
+    variant?: 'default' | 'security';
 }
 
 defineProps<Props>();
@@ -51,9 +52,36 @@ defineEmits<{ navigate: [path: string] }>();
 <style scoped>
 .dashboard-panel {
     border: 1px solid #e7edf4;
-    border-radius: 18px;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-panel--security {
+    border-color: #dbe7f6;
+    background:
+        linear-gradient(90deg, rgba(15, 23, 42, 0.035), rgba(255, 255, 255, 0) 42%),
+        #ffffff;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.065);
+}
+
+.dashboard-panel--security .dashboard-panel__header {
+    position: relative;
+}
+
+.dashboard-panel--security .dashboard-panel__header::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 24px;
+    bottom: 2px;
+    width: 3px;
+    border-radius: 999px;
+    background: #0f172a;
+}
+
+.dashboard-panel--security .dashboard-panel__header > div {
+    padding-left: 14px;
 }
 
 .dashboard-panel__header {
@@ -89,8 +117,8 @@ defineEmits<{ navigate: [path: string] }>();
     gap: 12px;
     padding: 16px;
     border: 1px solid #edf2f7;
-    border-radius: 14px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-radius: 8px;
+    background: #ffffff;
     text-align: left;
     cursor: pointer;
     transition:
@@ -105,13 +133,22 @@ defineEmits<{ navigate: [path: string] }>();
     box-shadow: 0 14px 26px rgba(37, 99, 235, 0.08);
 }
 
+.dashboard-panel--security .dashboard-quick-card {
+    background: rgba(255, 255, 255, 0.88);
+}
+
+.dashboard-panel--security .dashboard-quick-card:hover {
+    border-color: #b8c7dc;
+    box-shadow: 0 14px 26px rgba(15, 23, 42, 0.09);
+}
+
 .dashboard-quick-card__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 42px;
     height: 42px;
-    border-radius: 12px;
+    border-radius: 8px;
     font-size: 20px;
     flex-shrink: 0;
 }
