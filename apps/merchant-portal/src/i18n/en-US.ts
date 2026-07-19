@@ -294,6 +294,8 @@ export default {
         mfaManualKey: 'Manual key if scanning is unavailable',
         mfaQrAlt: 'MFA binding QR code',
         mfaQrLoading: 'Generating QR',
+        mfaQrMissing: 'MFA binding information is missing. Please fetch the QR code again.',
+        mfaQrRetry: 'Fetch again',
         mfaVerifyTitle: 'Enter authenticator code',
         mfaVerifySubtitle: 'Open your bound authenticator and enter the current 6-digit code to continue.',
         mfaLockedTitle: 'Too many attempts',

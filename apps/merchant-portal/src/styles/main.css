@@ -1184,6 +1184,35 @@ body {
     object-fit: contain;
 }
 
+.merchant-mfa-bind__qr-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    color: #b45309;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.merchant-mfa-bind__qr-error button {
+    padding: 6px 10px;
+    border: 1px solid rgb(13 148 136 / 35%);
+    border-radius: 10px;
+    background: rgb(240 253 250 / 90%);
+    color: var(--merchant-primary-deep);
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.merchant-mfa-bind__qr-error button:disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
+}
+
 .merchant-mfa-bind__steps strong,
 .merchant-mfa-verify h3 {
     display: block;

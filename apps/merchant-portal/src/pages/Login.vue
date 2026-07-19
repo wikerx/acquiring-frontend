@@ -108,6 +108,10 @@
                             <div class="merchant-mfa-bind__visual">
                                 <div class="merchant-mfa-bind__qr">
                                     <img v-if="qrCodeDataUrl" :src="qrCodeDataUrl" :alt="t('login.mfaQrAlt')" />
+                                    <div v-else-if="mfaQrError" class="merchant-mfa-bind__qr-error">
+                                        <span>{{ mfaQrError }}</span>
+                                        <button type="button" :disabled="mfaLoading" @click="reloadMfaBindInfo">{{ t('login.mfaQrRetry') }}</button>
+                                    </div>
                                     <span v-else>{{ t('login.mfaQrLoading') }}</span>
                                 </div>
                                 <div class="merchant-mfa-bind__steps">
@@ -206,6 +210,7 @@ const loginTicketExpireAt = ref('');
 const mfaLockedUntil = ref('');
 const mfaBindInfo = ref<AuthMfaBindInfoResponse | null>(null);
 const qrCodeDataUrl = ref('');
+const mfaQrError = ref('');
 const heroTags = computed(() => [t('login.tagTransaction'), t('login.tagSettlement'), t('login.tagOperation')]);
 const heroMetrics = computed(() => [
     { value: '24/7', label: t('login.metricAccess') },
@@ -425,8 +430,8 @@ async function handleLoginResponse(response: AuthLoginResponse) {
             return;
         }
         if (response.mfaChallengeType === 'BIND_REQUIRED' || response.mfaChallengeType === 'RESET_BIND_REQUIRED') {
-            await loadMfaBindInfo();
             loginStage.value = 'bind';
+            await loadMfaBindInfo();
             return;
         }
         loginStage.value = 'verify';
@@ -439,9 +444,14 @@ async function handleLoginResponse(response: AuthLoginResponse) {
 
 async function loadMfaBindInfo() {
     mfaLoading.value = true;
+    mfaQrError.value = '';
+    qrCodeDataUrl.value = '';
     try {
         mfaBindInfo.value = await auth.getMfaBindInfo(loginTicket.value);
         loginTicketExpireAt.value = mfaBindInfo.value.loginTicketExpireAt || loginTicketExpireAt.value;
+        if (!mfaBindInfo.value.otpauthUri) {
+            throw new Error(t('login.mfaQrMissing'));
+        }
         qrCodeDataUrl.value = await QRCode.toDataURL(mfaBindInfo.value.otpauthUri, {
             width: 220,
             margin: 1,
@@ -453,11 +463,20 @@ async function loadMfaBindInfo() {
         mfaForm.totpCode = '';
     } catch (error) {
         const locale = document.documentElement.lang || navigator.language || 'zh-CN';
-        ElMessage.error(resolveFriendlyRequestMessage(error, locale));
-        resetMfaStage();
+        mfaQrError.value = resolveFriendlyRequestMessage(error, locale);
+        ElMessage.error(mfaQrError.value);
     } finally {
         mfaLoading.value = false;
     }
+}
+
+async function reloadMfaBindInfo() {
+    if (!loginTicket.value) {
+        ElMessage.error(t('login.mfaTicketMissing'));
+        resetMfaStage();
+        return;
+    }
+    await loadMfaBindInfo();
 }
 
 async function handleMfaSubmit() {
@@ -499,6 +518,7 @@ function resetMfaStateOnly() {
     mfaLockedUntil.value = '';
     mfaBindInfo.value = null;
     qrCodeDataUrl.value = '';
+    mfaQrError.value = '';
     mfaForm.totpCode = '';
 }
 

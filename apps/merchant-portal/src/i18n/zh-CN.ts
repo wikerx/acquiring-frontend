@@ -294,6 +294,8 @@ export default {
         mfaManualKey: '无法扫码时使用手动密钥',
         mfaQrAlt: 'MFA 绑定二维码',
         mfaQrLoading: '生成二维码',
+        mfaQrMissing: 'MFA 绑定信息缺失，请重新获取二维码',
+        mfaQrRetry: '重新获取',
         mfaVerifyTitle: '输入 MFA 验证码',
         mfaVerifySubtitle: '打开已绑定的验证器，输入当前 6 位验证码后继续登录。',
         mfaLockedTitle: '验证次数过多',
