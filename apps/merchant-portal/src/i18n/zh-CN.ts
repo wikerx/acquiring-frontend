@@ -154,6 +154,8 @@ export default {
             mfaCannotResetSelf: '不能重置当前登录账号自己的 OTP',
             mfaCannotExemptSelf: '不能豁免当前登录账号自己的 OTP',
             mfaCannotDisableSelf: '不能停用当前登录账号自己的 OTP',
+            mfaSelfProtected: '当前账号保护中',
+            mfaSelfProtectedTip: '不能对当前登录账号执行重置、豁免或停用 OTP，请使用其他管理员账号处理。',
             mfaBindMailOnlyPending: 'OTP 绑定邮件只能对待绑定或需重绑用户重发',
             mfaActionFailed: 'OTP 操作失败',
             mfaPolicy_OPTIONAL: '可选',

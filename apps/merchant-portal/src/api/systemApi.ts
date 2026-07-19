@@ -102,6 +102,7 @@ export interface AccountItem {
     mfaLastVerifyTime?: string;
     mfaExemptUntil?: string;
     mfaLockedUntil?: string;
+    currentAccount?: boolean;
     createdAt?: string;
 }
 

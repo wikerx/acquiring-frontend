@@ -41,11 +41,12 @@
                                 <el-dropdown-menu>
                                     <el-dropdown-item v-if="canChangeStatus" command="status">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" divided>{{ t('system.account.mfaRequire') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaReset" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaExempt" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaDisable" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
@@ -142,6 +143,7 @@ const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
 const hasMoreActions = computed(() =>
     canChangeStatus || canDelete || canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend,
 );
+const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
 const mfaActionTitle = computed(() => t(`system.account.${mfaActionTitleKey(mfaActionType.value)}`));
 const mfaActionTip = computed(() => t(`system.account.${mfaActionTipKey(mfaActionType.value)}`));
 
@@ -238,8 +240,16 @@ function handleAccountCommand(command: string, row: AccountItem) {
     };
     const action = actionMap[command];
     if (action) {
+        if (activeSelfProtectedMfaAction(row, action)) {
+            ElMessage.warning(t('system.account.mfaSelfProtectedTip'));
+            return;
+        }
         openMfaAction(row, action);
     }
+}
+
+function activeSelfProtectedMfaAction(row: AccountItem, action: MfaActionType) {
+    return Boolean(row.currentAccount) && ['reset', 'exempt', 'disable'].includes(action);
 }
 
 function openMfaAction(row: AccountItem, action: MfaActionType) {

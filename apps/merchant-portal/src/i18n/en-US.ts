@@ -154,6 +154,8 @@ export default {
             mfaCannotResetSelf: 'You cannot reset OTP for your own account',
             mfaCannotExemptSelf: 'You cannot exempt your own account from OTP',
             mfaCannotDisableSelf: 'You cannot disable OTP for your own account',
+            mfaSelfProtected: 'Current account protected',
+            mfaSelfProtectedTip: 'You cannot reset, exempt, or disable OTP for the current login account. Use another administrator account.',
             mfaBindMailOnlyPending: 'OTP binding email can only be resent to users pending bind or rebind',
             mfaActionFailed: 'OTP operation failed',
             mfaPolicy_OPTIONAL: 'Optional',
