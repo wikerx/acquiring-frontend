@@ -22,13 +22,19 @@
                 <template v-if="inlineTime && $slots.time">
                     <slot name="time" />
                 </template>
-                <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
+                <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="transaction-search__actions transaction-search__actions--inline">
                     <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                     <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
                 </div>
             </div>
-            <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__grid transaction-search__grid--advanced">
-                <slot name="advanced" />
+            <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__advanced">
+                <div class="transaction-search__grid">
+                    <slot name="advanced" />
+                    <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
+                        <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
+                        <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
+                    </div>
+                </div>
             </div>
             <div v-if="!inlineTime" class="transaction-search__time-row">
                 <slot name="time" />
@@ -114,7 +120,7 @@ const advancedVisible = ref(false);
     gap: 8px 12px;
 }
 
-.transaction-search__grid--advanced {
+.transaction-search__advanced {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--el-border-color-lighter);
