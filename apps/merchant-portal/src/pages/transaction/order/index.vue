@@ -71,8 +71,6 @@
                             <el-option v-for="item in settlementStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                     </el-form-item>
-                </div>
-                <div class="transaction-search-form__footer">
                     <el-form-item :label="t('transaction.order.timeRange')" class="transaction-time-form-item">
                         <TransactionTimeRangeFilter
                             v-model="dateRange"
@@ -92,38 +90,39 @@
 
         <section class="transaction-result-strip">
             <div class="transaction-result-strip__summary">
-                <article v-for="item in headlineMetrics" :key="item.key" :class="['transaction-result-metric', `transaction-result-metric--${item.tone}`]">
-                    <span>{{ item.label }}</span>
-                    <strong>{{ item.value }}</strong>
-                    <small>{{ item.hint }}</small>
+                <article v-for="item in resultRows" :key="item.key" :class="['transaction-result-row', `transaction-result-row--${item.tone}`]">
+                    <div class="transaction-result-row__label">
+                        <span>{{ item.label }}</span>
+                    </div>
+                    <div class="transaction-result-row__content">
+                        <span v-if="item.countText" class="transaction-result-pill transaction-result-pill--count">{{ item.countText }}</span>
+                        <span v-if="item.rateText" :class="['transaction-result-pill', 'transaction-result-pill--rate', `is-${item.rateTone}`]">{{ item.rateText }}</span>
+                        <span v-for="amountItem in item.amounts" :key="amountItem.key" class="transaction-money-pill">
+                            <span class="transaction-money-pill__currency">{{ amountItem.currency }}</span>
+                            <b>{{ amountItem.amount }}</b>
+                        </span>
+                    </div>
+                </article>
+                <article class="transaction-result-row transaction-result-row--method">
+                    <div class="transaction-result-row__label">
+                        <span>{{ t('transaction.order.paymentMethodSummary') }}</span>
+                    </div>
+                    <div class="transaction-result-row__content">
+                        <template v-if="paymentSummaryItems.length">
+                            <span v-for="item in paymentSummaryItems" :key="item.key" class="transaction-method-pill" :title="item.title">
+                                <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" size="sm" align="start" fallback="text" class="transaction-method-pill__logos" />
+                                <span v-else class="transaction-method-pill__text">{{ item.label }}</span>
+                                <span class="transaction-method-pill__count">{{ item.countText }}</span>
+                                <span v-if="item.primaryAmount" class="transaction-money-pill transaction-money-pill--method">
+                                    <span class="transaction-money-pill__currency">{{ item.primaryAmount.currency }}</span>
+                                    <b>{{ item.primaryAmount.amount }}</b>
+                                </span>
+                            </span>
+                        </template>
+                        <span v-else class="transaction-result-muted">{{ t('transaction.order.noPaymentSummary') }}</span>
+                    </div>
                 </article>
             </div>
-        </section>
-
-        <section class="transaction-insight-row">
-            <article v-for="item in currencyCards" :key="item.currency" class="transaction-insight-card">
-                <div class="transaction-insight-card__label">
-                    <span>{{ item.currency }}</span>
-                    <small>{{ item.hint }}</small>
-                </div>
-                <strong>{{ item.amount }}</strong>
-            </article>
-            <article v-for="item in paymentCards" :key="item.key" class="transaction-insight-card transaction-insight-card--method">
-                <div class="transaction-insight-card__label">
-                    <span>{{ item.label }}</span>
-                    <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" size="sm" align="end" fallback="text" class="transaction-insight-card__logos" />
-                    <small v-else>{{ item.brand }}</small>
-                </div>
-                <strong>{{ item.count }}</strong>
-                <small v-if="item.logoKeys.length" class="transaction-insight-card__brand">{{ item.brand }}</small>
-            </article>
-            <article v-if="!currencyCards.length && !paymentCards.length" class="transaction-insight-card transaction-insight-card--empty">
-                <div class="transaction-insight-card__label">
-                    <span>{{ t('transaction.order.noCurrencySummary') }}</span>
-                    <small>{{ t('transaction.order.noCurrencySummaryHint') }}</small>
-                </div>
-                <strong>0.00</strong>
-            </article>
         </section>
 
         <section class="merchant-list-card merchant-table-card transaction-table-card">
@@ -426,24 +425,49 @@ const refundRules = computed<FormRules>(() => ({
     currency: [{ required: true, message: t('transaction.order.currencyRequired'), trigger: 'blur' }],
     reason: [{ required: true, message: t('transaction.order.refundReasonRequired'), trigger: 'blur' }],
 }));
-const headlineMetrics = computed(() => [
-    { key: 'total', label: t('transaction.order.totalCount'), value: String(summary.value?.totalCount || total.value), hint: t('transaction.order.currentFilter'), tone: 'neutral' },
-    { key: 'success', label: t('transaction.order.successCount'), value: String(summary.value?.successCount || 0), hint: t('transaction.order.successHint'), tone: 'success' },
-    { key: 'failed', label: t('transaction.order.failedCount'), value: String(summary.value?.failedCount || 0), hint: t('transaction.order.failedHint'), tone: 'danger' },
-    { key: 'rows', label: t('transaction.order.loadedRows'), value: String(rows.value.length), hint: t('transaction.order.currentPage'), tone: 'primary' },
-]);
-const currencyCards = computed(() => (summary.value?.successAmountSummaries || summary.value?.amountSummaries || []).slice(0, 4).map((item: TransactionAmountSummary) => ({
-    currency: item.currency || '-',
-    amount: money(item.amount, item.currency, item.currencyExponent),
-    hint: t('transaction.order.currencySummaryHint'),
-})));
-const paymentCards = computed(() => (summary.value?.paymentMethodSummaries || []).slice(0, 3).map((item: TransactionPaymentMethodSummary) => ({
-    key: `${item.paymentMethod || '-'}-${item.paymentBrand || '-'}`,
-    label: tagText(paymentMethodOptions.value, item.paymentMethod),
-    brand: paymentBrandText(item.paymentBrand),
-    logoKeys: paymentLogos(item),
-    count: String(item.count || 0),
-})));
+const resultRows = computed(() => {
+    const totalCount = Number(summary.value?.totalCount || total.value || 0);
+    const successCount = Number(summary.value?.successCount || 0);
+    const failedCount = Number(summary.value?.failedCount || 0);
+    return [
+        {
+            key: 'total',
+            label: t('transaction.order.queryResult'),
+            tone: 'total',
+            countText: countText(totalCount),
+            amounts: amountPills(summary.value?.amountSummaries || []),
+        },
+        {
+            key: 'success',
+            label: t('transaction.order.successTransactions'),
+            tone: 'success',
+            countText: countText(successCount),
+            rateText: ratioText(successCount, totalCount),
+            rateTone: rateTone(successCount, totalCount),
+            amounts: amountPills(summary.value?.successAmountSummaries || []),
+        },
+        {
+            key: 'failed',
+            label: t('transaction.order.failedTransactions'),
+            tone: 'danger',
+            countText: countText(failedCount),
+            rateText: ratioText(failedCount, totalCount),
+            rateTone: rateTone(failedCount, totalCount, true),
+            amounts: amountPills(summary.value?.failedAmountSummaries || []),
+        },
+    ];
+});
+const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummaries || []).slice(0, 3).map((item: TransactionPaymentMethodSummary) => {
+    const label = paymentSummaryLabel(item);
+    return {
+        key: `${item.paymentMethod || '-'}-${item.paymentBrand || '-'}`,
+        label,
+        logoKeys: paymentLogos(item),
+        countText: countText(item.count || 0),
+        title: `${label} ${countText(item.count || 0)}`,
+        primaryAmount: amountPills(item.amountSummaries || [])[0],
+    };
+}));
 const refundMaxAmount = computed(() => Math.max(Number(activeRefundRow.value?.availableRefundAmount || 0), 0.01));
 const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(cardBrandOptions.value.find((item) => item.value === query.paymentBrand)));
 
@@ -612,8 +636,45 @@ function operationTimestamp(item: TransactionOperation) {
     return formatDateTimeFromSourceTimeZone(item.operationTime || item.transactionDateTime, 'Asia/Shanghai', query.queryTimeZone);
 }
 
-function paymentBrandText(value?: string) {
-    return tagText(cardBrandOptions.value, value);
+function countText(count: number | string) {
+    return t('transaction.order.countUnit', { count: Number(count || 0).toLocaleString() });
+}
+
+function ratioText(count: number, totalCount: number) {
+    const ratio = totalCount > 0 ? (count / totalCount) * 100 : 0;
+    return `${t('transaction.order.ratio')} ${ratio.toFixed(2)}%`;
+}
+
+function rateTone(count: number, totalCount: number, reverse = false) {
+    const ratio = totalCount > 0 ? (count / totalCount) * 100 : 0;
+    if (reverse) {
+        if (ratio >= 30) return 'danger';
+        if (ratio >= 10) return 'warning';
+        return 'success';
+    }
+    if (ratio >= 80) return 'success';
+    if (ratio >= 60) return 'primary';
+    if (ratio >= 40) return 'warning';
+    return 'danger';
+}
+
+function amountPills(amountSummaries: TransactionAmountSummary[]) {
+    return amountSummaries.slice(0, 4).map((item) => ({
+        key: item.currency || '-',
+        currency: item.currency || '-',
+        amount: amountOnlyText(item.amount ?? 0, item.currencyExponent),
+    }));
+}
+
+function amountOnlyText(amount?: number | string | null, currencyExponent?: number | null) {
+    const text = moneyText(amount ?? 0, undefined, currencyExponent);
+    return text || '0.00';
+}
+
+function paymentSummaryLabel(item: TransactionPaymentMethodSummary) {
+    const method = tagText(paymentMethodOptions.value, item.paymentMethod);
+    const brand = tagText(cardBrandOptions.value, item.paymentBrand);
+    return brand && brand !== '-' ? brand : method;
 }
 
 function systemOrderNo(row?: TransactionOrder | TransactionOperation | null) {
@@ -687,9 +748,6 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     gap: 10px;
 }
 
-.transaction-result-metric span,
-.transaction-result-metric small,
-.transaction-insight-card small,
 .transaction-timeline-item span,
 .transaction-timeline-item small {
     color: #667085;
@@ -703,49 +761,216 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-result-strip__summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border: 1px solid var(--transaction-border);
-    border-radius: 8px;
+    border-radius: 6px;
     background: #ffffff;
     box-shadow: var(--merchant-card-shadow-soft);
+    overflow: hidden;
 }
 
-.transaction-result-metric,
-.transaction-insight-card,
+.transaction-result-row,
 .transaction-timeline-item {
     display: grid;
-    gap: 5px;
     min-width: 0;
 }
 
-.transaction-result-metric {
-    min-height: 58px;
-    padding: 10px 14px;
+.transaction-result-row {
+    grid-template-columns: minmax(128px, 0.25fr) minmax(0, 1fr);
+    min-height: 34px;
     border-right: 1px solid var(--transaction-soft-line);
-    background: #ffffff;
+    border-bottom: 1px solid var(--transaction-soft-line);
 }
 
-.transaction-result-metric:last-child {
+.transaction-result-row:nth-child(2n) {
     border-right: 0;
 }
 
-.transaction-result-metric--success strong {
+.transaction-result-row:nth-last-child(-n + 2) {
+    border-bottom: 0;
+}
+
+.transaction-result-row__label {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    border-right: 1px solid #e8eef7;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.transaction-result-row__label span {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border-left: 3px solid #2563eb;
+    padding: 6px 9px 6px 10px;
+    overflow: hidden;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.transaction-result-row--success .transaction-result-row__label {
+    background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+
+.transaction-result-row--success .transaction-result-row__label span {
+    border-left-color: #22c55e;
+}
+
+.transaction-result-row--danger .transaction-result-row__label {
+    background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 100%);
+}
+
+.transaction-result-row--danger .transaction-result-row__label span {
+    border-left-color: #f97316;
+}
+
+.transaction-result-row--method .transaction-result-row__label {
+    background: linear-gradient(180deg, #f0f9ff 0%, #eff6ff 100%);
+}
+
+.transaction-result-row--method .transaction-result-row__label span {
+    border-left-color: #0ea5e9;
+}
+
+.transaction-result-row__content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 6px;
+    min-width: 0;
+    padding: 5px 10px;
+}
+
+.transaction-result-pill,
+.transaction-money-pill,
+.transaction-method-pill {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    height: 22px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.transaction-result-pill {
+    border: 1px solid rgba(37, 99, 235, 0.22);
+    padding: 0 7px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-result-row--success .transaction-result-pill--count {
+    border-color: rgba(22, 163, 74, 0.24);
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.transaction-result-row--danger .transaction-result-pill--count {
+    border-color: rgba(249, 115, 22, 0.28);
+    background: #fff7ed;
+    color: #ef4444;
+}
+
+.transaction-result-pill--rate {
+    border-color: rgba(100, 116, 139, 0.2);
+    background: rgba(255, 255, 255, 0.72);
+    color: #475569;
+    font-size: 11px;
+}
+
+.transaction-result-pill--rate.is-success {
+    border-color: rgba(22, 163, 74, 0.22);
+    background: rgba(240, 253, 244, 0.82);
     color: #15803d;
 }
 
-.transaction-result-metric--danger strong {
+.transaction-result-pill--rate.is-danger {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: rgba(254, 242, 242, 0.82);
     color: #dc2626;
 }
 
-.transaction-result-metric--primary strong {
+.transaction-result-pill--rate.is-warning {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(255, 251, 235, 0.86);
+    color: #b45309;
+}
+
+.transaction-result-pill--rate.is-primary {
+    border-color: rgba(37, 99, 235, 0.24);
+    background: rgba(239, 246, 255, 0.84);
     color: #2563eb;
 }
 
-.transaction-result-metric strong {
-    color: var(--merchant-ink);
-    font-size: 20px;
+.transaction-money-pill {
+    overflow: hidden;
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+}
+
+.transaction-money-pill__currency {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    border-right: 1px solid #dbeafe;
+    padding: 0 5px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 10px;
     font-weight: 600;
-    line-height: 1.15;
+}
+
+.transaction-money-pill b {
+    padding: 0 6px;
+    color: #1f2937;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-method-pill {
+    gap: 5px;
+    height: 24px;
+    border: 1px solid #edf2f7;
+    padding: 0 5px;
+    background: #ffffff;
+}
+
+.transaction-method-pill__logos {
+    min-width: 28px;
+    max-width: 44px;
+}
+
+.transaction-method-pill__logos :deep(.payment-logo-mark) {
+    --payment-logo-height: 14px;
+}
+
+.transaction-method-pill__text,
+.transaction-method-pill__count,
+.transaction-result-muted {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.transaction-method-pill__text {
+    color: #334155;
+    font-weight: 600;
+}
+
+.transaction-method-pill__count {
+    color: #1f2937;
+}
+
+.transaction-money-pill--method {
+    height: 20px;
 }
 
 .transaction-filter-card {
@@ -754,22 +979,12 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-search-form {
     display: grid;
-    gap: 10px;
     width: 100%;
 }
 
 .transaction-search-form__fields {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 340px);
-    justify-content: space-between;
-    align-items: end;
-    gap: 10px 18px;
-    width: 100%;
-}
-
-.transaction-search-form__footer {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: end;
     gap: 10px 18px;
     width: 100%;
@@ -779,10 +994,15 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 .transaction-time-form-item {
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
+    flex: 0 1 320px;
     align-items: center;
     gap: 8px;
     margin: 0;
     min-width: 0;
+}
+
+.transaction-time-form-item {
+    flex: 1 1 688px;
 }
 
 .transaction-search-form :deep(.el-form-item__label) {
@@ -811,7 +1031,6 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-brand-select__prefix :deep(.payment-logo-group),
 .transaction-brand-option__logo :deep(.payment-logo-group),
-.transaction-insight-card__logos :deep(.payment-logo-group),
 .transaction-payment-cell__logos :deep(.payment-logo-group),
 .transaction-detail-payment :deep(.payment-logo-group) {
     gap: 4px;
@@ -852,10 +1071,13 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     width: 100%;
 }
 
-.transaction-search-actions {
+.transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
+    display: block;
+    flex: 1 1 160px;
     align-self: end;
-    justify-self: end;
-    min-width: 0;
+    margin-left: auto;
+    min-width: 160px;
+    width: auto;
 }
 
 .transaction-search-actions :deep(.el-form-item__content) {
@@ -865,62 +1087,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     justify-content: flex-end;
     align-items: center;
     width: 100%;
-}
-
-.transaction-insight-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 8px;
-    min-width: 0;
-}
-
-.transaction-insight-card {
-    min-height: 62px;
-    padding: 10px 12px;
-    border: 1px solid var(--transaction-border);
-    border-radius: 8px;
-    background: #ffffff;
-    box-shadow: var(--merchant-card-shadow-soft);
-}
-
-.transaction-insight-card__label {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-    min-width: 0;
-}
-
-.transaction-insight-card span {
-    color: var(--transaction-accent);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.transaction-insight-card strong {
-    color: var(--merchant-ink);
-    font-size: 17px;
-    font-weight: 600;
-    overflow-wrap: anywhere;
-}
-
-.transaction-insight-card--method span {
-    color: #2563eb;
-}
-
-.transaction-insight-card__logos :deep(.payment-logo-mark) {
-    --payment-logo-height: 17px;
-}
-
-.transaction-insight-card__brand {
-    overflow: hidden;
-    text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.transaction-insight-card--empty {
-    border-style: dashed;
+    margin-left: 0 !important;
 }
 
 .transaction-table-card {
@@ -1214,21 +1381,18 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 @media (min-width: 1680px) {
     .transaction-search-form__fields {
-        grid-template-columns: repeat(auto-fill, 340px);
+        gap: 10px 18px;
     }
 }
 
 @media (max-width: 1180px) {
-    .transaction-search-form__fields {
-        grid-template-columns: repeat(auto-fill, 326px);
+    .transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
+        flex-basis: 100%;
     }
 
-    .transaction-search-form__footer {
-        grid-template-columns: 1fr;
-    }
-
-    .transaction-search-actions {
-        justify-self: end;
+    .transaction-time-form-item {
+        flex-basis: 100%;
+        min-width: 0;
     }
 }
 
@@ -1237,7 +1401,6 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
         gap: 12px;
     }
 
-    .transaction-insight-row,
     .transaction-detail-summary,
     .transaction-detail-grid,
     .transaction-refund-summary,
@@ -1249,15 +1412,33 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
         padding-bottom: 0;
     }
 
-    .transaction-search-form__fields,
-    .transaction-search-form__footer {
+    .transaction-result-strip__summary,
+    .transaction-result-row {
         grid-template-columns: 1fr;
+    }
+
+    .transaction-result-row,
+    .transaction-result-row:nth-child(2n) {
+        border-right: 0;
+    }
+
+    .transaction-result-row:nth-last-child(-n + 2) {
+        border-bottom: 1px solid var(--transaction-soft-line);
+    }
+
+    .transaction-result-row:last-child {
+        border-bottom: 0;
+    }
+
+    .transaction-result-row__label {
+        border-right: 0;
     }
 
     .transaction-search-form__fields :deep(.el-form-item),
     .transaction-time-form-item {
         display: grid;
         grid-template-columns: 1fr;
+        flex-basis: 100%;
         gap: 6px;
         width: 100%;
     }
@@ -1282,9 +1463,8 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
         justify-content: stretch;
     }
 
-    .transaction-search-actions {
-        grid-column: 1 / -1;
-        justify-self: stretch;
+    .transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
+        flex-basis: 100%;
         min-width: 0;
     }
 
