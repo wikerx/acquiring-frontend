@@ -12,14 +12,17 @@ const JSON_CONTENT_TYPE = 'application/json';
 export async function downloadBlob(
     url: string,
     options: {
+        method?: 'get' | 'post';
         params?: Record<string, unknown>;
+        data?: unknown;
         fileName?: string;
     } = {},
 ) {
     const response = await http.request<Blob>({
         url,
-        method: 'get',
+        method: options.method || 'get',
         params: options.params,
+        data: options.data,
         responseType: 'blob' as ResponseType,
     });
     await handleBlobResponse(response, options.fileName || 'download.bin');

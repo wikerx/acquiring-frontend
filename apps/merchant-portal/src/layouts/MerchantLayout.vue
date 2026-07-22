@@ -1,7 +1,7 @@
 <template>
-    <el-container class="app-shell">
-        <el-aside width="224px" class="app-sidebar">
-            <div class="brand">
+    <el-container class="app-shell" :class="layoutClasses" :style="layoutStyle">
+        <el-aside v-if="settings.layoutMode !== 'top'" width="244px" class="app-sidebar">
+            <div v-if="settings.showLogo" class="brand">
                 <img class="brand-mark" :src="merchantBrand.logos.icon" :alt="merchantBrand.name" />
                 <div>
                     <strong>{{ merchantBrand.name }}</strong>
@@ -9,141 +9,189 @@
                 </div>
             </div>
             <el-menu :default-active="$route.path" router class="side-menu">
-                <template v-for="item in menuItems" :key="item.path">
-                    <el-sub-menu v-if="item.children.length" :index="item.path">
-                        <template #title>
-                            <el-icon><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                            <span>{{ item.label }}</span>
-                        </template>
-                        <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
-                            <el-icon><component :is="resolveMenuIcon(child.icon)" /></el-icon>
-                            {{ child.label }}
-                        </el-menu-item>
-                    </el-sub-menu>
-                    <el-menu-item v-else :index="item.path">
-                        <el-icon><component :is="resolveMenuIcon(item.icon)" /></el-icon>
-                        {{ item.label }}
-                    </el-menu-item>
-                </template>
+                <MerchantMenuNode
+                    v-for="item in menuItems"
+                    :key="item.path"
+                    :item="item"
+                    :active-path="$route.path"
+                    popper-class="merchant-nav-popper merchant-sidebar-popper"
+                />
             </el-menu>
         </el-aside>
-        <el-container>
-            <el-header class="app-header">
-                <div class="header-title">
-                    <strong>{{ currentTitle }}</strong>
-                    <span>{{ auth.session?.account.loginAccount }}</span>
-                </div>
-                <div class="merchant-header-actions">
-                    <LanguageSwitch />
-                    <el-popover
-                        v-model:visible="menuVisible"
-                        trigger="click"
-                        placement="bottom-end"
-                        :width="288"
-                        :show-arrow="false"
-                        popper-class="merchant-user-menu-popper"
+        <el-container direction="vertical" class="merchant-layout-content">
+            <div class="merchant-layout-header-stack">
+                <el-header class="app-header">
+                    <div v-if="settings.layoutMode === 'top'" class="merchant-top-brand" :class="{ 'is-hidden': !settings.showLogo }">
+                        <img v-if="settings.showLogo" class="brand-mark" :src="merchantBrand.logos.icon" :alt="merchantBrand.name" />
+                        <div v-if="settings.showLogo">
+                            <strong>{{ merchantBrand.name }}</strong>
+                            <small>{{ auth.session?.account.merchantId || merchantBrand.subtitleEn }}</small>
+                        </div>
+                    </div>
+                    <el-menu
+                        v-if="settings.layoutMode === 'top'"
+                        :default-active="$route.path"
+                        router
+                        mode="horizontal"
+                        class="merchant-top-menu"
                     >
-                        <template #reference>
-                            <button class="merchant-user-trigger" type="button" :aria-label="t('layout.userMenu')">
-                                <span class="merchant-user-trigger__avatar">{{ avatarText }}</span>
-                                <span class="merchant-user-trigger__name">{{ displayName }}</span>
-                                <el-icon class="merchant-user-trigger__arrow" :class="{ 'is-open': menuVisible }">
-                                    <ArrowDown />
-                                </el-icon>
-                            </button>
-                        </template>
-                        <div class="merchant-user-menu">
-                            <div class="merchant-user-menu__summary">
-                                <span class="merchant-user-menu__avatar">{{ avatarText }}</span>
-                                <div class="merchant-user-menu__identity">
-                                    <div class="merchant-user-menu__title">{{ displayName }}</div>
-                                    <div v-if="loginAccount" class="merchant-user-menu__account">{{ loginAccount }}</div>
-                                    <div class="merchant-user-menu__roles">
-                                        <span
-                                            v-for="role in visibleRoleLabels"
-                                            :key="role"
-                                            class="merchant-user-menu__role-tag"
-                                        >
-                                            {{ role }}
-                                        </span>
-                                        <span v-if="hiddenRoleCount > 0" class="merchant-user-menu__role-tag merchant-user-menu__role-tag--muted">
-                                            +{{ hiddenRoleCount }}
-                                        </span>
-                                        <span v-if="!visibleRoleLabels.length" class="merchant-user-menu__role-empty">
-                                            {{ t('layout.noRole') }}
-                                        </span>
+                        <MerchantMenuNode
+                            v-for="item in menuItems"
+                            :key="item.path"
+                            :item="item"
+                            :active-path="$route.path"
+                            popper-class="merchant-nav-popper merchant-top-popper"
+                        />
+                    </el-menu>
+                    <div v-else class="header-title">
+                        <strong>{{ currentTitle }}</strong>
+                        <span>{{ auth.session?.account.loginAccount }}</span>
+                    </div>
+                    <div class="merchant-header-actions">
+                        <el-button
+                            class="merchant-header-icon-button"
+                            text
+                            circle
+                            :icon="Setting"
+                            :aria-label="t('settings.title')"
+                            @click="settingsPanelRef?.open()"
+                        />
+                        <LanguageSwitch />
+                        <el-popover
+                            v-model:visible="menuVisible"
+                            trigger="click"
+                            placement="bottom-end"
+                            :width="288"
+                            :show-arrow="false"
+                            popper-class="merchant-user-menu-popper"
+                        >
+                            <template #reference>
+                                <button class="merchant-user-trigger" type="button" :aria-label="t('layout.userMenu')">
+                                    <span class="merchant-user-trigger__avatar">{{ avatarText }}</span>
+                                    <span class="merchant-user-trigger__name">{{ displayName }}</span>
+                                    <el-icon class="merchant-user-trigger__arrow" :class="{ 'is-open': menuVisible }">
+                                        <ArrowDown />
+                                    </el-icon>
+                                </button>
+                            </template>
+                            <div class="merchant-user-menu">
+                                <div class="merchant-user-menu__summary">
+                                    <span class="merchant-user-menu__avatar">{{ avatarText }}</span>
+                                    <div class="merchant-user-menu__identity">
+                                        <div class="merchant-user-menu__title">{{ displayName }}</div>
+                                        <div v-if="loginAccount" class="merchant-user-menu__account">{{ loginAccount }}</div>
+                                        <div class="merchant-user-menu__roles">
+                                            <span
+                                                v-for="role in visibleRoleLabels"
+                                                :key="role"
+                                                class="merchant-user-menu__role-tag"
+                                            >
+                                                {{ role }}
+                                            </span>
+                                            <span v-if="hiddenRoleCount > 0" class="merchant-user-menu__role-tag merchant-user-menu__role-tag--muted">
+                                                +{{ hiddenRoleCount }}
+                                            </span>
+                                            <span v-if="!visibleRoleLabels.length" class="merchant-user-menu__role-empty">
+                                                {{ t('layout.noRole') }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="merchant-user-menu__section">
+                                    <button class="merchant-user-menu__action" type="button" @click="handleOpenProfile">
+                                        <el-icon><User /></el-icon>
+                                        <span>{{ t('layout.profile') }}</span>
+                                    </button>
+                                </div>
+                                <div class="merchant-user-menu__section merchant-user-menu__section--danger">
+                                    <button class="merchant-user-menu__action merchant-user-menu__action--danger" type="button" @click="handleLogout">
+                                        <el-icon><SwitchButton /></el-icon>
+                                        <span>{{ t('common.logout') }}</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="merchant-user-menu__section">
-                                <button class="merchant-user-menu__action" type="button" @click="handleOpenProfile">
-                                    <el-icon><User /></el-icon>
-                                    <span>{{ t('layout.profile') }}</span>
-                                </button>
-                            </div>
-                            <div class="merchant-user-menu__section merchant-user-menu__section--danger">
-                                <button class="merchant-user-menu__action merchant-user-menu__action--danger" type="button" @click="handleLogout">
-                                    <el-icon><SwitchButton /></el-icon>
-                                    <span>{{ t('common.logout') }}</span>
-                                </button>
-                            </div>
-                        </div>
-                    </el-popover>
+                        </el-popover>
+                    </div>
+                </el-header>
+                <div class="merchant-breadcrumb-bar">
+                    <el-breadcrumb separator="/">
+                        <el-breadcrumb-item>{{ merchantBrand.name }}</el-breadcrumb-item>
+                        <el-breadcrumb-item v-for="item in breadcrumbItems" :key="item.path">
+                            {{ item.label }}
+                        </el-breadcrumb-item>
+                    </el-breadcrumb>
                 </div>
-            </el-header>
-            <div class="merchant-breadcrumb-bar">
-                <el-breadcrumb separator="/">
-                    <el-breadcrumb-item>{{ merchantBrand.name }}</el-breadcrumb-item>
-                    <el-breadcrumb-item v-for="item in breadcrumbItems" :key="item.path">
-                        {{ item.label }}
-                    </el-breadcrumb-item>
-                </el-breadcrumb>
-            </div>
-            <div class="merchant-tags-view">
-                <button
-                    v-for="tag in visitedTags"
-                    :key="tag.path"
-                    type="button"
-                    class="merchant-tag"
-                    :class="{ active: tag.path === $route.path }"
-                    @click="router.push(tag.path)"
-                >
-                    <el-icon v-if="tag.icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
-                    <span>{{ tag.label }}</span>
-                    <el-icon class="merchant-tag__close" @click.stop="closeTag(tag.path)">
-                        <Close />
-                    </el-icon>
-                </button>
+                <div v-if="settings.showTagsView" class="merchant-tags-view" :class="settings.tagsViewStyle">
+                    <button
+                        v-for="tag in visitedTags"
+                        :key="tag.path"
+                        type="button"
+                        class="merchant-tag"
+                        :class="{ active: tag.path === $route.path }"
+                        @click="router.push(tag.path)"
+                    >
+                        <el-icon v-if="tag.icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
+                        <span>{{ tag.label }}</span>
+                        <el-icon class="merchant-tag__close" @click.stop="closeTag(tag.path)">
+                            <Close />
+                        </el-icon>
+                    </button>
+                </div>
             </div>
             <el-main class="merchant-main">
                 <RouterView />
+                <footer v-if="settings.showFooter" class="merchant-footer">
+                    {{ merchantBrand.name }} © {{ currentYear }}
+                </footer>
             </el-main>
         </el-container>
+        <button class="merchant-floating-settings" type="button" :aria-label="t('settings.title')" @click="settingsPanelRef?.open()">
+            <el-icon><Setting /></el-icon>
+        </button>
+        <SettingsPanel ref="settingsPanelRef" />
     </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowDown, Close, SwitchButton, User } from '@element-plus/icons-vue';
+import { ArrowDown, Close, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import { getSystemBrand, type AuthMenu } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { logout } from '@/api/authApi';
 import LanguageSwitch from '@/components/LanguageSwitch.vue';
+import MerchantMenuNode, { type MerchantMenuNodeItem } from '@/components/MerchantMenuNode.vue';
+import SettingsPanel from '@/components/SettingsPanel/index.vue';
+import { navigationThemeCssVariables } from '@/constants/app';
 import { useAuthStore } from '@/stores/authStore';
-import { firstAvailableMenuPath, normalizeMenuPath, withMerchantHomeMenu } from '@/utils/menu';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { firstAvailableMenuPath, normalizeMenuPath, resolveMerchantMenuLabel, withMerchantHomeMenu } from '@/utils/menu';
 import { resolveMenuIcon } from '@/utils/menuIcon';
 
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const { t } = useI18n();
+const settings = useSettingsStore();
+const { t, te } = useI18n();
 const merchantBrand = getSystemBrand('merchant');
 const PROFILE_PATH = '/profile';
 const menuVisible = ref(false);
+const settingsPanelRef = ref<InstanceType<typeof SettingsPanel>>();
+const currentYear = new Date().getFullYear();
 const menuItems = computed(() => {
     return buildMenuItems(withMerchantHomeMenu(auth.session?.menus || []));
 });
+const layoutClasses = computed(() => ({
+    'side-mode': settings.layoutMode === 'side',
+    'top-mode': settings.layoutMode === 'top',
+    'fixed-header': settings.fixedHeader,
+    'without-tags': !settings.showTagsView,
+}));
+const layoutStyle = computed(() => ({
+    '--merchant-primary': settings.themeColor,
+    '--el-color-primary': settings.themeColor,
+    ...navigationThemeCssVariables(settings.sideTheme),
+}));
 const currentTitle = computed(() => currentRouteLabel(route.path) || merchantBrand.subtitleEn);
 const breadcrumbItems = computed(() => route.path === PROFILE_PATH ? [profileMenuItem()] : findMenuTrail(menuItems.value, route.path));
 const visitedTags = ref<MenuTag[]>([]);
@@ -185,6 +233,23 @@ watch(
     { immediate: true },
 );
 
+watch(
+    () => currentTitle.value,
+    (title) => {
+        if (route.path !== '/login' && title) {
+            document.title = `${title} - ${merchantBrand.name}`;
+        }
+    },
+    { immediate: true },
+);
+
+watchEffect(() => {
+    const root = document.documentElement;
+    Object.entries(layoutStyle.value).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+    });
+});
+
 async function handleLogout() {
     menuVisible.value = false;
     await logout().catch(() => undefined);
@@ -198,12 +263,7 @@ async function handleOpenProfile() {
     await router.push(PROFILE_PATH);
 }
 
-interface MenuItem {
-    path: string;
-    label: string;
-    icon?: string;
-    children: MenuItem[];
-}
+type MenuItem = MerchantMenuNodeItem;
 
 interface MenuTag {
     path: string;
@@ -216,7 +276,7 @@ function buildMenuItems(menus: AuthMenu[]): MenuItem[] {
         .filter((menu) => menu.visible !== 0 && menu.menuType !== 'BUTTON')
         .map((menu) => ({
             path: normalizeMenuPath(menu.routePath) || `/${menu.menuCode}`,
-            label: menu.menuCode === 'merchant-home' ? t('layout.home') : menu.menuName,
+            label: resolveMerchantMenuLabel(menu, t, te),
             icon: menu.icon,
             children: buildMenuItems(menu.children || []),
         }))

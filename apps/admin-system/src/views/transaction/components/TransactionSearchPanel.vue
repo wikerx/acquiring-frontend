@@ -19,11 +19,24 @@
         <el-form :model="model" :inline="true" size="small" class="search-form transaction-search" :label-width="labelWidth">
             <div class="transaction-search__grid">
                 <slot />
+                <template v-if="inlineTime && $slots.time">
+                    <slot name="time" />
+                </template>
+                <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="transaction-search__actions transaction-search__actions--inline">
+                    <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
+                    <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
+                </div>
             </div>
-            <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__grid transaction-search__grid--advanced">
-                <slot name="advanced" />
+            <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__advanced">
+                <div class="transaction-search__grid">
+                    <slot name="advanced" />
+                    <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
+                        <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
+                        <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
+                    </div>
+                </div>
             </div>
-            <div class="transaction-search__time-row">
+            <div v-if="!inlineTime" class="transaction-search__time-row">
                 <slot name="time" />
                 <div class="transaction-search__actions">
                     <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
@@ -48,8 +61,10 @@ withDefaults(defineProps<{
     searchText: string;
     resetText: string;
     labelWidth?: string;
+    inlineTime?: boolean;
 }>(), {
     labelWidth: '104px',
+    inlineTime: false,
 });
 
 defineEmits<{
@@ -99,12 +114,13 @@ const advancedVisible = ref(false);
 }
 
 .transaction-search__grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(230px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 8px 12px;
 }
 
-.transaction-search__grid--advanced {
+.transaction-search__advanced {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--el-border-color-lighter);
@@ -129,8 +145,12 @@ const advancedVisible = ref(false);
     flex: 0 0 auto;
 }
 
+.transaction-search__actions--inline {
+    flex: 1 1 160px;
+    align-self: flex-start;
+}
+
 .transaction-search :deep(.el-form-item) {
-    width: 100%;
     margin-right: 0;
     margin-bottom: 0;
 }
@@ -142,7 +162,7 @@ const advancedVisible = ref(false);
 
 .transaction-search :deep(.el-input),
 .transaction-search :deep(.el-select) {
-    width: 100%;
+    width: 200px;
 }
 
 .transaction-search :deep(.transaction-time-form-item .el-form-item__content) {
@@ -150,28 +170,24 @@ const advancedVisible = ref(false);
 }
 
 .transaction-search :deep(.transaction-time-range-filter__timezone) {
-    width: 210px;
+    width: 244px;
 }
 
 .transaction-search :deep(.transaction-time-range-filter__picker) {
-    width: 372px;
+    width: 460px;
 }
 
 @media (max-width: 980px) {
-    .transaction-search__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .transaction-search__time-row {
         flex-direction: column;
     }
 }
 
 @media (max-width: 640px) {
-    .transaction-search__grid {
-        grid-template-columns: 1fr;
-    }
-
+    .transaction-search :deep(.el-form-item),
+    .transaction-search :deep(.el-form-item__content),
+    .transaction-search :deep(.el-input),
+    .transaction-search :deep(.el-select),
     .transaction-search :deep(.transaction-time-range-filter__timezone),
     .transaction-search :deep(.transaction-time-range-filter__picker) {
         width: 100%;

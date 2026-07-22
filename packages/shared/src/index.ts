@@ -62,6 +62,7 @@ export interface AuthAccount {
     roleName?: string | null;
     roles?: string[] | null;
     merchantId?: string | null;
+    timezone?: string | null;
     merchantAdmin?: boolean;
     status: number;
 }

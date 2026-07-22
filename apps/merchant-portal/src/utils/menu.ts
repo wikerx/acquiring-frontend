@@ -4,6 +4,58 @@ import Forbidden from '@/pages/Forbidden.vue';
 
 const pageModules = import.meta.glob('../pages/**/index.vue');
 const MERCHANT_HOME_PATH = '/home';
+type TranslateFn = (key: string) => string;
+type TranslationExistsFn = (key: string) => boolean;
+type MenuLabelSource = {
+    menuCode?: string;
+    routePath?: string;
+    menuName?: string;
+    code?: string;
+    name?: string;
+};
+
+const MENU_ROUTE_TITLE_KEYS: Record<string, string> = {
+    '/home': 'route.home',
+    '/merchant-info': 'route.merchantInfo',
+    '/merchant-info/openapi-keys': 'route.openapiKeys',
+    '/transaction': 'route.transactionManage',
+    '/transaction/order': 'route.transactionOrder',
+    '/system': 'route.systemManage',
+    '/system/dept': 'route.systemDept',
+    '/system/post': 'route.systemPost',
+    '/system/account': 'route.systemAccount',
+    '/system/role': 'route.systemRole',
+    '/system/role-auth': 'route.systemRoleAuth',
+    '/security': 'route.securityCenter',
+    '/security/intercept-events': 'route.securityInterceptEvents',
+};
+
+const MENU_CODE_TITLE_KEYS: Record<string, string> = {
+    home: 'route.home',
+    merchant_home: 'route.home',
+    merchant_dashboard: 'route.home',
+    merchant_info: 'route.merchantInfo',
+    merchant_info_manage: 'route.merchantInfo',
+    merchant_api_key: 'route.openapiKeys',
+    merchant_api_keys: 'route.openapiKeys',
+    merchant_openapi_key: 'route.openapiKeys',
+    merchant_openapi_keys: 'route.openapiKeys',
+    merchant_transaction_catalog_v1: 'route.transactionManage',
+    merchant_transaction_order_v1: 'route.transactionOrder',
+    merchant_system: 'route.systemManage',
+    merchant_system_catalog_v1: 'route.systemManage',
+    system: 'route.systemManage',
+    system_manage: 'route.systemManage',
+    merchant_system_dept_v1: 'route.systemDept',
+    merchant_system_post_v1: 'route.systemPost',
+    merchant_system_account_v1: 'route.systemAccount',
+    merchant_system_role_v1: 'route.systemRole',
+    merchant_system_role_auth_v1: 'route.systemRoleAuth',
+    merchant_ip_whitelist: 'route.merchantIpWhitelist',
+    merchant_ip_whitelist_manage_v1: 'route.merchantIpWhitelist',
+    security_center_v1: 'route.securityCenter',
+    security_intercept_event_v1: 'route.securityInterceptEvents',
+};
 
 export function createMerchantHomeMenu(): AuthMenu {
     return {
@@ -63,6 +115,27 @@ export function normalizeMenuPath(value?: string) {
     return normalized.startsWith('/') ? normalized : `/${normalized}`;
 }
 
+export function resolveMerchantMenuI18nKey(menu: Pick<AuthMenu, 'menuCode' | 'routePath'> | { menuCode?: string; routePath?: string }) {
+    const routeKey = MENU_ROUTE_TITLE_KEYS[normalizeMenuPath(menu.routePath)];
+    if (routeKey) {
+        return routeKey;
+    }
+    const code = normalizeMenuCode(menu.menuCode);
+    return code ? MENU_CODE_TITLE_KEYS[code] : undefined;
+}
+
+export function resolveMerchantMenuLabel(
+    menu: MenuLabelSource,
+    t: TranslateFn,
+    te?: TranslationExistsFn,
+) {
+    const titleKey = resolveMerchantMenuI18nKey({ menuCode: menu.menuCode || menu.code, routePath: menu.routePath });
+    if (titleKey && (!te || te(titleKey))) {
+        return t(titleKey);
+    }
+    return menu.menuName?.trim() || menu.name?.trim() || menu.menuCode || menu.code || normalizeMenuPath(menu.routePath) || '';
+}
+
 export function resolveMenuComponent(menu: AuthMenu): Component {
     const candidates = createPageCandidates(menu.routePath || '', menu.componentPath);
     const pagePath = candidates.find((candidate) => pageModules[candidate]);
@@ -91,4 +164,11 @@ function createPageCandidates(routePath: string, componentPath?: string) {
 
 function normalizeComponentPath(value?: string) {
     return (value || '').replace(/^\/+/, '').replace(/^pages\//, '').replace(/\.vue$/, '').replace(/\/index$/, '');
+}
+
+function normalizeMenuCode(value?: string) {
+    return (value || '')
+        .trim()
+        .replace(/[\s-]+/g, '_')
+        .toLowerCase();
 }

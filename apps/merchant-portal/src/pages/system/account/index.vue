@@ -1,66 +1,88 @@
 <template>
-    <div class="page system-page">
-        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
-            <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
-            <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
-            <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
-        </el-form>
-        <div class="toolbar">
-            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button>
-            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-        </div>
-        <StandardTable table-key="merchant-system-account" v-loading="loading" :data="rows" row-key="accountId" size="small">
-            <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
-            <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
-            <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
-            <el-table-column prop="email" :label="t('system.account.email')" min-width="180" />
-            <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
-            <el-table-column :label="t('system.account.mfaPolicy')" min-width="120" align="center">
-                <template #default="{ row }">
-                    <el-tag size="small" :type="mfaPolicyTag(row.mfaPolicy)" effect="plain">{{ mfaPolicyText(row.mfaPolicy) }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column :label="t('system.account.mfaStatus')" min-width="130" align="center">
-                <template #default="{ row }">
-                    <el-tag size="small" :type="mfaStatusTag(row.mfaStatus)" effect="plain">{{ mfaStatusText(row.mfaStatus) }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
-            <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="120" align="center">
-                <template #default="{ row }">
-                    <div class="account-operation-group">
-                        <el-dropdown v-if="hasActionMenu" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
-                            <el-button size="small" link type="primary">
-                                {{ t('system.account.actionMenu') }}
-                                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
-                            </el-button>
-                            <template #dropdown>
-                                <el-dropdown-menu>
-                                    <el-dropdown-item v-if="canEdit || canAssignRole" command="edit">{{ t('common.edit') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canResetPassword && !row.currentAccount" command="resetPassword" :divided="canEdit || canAssignRole">{{ t('system.account.resetPassword') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="row.currentAccount && canResetPassword" disabled :divided="canEdit || canAssignRole">{{ t('system.account.passwordSelfProtected') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="hasPasswordActions || canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canChangeStatus" command="status" :divided="hasMfaActions">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
-                                    <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
-                                </el-dropdown-menu>
-                            </template>
-                        </el-dropdown>
-                        <span v-if="!hasActionMenu">-</span>
-                    </div>
-                </template>
-            </el-table-column>
-        </StandardTable>
-        <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
-        </div>
+    <div class="page system-page merchant-redesigned-page merchant-account-page">
+        <section class="merchant-list-summary merchant-list-summary--four">
+            <article v-for="item in accountSummary" :key="item.label" class="merchant-list-summary__item">
+                <span class="merchant-list-summary__icon" :class="`merchant-list-summary__icon--${item.tone}`">
+                    <el-icon><component :is="item.icon" /></el-icon>
+                </span>
+                <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.hint }}</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="merchant-list-card merchant-search-card">
+            <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
+                <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
+                <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
+                <el-form-item class="merchant-search-actions"><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
+            </el-form>
+        </section>
+
+        <section class="merchant-list-card merchant-table-card">
+            <div class="merchant-table-head">
+                <div class="merchant-table-head__actions">
+                    <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button>
+                </div>
+                <div class="right-toolbar">
+                    <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
+                </div>
+            </div>
+            <StandardTable table-key="merchant-system-account" v-loading="loading" :data="rows" row-key="accountId" size="small">
+                <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
+                <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
+                <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
+                <el-table-column prop="email" :label="t('system.account.email')" min-width="190" />
+                <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
+                <el-table-column :label="t('system.account.mfaPolicy')" min-width="120" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" :type="mfaPolicyTag(row.mfaPolicy)" effect="plain">{{ mfaPolicyText(row.mfaPolicy) }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('system.account.mfaStatus')" min-width="130" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" :type="mfaStatusTag(row.mfaStatus)" effect="plain">{{ mfaStatusText(row.mfaStatus) }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
+                <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
+                <el-table-column :label="t('common.operation')" width="142" align="center" fixed="right">
+                    <template #default="{ row }">
+                        <div class="account-operation-group">
+                            <el-dropdown v-if="hasActionMenu" trigger="click" @command="(command: string) => handleAccountCommand(command, row)">
+                                <el-button size="small" link type="primary" class="merchant-table-action">
+                                    {{ t('system.account.actionMenu') }}
+                                    <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+                                </el-button>
+                                <template #dropdown>
+                                    <el-dropdown-menu>
+                                        <el-dropdown-item v-if="canEdit || canAssignRole" command="edit">{{ t('common.edit') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canResetPassword && !row.currentAccount" command="resetPassword" :divided="canEdit || canAssignRole">{{ t('system.account.resetPassword') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="row.currentAccount && canResetPassword" disabled :divided="canEdit || canAssignRole">{{ t('system.account.passwordSelfProtected') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="hasPasswordActions || canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaResend" command="mfaResend">{{ t('system.account.mfaResend') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaExempt && !row.currentAccount" command="mfaExempt">{{ t('system.account.mfaExempt') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canMfaDisable && !row.currentAccount" command="mfaDisable">{{ t('system.account.mfaDisable') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="row.currentAccount && hasSelfProtectedMfaActions" disabled>{{ t('system.account.mfaSelfProtected') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canChangeStatus" command="status" :divided="hasMfaActions">{{ row.status === 1 ? t('common.disabled') : t('common.enabled') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canDelete" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                                    </el-dropdown-menu>
+                                </template>
+                            </el-dropdown>
+                            <span v-if="!hasActionMenu">-</span>
+                        </div>
+                    </template>
+                </el-table-column>
+            </StandardTable>
+            <div class="pagination-container" v-show="total > 0">
+                <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+            </div>
+        </section>
         <el-dialog v-model="visible" :title="form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee')" width="560px">
             <el-form ref="formRef" :model="form" :rules="rules" label-width="92px">
                 <el-form-item :label="t('system.account.loginAccount')" prop="loginAccount"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
@@ -113,7 +135,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { MoreFilled, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
+import { CircleCheck, Lock, MoreFilled, Plus, RefreshLeft, Search, User, Warning } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -195,6 +217,39 @@ const hasActionMenu = computed(() => canEdit || canAssignRole || hasAccountMoreA
 const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
 const mfaActionTitle = computed(() => t(`system.account.${mfaActionTitleKey(mfaActionType.value)}`));
 const mfaActionTip = computed(() => t(`system.account.${mfaActionTipKey(mfaActionType.value)}`));
+const enabledCount = computed(() => rows.value.filter((row) => row.status === 1).length);
+const disabledCount = computed(() => rows.value.filter((row) => row.status !== 1).length);
+const mfaEnabledCount = computed(() => rows.value.filter((row) => row.mfaStatus === 'ENABLED').length);
+const accountSummary = computed(() => [
+    {
+        label: t('system.account.summaryTotal'),
+        value: String(total.value),
+        hint: t('system.account.summaryTotalHint', { count: rows.value.length }),
+        icon: User,
+        tone: 'blue',
+    },
+    {
+        label: t('system.account.summaryEnabled'),
+        value: String(enabledCount.value),
+        hint: t('system.account.summaryCurrentPage'),
+        icon: CircleCheck,
+        tone: 'green',
+    },
+    {
+        label: t('system.account.summaryMfaEnabled'),
+        value: String(mfaEnabledCount.value),
+        hint: t('system.account.summaryCurrentPage'),
+        icon: Lock,
+        tone: 'violet',
+    },
+    {
+        label: t('system.account.summaryDisabled'),
+        value: String(disabledCount.value),
+        hint: t('system.account.summaryCurrentPage'),
+        icon: Warning,
+        tone: 'orange',
+    },
+]);
 
 async function loadData() {
     loading.value = true;

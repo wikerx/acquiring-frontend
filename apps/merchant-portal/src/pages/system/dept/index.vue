@@ -1,32 +1,39 @@
 <template>
-    <div class="page system-page">
-        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
-            <el-form-item :label="t('system.dept.name')"><el-input v-model="query.keyword" :placeholder="t('system.dept.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
-            <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
-        </el-form>
-        <div class="toolbar">
-            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.dept.add') }}</el-button>
-            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-        </div>
-        <StandardTable table-key="merchant-system-dept" v-loading="loading" :data="rows" row-key="deptId" size="small">
-            <el-table-column prop="deptName" :label="t('system.dept.name')" min-width="180" />
-            <el-table-column prop="deptCode" :label="t('system.dept.code')" min-width="160" />
-            <el-table-column prop="sortNo" :label="t('common.sortNo')" width="90" align="center" />
-            <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
-            <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="180" align="center" class-name="small-padding fixed-width">
-                <template #default="{ row }">
-                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
-                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">{{ t('common.delete') }}</el-button>
-                    <span v-if="!canEdit && !canDelete">-</span>
-                </template>
-            </el-table-column>
-        </StandardTable>
-        <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
-        </div>
+    <div class="page system-page merchant-redesigned-page">
+        <section class="merchant-list-card merchant-search-card">
+            <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
+                <el-form-item :label="t('system.dept.name')"><el-input v-model="query.keyword" :placeholder="t('system.dept.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
+                <el-form-item class="merchant-search-actions"><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
+            </el-form>
+        </section>
+
+        <section class="merchant-list-card merchant-table-card">
+            <div class="merchant-table-head">
+                <div class="merchant-table-head__actions">
+                    <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.dept.add') }}</el-button>
+                </div>
+                <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
+            </div>
+            <StandardTable table-key="merchant-system-dept" v-loading="loading" :data="rows" row-key="deptId" size="small">
+                <el-table-column prop="deptName" :label="t('system.dept.name')" min-width="180" />
+                <el-table-column prop="deptCode" :label="t('system.dept.code')" min-width="160" />
+                <el-table-column prop="sortNo" :label="t('common.sortNo')" width="90" align="center" />
+                <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
+                <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
+                <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
+                <el-table-column :label="t('common.operation')" width="160" align="center" class-name="small-padding fixed-width" fixed="right">
+                    <template #default="{ row }">
+                        <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openForm(row)">{{ t('common.edit') }}</el-button>
+                        <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" @click="remove(row)">{{ t('common.delete') }}</el-button>
+                        <span v-if="!canEdit && !canDelete">-</span>
+                    </template>
+                </el-table-column>
+            </StandardTable>
+            <div class="pagination-container" v-show="total > 0">
+                <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+            </div>
+        </section>
         <el-dialog v-model="visible" :title="form.deptId ? t('system.dept.edit') : t('system.dept.add')" width="520px">
             <el-form :model="form" label-width="92px">
                 <el-form-item :label="t('system.dept.parent')"><el-tree-select v-model="form.parentId" :data="treeOptions" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" check-strictly clearable /></el-form-item>

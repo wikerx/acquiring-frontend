@@ -1,54 +1,120 @@
 <template>
-    <div class="page system-page">
-        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
-            <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('common.status')">
-                <el-select v-model="query.status" :placeholder="t('common.all')" clearable>
-                    <el-option :label="t('common.enabled')" :value="1" />
-                    <el-option :label="t('common.disabled')" :value="0" />
-                </el-select>
-            </el-form-item>
-            <el-form-item :label="t('system.role.createdTime')">
-                <el-date-picker v-model="query.createdRange" type="daterange" :start-placeholder="t('system.role.startDate')" :end-placeholder="t('system.role.endDate')" value-format="YYYY-MM-DD" clearable />
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
-                <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
-            </el-form-item>
-        </el-form>
+    <div class="page system-page merchant-redesigned-page merchant-role-page">
+        <section class="merchant-list-card merchant-search-card">
+            <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
+                <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('system.role.namePlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('system.role.codePlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('common.status')">
+                    <el-select v-model="query.status" :placeholder="t('system.role.allStatus')" clearable>
+                        <el-option :label="t('common.enabled')" :value="1" />
+                        <el-option :label="t('common.disabled')" :value="0" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="t('system.role.createdTime')">
+                    <el-date-picker v-model="query.createdRange" type="daterange" :start-placeholder="t('system.role.startDate')" :end-placeholder="t('system.role.endDate')" value-format="YYYY-MM-DD" clearable />
+                </el-form-item>
+                <el-form-item class="merchant-search-actions">
+                    <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
+                    <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
+                </el-form-item>
+            </el-form>
+        </section>
 
-        <div class="toolbar">
-            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
-            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-        </div>
+        <section class="merchant-role-workspace">
+            <div class="merchant-role-main">
+                <section class="merchant-list-summary merchant-role-summary">
+                    <article v-for="item in roleSummary" :key="item.label" class="merchant-list-summary__item">
+                        <span class="merchant-list-summary__icon" :class="`merchant-list-summary__icon--${item.tone}`">
+                            <el-icon><component :is="item.icon" /></el-icon>
+                        </span>
+                        <div>
+                            <span>{{ item.label }}</span>
+                            <strong>{{ item.value }}</strong>
+                            <small>{{ item.hint }}</small>
+                        </div>
+                    </article>
+                </section>
 
-        <StandardTable table-key="merchant-system-role" v-loading="loading" :data="rows" row-key="roleId" size="small">
-            <el-table-column prop="roleName" :label="t('system.role.name')" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="180" show-overflow-tooltip />
-            <el-table-column :label="t('system.role.dataScope')" width="110" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
-            <el-table-column :label="t('common.status')" width="120" align="center">
-                <template #default="{ row }">
-                    <el-switch v-if="canChangeStatus" :model-value="row.status" :active-value="1" :inactive-value="0" @change="changeStatus(row)" />
-                    <el-tag v-else :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column prop="sortNo" :label="t('common.sortNo')" width="80" align="center" />
-            <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
-            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="260" align="center" class-name="small-padding fixed-width" fixed="right">
-                <template #default="{ row }">
-                    <el-button v-if="canDetail" size="small" link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
-                    <el-button v-if="canEdit" size="small" link type="primary" :icon="Edit" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-                    <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">{{ t('system.role.grant') }}</el-button>
-                    <el-button v-if="canDelete" size="small" link type="danger" :icon="Delete" :disabled="isSystemRole(row)" @click="remove(row)">{{ t('common.delete') }}</el-button>
-                    <span v-if="!canDetail && !canEdit && !canGrant && !canDelete">-</span>
-                </template>
-            </el-table-column>
-        </StandardTable>
-        <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
-        </div>
+                <section class="merchant-list-card merchant-table-card">
+                    <div class="merchant-table-head">
+                        <div class="merchant-table-head__actions">
+                            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
+                        </div>
+                        <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
+                    </div>
+                    <StandardTable table-key="merchant-system-role" v-loading="loading" :data="rows" row-key="roleId" size="small" highlight-current-row @current-change="handleCurrentRoleChange">
+                        <el-table-column prop="roleName" :label="t('system.role.name')" min-width="160" show-overflow-tooltip />
+                        <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="180" show-overflow-tooltip />
+                        <el-table-column :label="t('system.role.dataScope')" width="130" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
+                        <el-table-column :label="t('common.status')" width="110" align="center">
+                            <template #default="{ row }">
+                                <el-switch v-if="canChangeStatus" :model-value="row.status" :active-value="1" :inactive-value="0" @change="changeStatus(row)" />
+                                <el-tag v-else :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="sortNo" :label="t('common.sortNo')" width="80" align="center" />
+                        <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
+                        <el-table-column :label="t('common.operation')" width="172" align="center" class-name="small-padding fixed-width" fixed="right">
+                            <template #default="{ row }">
+                                <div class="merchant-table-actions">
+                                    <el-button v-if="canDetail" size="small" link type="primary" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
+                                    <el-button v-if="canEdit" size="small" link type="primary" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+                                    <el-dropdown v-if="roleHasMoreActions(row)" trigger="click" @command="(command: string) => handleRoleCommand(command, row)">
+                                        <el-button size="small" link type="primary" class="merchant-table-action">
+                                            {{ t('system.role.moreActions') }}
+                                            <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+                                        </el-button>
+                                        <template #dropdown>
+                                            <el-dropdown-menu>
+                                                <el-dropdown-item v-if="canGrant" command="grant">{{ t('system.role.grant') }}</el-dropdown-item>
+                                                <el-dropdown-item v-if="canDelete" command="delete" :disabled="isSystemRole(row)" divided>{{ t('common.delete') }}</el-dropdown-item>
+                                            </el-dropdown-menu>
+                                        </template>
+                                    </el-dropdown>
+                                    <span v-if="!canDetail && !canEdit && !roleHasMoreActions(row)">-</span>
+                                </div>
+                            </template>
+                        </el-table-column>
+                    </StandardTable>
+                    <div class="pagination-container" v-show="total > 0">
+                        <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+                    </div>
+                </section>
+            </div>
+
+            <aside class="merchant-role-preview">
+                <div class="merchant-role-preview__head">
+                    <span class="merchant-role-preview__icon"><el-icon><Key /></el-icon></span>
+                    <div>
+                        <h2>{{ t('system.role.permissionPreview') }}</h2>
+                        <p>{{ t('system.role.permissionPreviewDesc') }}</p>
+                    </div>
+                </div>
+                <div class="merchant-role-preview__selected">
+                    <span>{{ t('system.role.currentSelection') }}</span>
+                    <strong>{{ previewRole?.roleName || t('system.role.noRoleSelected') }}</strong>
+                    <small v-if="previewRole">{{ previewRole.roleCode }}</small>
+                </div>
+                <div class="merchant-role-preview__facts">
+                    <div>
+                        <span>{{ t('system.role.roleType') }}</span>
+                        <strong>{{ roleTypeLabel(previewRole) }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ t('system.role.dataScope') }}</span>
+                        <strong>{{ dataScopeLabel(previewRole?.dataScope) }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ t('common.status') }}</span>
+                        <strong>{{ statusLabel(previewRole?.status) }}</strong>
+                    </div>
+                </div>
+                <el-button v-if="canGrant && previewRole" class="merchant-role-preview__button" type="primary" plain @click="openGrant(previewRole)">
+                    {{ t('system.role.grant') }}
+                    <el-icon><ArrowRight /></el-icon>
+                </el-button>
+            </aside>
+        </section>
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('system.role.detailTitle')" size="xl">
             <el-descriptions :column="1" border size="small" class="role-desc">
@@ -166,13 +232,14 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Edit, Key, Plus, RefreshLeft, Search, Sort, View } from '@element-plus/icons-vue';
+import { ArrowRight, CircleCheck, Key, Lock, MoreFilled, Plus, RefreshLeft, Search, Sort, User, Warning } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
+import { resolveMerchantMenuLabel } from '@/utils/menu';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
 
 interface RoleForm {
@@ -192,7 +259,7 @@ const GrantTreeNode = defineComponent({
     setup(props) {
         return () => h('span', { class: 'grant-node' }, [
             h(ElTag, { size: 'small', type: tagType(props.node.nodeType), class: 'grant-node__tag' }, () => nodeTypeName(props.node.nodeType)),
-            h('span', { class: 'grant-node__name' }, props.node.name),
+            h('span', { class: 'grant-node__name' }, grantNodeLabel(props.node)),
             props.node.code ? h('code', { class: 'grant-node__code' }, props.node.code) : null,
         ]);
     },
@@ -216,6 +283,7 @@ const formRef = ref<FormInstance>();
 const grantTreeRef = ref<InstanceType<typeof ElTree>>();
 const formGrantTreeRef = ref<InstanceType<typeof ElTree>>();
 const activeRole = ref<RoleItem>();
+const previewRole = ref<RoleItem>();
 const grantTree = ref<RoleGrantNode[]>([]);
 const checkedKeys = ref<string[]>([]);
 const grantNodeMap = ref<Map<string, RoleGrantNode>>(new Map());
@@ -239,6 +307,47 @@ const rules = computed<FormRules>(() => ({
     roleName: [{ required: true, message: t('system.role.nameRequired'), trigger: 'blur' }],
     roleCode: [{ required: true, message: t('system.role.codeRequired'), trigger: 'blur' }],
 }));
+const enabledRoleCount = computed(() => rows.value.filter((row) => row.status === 1).length);
+const disabledRoleCount = computed(() => rows.value.filter((row) => row.status !== 1).length);
+const systemRoleCount = computed(() => rows.value.filter((row) => isSystemRole(row)).length);
+const customRoleCount = computed(() => rows.value.filter((row) => !isSystemRole(row)).length);
+const roleSummary = computed(() => [
+    {
+        label: t('system.role.summaryTotal'),
+        value: String(total.value),
+        hint: t('system.role.summaryTotalHint', { count: rows.value.length }),
+        icon: User,
+        tone: 'blue',
+    },
+    {
+        label: t('system.role.summaryEnabled'),
+        value: String(enabledRoleCount.value),
+        hint: t('system.role.summaryCurrentPage'),
+        icon: CircleCheck,
+        tone: 'green',
+    },
+    {
+        label: t('system.role.summarySystem'),
+        value: String(systemRoleCount.value),
+        hint: t('system.role.summaryCurrentPage'),
+        icon: Lock,
+        tone: 'violet',
+    },
+    {
+        label: t('system.role.summaryCustom'),
+        value: String(customRoleCount.value),
+        hint: t('system.role.summaryCurrentPage'),
+        icon: Key,
+        tone: 'indigo',
+    },
+    {
+        label: t('system.role.summaryDisabled'),
+        value: String(disabledRoleCount.value),
+        hint: t('system.role.summaryCurrentPage'),
+        icon: Warning,
+        tone: 'orange',
+    },
+]);
 
 onMounted(loadData);
 
@@ -256,6 +365,9 @@ async function loadData() {
         });
         rows.value = result.records;
         total.value = result.total;
+        if (!previewRole.value || !rows.value.some((row) => row.roleId === previewRole.value?.roleId)) {
+            previewRole.value = rows.value[0];
+        }
     } finally {
         loading.value = false;
     }
@@ -390,6 +502,26 @@ async function remove(row: RoleItem) {
     await loadData();
 }
 
+function handleCurrentRoleChange(row?: RoleItem) {
+    if (row) {
+        previewRole.value = row;
+    }
+}
+
+function roleHasMoreActions(row: RoleItem) {
+    return canGrant || (canDelete && !isSystemRole(row));
+}
+
+function handleRoleCommand(command: string, row: RoleItem) {
+    if (command === 'grant') {
+        openGrant(row);
+        return;
+    }
+    if (command === 'delete') {
+        remove(row);
+    }
+}
+
 function toggleExpand() {
     const keys = selectedKeys(grantTreeRef.value);
     expanded.value = !expanded.value;
@@ -492,9 +624,32 @@ function dataScopeLabel(value?: string) {
     return value ? labels[value] || value : '-';
 }
 
+function roleTypeLabel(row?: RoleItem) {
+    if (!row) {
+        return '-';
+    }
+    return isSystemRole(row) ? t('system.role.roleTypeSystem') : t('system.role.roleTypeCustom');
+}
+
+function statusLabel(value?: number) {
+    if (value === 1) {
+        return t('common.enabled');
+    }
+    if (value === 0) {
+        return t('common.disabled');
+    }
+    return '-';
+}
+
 function nodeTypeName(value?: string) {
     const labels: Record<string, string> = { DIR: t('system.role.dir'), MENU: t('system.role.menu'), BTN: t('system.role.button') };
     return value ? labels[value] || value : '-';
+}
+
+function grantNodeLabel(node: RoleGrantNode) {
+    return node.nodeType === 'BTN'
+        ? node.name
+        : resolveMerchantMenuLabel({ code: node.code, name: node.name }, t);
 }
 
 function tagType(value?: string) {
