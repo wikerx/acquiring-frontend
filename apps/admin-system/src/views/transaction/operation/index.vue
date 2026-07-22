@@ -1,5 +1,5 @@
 <template>
-    <div class="app-container transaction-page">
+    <div class="app-container transaction-page transaction-operation-page">
         <TransactionSearchPanel
             :visible="showSearch"
             :model="query"

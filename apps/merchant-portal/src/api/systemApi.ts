@@ -11,6 +11,29 @@ export interface MerchantSystemPageQuery {
     pageSize?: number;
 }
 
+export interface DictDataQuery extends MerchantSystemPageQuery {
+    dictType?: string;
+    dictLabel?: string;
+    dictValue?: string;
+    parentValue?: string;
+    locale?: string;
+    status?: number;
+}
+
+export interface DictDataItem {
+    id: number;
+    dictType: string;
+    dictLabel: string;
+    dictValue: string;
+    parentValue?: string;
+    locale: string;
+    dictSort?: number;
+    listClass?: string;
+    extraJson?: string;
+    isDefault?: number;
+    status?: number;
+}
+
 export interface DeptQuery extends MerchantSystemPageQuery {
     keyword?: string;
     status?: number;
@@ -171,6 +194,10 @@ export interface RoleGrantTree {
 }
 
 export const systemApi = {
+    async searchDictData(data: DictDataQuery) {
+        const result = await http.post<CommonResult<PageResult<DictDataItem>>>('/merchant/system/dicts/data/search', data);
+        return unwrapResult(result.data);
+    },
     async depts() {
         const result = await http.get<CommonResult<DeptItem[]>>('/merchant/system/depts');
         return unwrapResult(result.data);

@@ -13,19 +13,11 @@
                 <el-form-item :label="t('system.role.createdTime')">
                     <el-date-picker v-model="query.createdRange" type="daterange" :start-placeholder="t('system.role.startDate')" :end-placeholder="t('system.role.endDate')" value-format="YYYY-MM-DD" clearable />
                 </el-form-item>
-                <el-form-item>
+                <el-form-item class="merchant-search-actions">
                     <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
                     <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
-                    <el-button v-if="canAdd" type="primary" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
                 </el-form-item>
             </el-form>
-            <div class="toolbar">
-                <div class="merchant-list-toolbar-title">
-                    <strong>{{ t('system.role.listTitle') }}</strong>
-                    <span>{{ t('system.role.listSubtitle', { count: total }) }}</span>
-                </div>
-                <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-            </div>
         </section>
 
         <section class="merchant-role-workspace">
@@ -44,6 +36,12 @@
                 </section>
 
                 <section class="merchant-list-card merchant-table-card">
+                    <div class="merchant-table-head">
+                        <div class="merchant-table-head__actions">
+                            <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openEdit()">{{ t('system.role.add') }}</el-button>
+                        </div>
+                        <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
+                    </div>
                     <StandardTable table-key="merchant-system-role" v-loading="loading" :data="rows" row-key="roleId" size="small" highlight-current-row @current-change="handleCurrentRoleChange">
                         <el-table-column prop="roleName" :label="t('system.role.name')" min-width="160" show-overflow-tooltip />
                         <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="180" show-overflow-tooltip />

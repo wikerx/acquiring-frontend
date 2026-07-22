@@ -1,49 +1,52 @@
 <template>
-    <div class="page system-page role-auth-page">
-        <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
-            <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
-            <el-form-item :label="t('common.status')">
-                <el-select v-model="query.status" :placeholder="t('common.all')" clearable>
-                    <el-option :label="t('common.enabled')" :value="1" />
-                    <el-option :label="t('common.disabled')" :value="0" />
-                </el-select>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
-                <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
-            </el-form-item>
-        </el-form>
+    <div class="page system-page merchant-redesigned-page role-auth-page">
+        <section class="merchant-list-card merchant-search-card">
+            <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
+                <el-form-item :label="t('system.role.name')"><el-input v-model="query.roleName" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('system.role.code')"><el-input v-model="query.roleCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" /></el-form-item>
+                <el-form-item :label="t('common.status')">
+                    <el-select v-model="query.status" :placeholder="t('common.all')" clearable>
+                        <el-option :label="t('common.enabled')" :value="1" />
+                        <el-option :label="t('common.disabled')" :value="0" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item class="merchant-search-actions">
+                    <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
+                    <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
+                </el-form-item>
+            </el-form>
+        </section>
 
-        <div class="toolbar">
-            <div class="role-auth-summary">
-                <el-tag size="small" effect="plain">{{ t('system.roleAuth.permissionModel') }}</el-tag>
-                <span>{{ t('system.roleAuth.description') }}</span>
+        <section class="merchant-list-card merchant-table-card">
+            <div class="merchant-table-head">
+                <div class="role-auth-summary">
+                    <el-tag size="small" effect="plain">{{ t('system.roleAuth.permissionModel') }}</el-tag>
+                    <span>{{ t('system.roleAuth.description') }}</span>
+                </div>
+                <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
             </div>
-            <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-        </div>
+            <StandardTable table-key="merchant-system-role-auth" v-loading="loading" :data="rows" row-key="roleId" size="small">
+                <el-table-column prop="roleName" :label="t('system.role.name')" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="190" show-overflow-tooltip />
+                <el-table-column :label="t('system.role.dataScope')" width="120" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
+                <el-table-column :label="t('common.status')" width="110" align="center">
+                    <template #default="{ row }">
+                        <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
+                <el-table-column :label="t('common.operation')" width="160" align="center" fixed="right">
+                    <template #default="{ row }">
+                        <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">{{ t('system.roleAuth.authAction') }}</el-button>
+                        <span v-else>-</span>
+                    </template>
+                </el-table-column>
+            </StandardTable>
 
-        <StandardTable table-key="merchant-system-role-auth" v-loading="loading" :data="rows" row-key="roleId" size="small">
-            <el-table-column prop="roleName" :label="t('system.role.name')" min-width="160" show-overflow-tooltip />
-            <el-table-column prop="roleCode" :label="t('system.role.code')" min-width="190" show-overflow-tooltip />
-            <el-table-column :label="t('system.role.dataScope')" width="120" align="center"><template #default="{ row }">{{ dataScopeLabel(row.dataScope) }}</template></el-table-column>
-            <el-table-column :label="t('common.status')" width="110" align="center">
-                <template #default="{ row }">
-                    <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column :label="t('system.role.updatedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updatedAt" /></template></el-table-column>
-            <el-table-column :label="t('common.operation')" width="160" align="center" fixed="right">
-                <template #default="{ row }">
-                    <el-button v-if="canGrant" size="small" link type="primary" :icon="Key" @click="openGrant(row)">{{ t('system.roleAuth.authAction') }}</el-button>
-                    <span v-else>-</span>
-                </template>
-            </el-table-column>
-        </StandardTable>
-
-        <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
-        </div>
+            <div class="pagination-container" v-show="total > 0">
+                <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+            </div>
+        </section>
 
         <el-dialog v-model="grantVisible" :title="t('system.roleAuth.grantTitle')" width="840px" append-to-body destroy-on-close>
             <el-descriptions :column="3" border size="small" class="role-desc">
@@ -289,7 +292,10 @@ function tagType(value?: string) {
 .role-auth-summary {
     display: inline-flex;
     align-items: center;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     gap: 10px;
+    min-width: 0;
     color: var(--el-text-color-secondary);
     font-size: 13px;
 }

@@ -18,15 +18,19 @@
                 <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
                 <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
                 <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
-                <el-form-item><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
+                <el-form-item class="merchant-search-actions"><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
             </el-form>
-            <div class="toolbar">
-                <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button>
-                <div class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></div>
-            </div>
         </section>
 
         <section class="merchant-list-card merchant-table-card">
+            <div class="merchant-table-head">
+                <div class="merchant-table-head__actions">
+                    <el-button v-if="canAdd" type="primary" plain size="small" :icon="Plus" @click="openForm()">{{ t('system.account.addEmployee') }}</el-button>
+                </div>
+                <div class="right-toolbar">
+                    <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
+                </div>
+            </div>
             <StandardTable table-key="merchant-system-account" v-loading="loading" :data="rows" row-key="accountId" size="small">
                 <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
                 <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />

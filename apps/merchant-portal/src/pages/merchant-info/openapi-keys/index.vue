@@ -1,5 +1,5 @@
 <template>
-    <div class="page openapi-key-page">
+    <div class="page system-page merchant-redesigned-page openapi-key-page">
         <el-alert
             class="mb16"
             type="warning"
@@ -8,14 +8,20 @@
             :title="t('openapiKeys.warning')"
         />
 
-        <div class="toolbar">
-            <el-button v-if="canDownloadPrivateMaterial" type="primary" :icon="Download" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'SDK_KIT')" @click="downloadMaterial('SDK_KIT', 'ZIP')">{{ t('openapiKeys.downloadKit') }}</el-button>
-            <el-button v-if="canDownloadPrivateMaterial" :icon="Document" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'MERCHANT_CONFIG')" @click="downloadMaterial('MERCHANT_CONFIG', 'PROPERTIES')">{{ t('openapiKeys.downloadConfig') }}</el-button>
-            <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial" :icon="CopyDocument" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('copy', 'MERCHANT_CONFIG')" @click="copyMaterial('MERCHANT_CONFIG', 'PROPERTIES')">{{ t('openapiKeys.copyConfig') }}</el-button>
-            <el-button v-if="canDownloadPrivateMaterial" :icon="Document" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'MERCHANT_CONFIG_TEXT')" @click="downloadMaterial('MERCHANT_CONFIG_TEXT', 'PROPERTIES')">{{ t('openapiKeys.downloadTextConfig') }}</el-button>
-            <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial" :icon="CopyDocument" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('copy', 'MERCHANT_CONFIG_TEXT')" @click="copyMaterial('MERCHANT_CONFIG_TEXT', 'PROPERTIES')">{{ t('openapiKeys.copyTextConfig') }}</el-button>
-            <el-button :icon="Refresh" :loading="loading" @click="loadData">{{ t('openapiKeys.refresh') }}</el-button>
-        </div>
+        <section class="merchant-list-card merchant-table-card openapi-key-action-card">
+            <div class="merchant-table-head">
+                <div class="merchant-table-head__actions">
+                    <el-button v-if="canDownloadPrivateMaterial" type="primary" :icon="Download" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'SDK_KIT')" @click="downloadMaterial('SDK_KIT', 'ZIP')">{{ t('openapiKeys.downloadKit') }}</el-button>
+                    <el-button v-if="canDownloadPrivateMaterial" :icon="Document" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'MERCHANT_CONFIG')" @click="downloadMaterial('MERCHANT_CONFIG', 'PROPERTIES')">{{ t('openapiKeys.downloadConfig') }}</el-button>
+                    <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial" :icon="CopyDocument" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('copy', 'MERCHANT_CONFIG')" @click="copyMaterial('MERCHANT_CONFIG', 'PROPERTIES')">{{ t('openapiKeys.copyConfig') }}</el-button>
+                    <el-button v-if="canDownloadPrivateMaterial" :icon="Document" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('download', 'MERCHANT_CONFIG_TEXT')" @click="downloadMaterial('MERCHANT_CONFIG_TEXT', 'PROPERTIES')">{{ t('openapiKeys.downloadTextConfig') }}</el-button>
+                    <el-button v-if="canCopyMaterial && canDownloadPrivateMaterial" :icon="CopyDocument" :disabled="!canExportIntegrationMaterial" :loading="isActionLoading('copy', 'MERCHANT_CONFIG_TEXT')" @click="copyMaterial('MERCHANT_CONFIG_TEXT', 'PROPERTIES')">{{ t('openapiKeys.copyTextConfig') }}</el-button>
+                </div>
+                <div class="right-toolbar">
+                    <el-button :icon="Refresh" :loading="loading" @click="loadData">{{ t('openapiKeys.refresh') }}</el-button>
+                </div>
+            </div>
+        </section>
 
         <el-skeleton v-if="loading" :rows="6" animated />
         <template v-else-if="material">
@@ -103,9 +109,11 @@
                 </section>
             </div>
 
-            <section class="log-panel">
-                <div class="log-panel__head">
-                    <h3>{{ t('openapiKeys.logsTitle') }}</h3>
+            <section class="merchant-list-card merchant-table-card log-panel">
+                <div class="merchant-table-head log-panel__head">
+                    <div class="merchant-table-head__actions">
+                        <h3>{{ t('openapiKeys.logsTitle') }}</h3>
+                    </div>
                     <RightToolbar :show-search="false" @refresh="loadLogs" />
                 </div>
                 <StandardTable table-key="merchant-openapi-key-logs" v-loading="logsLoading" :data="logs" row-key="id" size="small">
@@ -125,7 +133,7 @@
                     </el-table-column>
                     <el-table-column prop="errorMsg" :label="t('openapiKeys.error')" min-width="180" show-overflow-tooltip />
                 </StandardTable>
-                <div class="log-panel__pager">
+                <div class="pagination-container log-panel__pager">
                     <el-pagination
                         v-model:current-page="logPage"
                         v-model:page-size="logPageSize"
@@ -319,13 +327,6 @@ onMounted(loadData);
     margin-bottom: 16px;
 }
 
-.toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
 .key-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -372,24 +373,12 @@ onMounted(loadData);
     margin-top: 16px;
 }
 
-.log-panel__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
 .log-panel__head h3 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 15px;
     line-height: 22px;
 }
 
 .log-panel__pager {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 10px;
+    margin-top: 0;
 }
 
 @media (max-width: 1200px) {
@@ -397,4 +386,5 @@ onMounted(loadData);
         grid-template-columns: 1fr;
     }
 }
+
 </style>
