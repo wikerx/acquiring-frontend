@@ -146,6 +146,7 @@ const advancedVisible = ref(false);
 }
 
 .transaction-search__actions--inline {
+    flex: 1 1 160px;
     align-self: flex-start;
 }
 

@@ -9,7 +9,6 @@
             :collapse-text="t('transaction.search.collapse')"
             :search-text="t('common.search')"
             :reset-text="t('common.reset')"
-            inline-time
             @search="handleSearch"
             @reset="handleReset"
         >
