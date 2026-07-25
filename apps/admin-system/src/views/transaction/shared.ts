@@ -20,6 +20,14 @@ export interface TransactionDictOption {
     listClass?: string;
 }
 
+const CHANNEL_MATCH_STATUS_LABELS: Record<string, Record<string, string>> = {
+    'zh-CN': {
+        PENDING: '未勾兑',
+        MATCHED: '成功',
+        FAILED: '失败',
+    },
+};
+
 export function moneyText(amount?: number | string | null, currency?: string, currencyExponent?: number | null) {
     if (amount === undefined || amount === null) {
         return '-';
@@ -109,7 +117,16 @@ export async function loadTransactionDictOptions(dictType: string, locale: strin
         label: item.dictLabel,
         value: item.dictValue,
         listClass: item.listClass,
-    }));
+    })).map((option) => normalizeTransactionDictOption(dictType, locale, option));
+}
+
+function normalizeTransactionDictOption(dictType: string, locale: string, option: TransactionDictOption): TransactionDictOption {
+    if (dictType !== 'channel_match_status') {
+        return option;
+    }
+    const labels = CHANNEL_MATCH_STATUS_LABELS[locale] || CHANNEL_MATCH_STATUS_LABELS[locale.split('-')[0]];
+    const label = labels?.[option.value];
+    return label ? { ...option, label } : option;
 }
 
 export function optionText(options: TransactionDictOption[], value?: string) {
@@ -169,7 +186,10 @@ export function responseTooltip(code?: string, message?: string) {
     if (!code && !message) {
         return '-';
     }
-    return [code, message].filter(Boolean).join(' / ');
+    if (code && message) {
+        return `${code}:${message}`;
+    }
+    return code || message || '-';
 }
 
 export function accessTypeText(t: (key: string, fallback?: string) => string, value?: string) {

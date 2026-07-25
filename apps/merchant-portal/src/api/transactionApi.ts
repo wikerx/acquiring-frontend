@@ -191,6 +191,14 @@ export const transactionApi = {
         const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/refund`, data);
         return unwrapResult(result.data);
     },
+    async capture(transactionId: string, data: TransactionActionRequest) {
+        const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/capture`, data);
+        return unwrapResult(result.data);
+    },
+    async voidPayment(transactionId: string, data: TransactionActionRequest) {
+        const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/void`, data);
+        return unwrapResult(result.data);
+    },
     async exportOrders(data: TransactionPageQuery) {
         await downloadBlob('/merchant/transactions/orders/export', {
             method: 'post',

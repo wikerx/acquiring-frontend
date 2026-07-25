@@ -20,7 +20,7 @@
             <el-form-item :label="t('transaction.fields.callbackStatus')"><el-input v-model.trim="query.callbackStatus" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" /></el-form-item>
             <template #time>
                 <el-form-item :label="t('transaction.fields.transactionDateTime')" class="transaction-time-form-item">
-                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" :timezone-options="timezoneOptions" default-preset="today" />
+                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" v-model:preset="quickPreset" :timezone-options="timezoneOptions" default-preset="today" />
                 </el-form-item>
             </template>
         </TransactionSearchPanel>
@@ -102,6 +102,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const quickPreset = ref('today');
 const detailVisible = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
 const timezoneOptions = ref<SelectOption[]>([]);
@@ -148,6 +149,7 @@ function handleReset() {
     query.channelOrderNo = '';
     query.callbackStatus = '';
     query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    quickPreset.value = 'today';
     dateRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     handleSearch();
 }

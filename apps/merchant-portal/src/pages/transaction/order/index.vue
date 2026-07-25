@@ -229,10 +229,18 @@
                         <BaseDateTime :value="row.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" />
                     </template>
                 </el-table-column>
-                <el-table-column :label="t('common.operation')" width="150" fixed="right" align="center">
+                <el-table-column :label="t('common.operation')" width="260" fixed="right" align="center">
                     <template #default="{ row }">
                         <el-button v-if="canDetail" link type="primary" size="small" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
-                        <el-button v-if="canRefund && canRefundRow(row)" link type="primary" size="small" @click="openRefund(row)">{{ t('transaction.order.refund') }}</el-button>
+                        <el-tooltip v-if="canRefund" :content="canRefundRow(row) ? t('transaction.order.refundEnabledTip') : t('transaction.order.refundDisabled')" placement="top">
+                            <span><el-button link type="primary" size="small" :disabled="!canRefundRow(row)" @click="openRefund(row)">{{ t('transaction.order.refund') }}</el-button></span>
+                        </el-tooltip>
+                        <el-tooltip v-if="canCapture" :content="canCaptureRow(row) ? t('transaction.order.captureEnabledTip') : t('transaction.order.captureDisabled')" placement="top">
+                            <span><el-button link type="primary" size="small" :disabled="!canCaptureRow(row)" @click="openCapture(row)">{{ t('transaction.order.capture') }}</el-button></span>
+                        </el-tooltip>
+                        <el-tooltip v-if="canVoid" :content="canVoidRow(row) ? t('transaction.order.voidEnabledTip') : t('transaction.order.voidDisabled')" placement="top">
+                            <span><el-button link type="primary" size="small" :disabled="!canVoidRow(row)" @click="openVoid(row)">{{ t('transaction.order.void') }}</el-button></span>
+                        </el-tooltip>
                     </template>
                 </el-table-column>
             </StandardTable>
@@ -314,33 +322,169 @@
             </template>
         </el-drawer>
 
-        <el-dialog v-model="refundVisible" :title="t('transaction.order.refundTitle')" width="min(620px, 92vw)" class="transaction-refund-dialog" destroy-on-close>
-            <section class="transaction-refund-summary">
-                <div>
-                            <span>{{ t('transaction.order.transactionId') }}</span>
-                    <strong>{{ activeRefundRow?.transactionId || '-' }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('transaction.order.availableRefund') }}</span>
-                    <strong>{{ money(activeRefundRow?.availableRefundAmount, defaultCurrency(activeRefundRow), activeRefundRow?.currencyExponent) }}</strong>
-                </div>
+        <el-dialog v-model="refundVisible" :title="t('transaction.order.refundTitle')" width="min(620px, 92vw)" class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.order.refundTip')" />
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
+                        <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.transactionId') }}</dt>
+                        <dd>{{ activeActionRow.transactionId || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.status') }}</dt>
+                        <dd><el-tag size="small" :type="statusTag(activeActionRow.transactionStatus, transactionStatusOptions)" effect="light">{{ tagText(transactionStatusOptions, activeActionRow.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.transactionAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoney(activeActionRow, fullLabelAmount(activeActionRow)) }}</dd>
+                    </div>
+                </dl>
             </section>
-            <el-alert class="transaction-refund-alert" type="warning" show-icon :closable="false" :title="t('transaction.order.refundTip')" />
-            <el-form ref="refundFormRef" :model="refundForm" :rules="refundRules" label-position="top" class="transaction-refund-form">
-                <el-form-item :label="t('transaction.order.refundAmount')" prop="amount">
-                    <el-input-number v-model="refundForm.amount" :min="0.01" :max="refundMaxAmount" :precision="2" controls-position="right" />
-                </el-form-item>
-                <el-form-item :label="t('transaction.order.currency')" prop="currency">
-                    <el-input v-model.trim="refundForm.currency" maxlength="3" />
-                </el-form-item>
-                <el-form-item :label="t('transaction.order.refundReason')" prop="reason" class="transaction-refund-form__reason">
-                    <el-input v-model.trim="refundForm.reason" type="textarea" maxlength="300" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" />
-                </el-form-item>
-            </el-form>
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.refundInfo') }}</h3>
+                <el-form ref="refundFormRef" :model="refundForm" :rules="refundRules" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.order.refundMode')">
+                        <el-radio-group v-model="refundForm.mode" @change="handleRefundModeChange">
+                            <el-radio value="PARTIAL">{{ t('transaction.order.partialRefund') }}</el-radio>
+                            <el-radio value="FULL">{{ t('transaction.order.fullRefund') }} ({{ labelMoney(activeActionRow, refundMaxAmount) }})</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.refundAmount')" prop="amount">
+                        <div class="transaction-action-amount-line">
+                            <el-input-number v-model="refundForm.amount" :disabled="refundForm.mode === 'FULL'" :min="0.01" :max="refundMaxAmount" :precision="2" controls-position="right" />
+                            <span class="transaction-action-currency">{{ refundForm.currency || labelCurrency(activeActionRow) || '-' }}</span>
+                        </div>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.refundReason')" prop="reason">
+                        <el-select v-model="refundForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in refundReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.description')" class="transaction-action-form__reason">
+                        <el-input v-model.trim="refundForm.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" :placeholder="t('transaction.order.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="warning" show-icon :closable="false" :title="t('transaction.order.refundLimitWarning', { amount: labelMoney(activeActionRow, refundMaxAmount) })" />
+            </section>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" size="small" :loading="refundSaving" @click="submitRefund">{{ t('common.confirm') }}</el-button>
+                    <el-button type="primary" size="small" :loading="refundSaving" @click="submitRefund">{{ t('transaction.order.refund') }}</el-button>
                     <el-button size="small" @click="refundVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <el-dialog v-model="captureVisible" :title="t('transaction.order.captureTitle')" width="min(600px, 92vw)" class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.order.captureTip')" />
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
+                        <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.transactionId') }}</dt>
+                        <dd>{{ activeActionRow.transactionId || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.status') }}</dt>
+                        <dd><el-tag size="small" :type="statusTag(activeActionRow.transactionStatus, transactionStatusOptions)" effect="light">{{ tagText(transactionStatusOptions, activeActionRow.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.authorizedAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoney(activeActionRow, fullLabelAmount(activeActionRow)) }}</dd>
+                    </div>
+                </dl>
+            </section>
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.captureInfo') }}</h3>
+                <div class="transaction-action-amount-card">
+                    <span>{{ t('transaction.order.availableCapture') }}</span>
+                    <strong>{{ labelMoney(activeActionRow, captureAmount) }}</strong>
+                    <em>{{ t('transaction.order.fullCaptureOnly') }}</em>
+                </div>
+                <el-form :model="captureForm" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.order.captureAmount')">
+                        <el-input :model-value="amountInputText(activeActionRow, captureAmount)" disabled>
+                            <template #append>{{ labelCurrency(activeActionRow) || '-' }}</template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.captureReason')">
+                        <el-select v-model="captureForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in captureReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.description')" class="transaction-action-form__reason">
+                        <el-input v-model.trim="captureForm.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" :placeholder="t('transaction.order.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.order.captureSuccessHint')" />
+            </section>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="actionSaving" @click="submitCapture">{{ t('transaction.order.capture') }}</el-button>
+                    <el-button size="small" @click="captureVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <el-dialog v-model="voidVisible" :title="t('transaction.order.voidTitle')" width="min(600px, 92vw)" class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.order.voidTip')" />
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
+                        <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.transactionId') }}</dt>
+                        <dd>{{ activeActionRow.transactionId || '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.status') }}</dt>
+                        <dd><el-tag size="small" :type="statusTag(activeActionRow.transactionStatus, transactionStatusOptions)" effect="light">{{ tagText(transactionStatusOptions, activeActionRow.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.order.authorizedAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoney(activeActionRow, fullLabelAmount(activeActionRow)) }}</dd>
+                    </div>
+                </dl>
+            </section>
+            <section v-if="activeActionRow" class="transaction-action-section">
+                <h3>{{ t('transaction.order.voidInfo') }}</h3>
+                <div class="transaction-action-amount-card transaction-action-amount-card--warning">
+                    <span>{{ t('transaction.order.voidAmount') }}</span>
+                    <strong>{{ labelMoney(activeActionRow, voidAmount) }}</strong>
+                    <em>{{ t('transaction.order.fullVoidOnly') }}</em>
+                </div>
+                <el-form :model="voidForm" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.order.voidAmount')">
+                        <el-input :model-value="amountInputText(activeActionRow, voidAmount)" disabled>
+                            <template #append>{{ labelCurrency(activeActionRow) || '-' }}</template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.voidReason')">
+                        <el-select v-model="voidForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in voidReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.order.description')" class="transaction-action-form__reason">
+                        <el-input v-model.trim="voidForm.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" :placeholder="t('transaction.order.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.order.voidSuccessHint')" />
+            </section>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" size="small" :loading="actionSaving" @click="submitVoid">{{ t('transaction.order.void') }}</el-button>
+                    <el-button size="small" @click="voidVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
         </el-dialog>
@@ -393,7 +537,10 @@ const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const refundVisible = ref(false);
+const captureVisible = ref(false);
+const voidVisible = ref(false);
 const refundSaving = ref(false);
+const actionSaving = ref(false);
 const showSearch = ref(true);
 const rows = ref<TransactionOperation[]>([]);
 const total = ref(0);
@@ -401,9 +548,11 @@ const page = ref(1);
 const pageSize = ref(10);
 const detail = ref<TransactionDetail>();
 const summary = ref<Awaited<ReturnType<typeof transactionApi.searchOperations>>['summary']>();
-const activeRefundRow = ref<TransactionOperation | null>(null);
+const activeActionRow = ref<TransactionOperation | null>(null);
 const refundFormRef = ref<FormInstance>();
-const refundForm = reactive({ amount: 0, currency: '', reason: '' });
+const refundForm = reactive({ amount: 0, currency: '', mode: 'PARTIAL', reason: '', description: '' });
+const captureForm = reactive({ reason: '', description: '' });
+const voidForm = reactive({ reason: '', description: '' });
 const initialQueryTimeZone = merchantDefaultTimeZone();
 const query = reactive<MerchantTransactionOrderQuery>({ queryTimeZone: initialQueryTimeZone });
 const dateRange = ref<string[]>(defaultTransactionTodayRange(initialQueryTimeZone));
@@ -416,13 +565,14 @@ const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOpt
 const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'reconciliation'));
 const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'settlement'));
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
-const canDetail = hasPermission('merchant:transaction:order:detail');
-const canExport = hasPermission('merchant:transaction:order:export');
-const canRefund = hasPermission('merchant:transaction:order:refund');
+const canDetail = computed(() => hasPermission('merchant:transaction:order:detail'));
+const canExport = computed(() => hasPermission('merchant:transaction:order:export'));
+const canRefund = computed(() => hasPermission('merchant:transaction:order:refund'));
+const canCapture = computed(() => hasPermission('merchant:transaction:order:capture'));
+const canVoid = computed(() => hasPermission('merchant:transaction:order:void'));
 
 const refundRules = computed<FormRules>(() => ({
     amount: [{ required: true, message: t('transaction.order.refundAmountRequired'), trigger: 'blur' }],
-    currency: [{ required: true, message: t('transaction.order.currencyRequired'), trigger: 'blur' }],
     reason: [{ required: true, message: t('transaction.order.refundReasonRequired'), trigger: 'blur' }],
 }));
 const resultRows = computed(() => {
@@ -468,8 +618,13 @@ const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummarie
         primaryAmount: amountPills(item.amountSummaries || [])[0],
     };
 }));
-const refundMaxAmount = computed(() => Math.max(Number(activeRefundRow.value?.availableRefundAmount || 0), 0.01));
+const refundMaxAmount = computed(() => Math.max(labelAmountFor(activeActionRow.value, activeActionRow.value?.availableRefundAmount ?? activeActionRow.value?.transactionAmount), 0.01));
+const captureAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.availableCaptureAmount ?? activeActionRow.value?.transactionAmount));
+const voidAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.transactionAmount));
 const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(cardBrandOptions.value.find((item) => item.value === query.paymentBrand)));
+const refundReasonOptions = computed(() => transactionActionReasonOptions('refund'));
+const captureReasonOptions = computed(() => transactionActionReasonOptions('capture'));
+const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
 onMounted(async () => {
     await loadDictionaries();
@@ -569,21 +724,47 @@ async function openDetail(row: TransactionOperation) {
 }
 
 function openRefund(row: TransactionOperation) {
-    activeRefundRow.value = row;
-    refundForm.amount = Number(row.availableRefundAmount || 0);
-    refundForm.currency = defaultCurrency(row);
+    activeActionRow.value = row;
+    refundForm.amount = refundMaxAmount.value;
+    refundForm.currency = labelCurrency(row);
+    refundForm.mode = 'PARTIAL';
     refundForm.reason = '';
+    refundForm.description = '';
     refundVisible.value = true;
 }
 
+function openCapture(row: TransactionOperation) {
+    activeActionRow.value = row;
+    captureForm.reason = '';
+    captureForm.description = '';
+    captureVisible.value = true;
+}
+
+function openVoid(row: TransactionOperation) {
+    activeActionRow.value = row;
+    voidForm.reason = '';
+    voidForm.description = '';
+    voidVisible.value = true;
+}
+
+function handleRefundModeChange() {
+    if (refundForm.mode === 'FULL') {
+        refundForm.amount = refundMaxAmount.value;
+    }
+}
+
 async function submitRefund() {
-    if (!activeRefundRow.value) return;
+    if (!activeActionRow.value) return;
     await refundFormRef.value?.validate();
-    const transactionId = activeRefundRow.value.transactionId;
+    const transactionId = activeActionRow.value.transactionId;
     if (!transactionId) return;
     refundSaving.value = true;
     try {
-        await transactionApi.refund(transactionId, { ...refundForm });
+        await transactionApi.refund(transactionId, {
+            amount: refundForm.amount,
+            currency: refundForm.currency || labelCurrency(activeActionRow.value),
+            reason: actionReasonText(refundForm.reason, refundForm.description),
+        });
         ElMessage.success(t('transaction.order.refundSuccess'));
         refundVisible.value = false;
         await loadData();
@@ -591,6 +772,44 @@ async function submitRefund() {
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.refundFailed'));
     } finally {
         refundSaving.value = false;
+    }
+}
+
+async function submitCapture() {
+    if (!activeActionRow.value?.transactionId) return;
+    actionSaving.value = true;
+    try {
+        await transactionApi.capture(activeActionRow.value.transactionId, {
+            amount: captureAmount.value,
+            currency: labelCurrency(activeActionRow.value),
+            reason: actionReasonText(captureForm.reason, captureForm.description),
+        });
+        ElMessage.success(t('transaction.order.captureSuccess'));
+        captureVisible.value = false;
+        await loadData();
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.captureFailed'));
+    } finally {
+        actionSaving.value = false;
+    }
+}
+
+async function submitVoid() {
+    if (!activeActionRow.value?.transactionId) return;
+    actionSaving.value = true;
+    try {
+        await transactionApi.voidPayment(activeActionRow.value.transactionId, {
+            amount: voidAmount.value,
+            currency: labelCurrency(activeActionRow.value),
+            reason: actionReasonText(voidForm.reason, voidForm.description),
+        });
+        ElMessage.success(t('transaction.order.voidSuccess'));
+        voidVisible.value = false;
+        await loadData();
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.voidFailed'));
+    } finally {
+        actionSaving.value = false;
     }
 }
 
@@ -617,6 +836,22 @@ function money(value?: number | string | null, currency?: string, currencyExpone
     return moneyText(value, currency, currencyExponent);
 }
 
+function labelMoney(row?: TransactionOperation | TransactionOrder | null, amount?: number | string | null) {
+    return money(amount, labelCurrency(row), row?.currencyExponent);
+}
+
+function fullLabelAmount(row: TransactionOperation) {
+    return labelAmountFor(row, row.transactionAmount);
+}
+
+function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
+    return money(amount, undefined, row?.currencyExponent);
+}
+
+function labelCurrency(row?: TransactionOrder | TransactionOperation | null) {
+    return row?.labelCurrency || row?.transactionCurrency || '';
+}
+
 function statusTag(status?: string, options: TransactionDictOption[] = []) {
     return statusTagType(status, options);
 }
@@ -627,9 +862,68 @@ function lifecycleText(row?: TransactionOperation | null) {
 }
 
 function canRefundRow(row: TransactionOperation) {
-    return row.transactionStatus === 'SUCCESS'
-        && ['PAYMENT', 'CAPTURE'].includes(row.transactionType || '')
-        && Number(row.availableRefundAmount || 0) > 0;
+    if (row.transactionStatus !== 'SUCCESS' || !['PAYMENT', 'CAPTURE'].includes(row.transactionType || '')) {
+        return false;
+    }
+    const availableRefundAmount = toNullableAmount(row.availableRefundAmount);
+    return availableRefundAmount === null ? true : availableRefundAmount > 0;
+}
+
+function canCaptureRow(row: TransactionOperation) {
+    if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')) {
+        return false;
+    }
+    const availableCaptureAmount = toNullableAmount(row.availableCaptureAmount);
+    return availableCaptureAmount === null ? true : availableCaptureAmount > 0;
+}
+
+function canVoidRow(row: TransactionOperation) {
+    if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')) {
+        return false;
+    }
+    const capturedAmount = toNullableAmount(row.capturedAmount);
+    const refundedAmount = toNullableAmount(row.refundedAmount);
+    return (capturedAmount === null || capturedAmount === 0)
+        && (refundedAmount === null || refundedAmount === 0);
+}
+
+function toNullableAmount(value?: number | string | null) {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount : null;
+}
+
+function labelAmountFor(row?: TransactionOperation | null, transactionAmount?: number | string | null) {
+    if (!row) {
+        return 0;
+    }
+    const labelAmount = Number(row.labelAmount);
+    const sourceTransactionAmount = Number(row.transactionAmount);
+    const targetTransactionAmount = Number(transactionAmount);
+    if (Number.isFinite(labelAmount) && Number.isFinite(sourceTransactionAmount) && sourceTransactionAmount > 0 && Number.isFinite(targetTransactionAmount)) {
+        return Number((targetTransactionAmount * labelAmount / sourceTransactionAmount).toFixed(6));
+    }
+    if (Number.isFinite(targetTransactionAmount)) {
+        return targetTransactionAmount;
+    }
+    return Number.isFinite(labelAmount) ? labelAmount : 0;
+}
+
+function transactionActionReasonOptions(scope: 'refund' | 'capture' | 'void') {
+    const keys = scope === 'refund'
+        ? ['CUSTOMER_CANCELLED', 'DUPLICATE_PAYMENT', 'PRODUCT_UNAVAILABLE', 'SERVICE_COMPLETED']
+        : scope === 'capture'
+            ? ['GOODS_SHIPPED', 'SERVICE_COMPLETED', 'MERCHANT_CONFIRMED']
+            : ['CUSTOMER_CANCELLED', 'AUTHORIZATION_EXPIRED', 'MERCHANT_CONFIRMED'];
+    return keys.map((key) => ({ label: t(`transaction.order.actionReason.${key}`, key), value: key }));
+}
+
+function actionReasonText(reason?: string, description?: string) {
+    const selectedReason = reason ? t(`transaction.order.actionReason.${reason}`, reason) : '';
+    const text = [selectedReason, description?.trim()].filter(Boolean).join(' - ');
+    return text || undefined;
 }
 
 function operationTimestamp(item: TransactionOperation) {
@@ -1224,7 +1518,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-detail-summary span,
 .transaction-detail-grid dt,
-.transaction-refund-summary span {
+.transaction-action-detail-grid dt {
     color: #64748b;
     font-size: 12px;
     font-weight: 700;
@@ -1293,70 +1587,135 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     font-size: 12px;
 }
 
-.transaction-refund-dialog :deep(.el-dialog) {
+.transaction-action-dialog :deep(.el-dialog) {
     border-radius: 8px;
 }
 
-.transaction-refund-dialog :deep(.el-dialog__header) {
+.transaction-action-dialog :deep(.el-dialog__header) {
     padding: 20px 24px 12px;
     margin-right: 0;
     border-bottom: 1px solid #edf2f7;
 }
 
-.transaction-refund-dialog :deep(.el-dialog__title) {
+.transaction-action-dialog :deep(.el-dialog__title) {
     color: var(--merchant-ink);
     font-size: 18px;
     font-weight: 800;
 }
 
-.transaction-refund-dialog :deep(.el-dialog__body) {
+.transaction-action-dialog :deep(.el-dialog__body) {
     padding: 18px 24px 8px;
 }
 
-.transaction-refund-summary {
+.transaction-action-alert,
+.transaction-action-bottom-alert {
+    border-radius: 6px;
+}
+
+.transaction-action-alert {
+    margin-bottom: 14px;
+}
+
+.transaction-action-bottom-alert {
+    margin-top: 14px;
+}
+
+.transaction-action-alert :deep(.el-alert__title),
+.transaction-action-bottom-alert :deep(.el-alert__title) {
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.transaction-action-section {
     display: grid;
-    grid-template-columns: 1.35fr 0.8fr;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
-.transaction-refund-summary div {
+.transaction-action-section h3 {
+    margin: 0;
+    color: var(--merchant-ink);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.transaction-action-detail-grid {
     display: grid;
-    gap: 5px;
-    min-width: 0;
-    padding: 12px 14px;
-    border: 1px solid #dde7f0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px;
+    margin: 0;
+    border: 1px solid #e4ebf3;
     border-radius: 8px;
-    background: #f8fafc;
+    background: #e4ebf3;
+    overflow: hidden;
 }
 
-.transaction-refund-summary strong {
+.transaction-action-detail-grid div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 11px 13px;
+    background: #ffffff;
+}
+
+.transaction-action-detail-grid dt {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.transaction-action-detail-grid dd {
+    min-width: 0;
+    margin: 0;
     color: #1f2937;
-    font-size: 15px;
+    font-size: 13px;
+    line-height: 1.45;
     overflow-wrap: anywhere;
 }
 
-.transaction-refund-alert {
-    margin-bottom: 14px;
-    border-radius: 8px;
+.transaction-action-money {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
 }
 
-.transaction-refund-alert :deep(.el-alert__title) {
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.transaction-refund-form {
+.transaction-action-amount-card {
     display: grid;
-    grid-template-columns: 1fr 0.55fr;
+    gap: 5px;
+    padding: 12px 14px;
+    border: 1px solid #f6d9b3;
+    border-radius: 6px;
+    background: #fff7ed;
+}
+
+.transaction-action-amount-card--warning {
+    border-color: #f1c087;
+}
+
+.transaction-action-amount-card span,
+.transaction-action-amount-card em {
+    color: #64748b;
+    font-size: 12px;
+    font-style: normal;
+}
+
+.transaction-action-amount-card strong {
+    color: var(--merchant-ink);
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.transaction-action-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px 14px;
 }
 
-.transaction-refund-form :deep(.el-form-item) {
+.transaction-action-form :deep(.el-form-item) {
     margin-bottom: 0;
 }
 
-.transaction-refund-form :deep(.el-form-item__label) {
+.transaction-action-form :deep(.el-form-item__label) {
     padding-bottom: 5px;
     color: #344054;
     font-size: 12px;
@@ -1364,19 +1723,42 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     line-height: 16px;
 }
 
-.transaction-refund-form :deep(.el-input-number),
-.transaction-refund-form :deep(.el-input),
-.transaction-refund-form :deep(.el-textarea) {
+.transaction-action-form :deep(.el-input-number),
+.transaction-action-form :deep(.el-input),
+.transaction-action-form :deep(.el-select),
+.transaction-action-form :deep(.el-textarea) {
     width: 100%;
 }
 
-.transaction-refund-form :deep(.el-input__wrapper),
-.transaction-refund-form :deep(.el-textarea__inner) {
+.transaction-action-form :deep(.el-input__wrapper),
+.transaction-action-form :deep(.el-select__wrapper),
+.transaction-action-form :deep(.el-textarea__inner) {
     border-radius: 6px;
 }
 
-.transaction-refund-form__reason {
+.transaction-action-form__reason {
     grid-column: 1 / -1;
+}
+
+.transaction-action-amount-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 64px;
+    gap: 8px;
+    width: 100%;
+}
+
+.transaction-action-currency {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 32px;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 @media (min-width: 1680px) {
@@ -1403,8 +1785,8 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
     .transaction-detail-summary,
     .transaction-detail-grid,
-    .transaction-refund-summary,
-    .transaction-refund-form {
+    .transaction-action-detail-grid,
+    .transaction-action-form {
         grid-template-columns: 1fr;
     }
 

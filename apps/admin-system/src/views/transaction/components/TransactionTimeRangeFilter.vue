@@ -40,18 +40,26 @@ const props = defineProps<{
     timeZone: string;
     timezoneOptions: SelectOption[];
     defaultPreset?: string;
+    preset?: string;
 }>();
 
 const emit = defineEmits<{
     'update:modelValue': [value: string[]];
     'update:timeZone': [value: string];
+    'update:preset': [value: string];
 }>();
 
 const { t } = useI18n();
-const activePreset = ref(props.defaultPreset || '');
+const activePreset = ref(props.preset || props.defaultPreset || '');
+
+watch(() => props.preset, (value) => {
+    if (value !== undefined && value !== activePreset.value) {
+        activePreset.value = value || '';
+    }
+});
 
 watch(() => props.defaultPreset, (value) => {
-    if (value && props.modelValue?.length) {
+    if (props.preset === undefined && value && props.modelValue?.length) {
         activePreset.value = value;
     }
 });
@@ -59,6 +67,7 @@ watch(() => props.defaultPreset, (value) => {
 watch(() => props.modelValue, (value) => {
     if (!value?.length) {
         activePreset.value = '';
+        emit('update:preset', '');
     }
 });
 
@@ -67,6 +76,7 @@ function handlePresetChange(value: string | number | boolean | undefined) {
     if (!preset) {
         return;
     }
+    emit('update:preset', preset);
     emit('update:modelValue', resolvePresetRange(preset, props.timeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 }
 
@@ -80,6 +90,7 @@ function handleTimeZoneChange(value: string) {
 
 function handleDateRangeChange(value: string[] | null) {
     activePreset.value = '';
+    emit('update:preset', '');
     emit('update:modelValue', Array.isArray(value) ? value : []);
 }
 
