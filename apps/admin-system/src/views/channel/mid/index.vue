@@ -147,6 +147,9 @@
                                 <el-option v-for="item in availableBusinessOptions" :key="item.value" :label="item.label" :value="item.value" />
                             </el-select>
                         </el-form-item>
+                        <el-form-item :label="t('channel.mid.channelMid')" prop="channelMid">
+                            <el-input v-model.trim="form.channelMid" :placeholder="t('channel.mid.channelMidPlaceholder')" maxlength="128" show-word-limit />
+                        </el-form-item>
                         <el-form-item :label="t('channel.mid.terminalId')"><el-input v-model.trim="form.terminalId" maxlength="128" /></el-form-item>
                         <el-form-item label="MCC">
                             <el-select v-model="form.mcc" :placeholder="t('channel.mid.mccPlaceholder')" clearable filterable style="width:100%">
@@ -307,6 +310,7 @@ interface PaymentScopeNode {
 interface MidFormState {
     id: number;
     channelId?: number;
+    channelMid: string;
     terminalId: string;
     businessType: string;
     paymentScopes: string[];
@@ -363,6 +367,7 @@ const query = reactive({
 const emptyForm = (): MidFormState => ({
     id: 0,
     channelId: undefined,
+    channelMid: '',
     terminalId: '',
     businessType: 'ACQUIRING',
     paymentScopes: [],
@@ -422,6 +427,7 @@ const paymentScopeTree = computed<PaymentScopeNode[]>(() => capabilityOptions.va
 
 const rules = computed<FormRules>(() => ({
     channelId: [{ required: true, message: t('channel.mid.requiredChannel'), trigger: 'change' }],
+    channelMid: [{ required: true, message: t('channel.mid.requiredChannelMid'), trigger: 'blur' }],
     businessType: [{ required: true, message: t('channel.capability.requiredBusinessType'), trigger: 'change' }],
     paymentScopes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredPaymentMethodScope'), trigger: 'change' }],
     currencyCodes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredCurrencyScope'), trigger: 'change' }],
@@ -519,6 +525,7 @@ async function openForm(mode: 'create' | 'edit', row?: ChannelMidConfig) {
 async function applyRowToForm(row: ChannelMidConfig) {
     form.id = row.id;
     form.channelId = row.channelId;
+    form.channelMid = row.channelMid || '';
     form.terminalId = row.terminalId || '';
     form.businessType = row.businessType || 'ACQUIRING';
     form.paymentScopes = [];
@@ -671,7 +678,7 @@ function buildPayload(): Partial<ChannelMidConfig> {
     return {
         id: form.id,
         channelId: form.channelId,
-        channelMid: resolveChannelMidFromMetadata(),
+        channelMid: form.channelMid,
         terminalId: blankToUndefined(form.terminalId),
         businessType: form.businessType,
         paymentMethodScope: joinScope(selectedPaymentMethods()),
@@ -788,18 +795,6 @@ function buildMetadataJson() {
         }
     });
     return Object.keys(values).length ? JSON.stringify(values) : undefined;
-}
-
-function resolveChannelMidFromMetadata() {
-    const values = form.metadataValues;
-    const keys = ['merchantId', 'merchant_id', 'channelMid', 'channel_mid', 'mid', 'midNo', 'mid_no', 'merchantNo', 'merchant_no'];
-    for (const key of keys) {
-        const value = String(values[key] || '').trim();
-        if (value) {
-            return value;
-        }
-    }
-    return '';
 }
 
 function splitScope(value?: string) {
