@@ -1,0 +1,19 @@
+<svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <clipPath id="flag-cn-clip">
+            <rect width="48" height="32" rx="4"/>
+        </clipPath>
+        <path id="flag-cn-star" d="M0 -4 L1.18 -1.62 L3.8 -1.24 L1.9 0.62 L2.35 3.24 L0 2 L-2.35 3.24 L-1.9 0.62 L-3.8 -1.24 L-1.18 -1.62 Z"/>
+    </defs>
+    <g clip-path="url(#flag-cn-clip)">
+        <rect width="48" height="32" fill="#DE2910"/>
+        <g fill="#FFDE00">
+            <use href="#flag-cn-star" transform="translate(10 8) scale(1.08)"/>
+            <use href="#flag-cn-star" transform="translate(18.2 4.7) rotate(22) scale(0.34)"/>
+            <use href="#flag-cn-star" transform="translate(21.3 8.2) rotate(44) scale(0.34)"/>
+            <use href="#flag-cn-star" transform="translate(21.1 12.8) rotate(66) scale(0.34)"/>
+            <use href="#flag-cn-star" transform="translate(17.9 16.1) rotate(88) scale(0.34)"/>
+        </g>
+    </g>
+    <rect x="0.5" y="0.5" width="47" height="31" rx="3.5" stroke="#CBD5E1"/>
+</svg>

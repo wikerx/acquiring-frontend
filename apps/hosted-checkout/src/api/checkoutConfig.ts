@@ -1,6 +1,3 @@
-import axios from 'axios';
-import type { CommonResult } from '@acquiring/shared';
-
 export interface CheckoutCountryConfig {
     countryCode: string;
     countryName: string;
@@ -11,10 +8,30 @@ export interface CheckoutCountryConfig {
     sortNo: number;
 }
 
+const CHECKOUT_COUNTRIES: CheckoutCountryConfig[] = [
+    {
+        countryCode: 'USA',
+        countryName: 'United States',
+        countryNameLocal: 'United States',
+        flagIconUrl: new URL('../assets/flags/us.svg', import.meta.url).href,
+        defaultLanguage: 'en-US',
+        supportedLanguages: ['en-US'],
+        sortNo: 1,
+    },
+    {
+        countryCode: 'CHN',
+        countryName: 'China',
+        countryNameLocal: '中国',
+        flagIconUrl: new URL('../assets/flags/cn.svg', import.meta.url).href,
+        defaultLanguage: 'zh-CN',
+        supportedLanguages: ['zh-CN', 'en-US'],
+        sortNo: 2,
+    },
+];
+
 export async function listCheckoutCountries(): Promise<CheckoutCountryConfig[]> {
-    const result = await axios.get<CommonResult<CheckoutCountryConfig[]>>('/checkout/config/countries');
-    if (result.data.code !== 'T200' && result.data.code !== 'SUCCESS') {
-        throw new Error(result.data.message || 'Request failed');
-    }
-    return result.data.data || [];
+    return CHECKOUT_COUNTRIES.map((country) => ({
+        ...country,
+        supportedLanguages: [...country.supportedLanguages],
+    }));
 }

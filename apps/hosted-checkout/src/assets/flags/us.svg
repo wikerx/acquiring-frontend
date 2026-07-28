@@ -1,0 +1,54 @@
+<svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <clipPath id="flag-us-clip">
+            <rect width="48" height="32" rx="4"/>
+        </clipPath>
+    </defs>
+    <g clip-path="url(#flag-us-clip)">
+        <rect width="48" height="32" fill="#FFFFFF"/>
+        <rect y="0" width="48" height="2.462" fill="#B22234"/>
+        <rect y="4.923" width="48" height="2.462" fill="#B22234"/>
+        <rect y="9.846" width="48" height="2.462" fill="#B22234"/>
+        <rect y="14.769" width="48" height="2.462" fill="#B22234"/>
+        <rect y="19.692" width="48" height="2.462" fill="#B22234"/>
+        <rect y="24.615" width="48" height="2.462" fill="#B22234"/>
+        <rect y="29.538" width="48" height="2.462" fill="#B22234"/>
+        <rect width="20.64" height="17.231" fill="#3C3B6E"/>
+        <g fill="#FFFFFF">
+            <circle cx="2.8" cy="2.4" r="0.65"/>
+            <circle cx="6.1" cy="2.4" r="0.65"/>
+            <circle cx="9.4" cy="2.4" r="0.65"/>
+            <circle cx="12.7" cy="2.4" r="0.65"/>
+            <circle cx="16" cy="2.4" r="0.65"/>
+            <circle cx="19.3" cy="2.4" r="0.65"/>
+            <circle cx="4.45" cy="5.1" r="0.65"/>
+            <circle cx="7.75" cy="5.1" r="0.65"/>
+            <circle cx="11.05" cy="5.1" r="0.65"/>
+            <circle cx="14.35" cy="5.1" r="0.65"/>
+            <circle cx="17.65" cy="5.1" r="0.65"/>
+            <circle cx="2.8" cy="7.8" r="0.65"/>
+            <circle cx="6.1" cy="7.8" r="0.65"/>
+            <circle cx="9.4" cy="7.8" r="0.65"/>
+            <circle cx="12.7" cy="7.8" r="0.65"/>
+            <circle cx="16" cy="7.8" r="0.65"/>
+            <circle cx="19.3" cy="7.8" r="0.65"/>
+            <circle cx="4.45" cy="10.5" r="0.65"/>
+            <circle cx="7.75" cy="10.5" r="0.65"/>
+            <circle cx="11.05" cy="10.5" r="0.65"/>
+            <circle cx="14.35" cy="10.5" r="0.65"/>
+            <circle cx="17.65" cy="10.5" r="0.65"/>
+            <circle cx="2.8" cy="13.2" r="0.65"/>
+            <circle cx="6.1" cy="13.2" r="0.65"/>
+            <circle cx="9.4" cy="13.2" r="0.65"/>
+            <circle cx="12.7" cy="13.2" r="0.65"/>
+            <circle cx="16" cy="13.2" r="0.65"/>
+            <circle cx="19.3" cy="13.2" r="0.65"/>
+            <circle cx="4.45" cy="15.9" r="0.65"/>
+            <circle cx="7.75" cy="15.9" r="0.65"/>
+            <circle cx="11.05" cy="15.9" r="0.65"/>
+            <circle cx="14.35" cy="15.9" r="0.65"/>
+            <circle cx="17.65" cy="15.9" r="0.65"/>
+        </g>
+    </g>
+    <rect x="0.5" y="0.5" width="47" height="31" rx="3.5" stroke="#CBD5E1"/>
+</svg>
