@@ -83,7 +83,7 @@
             </template>
             <template #time>
                 <el-form-item :label="t('transaction.fields.transactionDateTime')" class="transaction-time-form-item">
-                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" :timezone-options="timezoneOptions" default-preset="today" />
+                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" v-model:preset="quickPreset" :timezone-options="timezoneOptions" default-preset="today" />
                 </el-form-item>
             </template>
         </TransactionSearchPanel>
@@ -195,11 +195,14 @@
                     <CopyableText :value="row.acquirerReferenceNo" :label="t('transaction.fields.acquirerReferenceNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="210" fixed="right" align="center">
+            <el-table-column :label="t('common.operation')" width="260" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.transactionId)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
                     <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
+                    </el-tooltip>
+                    <el-tooltip :content="canCapture(row) ? t('transaction.actions.captureTip') : t('transaction.actions.captureDisabled')" placement="top">
+                        <span><el-button size="small" type="primary" link :disabled="!canCapture(row)" @click="openCaptureDialog(row)" v-hasPermi="'transaction:operation:capture'">{{ t('transaction.actions.capture') }}</el-button></span>
                     </el-tooltip>
                     <el-tooltip :content="canVoid(row) ? t('transaction.actions.voidTip') : t('transaction.actions.voidDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canVoid(row)" @click="openVoidDialog(row)" v-hasPermi="'transaction:operation:void'">{{ t('transaction.actions.void') }}</el-button></span>
@@ -222,41 +225,55 @@
         />
         <TransactionMerchantDrawer v-model:visible="merchantVisible" :merchant-id="selectedMerchantId" />
 
-        <el-dialog v-model="refundVisible" :title="t('transaction.actions.refundTitle')" width="640px" append-to-body class="transaction-action-dialog">
-            <div v-if="selectedOperation" class="transaction-action-summary">
-                <div>
-                    <span>{{ t('transaction.fields.transactionId') }}</span>
-                    <strong>{{ selectedOperation.transactionId }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('transaction.fields.amount') }}</span>
-                    <strong>{{ moneyText(selectedOperation.transactionAmount, selectedOperation.transactionCurrency, selectedOperation.currencyExponent) }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('transaction.fields.availableRefundAmount') }}</span>
-                    <strong>{{ moneyText(selectedOperation.availableRefundAmount, selectedOperation.transactionCurrency, selectedOperation.currencyExponent) }}</strong>
-                </div>
-            </div>
-            <div v-if="selectedOperation" class="transaction-action-balance">
-                <div>
-                    <span>{{ t('transaction.actions.remainingRefundable') }}</span>
-                    <strong>{{ moneyText(selectedOperation.availableRefundAmount, selectedOperation.transactionCurrency, selectedOperation.currencyExponent) }}</strong>
-                </div>
-                <el-button size="small" type="primary" plain @click="fillRemainingRefundAmount">
-                    {{ t('transaction.actions.fullRemainingRefund') }}
-                </el-button>
-            </div>
-            <el-form :model="refundForm" label-width="112px" class="transaction-action-form">
-                <el-form-item :label="t('transaction.actions.refundAmount')" required>
-                    <el-input v-model.trim="refundForm.amount" :placeholder="t('transaction.actions.amountPlaceholder')" clearable @blur="normalizeRefundAmount">
-                        <template #append>{{ refundForm.currency || selectedOperation?.transactionCurrency || '-' }}</template>
-                    </el-input>
-                    <div v-if="refundAmountError" class="transaction-action-error">{{ refundAmountError }}</div>
-                </el-form-item>
-                <el-form-item :label="t('transaction.actions.reason')">
-                    <el-input v-model.trim="refundForm.reason" type="textarea" :rows="3" maxlength="256" show-word-limit :placeholder="t('transaction.actions.reasonPlaceholder')" />
-                </el-form-item>
-            </el-form>
+        <el-dialog v-model="refundVisible" :title="t('transaction.actions.refundTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.refundTip')" />
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
+                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                    </div>
+                </dl>
+            </section>
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.refundInfo') }}</h3>
+                <el-form :model="refundForm" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.actions.refundMode')">
+                        <el-radio-group v-model="refundForm.mode" @change="handleRefundModeChange">
+                            <el-radio value="PARTIAL">{{ t('transaction.actions.partialRefund') }}</el-radio>
+                            <el-radio value="FULL">{{ t('transaction.actions.fullRefund') }} ({{ labelMoneyText(selectedOperation, availableRefundLabelAmount(selectedOperation)) }})</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.refundAmount')" required>
+                        <el-input v-model.trim="refundForm.amount" :disabled="refundForm.mode === 'FULL'" :placeholder="t('transaction.actions.amountPlaceholder')" clearable @blur="normalizeRefundAmount">
+                            <template #append>{{ refundForm.currency || labelCurrency(selectedOperation) || '-' }}</template>
+                        </el-input>
+                        <div v-if="refundAmountError" class="transaction-action-error">{{ refundAmountError }}</div>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.reason')">
+                        <el-select v-model="refundForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in refundReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.description')" class="transaction-action-form__wide">
+                        <el-input v-model.trim="refundForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="warning" show-icon :closable="false" :title="t('transaction.actions.refundLimitWarning', { amount: labelMoneyText(selectedOperation, availableRefundLabelAmount(selectedOperation)) })" />
+            </section>
             <template #footer>
                 <div class="dialog-footer">
                     <el-button type="primary" :loading="actionSubmitting" :disabled="Boolean(refundAmountError)" @click="submitRefund">{{ t('transaction.actions.refund') }}</el-button>
@@ -265,34 +282,108 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="voidVisible" :title="t('transaction.actions.voidTitle')" width="600px" append-to-body class="transaction-action-dialog">
-            <div v-if="selectedOperation" class="transaction-action-summary transaction-action-summary--warning">
-                <div>
-                    <span>{{ t('transaction.fields.transactionId') }}</span>
-                    <strong>{{ selectedOperation.transactionId }}</strong>
+        <el-dialog v-model="captureVisible" :title="t('transaction.actions.captureTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.captureTip')" />
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
+                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                    </div>
+                </dl>
+            </section>
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.captureInfo') }}</h3>
+                <div class="transaction-action-amount-card">
+                    <span>{{ t('transaction.fields.availableCaptureAmount') }}</span>
+                    <strong>{{ labelMoneyText(selectedOperation, availableCaptureLabelAmount(selectedOperation)) }}</strong>
+                    <em>{{ t('transaction.actions.fullCaptureOnly') }}</em>
                 </div>
-                <div>
-                    <span>{{ t('transaction.fields.transactionStatus') }}</span>
-                    <strong>{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</strong>
+                <el-form :model="captureForm" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.actions.captureAmount')">
+                        <el-input :model-value="amountInputText(selectedOperation, availableCaptureLabelAmount(selectedOperation))" disabled>
+                            <template #append>{{ labelCurrency(selectedOperation) || '-' }}</template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.reason')">
+                        <el-select v-model="captureForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in captureReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.description')" class="transaction-action-form__wide">
+                        <el-input v-model.trim="captureForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.captureSuccessHint')" />
+            </section>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" :loading="actionSubmitting" @click="submitCapture">{{ t('transaction.actions.capture') }}</el-button>
+                    <el-button @click="captureVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
-                <div>
-                    <span>{{ t('transaction.fields.amount') }}</span>
-                    <strong>{{ moneyText(selectedOperation.transactionAmount, selectedOperation.transactionCurrency, selectedOperation.currencyExponent) }}</strong>
-                </div>
-            </div>
-            <div v-if="selectedOperation" class="transaction-action-balance is-warning">
-                <div>
+            </template>
+        </el-dialog>
+
+        <el-dialog v-model="voidVisible" :title="t('transaction.actions.voidTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.voidTip')" />
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.originalInfo') }}</h3>
+                <dl class="transaction-action-detail-grid">
+                    <div>
+                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
+                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
+                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                    </div>
+                    <div>
+                        <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
+                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                    </div>
+                </dl>
+            </section>
+            <section v-if="selectedOperation" class="transaction-action-section">
+                <h3>{{ t('transaction.actions.voidInfo') }}</h3>
+                <div class="transaction-action-amount-card transaction-action-amount-card--warning">
                     <span>{{ t('transaction.actions.voidAmount') }}</span>
-                    <strong>{{ moneyText(selectedOperation.availableCaptureAmount || selectedOperation.transactionAmount, selectedOperation.transactionCurrency, selectedOperation.currencyExponent) }}</strong>
+                    <strong>{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</strong>
+                    <em>{{ t('transaction.actions.fullVoidOnly') }}</em>
                 </div>
-                <el-tag type="warning" effect="plain">{{ t('transaction.actions.fullVoidOnly') }}</el-tag>
-            </div>
-            <p class="transaction-action-warning">{{ t('transaction.actions.voidWarning') }}</p>
-            <el-form :model="voidForm" label-width="112px" class="transaction-action-form">
-                <el-form-item :label="t('transaction.actions.reason')">
-                    <el-input v-model.trim="voidForm.reason" type="textarea" :rows="3" maxlength="256" show-word-limit :placeholder="t('transaction.actions.reasonPlaceholder')" />
-                </el-form-item>
-            </el-form>
+                <el-form :model="voidForm" label-position="top" class="transaction-action-form">
+                    <el-form-item :label="t('transaction.actions.voidAmount')">
+                        <el-input :model-value="amountInputText(selectedOperation, fullLabelAmount(selectedOperation))" disabled>
+                            <template #append>{{ labelCurrency(selectedOperation) || '-' }}</template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.reason')">
+                        <el-select v-model="voidForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
+                            <el-option v-for="item in voidReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item :label="t('transaction.actions.description')" class="transaction-action-form__wide">
+                        <el-input v-model.trim="voidForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
+                    </el-form-item>
+                </el-form>
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.voidWarning')" />
+            </section>
             <template #footer>
                 <div class="dialog-footer">
                     <el-button type="primary" :loading="actionSubmitting" @click="submitVoid">{{ t('transaction.actions.void') }}</el-button>
@@ -312,6 +403,7 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
+    captureTransactionOperation,
     exportTransactionOperations,
     getTransactionOperationDetail,
     refundTransactionOperation,
@@ -362,6 +454,7 @@ const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const refundVisible = ref(false);
+const captureVisible = ref(false);
 const voidVisible = ref(false);
 const merchantVisible = ref(false);
 const actionSubmitting = ref(false);
@@ -375,6 +468,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const quickPreset = ref('today');
 const query = reactive({
     merchantId: '',
     merchantOrderNo: '',
@@ -408,11 +502,21 @@ const timezoneOptions = ref<SelectOption[]>([]);
 const refundForm = reactive({
     amount: '',
     currency: '',
+    mode: 'PARTIAL',
     reason: '',
+    description: '',
+});
+const captureForm = reactive({
+    reason: '',
+    description: '',
 });
 const voidForm = reactive({
     reason: '',
+    description: '',
 });
+const refundReasonOptions = computed(() => transactionActionReasonOptions('refund'));
+const captureReasonOptions = computed(() => transactionActionReasonOptions('capture'));
+const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
 const emptySummary = (): TransactionOperationSummary => ({
     totalCount: 0,
@@ -624,6 +728,7 @@ function handleReset() {
     query.reconciliationStatus = '';
     query.settlementStatus = '';
     query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    quickPreset.value = 'today';
     dateRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     handleSearch();
 }
@@ -654,14 +759,14 @@ function fallbackStatusOptions(scope: 'channelMatch' | 'reconciliation' | 'settl
 }
 
 function canRefund(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS') {
+    if (row.transactionStatus !== 'SUCCESS' || !['PAYMENT', 'CAPTURE'].includes(row.transactionType)) {
         return false;
     }
-    const availableRefundAmount = Number(row.availableRefundAmount);
-    if (Number.isFinite(availableRefundAmount)) {
+    const availableRefundAmount = toNullableAmount(row.availableRefundAmount);
+    if (availableRefundAmount !== null) {
         return availableRefundAmount > 0;
     }
-    return ['PAYMENT', 'CAPTURE'].includes(row.transactionType);
+    return true;
 }
 
 function amountSummaryDetails(amountSummaries: TransactionAmountSummary[]) {
@@ -739,26 +844,53 @@ function canVoid(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
         return false;
     }
-    const capturedAmount = Number(row.capturedAmount);
-    const refundedAmount = Number(row.refundedAmount);
-    return (!Number.isFinite(capturedAmount) || capturedAmount === 0)
-        && (!Number.isFinite(refundedAmount) || refundedAmount === 0);
+    const capturedAmount = toNullableAmount(row.capturedAmount);
+    const refundedAmount = toNullableAmount(row.refundedAmount);
+    return (capturedAmount === null || capturedAmount === 0)
+        && (refundedAmount === null || refundedAmount === 0);
+}
+
+function canCapture(row: TransactionOperation) {
+    if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
+        return false;
+    }
+    const availableCaptureAmount = toNullableAmount(row.availableCaptureAmount);
+    if (availableCaptureAmount !== null) {
+        return availableCaptureAmount > 0;
+    }
+    return true;
+}
+
+function toNullableAmount(value?: number | string | null) {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount : null;
 }
 
 function openRefundDialog(row: TransactionOperation) {
     selectedOperation.value = row;
-    const defaultAmount = row.availableRefundAmount ?? row.transactionAmount;
+    const defaultAmount = availableRefundLabelAmount(row);
     refundForm.amount = defaultAmount === undefined || defaultAmount === null ? '' : String(defaultAmount);
-    refundForm.currency = row.transactionCurrency || '';
+    refundForm.currency = labelCurrency(row);
+    refundForm.mode = 'PARTIAL';
     refundForm.reason = '';
+    refundForm.description = '';
     refundVisible.value = true;
+}
+
+function handleRefundModeChange() {
+    if (refundForm.mode === 'FULL') {
+        fillRemainingRefundAmount();
+    }
 }
 
 function fillRemainingRefundAmount() {
     if (!selectedOperation.value) {
         return;
     }
-    const amount = selectedOperation.value.availableRefundAmount ?? selectedOperation.value.transactionAmount;
+    const amount = availableRefundLabelAmount(selectedOperation.value);
     refundForm.amount = amount === undefined || amount === null ? '' : String(amount);
 }
 
@@ -779,15 +911,24 @@ function validateRefundAmount() {
         return t('transaction.actions.amountRequired');
     }
     const availableRefundAmount = Number(selectedOperation.value.availableRefundAmount);
-    if (Number.isFinite(availableRefundAmount) && refundAmount > availableRefundAmount) {
+    const availableLabelAmount = availableRefundLabelAmount(selectedOperation.value);
+    if (Number.isFinite(availableRefundAmount) && refundAmount > availableLabelAmount) {
         return t('transaction.actions.amountExceedsAvailable');
     }
     return '';
 }
 
+function openCaptureDialog(row: TransactionOperation) {
+    selectedOperation.value = row;
+    captureForm.reason = '';
+    captureForm.description = '';
+    captureVisible.value = true;
+}
+
 function openVoidDialog(row: TransactionOperation) {
     selectedOperation.value = row;
     voidForm.reason = '';
+    voidForm.description = '';
     voidVisible.value = true;
 }
 
@@ -805,11 +946,30 @@ async function submitRefund() {
     try {
         const result = await refundTransactionOperation(selectedOperation.value.transactionId, {
             amount: refundForm.amount,
-            currency: refundForm.currency || selectedOperation.value.transactionCurrency,
-            reason: refundForm.reason || undefined,
+            currency: refundForm.currency || labelCurrency(selectedOperation.value),
+            reason: actionReasonText(refundForm.reason, refundForm.description),
         });
         ElMessage.success(t('transaction.actions.refundSuccess', { transactionId: result.transactionId }));
         refundVisible.value = false;
+        await refreshAfterAction(selectedOperation.value.transactionId);
+    } finally {
+        actionSubmitting.value = false;
+    }
+}
+
+async function submitCapture() {
+    if (!selectedOperation.value) {
+        return;
+    }
+    actionSubmitting.value = true;
+    try {
+        const result = await captureTransactionOperation(selectedOperation.value.transactionId, {
+            amount: availableCaptureLabelAmount(selectedOperation.value),
+            currency: labelCurrency(selectedOperation.value),
+            reason: actionReasonText(captureForm.reason, captureForm.description),
+        });
+        ElMessage.success(t('transaction.actions.captureSuccess', { transactionId: result.transactionId }));
+        captureVisible.value = false;
         await refreshAfterAction(selectedOperation.value.transactionId);
     } finally {
         actionSubmitting.value = false;
@@ -823,7 +983,9 @@ async function submitVoid() {
     actionSubmitting.value = true;
     try {
         const result = await voidTransactionOperation(selectedOperation.value.transactionId, {
-            reason: voidForm.reason || undefined,
+            amount: fullLabelAmount(selectedOperation.value),
+            currency: labelCurrency(selectedOperation.value),
+            reason: actionReasonText(voidForm.reason, voidForm.description),
         });
         ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
         voidVisible.value = false;
@@ -831,6 +993,58 @@ async function submitVoid() {
     } finally {
         actionSubmitting.value = false;
     }
+}
+
+function labelCurrency(row?: TransactionOperation | null) {
+    return row?.labelCurrency || row?.transactionCurrency || '';
+}
+
+function labelMoneyText(row?: TransactionOperation | null, amount?: number | string | null) {
+    return moneyText(amount, labelCurrency(row), row?.currencyExponent);
+}
+
+function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
+    return moneyText(amount, undefined, row?.currencyExponent);
+}
+
+function fullLabelAmount(row: TransactionOperation) {
+    return proportionalLabelAmount(row, row.transactionAmount);
+}
+
+function availableRefundLabelAmount(row: TransactionOperation) {
+    return proportionalLabelAmount(row, row.availableRefundAmount ?? row.transactionAmount);
+}
+
+function availableCaptureLabelAmount(row: TransactionOperation) {
+    return proportionalLabelAmount(row, row.availableCaptureAmount ?? row.transactionAmount);
+}
+
+function proportionalLabelAmount(row: TransactionOperation, transactionAmount?: number | string | null) {
+    const labelAmount = Number(row.labelAmount);
+    const sourceTransactionAmount = Number(row.transactionAmount);
+    const targetTransactionAmount = Number(transactionAmount);
+    if (Number.isFinite(labelAmount) && Number.isFinite(sourceTransactionAmount) && sourceTransactionAmount > 0 && Number.isFinite(targetTransactionAmount)) {
+        return Number((targetTransactionAmount * labelAmount / sourceTransactionAmount).toFixed(6));
+    }
+    if (Number.isFinite(targetTransactionAmount)) {
+        return targetTransactionAmount;
+    }
+    return Number.isFinite(labelAmount) ? labelAmount : 0;
+}
+
+function transactionActionReasonOptions(scope: 'refund' | 'capture' | 'void') {
+    const keys = scope === 'refund'
+        ? ['CUSTOMER_CANCELLED', 'DUPLICATE_PAYMENT', 'PRODUCT_UNAVAILABLE', 'SERVICE_COMPLETED']
+        : scope === 'capture'
+            ? ['GOODS_SHIPPED', 'SERVICE_COMPLETED', 'MERCHANT_CONFIRMED']
+            : ['CUSTOMER_CANCELLED', 'AUTHORIZATION_EXPIRED', 'MERCHANT_CONFIRMED'];
+    return keys.map((key) => ({ label: t(`transaction.actionReason.${key}`, key), value: key }));
+}
+
+function actionReasonText(reason?: string, description?: string) {
+    const selectedReason = reason ? t(`transaction.actionReason.${reason}`, reason) : '';
+    const text = [selectedReason, description?.trim()].filter(Boolean).join(' - ');
+    return text || undefined;
 }
 
 async function refreshAfterAction(transactionId: string) {
@@ -923,45 +1137,157 @@ async function refreshAfterAction(transactionId: string) {
     font-size: 11px;
 }
 
-.transaction-action-summary {
-    display: grid;
-    gap: 10px;
-    padding: 14px 16px;
-    margin-bottom: 18px;
-    background: #f6f8fb;
-    border: 1px solid #e5eaf3;
+.transaction-action-dialog :deep(.el-dialog) {
     border-radius: 8px;
 }
 
-.transaction-action-balance {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    border: 1px solid rgba(64, 158, 255, 0.22);
-    border-radius: 8px;
-    padding: 12px 14px;
-    margin: -4px 0 18px;
-    background: rgba(64, 158, 255, 0.06);
+.transaction-action-dialog :deep(.el-dialog__header) {
+    padding: 20px 24px 12px;
+    margin-right: 0;
+    border-bottom: 1px solid #edf2f7;
 }
 
-.transaction-action-balance.is-warning {
-    border-color: rgba(230, 162, 60, 0.28);
-    background: rgba(230, 162, 60, 0.08);
-}
-
-.transaction-action-balance span {
-    display: block;
-    color: var(--el-text-color-secondary);
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.transaction-action-balance strong {
-    display: block;
-    color: var(--el-text-color-primary);
+.transaction-action-dialog :deep(.el-dialog__title) {
+    color: #1f2937;
     font-size: 18px;
-    line-height: 26px;
+    font-weight: 700;
+}
+
+.transaction-action-dialog :deep(.el-dialog__body) {
+    padding: 18px 24px 8px;
+}
+
+.transaction-action-alert,
+.transaction-action-bottom-alert {
+    border-radius: 6px;
+}
+
+.transaction-action-alert {
+    margin-bottom: 14px;
+}
+
+.transaction-action-bottom-alert {
+    margin-top: 14px;
+}
+
+.transaction-action-alert :deep(.el-alert__title),
+.transaction-action-bottom-alert :deep(.el-alert__title) {
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.transaction-action-section {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.transaction-action-section h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.transaction-action-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px;
+    margin: 0;
+    border: 1px solid #e4ebf3;
+    border-radius: 8px;
+    background: #e4ebf3;
+    overflow: hidden;
+}
+
+.transaction-action-detail-grid div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 11px 13px;
+    background: #ffffff;
+}
+
+.transaction-action-detail-grid dt {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.transaction-action-detail-grid dd {
+    min-width: 0;
+    margin: 0;
+    color: #1f2937;
+    font-size: 13px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.transaction-action-money {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-action-amount-card {
+    display: grid;
+    gap: 5px;
+    padding: 12px 14px;
+    border: 1px solid #f6d9b3;
+    border-radius: 6px;
+    background: #fff7ed;
+}
+
+.transaction-action-amount-card--warning {
+    border-color: #f1c087;
+}
+
+.transaction-action-amount-card span,
+.transaction-action-amount-card em {
+    color: #667085;
+    font-size: 12px;
+    font-style: normal;
+}
+
+.transaction-action-amount-card strong {
+    color: #1f2937;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.transaction-action-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+
+.transaction-action-form :deep(.el-form-item) {
+    margin-bottom: 0;
+}
+
+.transaction-action-form :deep(.el-form-item__label) {
+    padding-bottom: 5px;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.transaction-action-form :deep(.el-input),
+.transaction-action-form :deep(.el-input-number),
+.transaction-action-form :deep(.el-select),
+.transaction-action-form :deep(.el-textarea) {
+    width: 100%;
+}
+
+.transaction-action-form :deep(.el-input__wrapper),
+.transaction-action-form :deep(.el-select__wrapper),
+.transaction-action-form :deep(.el-textarea__inner) {
+    border-radius: 6px;
+}
+
+.transaction-action-form__wide {
+    grid-column: 1 / -1;
 }
 
 .transaction-action-error {
@@ -972,42 +1298,10 @@ async function refreshAfterAction(transactionId: string) {
     line-height: 18px;
 }
 
-.transaction-action-summary > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    font-size: 13px;
-}
-
-.transaction-action-summary span {
-    color: var(--el-text-color-secondary);
-}
-
-.transaction-action-summary strong {
-    min-width: 0;
-    color: var(--el-text-color-primary);
-    overflow-wrap: anywhere;
-}
-
-.transaction-action-summary--warning {
-    background: #fff8ed;
-    border-color: #f3d19e;
-}
-
-.transaction-action-warning {
-    margin: 0 0 16px;
-    color: var(--el-text-color-regular);
-    line-height: 1.7;
-}
-
-.transaction-action-form {
-    padding-right: 8px;
-}
-
 @media (max-width: 640px) {
-    .transaction-action-balance {
-        align-items: flex-start;
-        flex-direction: column;
+    .transaction-action-detail-grid,
+    .transaction-action-form {
+        grid-template-columns: 1fr;
     }
 }
 </style>

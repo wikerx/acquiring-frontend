@@ -10,6 +10,7 @@
       :search-text="$t('common.search')"
       :reset-text="$t('common.reset')"
       label-width="96px"
+      inline-time
       @search="handleSearch"
       @reset="resetQuery"
     >
@@ -86,8 +87,7 @@
       <el-table-column prop="hitRuleCode" :label="$t('security.intercept.hitRuleCode')" min-width="170" align="center" show-overflow-tooltip />
       <el-table-column :label="$t('security.intercept.reason')" min-width="260" align="left" show-overflow-tooltip>
         <template #default="{ row }">
-          <span>{{ row.reasonCode || '-' }}</span>
-          <span v-if="row.reasonMessage" class="security-intercept-page__reason"> {{ row.reasonMessage }}</span>
+          <span class="security-intercept-page__reason">{{ reasonText(row) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="traceId" :label="$t('security.intercept.traceId')" min-width="180" align="center" show-overflow-tooltip />
@@ -408,6 +408,16 @@ function requestLine(row?: SecurityInterceptEventRow) {
     return '-';
   }
   return `${row.requestMethod || '-'} ${row.requestPath || '-'}`;
+}
+
+function reasonText(row?: SecurityInterceptEventRow) {
+  if (!row) {
+    return '-';
+  }
+  if (row.reasonCode && row.reasonMessage) {
+    return `${row.reasonCode}:${row.reasonMessage}`;
+  }
+  return row.reasonCode || row.reasonMessage || '-';
 }
 
 function formatSummary(value?: string) {

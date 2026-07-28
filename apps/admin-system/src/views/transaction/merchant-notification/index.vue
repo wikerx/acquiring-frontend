@@ -19,7 +19,7 @@
             <el-form-item :label="t('transaction.fields.notifyStatus')"><el-input v-model.trim="query.notifyStatus" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" /></el-form-item>
             <template #time>
                 <el-form-item :label="t('transaction.fields.transactionDateTime')" class="transaction-time-form-item">
-                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" :timezone-options="timezoneOptions" default-preset="today" />
+                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" v-model:preset="quickPreset" :timezone-options="timezoneOptions" default-preset="today" />
                 </el-form-item>
             </template>
         </TransactionSearchPanel>
@@ -60,10 +60,14 @@
                     <CopyableText :value="row.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" />
                 </template>
             </el-table-column>
-            <el-table-column prop="notifyType" :label="t('transaction.fields.notifyType')" width="130" align="center" />
-            <el-table-column prop="eventType" :label="t('transaction.fields.eventType')" width="140" align="center" />
+            <el-table-column :label="t('transaction.fields.notifyType')" width="150" align="center">
+                <template #default="{ row }">{{ notifyTypeText(row.notifyType) }}</template>
+            </el-table-column>
+            <el-table-column :label="t('transaction.fields.eventType')" width="140" align="center">
+                <template #default="{ row }">{{ eventTypeText(row.eventType) }}</template>
+            </el-table-column>
             <el-table-column :label="t('transaction.fields.notifyStatus')" width="130" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusType(row.notifyStatus)">{{ row.notifyStatus || '-' }}</el-tag></template>
+                <template #default="{ row }"><el-tag size="small" :type="statusType(row.notifyStatus)">{{ notifyStatusText(row.notifyStatus) }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="lastAttemptNo" :label="t('transaction.fields.lastAttemptNo')" width="120" align="center" />
             <el-table-column :label="t('transaction.fields.nextRetryTime')" min-width="172" align="center">
@@ -110,6 +114,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const quickPreset = ref('today');
 const detailVisible = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
 const timezoneOptions = ref<SelectOption[]>([]);
@@ -167,6 +172,7 @@ function handleReset() {
     query.transactionId = '';
     query.notifyStatus = '';
     query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    quickPreset.value = 'today';
     dateRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     handleSearch();
 }
@@ -188,6 +194,43 @@ function statusType(value?: unknown) {
         return 'warning';
     }
     return 'info';
+}
+
+function notifyTypeText(value?: unknown) {
+    const type = String(value || '').toUpperCase();
+    const labels: Record<string, string> = {
+        TRANSACTION_STATUS: '交易状态通知',
+        TRANSACTION_RESULT: '交易结果通知',
+        PAYMENT_RESULT: '支付结果通知',
+        AUTHORIZATION_RESULT: '授权结果通知',
+        CAPTURE_RESULT: '请款结果通知',
+        REFUND_RESULT: '退款结果通知',
+        VOID_RESULT: '撤销结果通知',
+    };
+    return labels[type] || type || '-';
+}
+
+function eventTypeText(value?: unknown) {
+    const eventType = String(value || '').toUpperCase();
+    return eventType ? t(`transaction.type.${eventType}`, eventType) : '-';
+}
+
+function notifyStatusText(value?: unknown) {
+    const status = String(value || '').toUpperCase();
+    const labels: Record<string, string> = {
+        INIT: '待发送',
+        PENDING: '待发送',
+        PROCESSING: '发送中',
+        RETRYING: '重试中',
+        SUCCESS: '成功',
+        SENT: '已发送',
+        DELIVERED: '已送达',
+        FAILED: '失败',
+        CLOSED: '已关闭',
+        EXPIRED: '已过期',
+        CANCELLED: '已取消',
+    };
+    return labels[status] || status || '-';
 }
 </script>
 

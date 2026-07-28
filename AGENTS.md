@@ -117,6 +117,21 @@ docs/
 
 ------
 
+## Repository Scope
+
+- `apps/admin-system` is the admin management system.
+- `apps/merchant-portal` is the merchant portal.
+- `apps/hosted-checkout` is the hosted checkout / cashier application.
+- `packages/shared` is the confirmed shared workspace package exported as `@acquiring/shared`.
+- Other `packages/*` directories may exist as structure placeholders. Do not treat them as buildable packages unless they contain their own `package.json` and exported source.
+
+## Build Baseline
+
+- Follow the current Vue, TypeScript, Vite, Pinia, Vue Router, Element Plus and Tailwind versions declared in the root and app `package.json` files.
+- The root package uses npm workspaces. `pnpm-workspace.yaml` and `pnpm-lock.yaml` also exist, so the primary package manager must be confirmed before changing dependency workflow.
+- Do not upgrade frontend dependencies unless the user explicitly approves the version and impact scope.
+- After frontend changes, run the relevant app `typecheck` and `build` scripts. If a `lint` script is unavailable, record that gap instead of inventing a passing lint result.
+
 ## Development Principles
 
 ## Vexra Brand System
@@ -159,6 +174,14 @@ If endpoint cannot be found:
 
 Ask for clarification or create TODO.
 
+### Backend Contract First
+
+- Interfaces, enums, statuses, permissions and error codes must follow the backend contract from `acquiring-orchestration` or confirmed API documentation.
+- Do not forge backend response fields to make a page render.
+- Do not redefine shared business enums inside page components. Reuse existing app constants, shared package types, or backend-confirmed definitions.
+- Keep existing menu, permission, route, store and request-interceptor systems. Do not bypass them for a single page.
+- Do not reintroduce mock business menus, fake transaction metrics, fake settlement data, fake risk data or static fallback business data unless the user explicitly asks for a prototype.
+
 ------
 
 ### Never Invent Status Values
@@ -170,6 +193,18 @@ COMPLETE
 FINISHED
 
 Use existing project enums only.
+
+### Sensitive Data
+
+- Do not write card data, CVV, JWT, Token, API keys, merchant secrets, decrypted payloads or full sensitive responses to browser logs.
+- Do not persist sensitive data in `localStorage`, `sessionStorage`, IndexedDB or cookies unless the existing security design explicitly allows it.
+- Hosted Checkout changes must consider both desktop and mobile viewports, especially payment form layout, locale/country selection, error states and sensitive data handling.
+
+### Change Control
+
+- Do not perform unrelated page refactors, broad style rewrites or dependency churn.
+- Keep Admin and Merchant table, dialog, profile, route and permission behavior aligned with the existing app-specific rules above.
+- When backend endpoints are unavailable, surface a pending-integration state or TODO; do not silently fake the contract.
 
 ------
 

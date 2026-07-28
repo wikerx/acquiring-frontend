@@ -19,7 +19,7 @@
             <el-form-item :label="t('transaction.fields.interactionType')"><el-input v-model.trim="query.interactionType" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" /></el-form-item>
             <template #time>
                 <el-form-item :label="t('transaction.fields.transactionDateTime')" class="transaction-time-form-item">
-                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" :timezone-options="timezoneOptions" default-preset="today" />
+                    <TransactionTimeRangeFilter v-model="dateRange" v-model:time-zone="query.queryTimeZone" v-model:preset="quickPreset" :timezone-options="timezoneOptions" default-preset="today" />
                 </el-form-item>
             </template>
         </TransactionSearchPanel>
@@ -49,7 +49,9 @@
                     <span v-else>-</span>
                 </template>
             </el-table-column>
-            <el-table-column prop="interactionType" :label="t('transaction.fields.interactionType')" width="140" align="center" />
+            <el-table-column :label="t('transaction.fields.interactionType')" width="140" align="center">
+                <template #default="{ row }">{{ interactionTypeText(row.interactionType) }}</template>
+            </el-table-column>
             <el-table-column prop="httpMethod" :label="t('transaction.fields.httpMethod')" width="100" align="center" />
             <el-table-column :label="t('transaction.fields.httpStatus')" width="100" align="center">
                 <template #default="{ row }"><el-tag v-if="row.httpStatus" size="small" :type="httpStatusType(row.httpStatus)">{{ row.httpStatus }}</el-tag><span v-else>-</span></template>
@@ -114,6 +116,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const quickPreset = ref('today');
 const detailVisible = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
 const timezoneOptions = ref<SelectOption[]>([]);
@@ -158,6 +161,7 @@ function handleReset() {
     query.transactionId = '';
     query.interactionType = '';
     query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    quickPreset.value = 'today';
     dateRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     handleSearch();
 }
@@ -170,6 +174,17 @@ function openDetail(row: TransactionRecord) {
 function transactionTypeText(value?: unknown) {
     const type = String(value || '');
     return type ? t(`transaction.type.${type}`, type) : '-';
+}
+
+function interactionTypeText(value?: unknown) {
+    const type = String(value || '').toUpperCase();
+    const labels: Record<string, string> = {
+        REQUEST: '请求',
+        RESPONSE: '响应',
+        REQUEST_RESPONSE: '请求/响应',
+        EXCEPTION: '异常',
+    };
+    return labels[type] || type || '-';
 }
 
 function httpStatusType(value?: number | string) {

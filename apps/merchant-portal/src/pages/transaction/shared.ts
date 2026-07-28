@@ -14,6 +14,14 @@ export interface TransactionDictOption extends SelectOption {
     extraJson?: string;
 }
 
+const CHANNEL_MATCH_STATUS_LABELS: Record<string, Record<string, string>> = {
+    'zh-CN': {
+        PENDING: '未勾兑',
+        MATCHED: '成功',
+        FAILED: '失败',
+    },
+};
+
 const DEFAULT_TIMEZONE_OPTIONS: SelectOption[] = [
     { label: 'UTC+8 Asia/Shanghai', value: DEFAULT_TRANSACTION_QUERY_TIME_ZONE },
     { label: 'UTC', value: 'UTC' },
@@ -52,7 +60,7 @@ export async function loadTransactionDictOptions(dictType: string, locale: strin
         locale,
         status: 1,
     });
-    return (result.records || []).map(toDictOption);
+    return (result.records || []).map(toDictOption).map((option) => normalizeTransactionDictOption(dictType, locale, option));
 }
 
 export function ensureTransactionTimezoneOptions(options: SelectOption[]) {
@@ -221,7 +229,8 @@ export function defaultTransactionMonthRange(timeZone = DEFAULT_TRANSACTION_QUER
 
 export function responseTooltip(code?: string, message?: string) {
     if (!code && !message) return '-';
-    return [code, message].filter(Boolean).join(' / ');
+    if (code && message) return `${code}:${message}`;
+    return code || message || '-';
 }
 
 function toDictOption(item: DictDataItem): TransactionDictOption {
@@ -231,6 +240,15 @@ function toDictOption(item: DictDataItem): TransactionDictOption {
         listClass: item.listClass,
         extraJson: item.extraJson,
     };
+}
+
+function normalizeTransactionDictOption(dictType: string, locale: string, option: TransactionDictOption): TransactionDictOption {
+    if (dictType !== 'channel_match_status') {
+        return option;
+    }
+    const labels = CHANNEL_MATCH_STATUS_LABELS[locale] || CHANNEL_MATCH_STATUS_LABELS[locale.split('-')[0]];
+    const label = labels?.[option.value];
+    return label ? { ...option, label } : option;
 }
 
 function resolveDecimalLength(value: string) {

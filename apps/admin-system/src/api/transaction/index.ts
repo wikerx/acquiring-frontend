@@ -251,6 +251,11 @@ export async function refundTransactionOperation(transactionId: string, data: Tr
     return unwrapResult(result.data);
 }
 
+export async function captureTransactionOperation(transactionId: string, data: TransactionActionRequest) {
+    const result = await http.post<CommonResult<TransactionActionResponse>>(`/admin/transactions/operations/${transactionId}/capture`, data);
+    return unwrapResult(result.data);
+}
+
 export async function voidTransactionOperation(transactionId: string, data: TransactionActionRequest) {
     const result = await http.post<CommonResult<TransactionActionResponse>>(`/admin/transactions/operations/${transactionId}/void`, data);
     return unwrapResult(result.data);
