@@ -518,6 +518,7 @@ import {
     loadTransactionDictOptions,
     moneyText,
     rateText,
+    resolveTransactionQueryRange,
     responseTooltip,
     splitDateRange,
     statusTagType,
@@ -819,9 +820,14 @@ function buildQueryPayload() {
         pageNo: page.value,
         pageSize: pageSize.value,
         queryTimeZone: query.queryTimeZone || merchantDefaultTimeZone(),
-        ...splitDateRange(dateRange.value),
+        ...splitDateRange(currentDateRange()),
     };
     return payload;
+}
+
+function currentDateRange() {
+    dateRange.value = resolveTransactionQueryRange(dateRange.value, quickPreset.value, query.queryTimeZone);
+    return dateRange.value;
 }
 
 function merchantDefaultTimeZone() {

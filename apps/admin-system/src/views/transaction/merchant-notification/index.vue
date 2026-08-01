@@ -103,7 +103,7 @@ import TransactionRecordList from '../components/TransactionRecordList.vue';
 import TransactionResultBar from '../components/TransactionResultBar.vue';
 import TransactionSearchPanel from '../components/TransactionSearchPanel.vue';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensureTransactionTimezoneOptions, splitDateRange } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensureTransactionTimezoneOptions, resolveTransactionQueryRange, splitDateRange } from '../shared';
 
 const { t, locale } = useI18n();
 const showSearch = ref(true);
@@ -158,8 +158,13 @@ function buildQuery(pageNo?: number, currentPageSize?: number): MerchantNotifica
         transactionId: query.transactionId || undefined,
         notifyStatus: query.notifyStatus || undefined,
         queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-        ...splitDateRange(dateRange.value),
+        ...splitDateRange(currentDateRange()),
     };
+}
+
+function currentDateRange() {
+    dateRange.value = resolveTransactionQueryRange(dateRange.value, quickPreset.value, query.queryTimeZone);
+    return dateRange.value;
 }
 
 function handleSearch() {

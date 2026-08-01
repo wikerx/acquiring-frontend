@@ -163,6 +163,7 @@ import {
     moneyText,
     openTransactionDetail,
     rateText,
+    resolveTransactionQueryRange,
     responseTooltip,
     splitDateRange,
     statusOptionTagType,
@@ -284,7 +285,7 @@ async function handleExport() {
 }
 
 function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
-    const range = splitDateRange(dateRange.value);
+    const range = splitDateRange(currentDateRange());
     return {
         pageNo,
         pageSize: currentPageSize,
@@ -295,6 +296,11 @@ function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQ
         queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
         ...range,
     };
+}
+
+function currentDateRange() {
+    dateRange.value = resolveTransactionQueryRange(dateRange.value, quickPreset.value, query.queryTimeZone);
+    return dateRange.value;
 }
 
 function handleSearch() {

@@ -222,6 +222,25 @@ export function defaultTransactionTodayRange(timeZone = DEFAULT_TRANSACTION_QUER
     return [`${zonedNow.date}T00:00:00`, `${zonedNow.date}T${zonedNow.time}`];
 }
 
+/**
+ * 快捷时间范围的结束时刻必须随每次查询滚动到当前时间；自定义范围由调用方原样保留。
+ */
+export function resolveTransactionQueryRange(range: string[], preset: string, timeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE) {
+    return preset ? resolveTransactionPresetRange(preset, timeZone) : range;
+}
+
+export function resolveTransactionPresetRange(preset: string, timeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE) {
+    const zonedNow = resolveZonedNow(timeZone);
+    const end = `${zonedNow.date}T${zonedNow.time}`;
+    if (preset === 'week') {
+        return [`${startOfWeek(zonedNow.date)}T00:00:00`, end];
+    }
+    if (preset === 'month') {
+        return [`${zonedNow.date.slice(0, 8)}01T00:00:00`, end];
+    }
+    return [`${zonedNow.date}T00:00:00`, end];
+}
+
 export function defaultTransactionMonthRange(timeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE) {
     const zonedNow = resolveZonedNow(timeZone);
     return [`${zonedNow.date.slice(0, 8)}01T00:00:00`, `${zonedNow.date}T${zonedNow.time}`];
@@ -260,4 +279,16 @@ function resolveZonedNow(timeZone: string) {
     const text = formatDateTimeInTimeZone(new Date(), timeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     const [date, time] = text.split(' ');
     return { date, time };
+}
+
+function startOfWeek(dateText: string) {
+    const [year, month, day] = dateText.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const mondayOffset = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - mondayOffset);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function pad(value: number) {
+    return String(value).padStart(2, '0');
 }

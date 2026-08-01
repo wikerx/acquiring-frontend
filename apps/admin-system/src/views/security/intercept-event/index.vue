@@ -49,7 +49,7 @@
       </el-form-item>
       <template #time>
         <el-form-item :label="$t('security.intercept.eventTime')" class="transaction-time-form-item">
-          <TransactionTimeRangeFilter v-model="timeRange" :time-zone="displayTimeZone" :timezone-options="timezoneOptions" default-preset="today" @update:time-zone="query.queryTimeZone = $event" />
+          <TransactionTimeRangeFilter v-model="timeRange" v-model:preset="quickPreset" :time-zone="displayTimeZone" :timezone-options="timezoneOptions" default-preset="today" @update:time-zone="query.queryTimeZone = $event" />
         </el-form-item>
       </template>
     </TransactionSearchPanel>
@@ -189,6 +189,7 @@ import {
   DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
   defaultTransactionTodayRange,
   ensureTransactionTimezoneOptions,
+  resolveTransactionQueryRange,
   splitDateRange,
 } from '../../transaction/shared';
 
@@ -202,6 +203,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const timeRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const quickPreset = ref('today');
 const timezoneOptions = ref<SelectOption[]>([]);
 const query = reactive<SecurityInterceptEventQuery>({
   merchantId: '',
@@ -275,6 +277,7 @@ function resetQuery() {
   query.traceId = '';
   query.requestPath = '';
   query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+  quickPreset.value = 'today';
   timeRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
   handleSearch();
 }
@@ -340,7 +343,7 @@ async function submitMark() {
 }
 
 function buildQuery(withPage = true): SecurityInterceptEventQuery {
-  const range = splitDateRange(timeRange.value);
+  const range = splitDateRange(currentTimeRange());
   const result: SecurityInterceptEventQuery = {};
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && String(value).trim() !== '') {
@@ -354,6 +357,11 @@ function buildQuery(withPage = true): SecurityInterceptEventQuery {
     result.pageSize = pageSize.value;
   }
   return result;
+}
+
+function currentTimeRange() {
+  timeRange.value = resolveTransactionQueryRange(timeRange.value, quickPreset.value, displayTimeZone.value);
+  return timeRange.value;
 }
 
 function replaceRow(updated: SecurityInterceptEventRow) {
