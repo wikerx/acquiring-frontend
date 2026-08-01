@@ -205,7 +205,7 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="$t('system.user.mfaEventTime')" class="mfa-log-time-item">
-                    <TransactionTimeRangeFilter v-model="mfaLogTimeRange" :time-zone="mfaLogTimeZone" :timezone-options="timezoneOptions" default-preset="today" @update:time-zone="mfaLogQuery.queryTimeZone = $event" />
+                    <TransactionTimeRangeFilter v-model="mfaLogTimeRange" v-model:preset="mfaLogQuickPreset" :time-zone="mfaLogTimeZone" :timezone-options="timezoneOptions" default-preset="today" @update:time-zone="mfaLogQuery.queryTimeZone = $event" />
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :icon="Search" size="small" @click="handleMfaLogSearch">{{ $t('common.search') }}</el-button>
@@ -295,6 +295,7 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
+    resolveTransactionQueryRange,
     splitDateRange,
 } from '@/views/transaction/shared';
 
@@ -345,6 +346,7 @@ const mfaLogTotal = ref(0);
 const mfaLogPage = ref(1);
 const mfaLogPageSize = ref(10);
 const mfaLogTimeRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
+const mfaLogQuickPreset = ref('today');
 const timezoneOptions = ref<SelectOption[]>([]);
 const mfaLogQuery = reactive<SysUserMfaLogQuery>({
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
@@ -570,6 +572,7 @@ async function openMfaLogs(row: UserRow) {
     mfaLogQuery.actionType = '';
     mfaLogQuery.result = '';
     mfaLogQuery.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    mfaLogQuickPreset.value = 'today';
     mfaLogTimeRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     mfaLogPage.value = 1;
     mfaLogVisible.value = true;
@@ -589,6 +592,7 @@ function resetMfaLogQuery() {
     mfaLogQuery.actionType = '';
     mfaLogQuery.result = '';
     mfaLogQuery.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    mfaLogQuickPreset.value = 'today';
     mfaLogTimeRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
     handleMfaLogSearch();
 }
@@ -596,7 +600,7 @@ function resetMfaLogQuery() {
 async function loadMfaLogs() {
     mfaLogLoading.value = true;
     try {
-        const range = splitDateRange(mfaLogTimeRange.value);
+        const range = splitDateRange(currentMfaLogTimeRange());
         const result = await searchUserMfaLogs({
             ...mfaLogQuery,
             ...range,
@@ -612,6 +616,11 @@ async function loadMfaLogs() {
     } finally {
         mfaLogLoading.value = false;
     }
+}
+
+function currentMfaLogTimeRange() {
+    mfaLogTimeRange.value = resolveTransactionQueryRange(mfaLogTimeRange.value, mfaLogQuickPreset.value, mfaLogTimeZone.value);
+    return mfaLogTimeRange.value;
 }
 
 async function openRoleAuth(row: UserRow) {

@@ -261,7 +261,7 @@
                         </div>
                         <div class="transaction-detail-summary__amount">
                             <span>{{ t('transaction.order.amount') }}</span>
-                            <strong>{{ money(detail.order?.currentAmount ?? detail.order?.transactionAmount, defaultCurrency(detail.order), detail.order?.currencyExponent) }}</strong>
+                            <strong>{{ money(orderDisplayAmount(detail.order), defaultCurrency(detail.order), detail.order?.currencyExponent) }}</strong>
                         </div>
                     </section>
 
@@ -518,6 +518,7 @@ import {
     loadTransactionDictOptions,
     moneyText,
     rateText,
+    resolveTransactionQueryRange,
     responseTooltip,
     splitDateRange,
     statusTagType,
@@ -819,9 +820,14 @@ function buildQueryPayload() {
         pageNo: page.value,
         pageSize: pageSize.value,
         queryTimeZone: query.queryTimeZone || merchantDefaultTimeZone(),
-        ...splitDateRange(dateRange.value),
+        ...splitDateRange(currentDateRange()),
     };
     return payload;
+}
+
+function currentDateRange() {
+    dateRange.value = resolveTransactionQueryRange(dateRange.value, quickPreset.value, query.queryTimeZone);
+    return dateRange.value;
 }
 
 function merchantDefaultTimeZone() {
@@ -834,6 +840,18 @@ function defaultCurrency(row?: TransactionOrder | TransactionOperation | null) {
 
 function money(value?: number | string | null, currency?: string, currencyExponent?: number | null) {
     return moneyText(value, currency, currencyExponent);
+}
+
+function orderDisplayAmount(row?: TransactionOrder | null) {
+    const currentAmount = toNullableAmount(row?.currentAmount);
+    const transactionAmount = toNullableAmount(row?.transactionAmount);
+    if (row?.transactionStatus === 'FAILED'
+        && currentAmount === 0
+        && transactionAmount !== null
+        && transactionAmount > 0) {
+        return row?.transactionAmount;
+    }
+    return row?.currentAmount ?? row?.transactionAmount;
 }
 
 function labelMoney(row?: TransactionOperation | TransactionOrder | null, amount?: number | string | null) {

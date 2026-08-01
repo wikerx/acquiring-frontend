@@ -106,7 +106,7 @@ import TransactionRecordList from '../components/TransactionRecordList.vue';
 import TransactionResultBar from '../components/TransactionResultBar.vue';
 import TransactionSearchPanel from '../components/TransactionSearchPanel.vue';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensureTransactionTimezoneOptions, responseTooltip, splitDateRange } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensureTransactionTimezoneOptions, resolveTransactionQueryRange, responseTooltip, splitDateRange } from '../shared';
 
 const { t, locale } = useI18n();
 const showSearch = ref(true);
@@ -142,13 +142,18 @@ async function loadData() {
             transactionId: query.transactionId || undefined,
             interactionType: query.interactionType || undefined,
             queryTimeZone: query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-            ...splitDateRange(dateRange.value),
+            ...splitDateRange(currentDateRange()),
         });
         rows.value = result.records;
         total.value = result.total;
     } finally {
         loading.value = false;
     }
+}
+
+function currentDateRange() {
+    dateRange.value = resolveTransactionQueryRange(dateRange.value, quickPreset.value, query.queryTimeZone);
+    return dateRange.value;
 }
 
 function handleSearch() {

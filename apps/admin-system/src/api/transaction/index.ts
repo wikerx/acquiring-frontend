@@ -180,6 +180,7 @@ export interface TransactionDetail {
     operations: TransactionOperation[];
     statusHistory: Record<string, unknown>[];
     flowEvents: Record<string, unknown>[];
+    riskEvents: Record<string, unknown>[];
     amountChanges: Record<string, unknown>[];
     channelRequests: Record<string, unknown>[];
     channelInteractionLogs: Record<string, unknown>[];

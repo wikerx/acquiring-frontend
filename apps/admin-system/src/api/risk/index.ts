@@ -336,3 +336,8 @@ export async function getEvaluationHits(riskRecordNo: string) {
     const result = await http.get<CommonResult<Record<string, unknown>[]>>(`/admin/risk/record/evaluations/${riskRecordNo}/hits`);
     return unwrapResult(result.data);
 }
+
+export async function getEvaluationDetails(riskRecordNo: string) {
+    const result = await http.get<CommonResult<Record<string, unknown>[]>>(`/admin/risk/record/evaluations/${riskRecordNo}/details`);
+    return unwrapResult(result.data);
+}
