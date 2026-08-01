@@ -149,7 +149,7 @@
                     <el-timeline v-if="timelineRows.length" class="transaction-detail__timeline">
                         <el-timeline-item
                             v-for="item in timelineRows"
-                            :key="String(item.id || item.historyId || item.eventId || item.createTime)"
+                            :key="String(item.riskEventId || item.flowEventId || item.statusHistoryId || item.amountChangeId || item.id || item.eventId || item.createTime)"
                             :timestamp="displayRecordTime(item.statusTime || item.eventTime || item.createTime)"
                             :type="timelineTone(item)"
                             placement="top"
@@ -222,11 +222,28 @@ const drawerVisible = computed({
     set: (value: boolean) => emit('update:visible', value),
 });
 
-const timelineRows = computed(() => [
-    ...((props.detail?.flowEvents || []) as Record<string, unknown>[]),
-    ...((props.detail?.statusHistory || []) as Record<string, unknown>[]),
-    ...((props.detail?.amountChanges || []) as Record<string, unknown>[]),
-].sort((left, right) => timelineTimeValue(left) - timelineTimeValue(right)));
+const timelineRows = computed(() => {
+    const flowEvents = (props.detail?.flowEvents || []) as Record<string, unknown>[];
+    const statusHistory = (props.detail?.statusHistory || []) as Record<string, unknown>[];
+    const merchantApiLogs = (props.detail?.merchantApiInteractionLogs || []) as Record<string, unknown>[];
+    const merchantResponses = merchantResponseMap(merchantApiLogs);
+    const resultEvents = flowEvents.map((row) => enrichTransactionResultEvent(row, merchantResponses));
+    const representedInitialStatuses = new Set(
+        resultEvents
+            .filter(isTransactionResultEvent)
+            .map(timelineResultKey)
+            .filter(Boolean),
+    );
+    const visibleStatusHistory = statusHistory.filter(
+        (row) => !isRepresentedInitialStatus(row, representedInitialStatuses),
+    );
+    return [
+        ...resultEvents,
+        ...((props.detail?.riskEvents || []) as Record<string, unknown>[]),
+        ...visibleStatusHistory,
+        ...((props.detail?.amountChanges || []) as Record<string, unknown>[]),
+    ].sort(compareTimelineRows);
+});
 
 const amountChangeRows = computed(() => (props.detail?.amountChanges || []) as Record<string, unknown>[]);
 
@@ -482,9 +499,82 @@ function isPresent(value: unknown) {
     return value !== undefined && value !== null && value !== '';
 }
 
+interface MerchantResponseSummary {
+    code: string;
+    message: string;
+}
+
+function merchantResponseMap(rows: Record<string, unknown>[]) {
+    const responses = new Map<string, MerchantResponseSummary>();
+    rows.forEach((row) => {
+        const transactionId = String(row.transactionId || '');
+        const code = String(row.merchantResponseCode || '');
+        const message = String(row.merchantResponseMessage || '');
+        if (transactionId && (code || message)) {
+            responses.set(transactionId, { code, message });
+        }
+    });
+    return responses;
+}
+
+function enrichTransactionResultEvent(
+    row: Record<string, unknown>,
+    merchantResponses: Map<string, MerchantResponseSummary>,
+) {
+    if (!isTransactionResultEvent(row)) {
+        return row;
+    }
+    const transactionId = String(row.transactionId || '');
+    const response = merchantResponses.get(transactionId);
+    if (!response) {
+        return row;
+    }
+    const eventContent = [response.code, response.message].filter(Boolean).join('：');
+    const failed = isFailureStatus(row.currentStatus || row.eventStatus);
+    return {
+        ...row,
+        eventContent: eventContent || row.eventContent,
+        errorCode: failed ? response.code : row.errorCode,
+        errorMessage: failed ? response.message : row.errorMessage,
+        merchantResponseCode: response.code,
+        merchantResponseMessage: response.message,
+    };
+}
+
+function isTransactionResultEvent(row: Record<string, unknown>) {
+    return String(row.eventType || '').toUpperCase() === 'STATUS_RECORDED';
+}
+
+function timelineResultKey(row: Record<string, unknown>) {
+    const transactionId = String(row.transactionId || '');
+    const status = String(row.currentStatus || row.toStatus || row.eventStatus || '').toUpperCase();
+    return transactionId && status ? `${transactionId}:${status}` : '';
+}
+
+function isRepresentedInitialStatus(row: Record<string, unknown>, representedStatuses: Set<string>) {
+    const statusObject = String(row.statusObject || '').toUpperCase();
+    const triggerType = String(row.triggerType || '').toUpperCase();
+    const versionAfter = Number(row.versionAfter);
+    const initialApiStatus = ['ORDER', 'OPERATION'].includes(statusObject)
+        && !isPresent(row.fromStatus)
+        && triggerType === 'API'
+        && !isPresent(row.versionBefore)
+        && versionAfter === 0;
+    return initialApiStatus && representedStatuses.has(timelineResultKey(row));
+}
+
 function timelineTitle(row: Record<string, unknown>) {
+    if (isTransactionResultEvent(row)) {
+        const status = String(row.currentStatus || row.eventStatus || '').toUpperCase();
+        return t(`transaction.timelineResult.${status}`, t('transaction.timelineResult.PROCESSING'));
+    }
     if (row.eventName) {
         return String(row.eventName);
+    }
+    if (row.statusHistoryId || row.statusObject || row.toStatus) {
+        const objectText = timelineStatusObjectText(row.statusObject);
+        const eventText = t('transaction.timelineEvent.STATUS_CHANGED');
+        return String(locale.value || '').startsWith('zh') ? `${objectText}${eventText}` : `${objectText} ${eventText}`;
     }
     const eventType = String(row.eventType || row.changeType || row.processStage || row.transactionStatus || '');
     return eventType ? t(`transaction.timelineEvent.${eventType}`, eventType) : '-';
@@ -496,7 +586,31 @@ function timelineStatusText(row: Record<string, unknown>) {
 }
 
 function timelineContent(row: Record<string, unknown>) {
+    if (row.statusHistoryId || row.statusObject || row.toStatus) {
+        const objectText = timelineStatusObjectText(row.statusObject);
+        const fromStatus = timelineBusinessStatusText(row.fromStatus);
+        const toStatus = timelineBusinessStatusText(row.toStatus);
+        const transition = fromStatus
+            ? `${fromStatus} -> ${toStatus}`
+            : toStatus;
+        const reason = String(row.failReason || '');
+        const content = `${objectText}：${transition || '-'}`;
+        return reason ? `${content}；${reason}` : content;
+    }
     return String(row.changeReason || row.eventContent || row.eventMessage || row.failReasonMessage || row.errorMessage || '-');
+}
+
+function timelineStatusObjectText(value: unknown) {
+    const normalized = String(value || 'STATUS').toUpperCase();
+    return t(`transaction.timelineStatusObject.${normalized}`, normalized);
+}
+
+function timelineBusinessStatusText(value: unknown) {
+    const normalized = String(value || '').toUpperCase();
+    if (!normalized) {
+        return '';
+    }
+    return t(`transaction.status.${normalized}`, optionText(statusOptions.value, normalized));
 }
 
 function timelineStatus(row: Record<string, unknown>) {
@@ -521,7 +635,18 @@ function timelineStatus(row: Record<string, unknown>) {
         return String(row.eventStatus || row.currentStatus || '');
     }
     if (row.statusHistoryId || row.toStatus || row.statusObject) {
-        return String(row.transitionResult || row.toStatus || row.transactionStatus || '');
+        const targetStatus = String(row.toStatus || row.transactionStatus || '').toUpperCase();
+        const transitionResult = String(row.transitionResult || '').toUpperCase();
+        if (isFailureStatus(targetStatus)) {
+            return targetStatus;
+        }
+        if (['PENDING', 'PROCESSING', 'INIT'].includes(targetStatus)) {
+            return targetStatus;
+        }
+        if (isFailureStatus(transitionResult)) {
+            return transitionResult;
+        }
+        return transitionResult || targetStatus;
     }
     if (row.amountChangeId || row.changeType) {
         return String(row.changeStatus || 'SUCCESS');
@@ -534,7 +659,7 @@ function timelineTone(row: Record<string, unknown>) {
     if (isFailureStatus(status)) {
         return 'danger';
     }
-    if (status === 'PENDING' || status === 'INIT' || status === 'SKIPPED' || status === 'IGNORED') {
+    if (status === 'PENDING' || status === 'PROCESSING' || status === 'INIT' || status === 'SKIPPED' || status === 'IGNORED') {
         return 'warning';
     }
     if (status === 'SUCCESS') {
@@ -544,7 +669,7 @@ function timelineTone(row: Record<string, unknown>) {
 }
 
 function isFailureStatus(value: unknown) {
-    return /FAILED|ERROR|EXCEPTION|DECLINED|INVALID|REJECTED|TIMEOUT/.test(String(value || '').toUpperCase());
+    return /FAILED|ERROR|EXCEPTION|DECLINED|INVALID|REJECT(?:ED)?|TIMEOUT/.test(String(value || '').toUpperCase());
 }
 
 function isChannelFailureSignal(content: string, errorText: string, businessStatus: string) {
@@ -560,6 +685,46 @@ function timelineTimeValue(row: Record<string, unknown>) {
     }
     const millis = new Date(String(value)).getTime();
     return Number.isFinite(millis) ? millis : Number.MAX_SAFE_INTEGER;
+}
+
+function compareTimelineRows(left: Record<string, unknown>, right: Record<string, unknown>) {
+    const leftTransactionId = String(left.transactionId || '');
+    const rightTransactionId = String(right.transactionId || '');
+    if (leftTransactionId && leftTransactionId === rightTransactionId) {
+        const leftSequence = timelineSequence(left);
+        const rightSequence = timelineSequence(right);
+        const sequenceDifference = leftSequence - rightSequence;
+        if (sequenceDifference !== 0) {
+            return sequenceDifference;
+        }
+    }
+    const timeDifference = timelineTimeValue(left) - timelineTimeValue(right);
+    return timeDifference !== 0 ? timeDifference : timelineSequence(left) - timelineSequence(right);
+}
+
+function timelineSequence(row: Record<string, unknown>) {
+    const configured = Number(row.timelineSequence);
+    if (Number.isFinite(configured)) {
+        return configured;
+    }
+    const sequenceByType: Record<string, number> = {
+        API_ACCEPTED: 100,
+        RISK_CHECKED: 300,
+        ROUTE_SELECTED: 400,
+        CHANNEL_CALLED: 500,
+        STATUS_RECORDED: 600,
+    };
+    const eventSequence = sequenceByType[String(row.eventType || '')];
+    if (eventSequence) {
+        return eventSequence;
+    }
+    if (row.statusHistoryId || row.toStatus || row.statusObject) {
+        return 610;
+    }
+    if (row.amountChangeId || row.changeType) {
+        return 620;
+    }
+    return 9999;
 }
 
 </script>
