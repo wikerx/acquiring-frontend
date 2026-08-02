@@ -96,7 +96,8 @@ export interface TransactionOrder {
     channelCode?: string;
     channelName?: string;
     channelOrderNo?: string;
-    transactionDateTime?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
     transactionTimeZone?: string;
 }
 
@@ -143,7 +144,8 @@ export interface TransactionOperation {
     reconciliationStatus?: string;
     accountingStatus?: string;
     channelMatchStatus?: string;
-    transactionDateTime?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
     operationTime?: string;
 }
 
@@ -198,6 +200,8 @@ export interface TransactionActionRequest {
     amount?: number | string;
     currency?: string;
     reason?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
 }
 
 export interface TransactionActionResponse {
@@ -237,13 +241,25 @@ export async function searchTransactionOperationsWithSummary(data: TransactionPa
     return unwrapResult(result.data);
 }
 
-export async function getTransactionOrderDetail(transactionId: string) {
-    const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/orders/${transactionId}`);
+export async function getTransactionOrderDetail(
+    transactionId: string,
+    transactionDateTime: string,
+    rootTransactionDateTime: string,
+) {
+    const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/orders/${transactionId}`, {
+        params: { transactionDateTime, rootTransactionDateTime },
+    });
     return unwrapResult(result.data);
 }
 
-export async function getTransactionOperationDetail(transactionId: string) {
-    const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/operations/${transactionId}`);
+export async function getTransactionOperationDetail(
+    transactionId: string,
+    transactionDateTime: string,
+    rootTransactionDateTime: string,
+) {
+    const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/operations/${transactionId}`, {
+        params: { transactionDateTime, rootTransactionDateTime },
+    });
     return unwrapResult(result.data);
 }
 

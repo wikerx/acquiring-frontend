@@ -5,6 +5,11 @@ import type { PageResult } from '@/api/monitor/job';
 
 export interface ShardingRuleRow {
     ruleKey: string;
+    ruleVersion?: string;
+    ruleChecksumPrefix?: string;
+    verifiedPhysicalNodes?: string[];
+    currentNodeRegistered?: boolean;
+    nextNodeRegistered?: boolean;
     logicalTable?: string;
     templateTable?: string;
     enabled?: boolean;
@@ -24,7 +29,7 @@ export interface ShardingRuleRow {
 }
 
 export interface ShardingPhysicalTableRow {
-    id: number;
+    id: string;
     logicalTable?: string;
     templateTable?: string;
     physicalTable?: string;
@@ -36,9 +41,12 @@ export interface ShardingPhysicalTableRow {
     dataSource?: string;
     tableStatus?: string;
     autoCreated?: number;
-    autoIncrementStart?: number;
-    autoIncrementCurrent?: number;
-    autoIncrementMax?: number;
+    autoIncrementStart?: string;
+    autoIncrementCurrent?: string;
+    autoIncrementMax?: string;
+    ruleVersion?: string;
+    ruleChecksumPrefix?: string;
+    nodeRegistered?: boolean;
     schemaCheckStatus?: string;
     lastCheckTime?: string;
     createdTime?: string;
@@ -59,7 +67,7 @@ export interface ShardingPhysicalTableQuery {
 }
 
 export interface ShardingTableCreateLogRow {
-    id: number;
+    id: string;
     batchNo?: string;
     triggerType?: string;
     dryRun?: number;
@@ -103,9 +111,12 @@ export interface ShardingTablePreCreateTableResult {
     targetQuarter?: string;
     status?: string;
     schemaCheckStatus?: string;
-    autoIncrementStart?: number;
-    autoIncrementCurrent?: number;
-    autoIncrementMax?: number;
+    shardingTimeCheckStatus?: string;
+    charsetCheckStatus?: string;
+    autoIncrementCheckStatus?: string;
+    autoIncrementStart?: string;
+    autoIncrementCurrent?: string;
+    autoIncrementMax?: string;
     message?: string;
 }
 
@@ -114,6 +125,12 @@ export interface ShardingTablePreCreateResult {
     timezone?: string;
     strategy?: string;
     currentQuarter?: string;
+    candidateRuleVersion?: string;
+    candidateRuleChecksum?: string;
+    verifiedPhysicalNodes?: string[];
+    publicationReady?: boolean;
+    publicationBlockers?: string[];
+    nextAction?: string;
     targetQuarters?: string[];
     createdTables?: string[];
     skippedTables?: string[];
@@ -127,11 +144,11 @@ export interface ShardingIdRule {
     mode?: string;
     prefixFormat?: string;
     sequenceWidth?: number;
-    startSequence?: number;
-    maxSequence?: number;
+    startSequence?: string;
+    maxSequence?: string;
     currentQuarter?: string;
-    currentQuarterStartValue?: number;
-    currentQuarterMaxValue?: number;
+    currentQuarterStartValue?: string;
+    currentQuarterMaxValue?: string;
 }
 
 export async function listShardingRules(): Promise<ShardingRuleRow[]> {
@@ -149,7 +166,7 @@ export async function searchShardingPhysicalTables(payload: ShardingPhysicalTabl
     return unwrapResult(result.data);
 }
 
-export async function getShardingPhysicalTable(id: number): Promise<ShardingPhysicalTableRow> {
+export async function getShardingPhysicalTable(id: string): Promise<ShardingPhysicalTableRow> {
     const result = await http.get<CommonResult<ShardingPhysicalTableRow>>(`/admin/monitor/sharding/physical-tables/${id}`);
     return unwrapResult(result.data);
 }
@@ -169,7 +186,7 @@ export async function searchShardingCreateLogs(payload: ShardingTableCreateLogQu
     return unwrapResult(result.data);
 }
 
-export async function getShardingCreateLog(id: number): Promise<ShardingTableCreateLogRow> {
+export async function getShardingCreateLog(id: string): Promise<ShardingTableCreateLogRow> {
     const result = await http.get<CommonResult<ShardingTableCreateLogRow>>(`/admin/monitor/sharding/table-create/logs/${id}`);
     return unwrapResult(result.data);
 }

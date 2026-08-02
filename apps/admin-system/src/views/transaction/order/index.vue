@@ -117,7 +117,7 @@
             </el-table-column>
             <el-table-column :label="t('common.operation')" width="100" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.rootTransactionId)" v-hasPermi="'transaction:order:detail'">{{ t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:order:detail'">{{ t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -319,9 +319,15 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(transactionId: string) {
+function openDetail(row: TransactionOrder) {
+    const transactionId = row.rootTransactionId;
+    const transactionDateTime = row.transactionDateTime;
+    // 根主单时间必须来自列表契约，不能用当前交易时间替代后误路由到其他季度。
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     selectedDetailTransactionId.value = transactionId;
-    openTransactionDetail(transactionId, detailLoading, detailVisible, detail, getTransactionOrderDetail, t('common.loadFailed'));
+    openTransactionDetail(transactionId, transactionDateTime, rootTransactionDateTime,
+        detailLoading, detailVisible, detail, getTransactionOrderDetail, t('common.loadFailed'));
 }
 
 function openMerchant(merchantId: string) {

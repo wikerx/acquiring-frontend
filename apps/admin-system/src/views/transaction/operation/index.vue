@@ -197,7 +197,7 @@
             </el-table-column>
             <el-table-column :label="t('common.operation')" width="260" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.transactionId)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
                     <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
                     </el-tooltip>
@@ -739,9 +739,14 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(transactionId: string) {
+function openDetail(row: TransactionOperation) {
+    const transactionId = row.transactionId;
+    const transactionDateTime = row.transactionDateTime;
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     selectedDetailTransactionId.value = transactionId;
-    openTransactionDetail(transactionId, detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
+    openTransactionDetail(transactionId, transactionDateTime, rootTransactionDateTime,
+        detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
 }
 
 function openMerchant(merchantId: string) {
@@ -954,10 +959,12 @@ async function submitRefund() {
             amount: refundForm.amount,
             currency: refundForm.currency || labelCurrency(selectedOperation.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.refundSuccess', { transactionId: result.transactionId }));
         refundVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -973,10 +980,12 @@ async function submitCapture() {
             amount: availableCaptureLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.captureSuccess', { transactionId: result.transactionId }));
         captureVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -992,10 +1001,12 @@ async function submitVoid() {
             amount: fullLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
         voidVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -1053,10 +1064,10 @@ function actionReasonText(reason?: string, description?: string) {
     return text || undefined;
 }
 
-async function refreshAfterAction(transactionId: string) {
+async function refreshAfterAction(row: TransactionOperation) {
     await loadData();
     if (detailVisible.value) {
-        openDetail(transactionId);
+        openDetail(row);
     }
 }
 
