@@ -51,6 +51,9 @@
                 <template #default="{ row }"><el-tag size="small" :type="sendStatusType(row.sendStatus)">{{ optionLabel(sendStatusOptions, String(row.sendStatus ?? '0')) }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="retryCount" :label="t('email.record.retryCount')" width="90" align="center" />
+            <el-table-column :label="t('email.record.nextRetryTime')" min-width="170" align="center">
+                <template #default="{ row }"><BaseDateTime :value="row.nextRetryTime" /></template>
+            </el-table-column>
             <el-table-column :label="t('email.record.sendSuccessTime')" min-width="170" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.sendSuccessTime" /></template>
             </el-table-column>
@@ -60,7 +63,16 @@
             <el-table-column :label="t('common.operation')" width="150" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'email:record:detail'">{{ t('common.detail') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="RefreshRight" :disabled="row.sendStatus === 2" @click="handleResend(row)" v-hasPermi="'email:record:resend'">{{ t('email.record.resend') }}</el-button>
+                    <el-button
+                        size="small"
+                        type="primary"
+                        link
+                        :icon="RefreshRight"
+                        :disabled="!canResendEmail(row.sendStatus)"
+                        :title="canResendEmail(row.sendStatus) ? t('email.record.resend') : t('email.record.resendUnavailable')"
+                        @click="handleResend(row)"
+                        v-hasPermi="'email:record:resend'"
+                    >{{ t('email.record.resend') }}</el-button>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -91,6 +103,7 @@
                 <el-descriptions-item :label="t('email.record.bizNo')">{{ detailRow.bizNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendStatus')"><el-tag size="small" :type="sendStatusType(detailRow.sendStatus)">{{ optionLabel(sendStatusOptions, String(detailRow.sendStatus ?? '0')) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.retryCount')">{{ detailRow.retryCount ?? 0 }} / {{ detailRow.maxRetryCount ?? 0 }}</el-descriptions-item>
+                <el-descriptions-item :label="t('email.record.nextRetryTime')"><BaseDateTime :value="detailRow.nextRetryTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendStartTime')"><BaseDateTime :value="detailRow.sendStartTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendEndTime')"><BaseDateTime :value="detailRow.sendEndTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendSuccessTime')"><BaseDateTime :value="detailRow.sendSuccessTime" /></el-descriptions-item>
@@ -115,7 +128,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getEmailRecord, resendEmailRecord, searchEmailRecords, type EmailRecord } from '@/api/email';
-import { loadEmailDictOptions, optionLabel, prettyJson, sendStatusType, showEmailError, type SelectOption } from '../shared';
+import { canResendEmail, loadEmailDictOptions, optionLabel, prettyJson, sendStatusType, showEmailError, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -200,6 +213,10 @@ async function openDetail(row: EmailRecord) {
 }
 
 async function handleResend(row: EmailRecord) {
+    if (!canResendEmail(row.sendStatus)) {
+        ElMessage.warning(t('email.record.resendUnavailable'));
+        return;
+    }
     try {
         await ElMessageBox.confirm(t('email.record.resendConfirm', { no: row.emailNo }), t('email.record.resend'), { type: 'warning' });
     } catch {
@@ -207,12 +224,12 @@ async function handleResend(row: EmailRecord) {
     }
     try {
         const result = await resendEmailRecord(row.id);
-        if (result.sendStatus === 2) {
-            ElMessage.success(t('email.record.resendSuccess'));
+        if (result.sendStatus === 0) {
+            ElMessage.success(t('email.record.resendQueued'));
         } else {
             await ElMessageBox.alert(result.errorMessage || t('email.record.resendFailed'), t('email.record.resend'), { type: 'error' });
         }
-        loadData();
+        await loadData();
     } catch (error) {
         await showEmailError(error, t('email.record.resend'), t('email.record.resendFailed'));
     }

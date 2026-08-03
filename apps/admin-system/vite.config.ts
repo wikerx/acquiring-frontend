@@ -15,7 +15,7 @@ export default defineConfig({
     server: {
         proxy: {
             '/admin': {
-                target: 'http://127.0.0.1:8001',
+                target: process.env.VITE_ADMIN_DEV_PROXY_TARGET || 'http://127.0.0.1:8001',
                 changeOrigin: true,
             },
         },

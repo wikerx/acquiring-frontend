@@ -40,7 +40,17 @@ export function sendStatusType(value?: number) {
     if (value === 3) {
         return 'danger';
     }
+    if (value === 0 || value === 5) {
+        return 'info';
+    }
     return 'warning';
+}
+
+/**
+ * 只有自动重试已经关闭或人工取消的记录允许创建新的投递任务。
+ */
+export function canResendEmail(value?: number) {
+    return value === 3 || value === 5;
 }
 
 export function resolveErrorMessage(error: unknown, fallback: string) {
