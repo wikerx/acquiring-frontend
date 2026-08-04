@@ -57,6 +57,12 @@ export interface MerchantNotificationQuery extends PageQuery {
     queryTimeZone?: string;
 }
 
+export interface MerchantNotificationRetryRequest {
+    transactionId: string;
+    transactionDateTime: string;
+    requestId?: string;
+}
+
 export interface TransactionOrder {
     operationId: string;
     rootTransactionId: string;
@@ -295,4 +301,9 @@ export async function searchMerchantNotifications(data: MerchantNotificationQuer
 
 export async function exportMerchantNotifications(data: MerchantNotificationQuery) {
     await downloadExcel('/admin/transactions/merchant-notifications/export', { data });
+}
+
+export async function retryMerchantNotification(data: MerchantNotificationRetryRequest) {
+    const result = await http.post<CommonResult<string>>('/admin/transactions/merchant-notifications/retry', data);
+    return unwrapResult(result.data);
 }

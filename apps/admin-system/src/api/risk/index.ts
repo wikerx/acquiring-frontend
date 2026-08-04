@@ -185,6 +185,9 @@ export interface EvaluationQuery extends PageQuery {
     merchantOrderNo?: string;
     paymentOrderNo?: string;
     decisionResult?: string;
+    riskLevel?: string;
+    evaluationStartTime?: string;
+    evaluationEndTimeExclusive?: string;
 }
 
 export async function getRiskFunctions() {

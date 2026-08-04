@@ -46,6 +46,9 @@
                     <el-tag size="small" :type="row.nextNodeRegistered ? 'success' : 'warning'">{{ row.nextNodeRegistered ? $t('common.yes') : $t('common.no') }}</el-tag>
                 </template>
             </el-table-column>
+            <el-table-column :label="$t('monitor.sharding.registeredNodeCount')" width="130" align="center">
+                <template #default="{ row }">{{ (row.verifiedPhysicalNodes || []).length }}</template>
+            </el-table-column>
             <el-table-column prop="physicalTableCount" :label="$t('monitor.sharding.physicalTableCount')" width="120" align="center" />
             <el-table-column :label="$t('common.operation')" width="100" align="center" fixed="right">
                 <template #default="{ row }">
@@ -107,6 +110,7 @@ const detailItems = computed(() => [
     { prop: 'currentNodeRegistered', label: t('monitor.sharding.currentNodeRegistered') },
     { prop: 'nextPhysicalTable', label: t('monitor.sharding.nextPhysicalTable') },
     { prop: 'nextNodeRegistered', label: t('monitor.sharding.nextNodeRegistered') },
+    { prop: 'registeredNodeCount', label: t('monitor.sharding.registeredNodeCount') },
     { prop: 'physicalTableCount', label: t('monitor.sharding.physicalTableCount') },
     { prop: 'description', label: t('common.remark') },
 ]);
@@ -158,6 +162,7 @@ async function openDetail(row: ShardingRuleRow) {
         detailData.value = {
             ...detail,
             physicalTables: (detail.physicalTables || []).join(', '),
+            registeredNodeCount: (detail.verifiedPhysicalNodes || []).length,
             verifiedPhysicalNodes: (detail.verifiedPhysicalNodes || []).join(', '),
             currentNodeRegistered: detail.currentNodeRegistered ? t('common.yes') : t('common.no'),
             nextNodeRegistered: detail.nextNodeRegistered ? t('common.yes') : t('common.no'),

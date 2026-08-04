@@ -184,8 +184,8 @@ function rawBlockCandidates(row: Record<string, unknown>) {
     }
     if (type === 'merchantNotification') {
         return [
+            { title: t('transaction.detail.merchantNotifyTargetUrl'), value: row.targetUrlMasked },
             { title: t('transaction.detail.merchantNotifyPayload'), value: row.payloadJsonMasked },
-            { title: t('transaction.detail.merchantNotifyConfigSnapshot'), value: row.notifyConfigSnapshotJson },
         ];
     }
     return [];
@@ -431,7 +431,7 @@ function recordType(row: Record<string, unknown>) {
     if (row.notifyLogId || row.attemptNo || row.success !== undefined) {
         return 'merchantNotificationLog';
     }
-    if (row.notifyId || row.notifyConfigSnapshotJson || row.payloadJsonMasked) {
+    if (row.notifyId || row.targetUrlMasked || row.payloadJsonMasked) {
         return 'merchantNotification';
     }
     if (props.variant === 'callback') {
