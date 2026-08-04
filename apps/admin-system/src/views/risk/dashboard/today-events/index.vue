@@ -58,7 +58,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { pageEvaluations, type EvaluationQuery } from '@/api/risk';
+import { pageRiskTodayEvents, type EvaluationQuery } from '@/api/risk';
 import { riskOptionLabel } from '@/views/risk/shared';
 
 const { t } = useI18n();
@@ -82,7 +82,7 @@ async function loadData() {
   loading.value = true;
   try {
     const [evaluationStartTime, evaluationEndTimeExclusive] = evaluationTimeRange();
-    const result = await pageEvaluations({
+    const result = await pageRiskTodayEvents({
       ...query,
       evaluationStartTime,
       evaluationEndTimeExclusive,
