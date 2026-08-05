@@ -100,7 +100,11 @@
         </div>
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('transaction.merchantNotification.detailTitle')" size="lg">
-            <TransactionRecordList :rows="detailRow ? [detailRow] : []" :display-time-zone="query.queryTimeZone" />
+            <div v-loading="detailLoading">
+                <TransactionRecordList :rows="detailRow ? [detailRow] : []" :display-time-zone="query.queryTimeZone" />
+                <el-divider content-position="left">{{ t('transaction.merchantNotification.deliveryAttempts') }}</el-divider>
+                <TransactionRecordList :rows="deliveryLogs" variant="callback" :display-time-zone="query.queryTimeZone" />
+            </div>
         </CommonDetailDrawer>
     </div>
 </template>
@@ -114,7 +118,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
-import { exportMerchantNotifications, retryMerchantNotification, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
+import { exportMerchantNotifications, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionRecordList from '../components/TransactionRecordList.vue';
@@ -135,7 +139,9 @@ const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 const quickPreset = ref('today');
 const detailVisible = ref(false);
+const detailLoading = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
+const deliveryLogs = ref<TransactionRecord[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
 const query = reactive({ merchantId: '', transactionId: '', notifyStatus: '', queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE });
 
@@ -201,9 +207,23 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(row: TransactionRecord) {
+async function openDetail(row: TransactionRecord) {
     detailRow.value = row;
+    deliveryLogs.value = [];
     detailVisible.value = true;
+    const notifyId = recordText(row, 'notifyId');
+    const transactionDateTime = recordText(row, 'transactionDateTime');
+    if (!notifyId || !transactionDateTime) {
+        return;
+    }
+    detailLoading.value = true;
+    try {
+        const detail = await getMerchantNotificationDetail(notifyId, transactionDateTime);
+        detailRow.value = detail.notification || row;
+        deliveryLogs.value = detail.deliveryLogs || [];
+    } finally {
+        detailLoading.value = false;
+    }
 }
 
 function recordText(row: TransactionRecord, field: string) {

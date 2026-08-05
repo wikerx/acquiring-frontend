@@ -1,6 +1,8 @@
 export default {
     topbar: {
         language: 'Language',
+        english: 'English',
+        chinese: 'Chinese',
         preview: 'Preview',
         checkout: 'Checkout',
         success: 'Success',
@@ -81,6 +83,19 @@ export default {
         authorizationCode: 'Authorization Code',
         failureReason: 'Failure Reason',
         failureReasonValue: 'Issuer declined',
+        failureReasons: {
+            RISK_REJECTED: 'The transaction did not pass security checks',
+            ROUTE_FAILED: 'No payment route is currently available',
+            CHANNEL_UNSUPPORTED: 'This payment method does not support the transaction',
+            EXCHANGE_RATE_NOT_FOUND: 'Currency conversion is temporarily unavailable',
+            CHANNEL_REQUEST_FAILED: 'The payment provider is temporarily unavailable',
+            CHANNEL_RESPONSE_INVALID: 'The payment result could not be confirmed',
+            CHANNEL_TIMEOUT: 'The payment provider timed out',
+            STATE_TRANSITION_DENIED: 'The transaction cannot continue in its current state',
+            ISSUER_DECLINED: 'The issuer declined the transaction',
+            THREE_DS_FAILED: 'Card authentication was not completed',
+            UNKNOWN: 'The payment could not be completed',
+        },
         referenceCode: 'Reference Code',
         requestId: 'Request ID',
         securityPolicy: 'Security Policy',

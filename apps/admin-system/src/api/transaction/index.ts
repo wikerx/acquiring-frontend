@@ -63,6 +63,11 @@ export interface MerchantNotificationRetryRequest {
     requestId?: string;
 }
 
+export interface MerchantNotificationDetail {
+    notification: TransactionRecord;
+    deliveryLogs: TransactionRecord[];
+}
+
 export interface TransactionOrder {
     operationId: string;
     rootTransactionId: string;
@@ -224,6 +229,27 @@ export interface TransactionActionResponse {
     currency?: string;
 }
 
+/**
+ * 保留后端返回的真实交易时间，只补齐 DATETIME(3) 契约需要的毫秒位。
+ * 该转换不解析交易号，也不做时区换算，避免改变季度分片路由值。
+ */
+function normalizeTransactionShardTime(value: string) {
+    const normalized = value.trim().replace('T', ' ');
+    const match = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?$/.exec(normalized);
+    if (!match) {
+        return value;
+    }
+    return `${match[1]}.${(match[2] || '').padEnd(3, '0').slice(0, 3)}`;
+}
+
+function normalizeTransactionActionShardTimes(data: TransactionActionRequest): TransactionActionRequest {
+    return {
+        ...data,
+        transactionDateTime: normalizeTransactionShardTime(data.transactionDateTime),
+        rootTransactionDateTime: normalizeTransactionShardTime(data.rootTransactionDateTime),
+    };
+}
+
 export async function searchTransactionOrders(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<PageResult<TransactionOrder>>>('/admin/transactions/orders/search', data);
     return unwrapResult(result.data);
@@ -253,7 +279,10 @@ export async function getTransactionOrderDetail(
     rootTransactionDateTime: string,
 ) {
     const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/orders/${transactionId}`, {
-        params: { transactionDateTime, rootTransactionDateTime },
+        params: {
+            transactionDateTime: normalizeTransactionShardTime(transactionDateTime),
+            rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
+        },
     });
     return unwrapResult(result.data);
 }
@@ -264,23 +293,35 @@ export async function getTransactionOperationDetail(
     rootTransactionDateTime: string,
 ) {
     const result = await http.get<CommonResult<TransactionDetail>>(`/admin/transactions/operations/${transactionId}`, {
-        params: { transactionDateTime, rootTransactionDateTime },
+        params: {
+            transactionDateTime: normalizeTransactionShardTime(transactionDateTime),
+            rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
+        },
     });
     return unwrapResult(result.data);
 }
 
 export async function refundTransactionOperation(transactionId: string, data: TransactionActionRequest) {
-    const result = await http.post<CommonResult<TransactionActionResponse>>(`/admin/transactions/operations/${transactionId}/refund`, data);
+    const result = await http.post<CommonResult<TransactionActionResponse>>(
+        `/admin/transactions/operations/${transactionId}/refund`,
+        normalizeTransactionActionShardTimes(data),
+    );
     return unwrapResult(result.data);
 }
 
 export async function captureTransactionOperation(transactionId: string, data: TransactionActionRequest) {
-    const result = await http.post<CommonResult<TransactionActionResponse>>(`/admin/transactions/operations/${transactionId}/capture`, data);
+    const result = await http.post<CommonResult<TransactionActionResponse>>(
+        `/admin/transactions/operations/${transactionId}/capture`,
+        normalizeTransactionActionShardTimes(data),
+    );
     return unwrapResult(result.data);
 }
 
 export async function voidTransactionOperation(transactionId: string, data: TransactionActionRequest) {
-    const result = await http.post<CommonResult<TransactionActionResponse>>(`/admin/transactions/operations/${transactionId}/void`, data);
+    const result = await http.post<CommonResult<TransactionActionResponse>>(
+        `/admin/transactions/operations/${transactionId}/void`,
+        normalizeTransactionActionShardTimes(data),
+    );
     return unwrapResult(result.data);
 }
 
@@ -299,11 +340,22 @@ export async function searchMerchantNotifications(data: MerchantNotificationQuer
     return unwrapResult(result.data);
 }
 
+export async function getMerchantNotificationDetail(notifyId: string, transactionDateTime: string) {
+    const result = await http.get<CommonResult<MerchantNotificationDetail>>(
+        `/admin/transactions/merchant-notifications/${notifyId}`,
+        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime) } },
+    );
+    return unwrapResult(result.data);
+}
+
 export async function exportMerchantNotifications(data: MerchantNotificationQuery) {
     await downloadExcel('/admin/transactions/merchant-notifications/export', { data });
 }
 
 export async function retryMerchantNotification(data: MerchantNotificationRetryRequest) {
-    const result = await http.post<CommonResult<string>>('/admin/transactions/merchant-notifications/retry', data);
+    const result = await http.post<CommonResult<string>>('/admin/transactions/merchant-notifications/retry', {
+        ...data,
+        transactionDateTime: normalizeTransactionShardTime(data.transactionDateTime),
+    });
     return unwrapResult(result.data);
 }

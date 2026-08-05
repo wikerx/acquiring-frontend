@@ -21,8 +21,8 @@
                             :aria-label="t('topbar.language')"
                             @change="handleLocaleChange(language)"
                         >
-                            <option value="en-US">English</option>
-                            <option value="zh-CN">中文</option>
+                            <option value="en-US">{{ t('topbar.english') }}</option>
+                            <option value="zh-CN">{{ t('topbar.chinese') }}</option>
                         </select>
                     </span>
                 </label>
@@ -562,6 +562,18 @@ const SYSTEM_PAYMENT_LOGOS: PaymentLogoKey[] = [
     'googlePay',
     'paypal',
 ];
+const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
+    RISK_REJECTED: 'status.failureReasons.RISK_REJECTED',
+    ROUTE_FAILED: 'status.failureReasons.ROUTE_FAILED',
+    CHANNEL_UNSUPPORTED: 'status.failureReasons.CHANNEL_UNSUPPORTED',
+    EXCHANGE_RATE_NOT_FOUND: 'status.failureReasons.EXCHANGE_RATE_NOT_FOUND',
+    CHANNEL_REQUEST_FAILED: 'status.failureReasons.CHANNEL_REQUEST_FAILED',
+    CHANNEL_RESPONSE_INVALID: 'status.failureReasons.CHANNEL_RESPONSE_INVALID',
+    CHANNEL_TIMEOUT: 'status.failureReasons.CHANNEL_TIMEOUT',
+    STATE_TRANSITION_DENIED: 'status.failureReasons.STATE_TRANSITION_DENIED',
+    ISSUER_DECLINED: 'status.failureReasons.ISSUER_DECLINED',
+    THREE_DS_FAILED: 'status.failureReasons.THREE_DS_FAILED',
+};
 
 const checkoutBrand = getSystemBrand('checkout');
 const { t, locale } = useI18n();
@@ -589,12 +601,14 @@ const countryDropdownOpen = ref(false);
 const countryLoadFailed = ref(false);
 const manualLanguageSelected = ref(readStoredValue(MANUAL_LOCALE_KEY) === 'true');
 const submitting = ref(false);
-const formMessage = ref('');
+const formMessageKey = ref('');
+const formMessage = computed(() => formMessageKey.value ? t(formMessageKey.value) : '');
 const fieldErrors = reactive<FieldErrors>({});
 const pollTimer = ref<number | null>(null);
 const pollAttempts = ref(0);
 const devStatusPolls = ref(0);
-const initError = ref('');
+const initErrorKey = ref('');
+const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
 const threeDsReturnHandling = ref(false);
 
 const billingForm = reactive({
@@ -640,7 +654,8 @@ const retryAvailable = computed(() => (
     ?? checkoutInfo.value?.retryAllowed
     ?? false
 ));
-const failureHelpText = computed(() => paymentResult.value?.failure?.message || t('status.failedHelpDesc'));
+const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
+const failureHelpText = computed(() => failureReasonText.value);
 const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionType === 'HTML'
     ? paymentResult.value?.threeDsAction?.html || ''
     : '');
@@ -710,7 +725,7 @@ const localizedStatusDetailRows = computed(() => {
     }
     if (statusViewState.value === 'failed') {
         rows.push(
-            { label: t('status.failureReason'), value: paymentResult.value?.failure?.reasonCode || t('status.failureReasonValue') },
+            { label: t('status.failureReason'), value: failureReasonText.value },
             { label: t('status.remainingAttempts'), value: String(paymentResult.value?.failure?.remainingAttemptCount ?? '-') },
         );
         return rows;
@@ -731,7 +746,7 @@ const localizedStatusDetailRows = computed(() => {
 });
 
 const blockedReasons = computed(() => [
-    initError.value || t('status.blockedReasonInvalidRequest'),
+    initErrorText.value || t('status.blockedReasonInvalidRequest'),
     t('status.blockedReasonSignature'),
     t('status.blockedReasonOrigin'),
 ]);
@@ -754,7 +769,7 @@ const localizedStatusConfig = computed(() => {
             eyebrow: t('status.failedEyebrow'),
             title: t('status.failedTitle'),
             description: t('status.failedDescription'),
-            message: paymentResult.value?.failure?.message || t('status.failedMessage'),
+            message: t('status.failedMessage'),
             primaryAction: retryAvailable.value ? t('status.failedPrimary') : t('status.failedSecondary'),
             secondaryAction: t('status.failedSecondary'),
         };
@@ -765,7 +780,7 @@ const localizedStatusConfig = computed(() => {
             eyebrow: t('status.blockedEyebrow'),
             title: t('status.blockedTitle'),
             description: t('status.blockedDescription'),
-            message: initError.value || t('status.blockedMessage'),
+            message: initErrorText.value || t('status.blockedMessage'),
             primaryAction: t('status.blockedPrimary'),
             secondaryAction: t('status.blockedSecondary'),
         };
@@ -891,7 +906,7 @@ async function initializeCheckout() {
     const route = parseCheckoutRoute();
     const token = route.opaqueToken;
     if (!route.valid || !isRoutableCheckoutToken(token)) {
-        blockCheckout(t('checkout.invalidLink'));
+        blockCheckout('checkout.invalidLink');
         return;
     }
     if (isDevToken(token)) {
@@ -920,13 +935,13 @@ async function initializeCheckout() {
         });
         hydrateSession(response);
         applyPageState(response.pageState);
-    } catch (error) {
+    } catch {
         if (isDevToken(token)) {
             hydrateSession(mockSession(token));
             applyPageState('PAYABLE');
             return;
         }
-        blockCheckout(error instanceof Error ? error.message : t('checkout.invalidLink'));
+        blockCheckout('checkout.invalidLink');
     }
 }
 
@@ -935,7 +950,7 @@ function hydrateSession(response: HostedCheckoutSession) {
 }
 
 async function handleSubmitPayment() {
-    formMessage.value = '';
+    formMessageKey.value = '';
     if (!validateForm() || !routeToken.value || !session.value || !selectedMethod.value) {
         return;
     }
@@ -975,13 +990,13 @@ async function handleSubmitPayment() {
             clientContext: buildClientContext(),
         });
         handlePaymentResult(response);
-    } catch (error) {
+    } catch {
         if (isDevToken(routeToken.value)) {
             devStatusPolls.value = 0;
             handlePaymentResult(mockThreeDsRequiredResult());
             return;
         }
-        formMessage.value = error instanceof Error ? error.message : t('checkout.submitFailed');
+        formMessageKey.value = 'checkout.submitFailed';
     } finally {
         submitting.value = false;
     }
@@ -1011,7 +1026,7 @@ async function refreshPaymentStatus() {
             clientContext: buildClientContext(),
         });
         handlePaymentResult(response);
-    } catch (error) {
+    } catch {
         if (isDevToken(routeToken.value)) {
             if (routeToken.value === 'dev-processing') {
                 handlePaymentResult(mockProcessingResult());
@@ -1027,7 +1042,7 @@ async function refreshPaymentStatus() {
                 checkoutAttemptId: paymentResult.value?.checkoutAttemptId,
                 pageState: 'PROCESSING',
                 failure: {
-                    message: error instanceof Error ? error.message : t('checkout.statusQueryFailed'),
+                    reasonCode: 'CHANNEL_RESPONSE_INVALID',
                 },
             };
         }
@@ -1058,13 +1073,13 @@ async function handleThreeDsReturnMessage(event: MessageEvent) {
             clientContext: buildClientContext(),
         });
         handlePaymentResult(response);
-    } catch (error) {
+    } catch {
         paymentResult.value = {
             checkoutSessionId: session.value?.checkoutSessionId || payload.checkoutSessionId || '',
             checkoutAttemptId: payload.checkoutAttemptId,
             pageState: 'PROCESSING',
             failure: {
-                message: error instanceof Error ? error.message : t('checkout.statusQueryFailed'),
+                reasonCode: 'CHANNEL_RESPONSE_INVALID',
             },
         };
         runtimeState.value = 'processing';
@@ -1128,12 +1143,12 @@ function applyPageState(pageState?: string) {
         }
         return;
     }
-    blockCheckout(t('checkout.invalidLink'));
+    blockCheckout('checkout.invalidLink');
 }
 
 function retryPayment() {
     clearPolling();
-    formMessage.value = '';
+    formMessageKey.value = '';
     paymentResult.value = null;
     runtimeState.value = 'checkout';
 }
@@ -1167,10 +1182,16 @@ function clearPolling() {
     }
 }
 
-function blockCheckout(message: string) {
+function blockCheckout(messageKey: string) {
     clearPolling();
-    initError.value = message;
+    initErrorKey.value = messageKey;
     runtimeState.value = 'blocked';
+}
+
+/** 使用稳定失败原因码选择当前语言文案，禁止展示渠道或后端返回的原始消息。 */
+function localizedFailureReason(reasonCode?: string): string {
+    const key = FAILURE_REASON_I18N_KEYS[normalizeCode(reasonCode)] || 'status.failureReasons.UNKNOWN';
+    return t(key);
 }
 
 function validateForm(): boolean {
