@@ -64,10 +64,12 @@
       <el-table-column :label="$t('common.createTime')" min-width="170" align="center" :show-overflow-tooltip="true">
         <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
       </el-table-column>
-      <el-table-column :label="$t('common.operation')" align="center" width="300" fixed="right">
+      <el-table-column :label="$t('common.operation')" align="center" width="390" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:query'">{{ $t('common.detail') }}</el-button>
+          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:detail'">{{ $t('common.detail') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="'merchant:info:edit'">{{ $t('common.edit') }}</el-button>
+          <el-button v-if="row.merchantStatus === 1" size="small" type="danger" link :icon="VideoPause" :loading="statusChangingId === row.id" @click="changeStatus(row, 2)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.freeze') }}</el-button>
+          <el-button v-if="row.merchantStatus === 2" size="small" type="success" link :icon="VideoPlay" :loading="statusChangingId === row.id" @click="changeStatus(row, 1)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.unfreeze') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openKeys(row)" v-hasPermi="'merchant:key:manage'">{{ $t('merchant.info.keyManage') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openMaterial(row)" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.material') }}</el-button>
         </template>
@@ -159,8 +161,14 @@
                 <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
               </el-select>
             </el-form-item>
+            <el-form-item :label="$t('merchant.info.defaultLocale')" prop="defaultLocale">
+              <el-select v-model="form.defaultLocale" style="width:100%">
+                <el-option :label="$t('merchant.info.localeChinese')" value="zh-CN" />
+                <el-option :label="$t('merchant.info.localeEnglish')" value="en-US" />
+              </el-select>
+            </el-form-item>
             <el-form-item :label="$t('common.status')" prop="merchantStatus">
-              <el-select v-model="form.merchantStatus" style="width:100%">
+              <el-select v-model="form.merchantStatus" style="width:100%" :disabled="formMode === 'edit'">
                 <el-option :label="$t('merchant.info.statusNormal')" :value="1" />
                 <el-option :label="$t('merchant.info.statusFrozen')" :value="2" />
                 <el-option :label="$t('merchant.info.statusClosed')" :value="3" />
@@ -467,7 +475,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { Edit, Key, Plus, Refresh, Search, VideoPause, VideoPlay, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -475,6 +483,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   createMerchant,
+  changeMerchantStatus,
   copyOpenApiKeyMaterial,
   downloadOpenApiKeyMaterial,
   getMerchant,
@@ -529,6 +538,7 @@ const emptyForm = (): MerchantSaveRequest => ({
   billingDescriptor: '',
   merchantShortName: '',
   merchantStatus: 1,
+  defaultLocale: 'zh-CN',
   merchantCategoryCode: '',
   countryCode: '',
   regionCode: '',
@@ -565,6 +575,7 @@ const formRules = computed<FormRules>(() => ({
   settlementCurrency: [{ required: true, message: () => t('merchant.info.requiredSettlementCurrency'), trigger: 'change' }],
   timezone: [{ required: true, message: () => t('merchant.info.requiredTimezone'), trigger: 'change' }],
   merchantStatus: [{ required: true, message: () => t('merchant.info.requiredStatus'), trigger: 'change' }],
+  defaultLocale: [{ required: true, message: () => t('merchant.info.requiredDefaultLocale'), trigger: 'change' }],
   contactEmail: [
     { required: true, message: () => t('merchant.info.requiredContactEmail'), trigger: 'blur' },
     { type: 'email', message: () => t('merchant.info.invalidContactEmail'), trigger: 'blur' },
@@ -597,6 +608,7 @@ const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:do
 const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
 const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
 const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
+const statusChangingId = ref<string>();
 const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
 
 onMounted(() => {
@@ -784,6 +796,27 @@ async function submitForm() {
     loadData();
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.saveFailed'));
+  }
+}
+
+async function changeStatus(row: MerchantInfo, targetStatus: 1 | 2) {
+  const action = targetStatus === 2 ? t('merchant.info.freeze') : t('merchant.info.unfreeze');
+  try {
+    await ElMessageBox.confirm(
+      t('merchant.info.statusChangeConfirm', { action, merchant: row.merchantName }),
+      t('common.operationConfirm'),
+      { type: targetStatus === 2 ? 'warning' : 'success' },
+    );
+    statusChangingId.value = row.id;
+    await changeMerchantStatus(row.id, targetStatus);
+    ElMessage.success(t('merchant.info.statusChangeSuccess', { action }));
+    await loadData();
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || t('common.operationFailed'));
+    }
+  } finally {
+    statusChangingId.value = undefined;
   }
 }
 

@@ -1322,8 +1322,9 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     min-width: 0;
 }
 
-.transaction-time-form-item {
-    flex: 1 1 688px;
+.transaction-search-form__fields :deep(.el-form-item.transaction-time-form-item) {
+    flex: 1 1 780px;
+    max-width: 100%;
 }
 
 .transaction-search-form :deep(.el-form-item__label) {

@@ -10,6 +10,7 @@ export interface MerchantInfo {
     billingDescriptor?: string;
     merchantShortName?: string;
     merchantStatus: number;
+    defaultLocale: 'zh-CN' | 'en-US';
     merchantCategoryCode: string;
     countryCode: string;
     regionCode?: string;

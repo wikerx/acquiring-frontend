@@ -20,9 +20,13 @@
             type="datetimerange"
             value-format="YYYY-MM-DDTHH:mm:ss"
             format="YYYY-MM-DD HH:mm:ss"
+            :default-time="rangeDefaultTimes"
+            unlink-panels
+            editable
             :range-separator="t('common.to')"
             :start-placeholder="t('common.startTime')"
             :end-placeholder="t('common.endTime')"
+            @focus="handlePickerFocus"
             @update:model-value="handleDateRangeChange"
         />
     </div>
@@ -50,6 +54,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const activePreset = ref(props.preset || props.defaultPreset || '');
+const rangeDefaultTimes: [Date, Date] = [
+    new Date(2000, 0, 1, 0, 0, 0),
+    new Date(2000, 0, 1, 23, 59, 59),
+];
 
 watch(() => props.preset, (value) => {
     if (value !== undefined && value !== activePreset.value) {
@@ -91,6 +99,11 @@ function handleDateRangeChange(value: string[] | null) {
     activePreset.value = '';
     emit('update:preset', '');
     emit('update:modelValue', Array.isArray(value) ? value : []);
+}
+
+function handlePickerFocus() {
+    activePreset.value = '';
+    emit('update:preset', '');
 }
 
 function timezoneLabel(option: SelectOption) {

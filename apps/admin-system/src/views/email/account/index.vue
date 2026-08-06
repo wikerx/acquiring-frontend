@@ -424,6 +424,7 @@ function syncCurrentMerchantOption() {
         merchantId: form.merchantId,
         merchantName: form.merchantName || form.merchantNo || form.merchantId,
         merchantStatus: 1,
+        defaultLocale: 'zh-CN',
         merchantCategoryCode: '',
         countryCode: '',
         settlementCurrency: '',
