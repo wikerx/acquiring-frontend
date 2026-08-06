@@ -27,10 +27,23 @@
           <el-input v-model.trim="query.ipValue" :placeholder="$t('merchant.ipWhitelist.ipPlaceholder')" clearable class="ip-address-input" @input="handleIpInput" @keyup.enter="handleSearch" />
         </div>
       </el-form-item>
-      <el-form-item :label="$t('common.status')" prop="status">
+      <el-form-item :label="$t('merchant.ipWhitelist.transactionStatus')" prop="status">
         <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
           <el-option :label="$t('common.enable')" :value="1" />
           <el-option :label="$t('common.disable')" :value="0" />
+        </el-select>
+      </el-form-item>
+      <el-form-item :label="$t('merchant.ipWhitelist.approvalStatus')" prop="approvalStatus">
+        <el-select v-model="query.approvalStatus" :placeholder="$t('common.pleaseSelect')" clearable>
+          <el-option :label="$t('merchant.ipWhitelist.approvalPending')" :value="0" />
+          <el-option :label="$t('merchant.ipWhitelist.approvalApproved')" :value="1" />
+          <el-option :label="$t('merchant.ipWhitelist.approvalRejected')" :value="2" />
+        </el-select>
+      </el-form-item>
+      <el-form-item :label="$t('merchant.ipWhitelist.submitSource')" prop="submitSource">
+        <el-select v-model="query.submitSource" :placeholder="$t('common.pleaseSelect')" clearable>
+          <el-option :label="$t('merchant.ipWhitelist.sourceAdmin')" value="ADMIN" />
+          <el-option :label="$t('merchant.ipWhitelist.sourceMerchant')" value="MERCHANT" />
         </el-select>
       </el-form-item>
       <el-form-item :label="$t('merchant.ipWhitelist.accessControl')" prop="ipWhitelistEnabled">
@@ -79,6 +92,7 @@
             <div v-for="item in ipItems(row)" :key="item.id || item.ipValue" class="ip-pill" :class="[item.ipType === 'IPv6' ? 'is-ipv6' : 'is-ipv4', item.status === 1 ? '' : 'is-disabled']">
               <span>{{ ipTypeLabel(item.ipType) }}</span>
               <code>{{ item.ipValue || '-' }}</code>
+              <el-tag class="ip-pill__approval" size="small" :type="approvalTagType(item.approvalStatus)" effect="plain">{{ approvalStatusText(item.approvalStatus) }}</el-tag>
               <el-dropdown trigger="click" @command="(command: string) => handleIpCommand(command, row, item)">
                 <button class="ip-pill-action" type="button" @click.stop>
                   <el-icon><MoreFilled /></el-icon>
@@ -86,8 +100,9 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="detail">{{ $t('common.detail') }}</el-dropdown-item>
+                    <el-dropdown-item v-if="item.approvalStatus === 0" command="approve" v-hasPermi="'merchant:ip-whitelist:approve'">{{ $t('merchant.ipWhitelist.approve') }}</el-dropdown-item>
                     <el-dropdown-item command="edit" v-hasPermi="'merchant:ip-whitelist:edit'">{{ $t('common.edit') }}</el-dropdown-item>
-                    <el-dropdown-item command="status" v-hasPermi="'merchant:ip-whitelist:status'">{{ item.status === 1 ? $t('common.disable') : $t('common.enable') }}</el-dropdown-item>
+                    <el-dropdown-item v-if="item.approvalStatus === 1" command="status" v-hasPermi="'merchant:ip-whitelist:status'">{{ item.status === 1 ? $t('common.disable') : $t('common.enable') }}</el-dropdown-item>
                     <el-dropdown-item command="delete" divided v-hasPermi="'merchant:ip-whitelist:remove'">{{ $t('common.delete') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -109,9 +124,14 @@
           />
         </template>
       </el-table-column>
-      <el-table-column :label="$t('common.status')" width="100" align="center">
+      <el-table-column :label="$t('merchant.ipWhitelist.transactionStatus')" width="112" align="center">
         <template #default="{ row }">
           <el-tag size="small" :type="hasDisabledIp(row) ? 'warning' : 'success'" effect="plain">{{ ipStatusSummary(row) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column :label="$t('merchant.ipWhitelist.approvalStatus')" width="126" align="center">
+        <template #default="{ row }">
+          <el-tag size="small" :type="approvalSummaryType(row)" effect="plain">{{ approvalSummary(row) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="remark" :label="$t('common.remark')" min-width="180" align="center" show-overflow-tooltip />
@@ -155,7 +175,7 @@
         <el-form-item v-else label="IP" prop="ipValue">
           <el-input v-model.trim="form.ipValue" placeholder="203.0.113.10" />
         </el-form-item>
-        <el-form-item :label="$t('common.status')" prop="status">
+        <el-form-item :label="$t('merchant.ipWhitelist.transactionStatus')" prop="status">
           <el-select v-model="form.status" style="width:100%">
             <el-option :label="$t('common.enable')" :value="1" />
             <el-option :label="$t('common.disable')" :value="0" />
@@ -190,18 +210,54 @@
               <span class="ip-manage__type">{{ ipTypeLabel(item.ipType) }}</span>
               <code>{{ item.ipValue || '-' }}</code>
             </div>
-            <el-tag size="small" :type="item.status === 1 ? 'success' : 'info'" effect="plain">{{ item.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag>
+            <div class="ip-manage__states">
+              <el-tag size="small" :type="approvalTagType(item.approvalStatus)" effect="plain">{{ approvalStatusText(item.approvalStatus) }}</el-tag>
+              <el-tag size="small" :type="item.status === 1 ? 'success' : 'info'" effect="plain">{{ transactionStatusText(item.status) }}</el-tag>
+            </div>
             <div class="ip-manage__remark">{{ item.remark || '-' }}</div>
             <div class="ip-manage__actions">
               <el-button size="small" type="primary" link :icon="View" @click="openDetail(manageRow, item)" v-hasPermi="'merchant:ip-whitelist:detail'">{{ $t('common.detail') }}</el-button>
+              <el-button v-if="item.approvalStatus === 0" size="small" type="primary" link :icon="CircleCheck" @click="openApproval(item)" v-hasPermi="'merchant:ip-whitelist:approve'">{{ $t('merchant.ipWhitelist.approve') }}</el-button>
               <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', toSingleIpRow(manageRow, item))" v-hasPermi="'merchant:ip-whitelist:edit'">{{ $t('common.edit') }}</el-button>
-              <el-button size="small" type="primary" link @click="toggleStatus(manageRow, item)" v-hasPermi="'merchant:ip-whitelist:status'">{{ item.status === 1 ? $t('common.disable') : $t('common.enable') }}</el-button>
+              <el-button v-if="item.approvalStatus === 1" size="small" type="primary" link @click="toggleStatus(manageRow, item)" v-hasPermi="'merchant:ip-whitelist:status'">{{ item.status === 1 ? $t('common.disable') : $t('common.enable') }}</el-button>
               <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(toSingleIpRow(manageRow, item))" v-hasPermi="'merchant:ip-whitelist:remove'">{{ $t('common.delete') }}</el-button>
             </div>
           </div>
         </div>
       </div>
     </el-drawer>
+
+    <el-dialog v-model="approvalVisible" :title="$t('merchant.ipWhitelist.approvalTitle')" width="520px" append-to-body destroy-on-close>
+      <el-form ref="approvalFormRef" :model="approvalForm" label-width="112px" size="small">
+        <el-form-item label="IP">
+          <code class="approval-target">{{ approvalTarget?.ipValue || '-' }}</code>
+        </el-form-item>
+        <el-form-item :label="$t('merchant.ipWhitelist.approvalResult')">
+          <el-radio-group v-model="approvalForm.approvalStatus" @change="handleApprovalResultChange">
+            <el-radio-button :value="1">{{ $t('merchant.ipWhitelist.approvalApproved') }}</el-radio-button>
+            <el-radio-button :value="2">{{ $t('merchant.ipWhitelist.approvalRejected') }}</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="approvalForm.approvalStatus === 1" :label="$t('merchant.ipWhitelist.transactionStatus')">
+          <el-switch
+            v-model="approvalForm.status"
+            :active-value="1"
+            :inactive-value="0"
+            :active-text="$t('merchant.ipWhitelist.transactionAllowed')"
+            :inactive-text="$t('merchant.ipWhitelist.transactionProhibited')"
+          />
+        </el-form-item>
+        <el-form-item :label="$t('merchant.ipWhitelist.approvalRemark')" :required="approvalForm.approvalStatus === 2">
+          <el-input v-model.trim="approvalForm.approvalRemark" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('merchant.ipWhitelist.approvalRemarkPlaceholder')" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" :loading="approvalSaving" @click="submitApproval">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="approvalVisible = false">{{ $t('common.cancel') }}</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('merchant.ipWhitelist.detailTitle')" size="lg" :loading="detailLoading">
       <el-descriptions v-if="detail" :column="2" border size="small">
@@ -212,9 +268,14 @@
         <el-descriptions-item :label="$t('merchant.ipWhitelist.accessControl')">
           <el-tag size="small" :type="detail.ipWhitelistEnabled === 1 ? 'success' : 'info'">{{ detail.ipWhitelistEnabled === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item :label="$t('common.status')">
-          <el-tag size="small" :type="detail.status === 1 ? 'success' : 'danger'">{{ detail.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.transactionStatus')">
+          <el-tag size="small" :type="detail.status === 1 ? 'success' : 'danger'">{{ transactionStatusText(detail.status) }}</el-tag>
         </el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.approvalStatus')"><el-tag size="small" :type="approvalTagType(detail.approvalStatus)">{{ approvalStatusText(detail.approvalStatus) }}</el-tag></el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.submitSource')">{{ submitSourceText(detail.submitSource) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.approvalRemark')" :span="2">{{ detail.approvalRemark || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.reviewBy')">{{ detail.reviewBy || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('merchant.ipWhitelist.reviewTime')"><BaseDateTime :value="detail.reviewTime" /></el-descriptions-item>
         <el-descriptions-item :label="$t('common.remark')" :span="2">{{ detail.remark || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('merchant.ipWhitelist.configRemark')" :span="2">{{ detail.configRemark || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detail.gmtCreate" /></el-descriptions-item>
@@ -228,13 +289,14 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Download, Edit, MoreFilled, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { CircleCheck, Delete, Download, Edit, MoreFilled, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
 import {
+  approveMerchantIpWhitelist,
   createMerchantIpWhitelists,
   deleteMerchantIpWhitelist,
   exportMerchantIpWhitelists,
@@ -251,6 +313,7 @@ import {
 const { t } = useI18n();
 const queryFormRef = ref<FormInstance>();
 const formRef = ref<FormInstance>();
+const approvalFormRef = ref<FormInstance>();
 const showSearch = ref(true);
 const loading = ref(false);
 const saving = ref(false);
@@ -270,6 +333,14 @@ const detailLoading = ref(false);
 const detail = ref<MerchantIpWhitelistRow>();
 const manageVisible = ref(false);
 const manageRow = ref<MerchantIpWhitelistRow>();
+const approvalVisible = ref(false);
+const approvalSaving = ref(false);
+const approvalTarget = ref<MerchantIpWhitelistItem>();
+const approvalForm = reactive({
+  approvalStatus: 1 as 1 | 2,
+  approvalRemark: '',
+  status: 1,
+});
 const form = reactive({
   id: '',
   merchantId: '',
@@ -437,6 +508,10 @@ async function handleDelete(row?: MerchantIpWhitelistRow) {
 async function toggleStatus(row: MerchantIpWhitelistRow, item?: MerchantIpWhitelistItem) {
   const target = item || firstIpItem(row);
   if (!target?.id) return;
+  if (target.approvalStatus !== 1) {
+    ElMessage.warning(t('merchant.ipWhitelist.statusRequiresApproval'));
+    return;
+  }
   const nextStatus = target.status === 1 ? 0 : 1;
   try {
     await ElMessageBox.confirm(t('common.statusToggleConfirm', { action: nextStatus === 1 ? t('common.enable') : t('common.disable'), name: target.ipValue || target.id }), t('common.operationConfirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
@@ -497,12 +572,52 @@ function handleIpCommand(command: string, row: MerchantIpWhitelistRow, item: Mer
     openForm('edit', target);
     return;
   }
+  if (command === 'approve') {
+    openApproval(item);
+    return;
+  }
   if (command === 'status') {
     toggleStatus(target, item);
     return;
   }
   if (command === 'delete') {
     handleDelete(target);
+  }
+}
+
+function openApproval(item: MerchantIpWhitelistItem) {
+  approvalTarget.value = { ...item };
+  Object.assign(approvalForm, { approvalStatus: 1, approvalRemark: '', status: 1 });
+  approvalVisible.value = true;
+  setTimeout(() => approvalFormRef.value?.clearValidate(), 0);
+}
+
+function handleApprovalResultChange(value: string | number | boolean | undefined) {
+  approvalForm.status = Number(value) === 1 ? 1 : 0;
+}
+
+async function submitApproval() {
+  if (!approvalTarget.value?.id) {
+    return;
+  }
+  if (approvalForm.approvalStatus === 2 && !approvalForm.approvalRemark) {
+    ElMessage.warning(t('merchant.ipWhitelist.rejectionReasonRequired'));
+    return;
+  }
+  approvalSaving.value = true;
+  try {
+    await approveMerchantIpWhitelist(approvalTarget.value.id, {
+      approvalStatus: approvalForm.approvalStatus,
+      approvalRemark: approvalForm.approvalRemark || undefined,
+      status: approvalForm.approvalStatus === 1 ? approvalForm.status : 0,
+    });
+    ElMessage.success(t('merchant.ipWhitelist.approvalSuccess'));
+    approvalVisible.value = false;
+    await loadData();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
+  } finally {
+    approvalSaving.value = false;
   }
 }
 
@@ -575,6 +690,11 @@ function ipItems(row?: MerchantIpWhitelistRow): MerchantIpWhitelistItem[] {
       ipType: row.ipType,
       ipValue: row.ipValue,
       status: row.status,
+      approvalStatus: row.approvalStatus,
+      approvalRemark: row.approvalRemark,
+      submitSource: row.submitSource,
+      reviewBy: row.reviewBy,
+      reviewTime: row.reviewTime,
       remark: row.remark,
       updateBy: row.updateBy,
       gmtModified: row.gmtModified,
@@ -602,6 +722,11 @@ function toSingleIpRow(row: MerchantIpWhitelistRow, item: MerchantIpWhitelistIte
     ipType: item.ipType,
     ipValue: item.ipValue,
     status: item.status,
+    approvalStatus: item.approvalStatus,
+    approvalRemark: item.approvalRemark,
+    submitSource: item.submitSource,
+    reviewBy: item.reviewBy,
+    reviewTime: item.reviewTime,
     remark: item.remark,
     updateBy: item.updateBy,
     gmtModified: item.gmtModified,
@@ -617,12 +742,52 @@ function ipStatusSummary(row: MerchantIpWhitelistRow) {
   const items = ipItems(row);
   const enabled = items.filter((item) => item.status === 1).length;
   if (!items.length || enabled === items.length) {
-    return t('common.enable');
+    return t('merchant.ipWhitelist.transactionAllowed');
   }
   if (enabled === 0) {
-    return t('common.disable');
+    return t('merchant.ipWhitelist.transactionProhibited');
   }
   return `${enabled}/${items.length}`;
+}
+
+function approvalStatusText(status?: number) {
+  if (status === 0) return t('merchant.ipWhitelist.approvalPending');
+  if (status === 1) return t('merchant.ipWhitelist.approvalApproved');
+  if (status === 2) return t('merchant.ipWhitelist.approvalRejected');
+  return '-';
+}
+
+function approvalTagType(status?: number): 'warning' | 'success' | 'danger' | 'info' {
+  if (status === 0) return 'warning';
+  if (status === 1) return 'success';
+  if (status === 2) return 'danger';
+  return 'info';
+}
+
+function approvalSummary(row: MerchantIpWhitelistRow) {
+  const items = ipItems(row);
+  const pending = items.filter((item) => item.approvalStatus === 0).length;
+  const rejected = items.filter((item) => item.approvalStatus === 2).length;
+  if (pending) return t('merchant.ipWhitelist.approvalSummaryPending', { count: pending });
+  if (rejected) return t('merchant.ipWhitelist.approvalSummaryRejected', { count: rejected });
+  return t('merchant.ipWhitelist.approvalApproved');
+}
+
+function approvalSummaryType(row: MerchantIpWhitelistRow): 'warning' | 'success' | 'danger' | 'info' {
+  const items = ipItems(row);
+  if (items.some((item) => item.approvalStatus === 0)) return 'warning';
+  if (items.some((item) => item.approvalStatus === 2)) return 'danger';
+  return items.length ? 'success' : 'info';
+}
+
+function transactionStatusText(status?: number) {
+  return status === 1 ? t('merchant.ipWhitelist.transactionAllowed') : t('merchant.ipWhitelist.transactionProhibited');
+}
+
+function submitSourceText(source?: string) {
+  if (source === 'ADMIN') return t('merchant.ipWhitelist.sourceAdmin');
+  if (source === 'MERCHANT') return t('merchant.ipWhitelist.sourceMerchant');
+  return source || '-';
 }
 
 function cleanQuery(source: MerchantIpWhitelistQuery) {
@@ -691,7 +856,7 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   vertical-align: middle;
 }
 
-.ip-pill span {
+.ip-pill > span:not(.ip-pill__approval) {
   flex: 0 0 auto;
   padding: 5px 9px;
   border-right: 1px solid #cfe2ff;
@@ -699,6 +864,15 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   color: #1165ff;
   font-size: 12px;
   line-height: 16px;
+}
+
+.ip-pill .ip-pill__approval {
+  flex: 0 0 auto;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-right: 1px solid var(--el-border-color-light);
+  background: transparent;
+  font-size: 11px;
 }
 
 .ip-pill code {
@@ -741,7 +915,7 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   box-shadow: inset 0 0 0 1px rgba(103, 69, 168, 0.08);
 }
 
-.ip-pill.is-ipv6 span {
+.ip-pill.is-ipv6 > span:not(.ip-pill__approval) {
   border-right-color: #dcd7ff;
   background: #f1efff;
   color: #6745d8;
@@ -810,13 +984,26 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
 
 .ip-manage__item {
   display: grid;
-  grid-template-columns: minmax(260px, 1.4fr) 78px minmax(120px, 1fr) auto;
+  grid-template-columns: minmax(240px, 1.4fr) 168px minmax(110px, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid #edf0f5;
   border-radius: 6px;
   background: #fff;
+}
+
+.ip-manage__states {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.approval-target {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--el-text-color-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .ip-manage__ip {
