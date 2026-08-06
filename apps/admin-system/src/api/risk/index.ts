@@ -185,6 +185,9 @@ export interface EvaluationQuery extends PageQuery {
     merchantOrderNo?: string;
     paymentOrderNo?: string;
     decisionResult?: string;
+    riskLevel?: string;
+    evaluationStartTime?: string;
+    evaluationEndTimeExclusive?: string;
 }
 
 export async function getRiskFunctions() {
@@ -202,8 +205,8 @@ export async function getRiskDashboard() {
     return unwrapResult(result.data);
 }
 
-export async function getRiskTodayEvents() {
-    const result = await http.get<CommonResult<Record<string, unknown>[]>>('/admin/risk/dashboard/today-events');
+export async function pageRiskTodayEvents(data: EvaluationQuery = {}) {
+    const result = await http.post<CommonResult<PageResult<Record<string, unknown>>>>('/admin/risk/dashboard/today-events/page', data);
     return unwrapResult(result.data);
 }
 

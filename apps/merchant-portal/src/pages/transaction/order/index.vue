@@ -711,11 +711,14 @@ async function handleExport() {
 
 async function openDetail(row: TransactionOperation) {
     const transactionId = row.transactionId;
-    if (!transactionId) return;
+    const transactionDateTime = row.transactionDateTime;
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     detailVisible.value = true;
     detailLoading.value = true;
     try {
-        detail.value = await transactionApi.detail(transactionId);
+        detail.value = await transactionApi.detail(
+            transactionId, transactionDateTime, rootTransactionDateTime);
     } catch (error: any) {
         detail.value = undefined;
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.detailFailed'));
@@ -765,6 +768,8 @@ async function submitRefund() {
             amount: refundForm.amount,
             currency: refundForm.currency || labelCurrency(activeActionRow.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.refundSuccess'));
         refundVisible.value = false;
@@ -784,6 +789,8 @@ async function submitCapture() {
             amount: captureAmount.value,
             currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.captureSuccess'));
         captureVisible.value = false;
@@ -803,6 +810,8 @@ async function submitVoid() {
             amount: voidAmount.value,
             currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.voidSuccess'));
         voidVisible.value = false;
@@ -1313,8 +1322,9 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     min-width: 0;
 }
 
-.transaction-time-form-item {
-    flex: 1 1 688px;
+.transaction-search-form__fields :deep(.el-form-item.transaction-time-form-item) {
+    flex: 1 1 780px;
+    max-width: 100%;
 }
 
 .transaction-search-form :deep(.el-form-item__label) {

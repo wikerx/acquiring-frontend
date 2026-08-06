@@ -115,6 +115,17 @@ export interface PaymentSubmitPayload {
     clientContext: HostedCheckoutClientContext;
 }
 
+/** 收银台接口失败只保留稳定错误码，后端诊断消息不得直接展示给付款人。 */
+export class CheckoutApiError extends Error {
+    readonly code: string;
+
+    constructor(code: string) {
+        super('Checkout request failed');
+        this.name = 'CheckoutApiError';
+        this.code = code || 'UNKNOWN';
+    }
+}
+
 export async function queryCheckoutSession(payload: {
     opaqueToken: string;
     cover?: string;
@@ -153,7 +164,7 @@ async function postCheckout<T>(url: string, payload: unknown): Promise<T> {
         },
     });
     if (result.data.code !== 'T200' && result.data.code !== 'SUCCESS') {
-        throw new Error(result.data.message || 'Checkout request failed');
+        throw new CheckoutApiError(result.data.code);
     }
     return result.data.data;
 }

@@ -14,7 +14,7 @@
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
-    <StandardTable table-key="base-country" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
+    <StandardTable table-key="base-country-v2" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="alpha2Code" :label="$t('base.country.alpha2')" width="90" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="alpha3Code" :label="$t('base.country.alpha3')" width="90" align="center" :show-overflow-tooltip="true" />
@@ -23,7 +23,7 @@
       <el-table-column prop="englishName" :label="$t('base.country.englishName')" min-width="180" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="continentName" :label="$t('base.country.continent')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="currencyAlpha3Code" :label="$t('base.country.defaultCurrency')" width="100" align="center" :show-overflow-tooltip="true" />
-      <el-table-column :label="$t('common.status')" width="80" align="center">
+      <el-table-column prop="status" :label="$t('common.status')" width="80" align="center">
         <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'base:country:changeStatus'" /></template>
       </el-table-column>
       <el-table-column :label="$t('common.operation')" align="center" width="200" class-name="small-padding fixed-width" fixed="right">

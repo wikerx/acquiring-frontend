@@ -63,7 +63,8 @@ export interface TransactionOrder {
     channelMatchStatus?: string;
     channelCode?: string;
     channelOrderNo?: string;
-    transactionDateTime?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
     transactionTimeZone?: string;
 }
 
@@ -106,7 +107,8 @@ export interface TransactionOperation {
     reconciliationStatus?: string;
     accountingStatus?: string;
     channelMatchStatus?: string;
-    transactionDateTime?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
     operationTime?: string;
 }
 
@@ -156,6 +158,8 @@ export interface TransactionActionRequest {
     amount?: number | string;
     currency?: string;
     reason?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime: string;
 }
 
 export interface TransactionActionResponse {
@@ -183,8 +187,10 @@ export const transactionApi = {
         const result = await http.post<CommonResult<TransactionOperationSearchResponse>>('/merchant/transactions/orders/operations/search', data);
         return unwrapResult(result.data);
     },
-    async detail(transactionId: string) {
-        const result = await http.get<CommonResult<TransactionDetail>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}`);
+    async detail(transactionId: string, transactionDateTime: string, rootTransactionDateTime: string) {
+        const result = await http.get<CommonResult<TransactionDetail>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}`, {
+            params: { transactionDateTime, rootTransactionDateTime },
+        });
         return unwrapResult(result.data);
     },
     async refund(transactionId: string, data: TransactionActionRequest) {

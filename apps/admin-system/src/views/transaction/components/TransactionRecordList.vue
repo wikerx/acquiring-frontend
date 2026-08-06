@@ -184,8 +184,8 @@ function rawBlockCandidates(row: Record<string, unknown>) {
     }
     if (type === 'merchantNotification') {
         return [
+            { title: t('transaction.detail.merchantNotifyTargetUrl'), value: row.targetUrlMasked },
             { title: t('transaction.detail.merchantNotifyPayload'), value: row.payloadJsonMasked },
-            { title: t('transaction.detail.merchantNotifyConfigSnapshot'), value: row.notifyConfigSnapshotJson },
         ];
     }
     return [];
@@ -202,6 +202,8 @@ function metaItems(row: Record<string, unknown>) {
         { label: 'callbackLogId', value: row.callbackLogId },
         { label: 'notifyId', value: row.notifyId },
         { label: 'notifyLogId', value: row.notifyLogId },
+        { label: 'eventId', value: callbackHeaderValue(row, 'X-Callback-Event-Id') },
+        { label: 'attemptNo', value: row.attemptNo || callbackHeaderValue(row, 'X-Callback-Times') },
         { label: 'transactionId', value: row.transactionId },
         { label: 'operationId', value: row.operationId },
         { label: 'transactionType', value: transactionTypeText(row) },
@@ -228,6 +230,8 @@ function metaItems(row: Record<string, unknown>) {
         { label: 'httpStatus', value: row.httpStatus },
         { label: 'merchantResponseCode', value: row.merchantResponseCode },
         { label: 'merchantResponseMessage', value: row.merchantResponseMessage },
+        { label: 'acknowledgement', value: callbackAcknowledgement(row) },
+        { label: 'errorMessage', value: row.errorMessage },
         { label: 'status', value: statusText(row) },
         { label: 'requestTime', value: requestTimeText(row) },
         { label: 'responseTime', value: responseTimeText(row) },
@@ -360,6 +364,16 @@ function parseRawResponse(value: unknown): Record<string, unknown> | null {
     }
 }
 
+function callbackHeaderValue(row: Record<string, unknown>, name: string) {
+    const headers = parseRawResponse(row.requestHeaderJsonMasked);
+    return headers ? headers[name] : undefined;
+}
+
+function callbackAcknowledgement(row: Record<string, unknown>) {
+    const response = row.responseBodyJsonMasked;
+    return typeof response === 'string' && response.trim() ? response.trim() : undefined;
+}
+
 function formatDisplayTime(value: unknown) {
     if (!value) {
         return value;
@@ -431,7 +445,7 @@ function recordType(row: Record<string, unknown>) {
     if (row.notifyLogId || row.attemptNo || row.success !== undefined) {
         return 'merchantNotificationLog';
     }
-    if (row.notifyId || row.notifyConfigSnapshotJson || row.payloadJsonMasked) {
+    if (row.notifyId || row.targetUrlMasked || row.payloadJsonMasked) {
         return 'merchantNotification';
     }
     if (props.variant === 'callback') {

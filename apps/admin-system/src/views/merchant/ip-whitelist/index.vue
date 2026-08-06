@@ -334,6 +334,7 @@ function openForm(mode: 'add' | 'edit', row?: MerchantIpWhitelistRow) {
       merchantId: row.merchantId,
       merchantName: row.merchantName || row.merchantShortName || row.merchantId,
       merchantStatus: 1,
+      defaultLocale: 'zh-CN',
       merchantCategoryCode: '',
       countryCode: '',
       settlementCurrency: '',

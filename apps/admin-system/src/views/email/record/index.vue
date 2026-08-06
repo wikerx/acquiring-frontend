@@ -51,6 +51,9 @@
                 <template #default="{ row }"><el-tag size="small" :type="sendStatusType(row.sendStatus)">{{ optionLabel(sendStatusOptions, String(row.sendStatus ?? '0')) }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="retryCount" :label="t('email.record.retryCount')" width="90" align="center" />
+            <el-table-column :label="t('email.record.nextRetryTime')" min-width="170" align="center">
+                <template #default="{ row }"><BaseDateTime :value="row.nextRetryTime" /></template>
+            </el-table-column>
             <el-table-column :label="t('email.record.sendSuccessTime')" min-width="170" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.sendSuccessTime" /></template>
             </el-table-column>
@@ -60,7 +63,16 @@
             <el-table-column :label="t('common.operation')" width="150" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'email:record:detail'">{{ t('common.detail') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="RefreshRight" :disabled="row.sendStatus === 2" @click="handleResend(row)" v-hasPermi="'email:record:resend'">{{ t('email.record.resend') }}</el-button>
+                    <el-button
+                        size="small"
+                        type="primary"
+                        link
+                        :icon="RefreshRight"
+                        :disabled="!canResendEmail(row.sendStatus)"
+                        :title="canResendEmail(row.sendStatus) ? t('email.record.resend') : t('email.record.resendUnavailable')"
+                        @click="handleResend(row)"
+                        v-hasPermi="'email:record:resend'"
+                    >{{ t('email.record.resend') }}</el-button>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -69,7 +81,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('email.record.detailTitle')" size="lg">
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('email.record.detailTitle')" size="xl">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="t('email.record.emailNo')">{{ detailRow.emailNo }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.common.appCode')">{{ optionLabel(appOptions, detailRow.appCode) }}</el-descriptions-item>
@@ -85,12 +97,33 @@
                 <el-descriptions-item :label="t('email.record.ccEmails')">{{ detailRow.ccEmails || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.bccEmails')">{{ detailRow.bccEmails || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.subject')">{{ detailRow.subject || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('email.record.contentSnapshot')"><pre class="code-block">{{ detailRow.contentSnapshot || '-' }}</pre></el-descriptions-item>
+                <el-descriptions-item :label="t('email.record.contentSnapshot')">
+                    <div class="record-mail-preview">
+                        <div class="record-mail-preview__toolbar">
+                            <span>{{ t('email.record.contentSnapshotHint') }}</span>
+                            <el-radio-group v-model="contentViewMode" size="small">
+                                <el-radio-button value="preview">{{ t('email.record.contentPreview') }}</el-radio-button>
+                                <el-radio-button value="source">{{ t('email.record.contentSource') }}</el-radio-button>
+                            </el-radio-group>
+                        </div>
+                        <div v-if="contentViewMode === 'preview'" class="record-mail-preview__viewport">
+                            <iframe
+                                class="record-mail-preview__frame"
+                                :title="t('email.record.contentPreview')"
+                                :sandbox="''"
+                                referrerpolicy="no-referrer"
+                                :srcdoc="contentPreviewHtml"
+                            />
+                        </div>
+                        <pre v-else class="code-block record-mail-preview__source">{{ detailRow.contentSnapshot || '-' }}</pre>
+                    </div>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.variablesSnapshot')"><pre class="code-block">{{ prettyJson(detailRow.variablesSnapshot) }}</pre></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.bizType')">{{ detailRow.bizType || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.bizNo')">{{ detailRow.bizNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendStatus')"><el-tag size="small" :type="sendStatusType(detailRow.sendStatus)">{{ optionLabel(sendStatusOptions, String(detailRow.sendStatus ?? '0')) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.retryCount')">{{ detailRow.retryCount ?? 0 }} / {{ detailRow.maxRetryCount ?? 0 }}</el-descriptions-item>
+                <el-descriptions-item :label="t('email.record.nextRetryTime')"><BaseDateTime :value="detailRow.nextRetryTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendStartTime')"><BaseDateTime :value="detailRow.sendStartTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendEndTime')"><BaseDateTime :value="detailRow.sendEndTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('email.record.sendSuccessTime')"><BaseDateTime :value="detailRow.sendSuccessTime" /></el-descriptions-item>
@@ -106,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Refresh, RefreshRight, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -115,7 +148,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getEmailRecord, resendEmailRecord, searchEmailRecords, type EmailRecord } from '@/api/email';
-import { loadEmailDictOptions, optionLabel, prettyJson, sendStatusType, showEmailError, type SelectOption } from '../shared';
+import { canResendEmail, loadEmailDictOptions, optionLabel, prettyJson, sendStatusType, showEmailError, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -131,6 +164,9 @@ const providerOptions = ref<SelectOption[]>([]);
 const sendStatusOptions = ref<SelectOption[]>([]);
 const detailVisible = ref(false);
 const detailRow = ref<EmailRecord | null>(null);
+const contentViewMode = ref<'preview' | 'source'>('preview');
+
+const contentPreviewHtml = computed(() => buildContentPreviewHtml(detailRow.value?.contentSnapshot));
 
 const query = reactive({
     emailNo: '',
@@ -196,10 +232,59 @@ function resetQuery() {
 
 async function openDetail(row: EmailRecord) {
     detailRow.value = await getEmailRecord(row.id);
+    contentViewMode.value = 'preview';
     detailVisible.value = true;
 }
 
+/**
+ * 构建隔离的邮件快照文档。CSP 与 iframe sandbox 共同阻止脚本、表单、跳转及外链资源，
+ * 避免运营人员预览历史邮件时触发跟踪像素或执行不可信内容。
+ */
+function buildContentPreviewHtml(content?: string) {
+    const source = content || '';
+    const securityHead = `
+        <meta charset="UTF-8">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:; font-src data:; media-src data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            html { background: #ffffff; color: #1f2937; font-family: Arial, sans-serif; }
+            body { margin: 0; padding: 24px; overflow-wrap: anywhere; }
+            img { max-width: 100%; height: auto; }
+            table { max-width: 100%; }
+        </style>`;
+    if (!source) {
+        return `<!doctype html><html><head>${securityHead}</head><body><div class="empty">-</div></body></html>`;
+    }
+    if (!looksLikeHtml(source)) {
+        return `<!doctype html><html><head>${securityHead}</head><body><div style="white-space:pre-wrap;line-height:1.8;">${escapeHtml(source)}</div></body></html>`;
+    }
+    if (/<head(?:\s[^>]*)?>/i.test(source)) {
+        return source.replace(/<head(\s[^>]*)?>/i, (head) => `${head}${securityHead}`);
+    }
+    if (/<html(?:\s[^>]*)?>/i.test(source)) {
+        return source.replace(/<html(\s[^>]*)?>/i, (html) => `${html}<head>${securityHead}</head>`);
+    }
+    return `<!doctype html><html><head>${securityHead}</head><body>${source}</body></html>`;
+}
+
+function looksLikeHtml(value: string) {
+    return /<!doctype\s+html\b|<\/?[a-z][\w:-]*(?:\s[^<>]*|\s*)?>/i.test(value);
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 async function handleResend(row: EmailRecord) {
+    if (!canResendEmail(row.sendStatus)) {
+        ElMessage.warning(t('email.record.resendUnavailable'));
+        return;
+    }
     try {
         await ElMessageBox.confirm(t('email.record.resendConfirm', { no: row.emailNo }), t('email.record.resend'), { type: 'warning' });
     } catch {
@@ -207,12 +292,12 @@ async function handleResend(row: EmailRecord) {
     }
     try {
         const result = await resendEmailRecord(row.id);
-        if (result.sendStatus === 2) {
-            ElMessage.success(t('email.record.resendSuccess'));
+        if (result.sendStatus === 0) {
+            ElMessage.success(t('email.record.resendQueued'));
         } else {
             await ElMessageBox.alert(result.errorMessage || t('email.record.resendFailed'), t('email.record.resend'), { type: 'error' });
         }
-        loadData();
+        await loadData();
     } catch (error) {
         await showEmailError(error, t('email.record.resend'), t('email.record.resendFailed'));
     }
@@ -229,6 +314,66 @@ async function handleResend(row: EmailRecord) {
     white-space: pre-wrap;
     word-break: break-word;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.record-mail-preview {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.record-mail-preview__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.record-mail-preview__toolbar span {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.record-mail-preview__viewport {
+    padding: 16px;
+    border: 1px solid #dbe3ee;
+    border-radius: 6px;
+    background: #eef2f7;
+}
+
+.record-mail-preview__frame {
+    display: block;
+    width: 100%;
+    min-height: 520px;
+    border: 1px solid #dbe3ee;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.record-mail-preview__source {
+    max-height: 520px;
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid #dbe3ee;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+    .record-mail-preview__toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .record-mail-preview__viewport {
+        padding: 8px;
+    }
+
+    .record-mail-preview__frame {
+        min-height: 420px;
+    }
 }
 
 </style>

@@ -195,9 +195,25 @@
                     <CopyableText :value="row.acquirerReferenceNo" :label="t('transaction.fields.acquirerReferenceNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="260" fixed="right" align="center">
+            <el-table-column :label="t('common.operation')" width="360" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.transactionId)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
+                    <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryCallbackDisabled')" placement="top">
+                        <span>
+                            <el-button
+                                size="small"
+                                type="warning"
+                                link
+                                :icon="RefreshRight"
+                                :disabled="!canRetryCallback(row)"
+                                :loading="retryingTransactionId === row.transactionId"
+                                @click="handleRetryCallback(row)"
+                                v-hasPermi="'transaction:merchant-notification:retry'"
+                            >
+                                {{ t('transaction.actions.retryCallback') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
                     <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
                     </el-tooltip>
@@ -396,8 +412,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Download, View } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -407,6 +423,7 @@ import {
     exportTransactionOperations,
     getTransactionOperationDetail,
     refundTransactionOperation,
+    retryMerchantNotification,
     searchTransactionOperationsWithSummary,
     voidTransactionOperation,
     type TransactionAmountSummary,
@@ -459,6 +476,7 @@ const captureVisible = ref(false);
 const voidVisible = ref(false);
 const merchantVisible = ref(false);
 const actionSubmitting = ref(false);
+const retryingTransactionId = ref('');
 const rows = ref<TransactionOperation[]>([]);
 const operationSummary = ref<TransactionOperationSummary | null>(null);
 const detail = ref<TransactionDetail | null>(null);
@@ -739,9 +757,14 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(transactionId: string) {
+function openDetail(row: TransactionOperation) {
+    const transactionId = row.transactionId;
+    const transactionDateTime = row.transactionDateTime;
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     selectedDetailTransactionId.value = transactionId;
-    openTransactionDetail(transactionId, detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
+    openTransactionDetail(transactionId, transactionDateTime, rootTransactionDateTime,
+        detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
 }
 
 function openMerchant(merchantId: string) {
@@ -856,6 +879,40 @@ function canVoid(row: TransactionOperation) {
         && (refundedAmount === null || refundedAmount === 0);
 }
 
+function canRetryCallback(row: TransactionOperation) {
+    return ['SUCCESS', 'FAILED'].includes(row.transactionStatus)
+        && Boolean(row.transactionId && row.transactionDateTime);
+}
+
+async function handleRetryCallback(row: TransactionOperation) {
+    if (!canRetryCallback(row)) {
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(
+            t('transaction.actions.retryCallbackConfirm', { transactionId: row.transactionId }),
+            t('transaction.actions.retryCallbackTitle'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+            },
+        );
+    } catch {
+        return;
+    }
+    retryingTransactionId.value = row.transactionId;
+    try {
+        const eventId = await retryMerchantNotification({
+            transactionId: row.transactionId,
+            transactionDateTime: row.transactionDateTime,
+        });
+        ElMessage.success(t('transaction.actions.retryCallbackAccepted', { eventId }));
+    } finally {
+        retryingTransactionId.value = '';
+    }
+}
+
 function canCapture(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
         return false;
@@ -954,10 +1011,12 @@ async function submitRefund() {
             amount: refundForm.amount,
             currency: refundForm.currency || labelCurrency(selectedOperation.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.refundSuccess', { transactionId: result.transactionId }));
         refundVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -973,10 +1032,12 @@ async function submitCapture() {
             amount: availableCaptureLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.captureSuccess', { transactionId: result.transactionId }));
         captureVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -992,10 +1053,12 @@ async function submitVoid() {
             amount: fullLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
         voidVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -1053,10 +1116,10 @@ function actionReasonText(reason?: string, description?: string) {
     return text || undefined;
 }
 
-async function refreshAfterAction(transactionId: string) {
+async function refreshAfterAction(row: TransactionOperation) {
     await loadData();
     if (detailVisible.value) {
-        openDetail(transactionId);
+        openDetail(row);
     }
 }
 

@@ -1,6 +1,8 @@
 export default {
     topbar: {
         language: '语言',
+        english: '英文',
+        chinese: '中文',
         preview: '预览状态',
         checkout: '收银台',
         success: '支付成功',
@@ -81,6 +83,19 @@ export default {
         authorizationCode: '授权码',
         failureReason: '失败原因',
         failureReasonValue: '发卡行拒绝交易',
+        failureReasons: {
+            RISK_REJECTED: '交易未通过安全检查',
+            ROUTE_FAILED: '暂时无法选择可用支付通道',
+            CHANNEL_UNSUPPORTED: '当前支付方式暂不支持本次交易',
+            EXCHANGE_RATE_NOT_FOUND: '暂时无法完成币种换算',
+            CHANNEL_REQUEST_FAILED: '支付通道暂时不可用',
+            CHANNEL_RESPONSE_INVALID: '支付结果暂时无法确认',
+            CHANNEL_TIMEOUT: '支付通道响应超时',
+            STATE_TRANSITION_DENIED: '当前交易状态不允许继续处理',
+            ISSUER_DECLINED: '发卡行拒绝交易',
+            THREE_DS_FAILED: '银行卡身份验证未通过',
+            UNKNOWN: '本次支付未能完成',
+        },
         referenceCode: '参考码',
         requestId: '请求 ID',
         securityPolicy: '安全策略',

@@ -1133,7 +1133,7 @@ function syncCurrentMerchantOption() {
   }
   const exists = merchantOptions.value.some((item) => item.merchantId === form.merchantId);
   if (!exists) {
-    merchantOptions.value = [{ id: '0', merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+    merchantOptions.value = [{ id: '0', merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, defaultLocale: 'zh-CN', merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
   }
 }
 
@@ -1144,7 +1144,7 @@ function syncCurrentTargetMerchantOption() {
   const merchantId = String(form.matchValuePlain);
   const exists = merchantOptions.value.some((item) => item.merchantId === merchantId);
   if (!exists) {
-    merchantOptions.value = [{ id: '0', merchantId, merchantName: '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+    merchantOptions.value = [{ id: '0', merchantId, merchantName: '', merchantStatus: 1, defaultLocale: 'zh-CN', merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
   }
 }
 
