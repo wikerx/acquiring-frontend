@@ -229,6 +229,223 @@ export interface TransactionActionResponse {
     currency?: string;
 }
 
+export interface RefundManagementQuery extends PageQuery {
+    merchantId?: string;
+    refundTransactionId?: string;
+    sourceTransactionId?: string;
+    merchantOrderNo?: string;
+    merchantOperationNo?: string;
+    transactionType?: string;
+    refundScope?: string;
+    approvalStatus?: string;
+    transactionStatus?: string;
+    requestSource?: string;
+    channelCode?: string;
+    channelOrderNo?: string;
+    acquirerReferenceNo?: string;
+    paymentMethod?: string;
+    paymentBrand?: string;
+    labelCurrency?: string;
+    transactionCurrency?: string;
+    minimumTransactionAmount?: number | string;
+    maximumTransactionAmount?: number | string;
+    applicantId?: string;
+    beginTime?: string;
+    endTime?: string;
+    completeBeginTime?: string;
+    completeEndTime?: string;
+    queryTimeZone?: string;
+}
+
+export interface RefundManagementRecord {
+    refundTransactionId: string;
+    operationId?: string;
+    sourceTransactionId?: string;
+    merchantId?: string;
+    merchantOrderNo?: string;
+    merchantOperationNo?: string;
+    transactionType?: string;
+    refundScope?: string;
+    requestSource?: string;
+    requestReason?: string;
+    applicantType?: string;
+    applicantId?: string;
+    applicantName?: string;
+    executionMode?: string;
+    transactionStatus?: string;
+    processStage?: string;
+    failReasonCode?: string;
+    failReasonMessage?: string;
+    labelCurrency?: string;
+    labelAmount?: number | string;
+    transactionCurrency?: string;
+    transactionAmount?: number | string;
+    currencyExponent?: number;
+    paymentMethod?: string;
+    paymentBrand?: string;
+    channelCode?: string;
+    channelOrderNo?: string;
+    channelTransactionId?: string;
+    channelResponseCode?: string;
+    acquirerReferenceNo?: string;
+    channelMatchStatus?: string;
+    merchantNotificationStatus?: string;
+    transactionDateTime: string;
+    rootTransactionDateTime?: string;
+    completeTime?: string;
+    approvalId?: string;
+    approvalStatus?: string;
+    approvalPolicyCode?: string;
+    approvalOperatorId?: string;
+    approvalOperatorName?: string;
+    approvalTime?: string;
+    approvalReason?: string;
+    approvalExpireTime?: string;
+    executionEventId?: string;
+    approvalVersion?: number;
+}
+
+export interface RefundCurrencySummary {
+    currency?: string;
+    successfulAmount?: number | string;
+    pendingAmount?: number | string;
+}
+
+export interface RefundManagementSummary {
+    totalCount: number;
+    pendingApprovalCount: number;
+    processingCount: number;
+    successCount: number;
+    failedOrRejectedCount: number;
+    currencyAmounts?: RefundCurrencySummary[];
+}
+
+export interface RefundManagementSearchResponse {
+    page: PageResult<RefundManagementRecord>;
+    summary: RefundManagementSummary;
+}
+
+export interface RefundManagementDetail {
+    refund: RefundManagementRecord;
+    transactionDetail?: TransactionDetail;
+}
+
+export interface RefundApprovalDecisionRequest {
+    decisionRequestId: string;
+    expectedVersion: number;
+    approvalReason?: string;
+}
+
+export interface RefundApprovalResult {
+    approvalId: string;
+    refundTransactionId: string;
+    approvalStatus: string;
+    approvalOperatorId?: string;
+    approvalOperatorName?: string;
+    approvalTime?: string;
+    approvalReason?: string;
+    executionEventId?: string;
+    version: number;
+}
+
+export interface ChannelMatchAbnormalQuery extends PageQuery {
+    eventId?: string;
+    transactionId?: string;
+    merchantId?: string;
+    merchantOrderNo?: string;
+    abnormalType?: string;
+    abnormalLevel?: string;
+    eventStatus?: string;
+    transactionType?: string;
+    platformStatus?: string;
+    channelCode?: string;
+    channelOrderNo?: string;
+    assignedToId?: string;
+    detectSource?: string;
+    minimumOccurrenceCount?: number;
+    beginTime?: string;
+    endTime?: string;
+    queryTimeZone?: string;
+}
+
+export interface ChannelMatchAbnormalRecord {
+    abnormalEventId: string;
+    transactionId: string;
+    operationId?: string;
+    abnormalType?: string;
+    abnormalLevel?: string;
+    eventStatus?: string;
+    sourceRecordType?: string;
+    sourceRecordId?: string;
+    abnormalDescription?: string;
+    rawReferenceJson?: string;
+    firstSeenTime?: string;
+    lastSeenTime?: string;
+    resolvedTime?: string;
+    transactionDateTime: string;
+    sourceTransactionDateTime?: string;
+    rootTransactionDateTime?: string;
+    merchantId?: string;
+    merchantOrderNo?: string;
+    sourceTransactionId?: string;
+    transactionType?: string;
+    platformStatus?: string;
+    channelCode?: string;
+    channelOrderNo?: string;
+    channelTransactionId?: string;
+    channelStatus?: string;
+    channelMatchResult?: string;
+    detectSource?: string;
+    platformCurrency?: string;
+    platformAmount?: number | string;
+    channelCurrency?: string;
+    channelAmount?: number | string;
+    amountDifference?: number | string;
+    currencyExponent?: number;
+    occurrenceCount?: number;
+    assignedToId?: string;
+    assignedToName?: string;
+    assignedTime?: string;
+    resolutionType?: string;
+    resolutionReferenceId?: string;
+    merchantNotifyRequired?: number;
+    version: number;
+    createTime?: string;
+    updateTime?: string;
+}
+
+export interface ChannelMatchAbnormalSummary {
+    totalCount: number;
+    openCount: number;
+    processingCount: number;
+    resolvedCount: number;
+    ignoredCount: number;
+    highOrCriticalCount: number;
+}
+
+export interface ChannelMatchAbnormalSearchResponse {
+    page: PageResult<ChannelMatchAbnormalRecord>;
+    summary: ChannelMatchAbnormalSummary;
+}
+
+export interface ChannelMatchAbnormalDetail {
+    abnormality: ChannelMatchAbnormalRecord;
+    transactionDetail?: TransactionDetail;
+}
+
+export interface ChannelMatchAbnormalCaseReference {
+    eventId: string;
+    transactionDateTime: string;
+    expectedVersion: number;
+}
+
+export interface ChannelMatchAbnormalBatchResult {
+    requestedCount: number;
+    acceptedCount: number;
+    failedCount: number;
+    failedEventIds: string[];
+}
+
 /**
  * 保留后端返回的真实交易时间，只补齐 DATETIME(3) 契约需要的毫秒位。
  * 该转换不解析交易号，也不做时区换算，避免改变季度分片路由值。
@@ -357,5 +574,94 @@ export async function retryMerchantNotification(data: MerchantNotificationRetryR
         ...data,
         transactionDateTime: normalizeTransactionShardTime(data.transactionDateTime),
     });
+    return unwrapResult(result.data);
+}
+
+export async function searchRefundManagement(data: RefundManagementQuery) {
+    const result = await http.post<CommonResult<RefundManagementSearchResponse>>('/admin/transactions/refunds/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getRefundManagementDetail(transactionId: string, transactionDateTime: string) {
+    const result = await http.get<CommonResult<RefundManagementDetail>>(
+        `/admin/transactions/refunds/${encodeURIComponent(transactionId)}`,
+        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime) } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function exportRefundManagement(data: RefundManagementQuery) {
+    await downloadExcel('/admin/transactions/refunds/export', { data });
+}
+
+export async function approveRefund(approvalId: string, data: RefundApprovalDecisionRequest) {
+    const result = await http.post<CommonResult<RefundApprovalResult>>(
+        `/admin/transactions/refund-approvals/${encodeURIComponent(approvalId)}/approve`,
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function rejectRefund(approvalId: string, data: RefundApprovalDecisionRequest) {
+    const result = await http.post<CommonResult<RefundApprovalResult>>(
+        `/admin/transactions/refund-approvals/${encodeURIComponent(approvalId)}/reject`,
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchChannelMatchAbnormalities(data: ChannelMatchAbnormalQuery) {
+    const result = await http.post<CommonResult<ChannelMatchAbnormalSearchResponse>>(
+        '/admin/transactions/channel-match-abnormalities/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getChannelMatchAbnormalityDetail(eventId: string, transactionDateTime: string) {
+    const result = await http.get<CommonResult<ChannelMatchAbnormalDetail>>(
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}`,
+        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime) } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function exportChannelMatchAbnormalities(data: ChannelMatchAbnormalQuery) {
+    await downloadExcel('/admin/transactions/channel-match-abnormalities/export', { data });
+}
+
+export async function claimChannelMatchAbnormality(
+    eventId: string,
+    data: { transactionDateTime: string; expectedVersion: number; assigneeAccountId?: string; assigneeName?: string },
+) {
+    const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/claim`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function requeryChannelMatchAbnormality(
+    eventId: string,
+    data: { transactionDateTime: string; expectedVersion: number },
+) {
+    const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/requery`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function batchRequeryChannelMatchAbnormalities(cases: ChannelMatchAbnormalCaseReference[]) {
+    const result = await http.post<CommonResult<ChannelMatchAbnormalBatchResult>>(
+        '/admin/transactions/channel-match-abnormalities/batch-requery', { cases },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function resolveChannelMatchAbnormality(
+    eventId: string,
+    data: { transactionDateTime: string; expectedVersion: number; resolutionType: string; reason: string; referenceId?: string },
+) {
+    const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/resolve`, data,
+    );
     return unwrapResult(result.data);
 }

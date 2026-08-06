@@ -178,6 +178,81 @@ export interface TransactionActionResponse {
     currency?: string;
 }
 
+export interface MerchantRefundQuery {
+    pageNo?: number;
+    pageSize?: number;
+    refundTransactionId?: string;
+    sourceTransactionId?: string;
+    merchantOrderNo?: string;
+    merchantOperationNo?: string;
+    transactionType?: string;
+    refundScope?: string;
+    approvalStatus?: string;
+    transactionStatus?: string;
+    requestSource?: string;
+    labelCurrency?: string;
+    transactionCurrency?: string;
+    minimumTransactionAmount?: number | string;
+    maximumTransactionAmount?: number | string;
+    beginTime?: string;
+    endTime?: string;
+    completeBeginTime?: string;
+    completeEndTime?: string;
+    queryTimeZone?: string;
+}
+
+export interface MerchantRefundRecord {
+    refundTransactionId: string;
+    sourceTransactionId?: string;
+    merchantOrderNo?: string;
+    merchantOperationNo?: string;
+    transactionType?: string;
+    refundScope?: string;
+    requestSource?: string;
+    requestReason?: string;
+    transactionStatus?: string;
+    processStage?: string;
+    labelCurrency?: string;
+    labelAmount?: number | string;
+    transactionCurrency?: string;
+    transactionAmount?: number | string;
+    currencyExponent?: number;
+    paymentMethod?: string;
+    paymentBrand?: string;
+    merchantNotificationStatus?: string;
+    transactionDateTime: string;
+    completeTime?: string;
+    approvalId?: string;
+    approvalStatus?: string;
+    approvalTime?: string;
+    approvalReason?: string;
+    approvalExpireTime?: string;
+    approvalVersion?: number;
+    merchantVisibleMessage?: string;
+}
+
+export interface MerchantRefundSummary {
+    totalCount: number;
+    pendingApprovalCount: number;
+    processingCount: number;
+    successCount: number;
+    failedOrRejectedCount: number;
+    currencyAmounts?: Array<{
+        currency?: string;
+        successfulAmount?: number | string;
+        pendingAmount?: number | string;
+    }>;
+}
+
+export interface MerchantRefundSearchResponse {
+    page: PageResult<MerchantRefundRecord>;
+    summary: MerchantRefundSummary;
+}
+
+export interface MerchantRefundDetail {
+    refund: MerchantRefundRecord;
+}
+
 export const transactionApi = {
     async pageOrders(data: TransactionPageQuery) {
         const result = await http.post<CommonResult<PageResult<TransactionOrder>>>('/merchant/transactions/orders/search', data);
@@ -210,6 +285,24 @@ export const transactionApi = {
             method: 'post',
             data,
             fileName: 'merchant-transactions.csv',
+        });
+    },
+    async searchRefunds(data: MerchantRefundQuery) {
+        const result = await http.post<CommonResult<MerchantRefundSearchResponse>>('/merchant/transactions/refunds/search', data);
+        return unwrapResult(result.data);
+    },
+    async refundDetail(transactionId: string, transactionDateTime: string) {
+        const result = await http.get<CommonResult<MerchantRefundDetail>>(
+            `/merchant/transactions/refunds/${encodeURIComponent(transactionId)}`,
+            { params: { transactionDateTime } },
+        );
+        return unwrapResult(result.data);
+    },
+    async exportRefunds(data: MerchantRefundQuery) {
+        await downloadBlob('/merchant/transactions/refunds/export', {
+            method: 'post',
+            data,
+            fileName: 'merchant-refunds.xlsx',
         });
     },
 };
