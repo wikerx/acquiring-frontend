@@ -8,6 +8,11 @@ export interface MerchantIpWhitelistItem {
     ipType?: string;
     ipValue?: string;
     status?: number;
+    approvalStatus?: number;
+    approvalRemark?: string;
+    submitSource?: string;
+    reviewBy?: string;
+    reviewTime?: string;
     remark?: string;
     updateBy?: string;
     gmtModified?: string;
@@ -21,6 +26,11 @@ export interface MerchantIpWhitelistRow {
     ipType?: string;
     ipValue?: string;
     status?: number;
+    approvalStatus?: number;
+    approvalRemark?: string;
+    submitSource?: string;
+    reviewBy?: string;
+    reviewTime?: string;
     ipWhitelistEnabled?: number;
     remark?: string;
     configRemark?: string;
@@ -37,6 +47,8 @@ export interface MerchantIpWhitelistQuery extends PageQuery {
     ipValue?: string;
     ipType?: string;
     status?: number;
+    approvalStatus?: number;
+    submitSource?: string;
     ipWhitelistEnabled?: number;
 }
 
@@ -57,6 +69,12 @@ export interface MerchantIpWhitelistConfigRequest {
     merchantId: string;
     ipWhitelistEnabled: number;
     remark?: string;
+}
+
+export interface MerchantIpWhitelistApprovalRequest {
+    approvalStatus: 1 | 2;
+    approvalRemark?: string;
+    status?: number;
 }
 
 export async function searchMerchantIpWhitelists(data: MerchantIpWhitelistQuery) {
@@ -85,6 +103,11 @@ export async function updateMerchantIpWhitelist(id: string, data: MerchantIpWhit
 
 export async function updateMerchantIpWhitelistStatus(id: string, status: number) {
     const result = await http.put<CommonResult<MerchantIpWhitelistRow>>(`/admin/merchant/ip-whitelist/${id}/status`, { status });
+    return unwrapResult(result.data);
+}
+
+export async function approveMerchantIpWhitelist(id: string, data: MerchantIpWhitelistApprovalRequest) {
+    const result = await http.put<CommonResult<MerchantIpWhitelistRow>>(`/admin/merchant/ip-whitelist/${id}/approval`, data);
     return unwrapResult(result.data);
 }
 
