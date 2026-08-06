@@ -56,7 +56,7 @@
                 <el-table-column :label="t('accessConfig.updateTime')" width="176" align="center">
                     <template #default="{ row }"><BaseDateTime :value="updatedAt(row)" /></template>
                 </el-table-column>
-                <el-table-column :label="t('common.operation')" width="100" align="center" fixed="right">
+                <el-table-column v-if="canViewDetail" :label="t('common.operation')" width="100" align="center" fixed="right">
                     <template #default="{ row }"><el-button link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button></template>
                 </el-table-column>
             </StandardTable>
@@ -126,8 +126,13 @@ const page = ref(1);
 const pageSize = ref(10);
 const query = reactive<{ approvalStatus?: number; status?: number }>({});
 const submitForm = reactive({ values: '', remark: '' });
-const canSubmit = hasPermission('merchant:access-config:submit');
 const isSourceUrl = computed(() => props.kind === 'source-url');
+const canSubmit = computed(() => hasPermission(isSourceUrl.value
+    ? 'merchant:access-config:source-url:submit'
+    : 'merchant:access-config:ip-whitelist:submit'));
+const canViewDetail = computed(() => hasPermission(isSourceUrl.value
+    ? 'merchant:access-config:source-url:detail'
+    : 'merchant:access-config:ip-whitelist:detail'));
 const title = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlTitle' : 'accessConfig.ipWhitelistTitle'));
 const submitTitle = computed(() => t(isSourceUrl.value ? 'accessConfig.submitSourceUrl' : 'accessConfig.submitIpWhitelist'));
 const valueColumnLabel = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlValue' : 'accessConfig.ipValue'));
