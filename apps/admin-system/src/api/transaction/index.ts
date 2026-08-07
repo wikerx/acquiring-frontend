@@ -1,4 +1,11 @@
-import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
+import type {
+    CommonResult,
+    PageQuery,
+    PageResult,
+    TransactionAnalyticsMerchantPerformance,
+    TransactionAnalyticsOverview,
+    TransactionAnalyticsQuery,
+} from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
@@ -494,6 +501,22 @@ export async function exportTransactionOperations(data: TransactionPageQuery) {
 
 export async function searchTransactionOperationsWithSummary(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<TransactionOperationSearchResult>>('/admin/transactions/operations/search-with-summary', data);
+    return unwrapResult(result.data);
+}
+
+/** 查询管理端首笔收单交易总览。 */
+export async function getTransactionAnalyticsOverview(data: TransactionAnalyticsQuery) {
+    const result = await http.post<CommonResult<TransactionAnalyticsOverview>>(
+        '/admin/transactions/analytics/overview', data,
+    );
+    return unwrapResult(result.data);
+}
+
+/** 查询管理端商户交易表现。 */
+export async function getTransactionAnalyticsMerchants(data: TransactionAnalyticsQuery) {
+    const result = await http.post<CommonResult<TransactionAnalyticsMerchantPerformance>>(
+        '/admin/transactions/analytics/merchants', data,
+    );
     return unwrapResult(result.data);
 }
 

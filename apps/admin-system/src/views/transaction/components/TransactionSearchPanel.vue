@@ -166,15 +166,14 @@ const advancedVisible = ref(false);
 }
 
 .transaction-search :deep(.transaction-time-form-item .el-form-item__content) {
-    width: auto;
+    width: 100%;
+    min-width: 0;
 }
 
-.transaction-search :deep(.transaction-time-range-filter__timezone) {
-    width: 244px;
-}
-
-.transaction-search :deep(.transaction-time-range-filter__picker) {
-    width: 460px;
+.transaction-search :deep(.transaction-time-form-item) {
+    flex: 1 1 760px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 @media (max-width: 980px) {
@@ -187,9 +186,7 @@ const advancedVisible = ref(false);
     .transaction-search :deep(.el-form-item),
     .transaction-search :deep(.el-form-item__content),
     .transaction-search :deep(.el-input),
-    .transaction-search :deep(.el-select),
-    .transaction-search :deep(.transaction-time-range-filter__timezone),
-    .transaction-search :deep(.transaction-time-range-filter__picker) {
+    .transaction-search :deep(.el-select) {
         width: 100%;
     }
 }
