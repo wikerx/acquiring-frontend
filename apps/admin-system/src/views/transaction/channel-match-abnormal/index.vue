@@ -13,9 +13,6 @@
             @search="handleSearch"
             @reset="handleReset"
         >
-            <el-form-item :label="t('transaction.abnormal.eventId')">
-                <el-input v-model.trim="query.eventId" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
-            </el-form-item>
             <el-form-item :label="t('transaction.fields.transactionId')">
                 <el-input v-model.trim="query.transactionId" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
             </el-form-item>
@@ -28,11 +25,6 @@
             <el-form-item :label="t('transaction.abnormal.eventStatus')">
                 <el-select v-model="query.eventStatus" :placeholder="t('common.pleaseSelect')" clearable>
                     <el-option v-for="item in eventStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                </el-select>
-            </el-form-item>
-            <el-form-item :label="t('transaction.abnormal.abnormalLevel')">
-                <el-select v-model="query.abnormalLevel" :placeholder="t('common.pleaseSelect')" clearable>
-                    <el-option v-for="item in abnormalLevelOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
             <template #advanced>
@@ -66,7 +58,7 @@
                         v-model:time-zone="query.queryTimeZone"
                         v-model:preset="quickPreset"
                         :timezone-options="timezoneOptions"
-                        default-preset=""
+                        default-preset="today"
                     />
                 </el-form-item>
             </template>
@@ -74,17 +66,15 @@
 
         <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
 
-        <el-row class="mb8 transaction-table-toolbar" justify="space-between">
-            <el-col :span="18" class="abnormal-page__bulk-actions">
+        <el-row class="mb8 transaction-table-toolbar">
+            <el-col :span="24" class="abnormal-page__bulk-actions">
+                <el-button type="warning" plain size="small" :icon="Download" :loading="exporting" @click="handleExport" v-hasPermi="'transaction:match-abnormal:export'">
+                    {{ t('common.export') }}
+                </el-button>
                 <el-button type="primary" plain size="small" :icon="Refresh" :disabled="!selectedRows.length" :loading="batchLoading" @click="handleBatchRequery" v-hasPermi="'transaction:match-abnormal:batch-requery'">
                     {{ t('transaction.abnormal.batchRequery') }}
                 </el-button>
                 <span v-if="selectedRows.length" class="abnormal-page__selection-count">{{ t('transaction.abnormal.selectedCount', { count: selectedRows.length }) }}</span>
-            </el-col>
-            <el-col :span="6" class="abnormal-page__toolbar-actions">
-                <el-button type="warning" plain size="small" :icon="Download" :loading="exporting" @click="handleExport" v-hasPermi="'transaction:match-abnormal:export'">
-                    {{ t('common.export') }}
-                </el-button>
             </el-col>
         </el-row>
 
@@ -107,7 +97,7 @@
             <el-table-column prop="merchantId" :label="t('transaction.fields.merchantId')" min-width="130" align="center" />
             <el-table-column prop="merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" min-width="180" align="center" show-overflow-tooltip />
             <el-table-column :label="t('transaction.abnormal.abnormalType')" min-width="184" align="center">
-                <template #default="{ row }">{{ optionText(abnormalTypeOptions, row.abnormalType) }}</template>
+                <template #default="{ row }"><el-tag size="small" :type="abnormalTypeTagType(row.abnormalType)" effect="light">{{ optionText(abnormalTypeOptions, row.abnormalType) }}</el-tag></template>
             </el-table-column>
             <el-table-column :label="t('transaction.abnormal.abnormalLevel')" width="104" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="levelTagType(row.abnormalLevel)">{{ optionText(abnormalLevelOptions, row.abnormalLevel) }}</el-tag></template>
@@ -115,14 +105,21 @@
             <el-table-column :label="t('transaction.abnormal.eventStatus')" width="116" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="eventTagType(row.eventStatus)" effect="plain">{{ optionText(eventStatusOptions, row.eventStatus) }}</el-tag></template>
             </el-table-column>
-            <el-table-column prop="platformStatus" :label="t('transaction.abnormal.platformStatus')" width="120" align="center" />
-            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="112" align="center" />
-            <el-table-column prop="channelStatus" :label="t('transaction.abnormal.channelStatus')" width="126" align="center" show-overflow-tooltip />
-            <el-table-column :label="t('transaction.abnormal.platformAmount')" width="150" align="right">
-                <template #default="{ row }">{{ moneyText(row.platformAmount, row.platformCurrency, row.currencyExponent) }}</template>
+            <el-table-column :label="t('transaction.abnormal.platformStatus')" width="120" align="center">
+                <template #default="{ row }"><el-tag size="small" :type="transactionStatusTagType(row.platformStatus)" effect="plain">{{ row.platformStatus || '-' }}</el-tag></template>
             </el-table-column>
-            <el-table-column :label="t('transaction.abnormal.amountDifference')" width="150" align="right">
-                <template #default="{ row }">{{ moneyText(row.amountDifference, row.platformCurrency, row.currencyExponent) }}</template>
+            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="112" align="center" />
+            <el-table-column :label="t('transaction.abnormal.channelStatus')" width="126" align="center" show-overflow-tooltip>
+                <template #default="{ row }"><el-tag size="small" :type="transactionStatusTagType(row.channelStatus)" effect="plain">{{ row.channelStatus || '-' }}</el-tag></template>
+            </el-table-column>
+            <el-table-column :label="t('transaction.abnormal.platformAmount')" width="150" align="center">
+                <template #default="{ row }"><span class="abnormal-page__money">{{ moneyText(row.platformAmount, row.platformCurrency, row.currencyExponent) }}</span></template>
+            </el-table-column>
+            <el-table-column :label="t('transaction.abnormal.channelAmount')" width="150" align="center">
+                <template #default="{ row }"><span class="abnormal-page__money">{{ moneyText(row.channelAmount, row.channelCurrency, row.currencyExponent) }}</span></template>
+            </el-table-column>
+            <el-table-column :label="t('transaction.abnormal.amountDifference')" width="150" align="center">
+                <template #default="{ row }"><span class="abnormal-page__money is-difference">{{ moneyText(row.amountDifference, row.platformCurrency, row.currencyExponent) }}</span></template>
             </el-table-column>
             <el-table-column prop="occurrenceCount" :label="t('transaction.abnormal.occurrenceCount')" width="98" align="center" />
             <el-table-column prop="assignedToName" :label="t('transaction.abnormal.assignee')" width="128" align="center" />
@@ -151,18 +148,39 @@
                 <el-descriptions :column="2" border size="small">
                     <el-descriptions-item :label="t('transaction.abnormal.eventId')">{{ detail.abnormality.abnormalEventId }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.fields.transactionId')">{{ detail.abnormality.transactionId }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.abnormal.abnormalType')">{{ optionText(abnormalTypeOptions, detail.abnormality.abnormalType) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.abnormal.eventStatus')">{{ optionText(eventStatusOptions, detail.abnormality.eventStatus) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.fields.merchantId')">{{ detail.abnormality.merchantId || '-' }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.fields.channelCode')">{{ detail.abnormality.channelCode || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.abnormalType')"><el-tag size="small" :type="abnormalTypeTagType(detail.abnormality.abnormalType)" effect="light">{{ optionText(abnormalTypeOptions, detail.abnormality.abnormalType) }}</el-tag></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.abnormalLevel')"><el-tag size="small" :type="levelTagType(detail.abnormality.abnormalLevel)">{{ optionText(abnormalLevelOptions, detail.abnormality.abnormalLevel) }}</el-tag></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.eventStatus')"><el-tag class="abnormal-page__status-tag" size="small" :type="eventTagType(detail.abnormality.eventStatus)" effect="light">{{ optionText(eventStatusOptions, detail.abnormality.eventStatus) }}</el-tag></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.detectSource')">{{ optionText(detectSourceOptions, detail.abnormality.detectSource) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.occurrenceCount')">{{ detail.abnormality.occurrenceCount ?? 0 }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.sourceRecordType')">{{ detail.abnormality.sourceRecordType || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.abnormal.description')" :span="2">{{ detail.abnormality.abnormalDescription || '-' }}</el-descriptions-item>
                 </el-descriptions>
                 <h3 class="abnormal-page__section-title">{{ t('transaction.abnormal.comparison') }}</h3>
                 <el-descriptions :column="2" border size="small">
-                    <el-descriptions-item :label="t('transaction.abnormal.platformStatus')">{{ detail.abnormality.platformStatus || '-' }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.abnormal.channelStatus')">{{ detail.abnormality.channelStatus || '-' }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.abnormal.platformAmount')">{{ moneyText(detail.abnormality.platformAmount, detail.abnormality.platformCurrency, detail.abnormality.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.abnormal.channelAmount')">{{ moneyText(detail.abnormality.channelAmount, detail.abnormality.channelCurrency, detail.abnormality.currencyExponent) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.merchantId')">{{ detail.abnormality.merchantId || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.merchantOrderNo')">{{ detail.abnormality.merchantOrderNo || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.transactionType')">{{ detail.abnormality.transactionType || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.channelCode')">{{ detail.abnormality.channelCode || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.channelOrderNo')">{{ detail.abnormality.channelOrderNo || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.channelTransactionId')">{{ detail.abnormality.channelTransactionId || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.platformStatus')"><el-tag size="small" :type="transactionStatusTagType(detail.abnormality.platformStatus)" effect="plain">{{ detail.abnormality.platformStatus || '-' }}</el-tag></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.channelStatus')"><el-tag size="small" :type="transactionStatusTagType(detail.abnormality.channelStatus)" effect="plain">{{ detail.abnormality.channelStatus || '-' }}</el-tag></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.platformAmount')"><span class="abnormal-page__money">{{ moneyText(detail.abnormality.platformAmount, detail.abnormality.platformCurrency, detail.abnormality.currencyExponent) }}</span></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.channelAmount')"><span class="abnormal-page__money">{{ moneyText(detail.abnormality.channelAmount, detail.abnormality.channelCurrency, detail.abnormality.currencyExponent) }}</span></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.amountDifference')"><span class="abnormal-page__money is-difference">{{ moneyText(detail.abnormality.amountDifference, detail.abnormality.platformCurrency, detail.abnormality.currencyExponent) }}</span></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.channelMatchResult')">{{ detail.abnormality.channelMatchResult || '-' }}</el-descriptions-item>
+                </el-descriptions>
+                <h3 class="abnormal-page__section-title">{{ t('transaction.abnormal.handlingInfo') }}</h3>
+                <el-descriptions :column="2" border size="small">
+                    <el-descriptions-item :label="t('transaction.abnormal.assignee')">{{ detail.abnormality.assignedToName || detail.abnormality.assignedToId || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.assignedTime')"><BaseDateTime :value="detail.abnormality.assignedTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.resolutionType')">{{ optionText(resolutionTypeOptions, detail.abnormality.resolutionType) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.resolutionReferenceId')">{{ detail.abnormality.resolutionReferenceId || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.firstSeenTime')"><BaseDateTime :value="detail.abnormality.firstSeenTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.lastSeenTime')"><BaseDateTime :value="detail.abnormality.lastSeenTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.abnormal.resolvedTime')"><BaseDateTime :value="detail.abnormality.resolvedTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.fields.transactionDateTime')"><BaseDateTime :value="detail.abnormality.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.abnormal.evidence')" :span="2"><pre class="abnormal-page__evidence">{{ detail.abnormality.rawReferenceJson || '-' }}</pre></el-descriptions-item>
                 </el-descriptions>
             </template>
@@ -245,6 +263,7 @@ import TransactionSearchPanel from '../components/TransactionSearchPanel.vue';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
 import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+    defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
     moneyText,
     splitDateRange,
@@ -269,8 +288,8 @@ const summary = ref<ChannelMatchAbnormalSummary>(emptySummary());
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
-const dateRange = ref<string[]>([]);
-const quickPreset = ref('');
+const dateRange = ref<string[]>(defaultTransactionTodayRange());
+const quickPreset = ref('today');
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const assignMode = ref<'self' | 'transfer'>('self');
 const assigneeAccountId = ref('');
@@ -279,8 +298,8 @@ const resolutionType = ref('NO_CHANGE_REQUIRED');
 const resolutionReason = ref('');
 const resolutionReferenceId = ref('');
 const query = reactive({
-    eventId: '', transactionId: '', merchantId: '', merchantOrderNo: '', abnormalType: '',
-    abnormalLevel: '', eventStatus: 'OPEN', channelCode: '', channelOrderNo: '', assignedToId: '',
+    transactionId: '', merchantId: '', merchantOrderNo: '', abnormalType: '',
+    eventStatus: 'OPEN', channelCode: '', channelOrderNo: '', assignedToId: '',
     detectSource: '', minimumOccurrenceCount: undefined as number | undefined,
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
@@ -344,12 +363,10 @@ function buildQuery(pageNo?: number, currentPageSize?: number): ChannelMatchAbno
     return {
         pageNo,
         pageSize: currentPageSize,
-        eventId: query.eventId || undefined,
         transactionId: query.transactionId || undefined,
         merchantId: query.merchantId || undefined,
         merchantOrderNo: query.merchantOrderNo || undefined,
         abnormalType: query.abnormalType || undefined,
-        abnormalLevel: query.abnormalLevel || undefined,
         eventStatus: query.eventStatus || undefined,
         channelCode: query.channelCode || undefined,
         channelOrderNo: query.channelOrderNo || undefined,
@@ -368,20 +385,23 @@ function handleSearch() {
 
 function handleReset() {
     Object.assign(query, {
-        eventId: '', transactionId: '', merchantId: '', merchantOrderNo: '', abnormalType: '',
-        abnormalLevel: '', eventStatus: 'OPEN', channelCode: '', channelOrderNo: '', assignedToId: '',
+        transactionId: '', merchantId: '', merchantOrderNo: '', abnormalType: '',
+        eventStatus: 'OPEN', channelCode: '', channelOrderNo: '', assignedToId: '',
         detectSource: '', minimumOccurrenceCount: undefined, queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     });
-    dateRange.value = [];
-    quickPreset.value = '';
+    dateRange.value = defaultTransactionTodayRange(query.queryTimeZone);
+    quickPreset.value = 'today';
     handleSearch();
 }
 
 async function openDetail(row: ChannelMatchAbnormalRecord) {
+    detail.value = { abnormality: row };
     detailVisible.value = true;
     detailLoading.value = true;
     try {
         detail.value = await getChannelMatchAbnormalityDetail(row.abnormalEventId, row.transactionDateTime);
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.abnormal.detailLoadFailed'));
     } finally {
         detailLoading.value = false;
     }
@@ -492,21 +512,46 @@ function eventTagType(status?: string) {
     return 'warning';
 }
 
+function abnormalTypeTagType(type?: string) {
+    if (type === 'STATUS_MISMATCH') return 'danger';
+    if (type === 'CURRENCY_MISMATCH') return 'primary';
+    if (type === 'AMOUNT_MISMATCH' || type === 'QUERY_RESULT_UNKNOWN') return 'warning';
+    return 'info';
+}
+
+function transactionStatusTagType(status?: string) {
+    const normalized = status?.toUpperCase() || '';
+    if (['SUCCESS', 'AUTHORIZED', 'AUTHORISED', 'CAPTURED', 'SETTLED'].includes(normalized)) return 'success';
+    if (['FAILED', 'DECLINED', 'ERROR', 'CANCELLED', 'VOIDED'].includes(normalized)) return 'danger';
+    if (['PENDING', 'REVIEW_REQUIRED'].includes(normalized)) return 'warning';
+    if (['PROCESSING', 'SUBMITTED'].includes(normalized)) return 'primary';
+    return 'info';
+}
+
 function emptySummary(): ChannelMatchAbnormalSummary {
     return { totalCount: 0, openCount: 0, processingCount: 0, resolvedCount: 0, ignoredCount: 0, highOrCriticalCount: 0 };
 }
 </script>
 
 <style scoped>
-.abnormal-page__bulk-actions,
-.abnormal-page__toolbar-actions {
+.abnormal-page__bulk-actions {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.abnormal-page__toolbar-actions {
-    justify-content: flex-end;
+.abnormal-page__money {
+    color: var(--el-text-color-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.abnormal-page__money.is-difference {
+    color: var(--el-color-danger);
+}
+
+.abnormal-page__status-tag {
+    min-width: 64px;
+    justify-content: center;
 }
 
 .abnormal-page__selection-count {

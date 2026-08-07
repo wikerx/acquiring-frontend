@@ -239,6 +239,8 @@ export interface MerchantRefundSummary {
     failedOrRejectedCount: number;
     currencyAmounts?: Array<{
         currency?: string;
+        totalAmount?: number | string;
+        pendingApprovalAmount?: number | string;
         successfulAmount?: number | string;
         pendingAmount?: number | string;
     }>;
@@ -251,6 +253,10 @@ export interface MerchantRefundSearchResponse {
 
 export interface MerchantRefundDetail {
     refund: MerchantRefundRecord;
+}
+
+function normalizeTransactionDateTimeParam(value: string) {
+    return value.trim().replace(' ', 'T');
 }
 
 export const transactionApi = {
@@ -294,7 +300,7 @@ export const transactionApi = {
     async refundDetail(transactionId: string, transactionDateTime: string) {
         const result = await http.get<CommonResult<MerchantRefundDetail>>(
             `/merchant/transactions/refunds/${encodeURIComponent(transactionId)}`,
-            { params: { transactionDateTime } },
+            { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
         );
         return unwrapResult(result.data);
     },

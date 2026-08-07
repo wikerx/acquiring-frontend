@@ -16,7 +16,6 @@ export interface MerchantAccessConfigBaseItem {
 
 export interface MerchantSourceUrlItem extends MerchantAccessConfigBaseItem {
     sourceUrl: string;
-    sourceHost?: string;
     createTime?: string;
     updateTime?: string;
 }

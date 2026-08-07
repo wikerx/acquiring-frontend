@@ -1,45 +1,47 @@
 <template>
     <div class="page merchant-redesigned-page access-config-page">
-        <header class="access-config-header">
-            <div class="access-config-header__title">
-                <span class="access-config-header__icon">
-                    <el-icon><Link v-if="isSourceUrl" /><Connection v-else /></el-icon>
-                </span>
-                <h2>{{ title }}</h2>
-            </div>
-            <div class="access-config-header__actions">
-                <div class="status-rail" aria-live="polite">
-                    <span><strong>{{ rows.length }}</strong>{{ t('accessConfig.totalCount') }}</span>
-                    <span class="is-pending"><strong>{{ statusCount(0) }}</strong>{{ t('accessConfig.pending') }}</span>
-                    <span class="is-approved"><strong>{{ statusCount(1) }}</strong>{{ t('accessConfig.approved') }}</span>
-                    <span class="is-rejected"><strong>{{ statusCount(2) }}</strong>{{ t('accessConfig.rejected') }}</span>
+        <section class="merchant-list-card merchant-search-card">
+            <el-form v-show="showSearch" :model="query" inline size="small" class="search-form access-config-search-form">
+                <el-form-item :label="valueColumnLabel">
+                    <el-input v-model.trim="query.keyword" :placeholder="keywordPlaceholder" clearable @keyup.enter="applyQuery" />
+                </el-form-item>
+                <el-form-item :label="t('accessConfig.approvalStatus')">
+                    <el-select v-model="query.approvalStatus" :placeholder="t('common.all')" clearable>
+                        <el-option :label="t('accessConfig.pending')" :value="0" />
+                        <el-option :label="t('accessConfig.approved')" :value="1" />
+                        <el-option :label="t('accessConfig.rejected')" :value="2" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="t('accessConfig.transactionStatus')">
+                    <el-select v-model="query.status" :placeholder="t('common.all')" clearable>
+                        <el-option :label="t('accessConfig.allowed')" :value="1" />
+                        <el-option :label="t('accessConfig.prohibited')" :value="0" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item class="merchant-search-actions">
+                    <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
+                    <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
+                </el-form-item>
+            </el-form>
+        </section>
+
+        <section class="merchant-list-card merchant-table-card">
+            <div class="merchant-table-head">
+                <div class="merchant-table-head__actions">
+                    <h3>{{ title }}</h3>
+                    <el-button v-if="canSubmit" type="primary" plain size="small" :icon="Plus" @click="openSubmit">
+                        {{ t('accessConfig.submit') }}
+                    </el-button>
                 </div>
-                <el-tooltip :content="t('common.refresh')" placement="bottom">
-                    <el-button circle :icon="Refresh" :loading="loading" :aria-label="t('common.refresh')" @click="loadData" />
-                </el-tooltip>
-                <el-button v-if="canSubmit" type="primary" :icon="Plus" @click="openSubmit">{{ t('accessConfig.submit') }}</el-button>
-            </div>
-        </header>
-
-        <section class="access-config-content">
-            <div class="access-config-toolbar">
-                <el-select v-model="query.approvalStatus" clearable :placeholder="t('accessConfig.allApproval')" class="status-filter">
-                    <el-option :label="t('accessConfig.pending')" :value="0" />
-                    <el-option :label="t('accessConfig.approved')" :value="1" />
-                    <el-option :label="t('accessConfig.rejected')" :value="2" />
-                </el-select>
-                <el-select v-model="query.status" clearable :placeholder="t('accessConfig.allTransaction')" class="status-filter">
-                    <el-option :label="t('accessConfig.allowed')" :value="1" />
-                    <el-option :label="t('accessConfig.prohibited')" :value="0" />
-                </el-select>
+                <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </div>
 
-            <StandardTable table-key="merchant-access-config" v-loading="loading" :data="pagedRows" row-key="id" size="small" :empty-text="t('accessConfig.empty')">
-                <el-table-column :label="valueColumnLabel" min-width="240" fixed="left" show-overflow-tooltip>
+            <StandardTable :table-key="tableKey" v-loading="loading" :data="pagedRows" row-key="id" size="small" :empty-text="emptyText">
+                <el-table-column :label="valueColumnLabel" min-width="260" fixed="left" show-overflow-tooltip>
                     <template #default="{ row }"><code class="config-value">{{ itemValue(row) }}</code></template>
                 </el-table-column>
-                <el-table-column :label="secondaryColumnLabel" min-width="150" show-overflow-tooltip>
-                    <template #default="{ row }">{{ secondaryValue(row) }}</template>
+                <el-table-column v-if="!isSourceUrl" :label="t('accessConfig.ipType')" min-width="130" align="center">
+                    <template #default="{ row }">{{ ipTypeText(row) }}</template>
                 </el-table-column>
                 <el-table-column :label="t('accessConfig.approvalStatus')" width="120" align="center">
                     <template #default="{ row }"><el-tag size="small" effect="plain" :type="approvalTagType(row.approvalStatus)">{{ approvalStatusText(row.approvalStatus) }}</el-tag></template>
@@ -56,19 +58,29 @@
                 <el-table-column :label="t('accessConfig.updateTime')" width="176" align="center">
                     <template #default="{ row }"><BaseDateTime :value="updatedAt(row)" /></template>
                 </el-table-column>
-                <el-table-column v-if="canViewDetail" :label="t('common.operation')" width="100" align="center" fixed="right">
-                    <template #default="{ row }"><el-button link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button></template>
+                <el-table-column :label="t('common.operation')" width="100" align="center" class-name="small-padding fixed-width" fixed="right">
+                    <template #default="{ row }">
+                        <el-button v-if="canDetail" link type="primary" size="small" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
+                        <span v-else>-</span>
+                    </template>
                 </el-table-column>
             </StandardTable>
 
             <div v-show="filteredRows.length > 0" class="pagination-container">
-                <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredRows.length" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" background />
+                <el-pagination
+                    v-model:current-page="page"
+                    v-model:page-size="pageSize"
+                    :total="filteredRows.length"
+                    :page-sizes="[10, 20, 50, 100]"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    background
+                />
             </div>
         </section>
 
         <el-dialog v-model="submitVisible" :title="submitTitle" width="min(540px, 92vw)" append-to-body destroy-on-close>
             <el-form label-position="top" size="small">
-                <el-form-item :label="t('accessConfig.values')" required>
+                <el-form-item :label="valueColumnLabel" required>
                     <el-input v-model="submitForm.values" type="textarea" :rows="7" :placeholder="inputPlaceholder" />
                 </el-form-item>
                 <el-form-item :label="t('accessConfig.submitRemark')">
@@ -83,10 +95,10 @@
             </template>
         </el-dialog>
 
-        <el-drawer v-model="detailVisible" :title="t('accessConfig.detailTitle')" size="min(620px, 92vw)" append-to-body destroy-on-close>
+        <el-drawer v-model="detailVisible" :title="detailTitle" size="min(620px, 92vw)" append-to-body destroy-on-close>
             <el-descriptions v-if="detailRow" :column="1" border size="small" class="access-config-detail">
                 <el-descriptions-item :label="valueColumnLabel"><code class="config-value is-detail">{{ itemValue(detailRow) }}</code></el-descriptions-item>
-                <el-descriptions-item :label="secondaryColumnLabel">{{ secondaryValue(detailRow) }}</el-descriptions-item>
+                <el-descriptions-item v-if="!isSourceUrl" :label="t('accessConfig.ipType')">{{ ipTypeText(detailRow) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('accessConfig.approvalStatus')"><el-tag size="small" :type="approvalTagType(detailRow.approvalStatus)">{{ approvalStatusText(detailRow.approvalStatus) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('accessConfig.transactionStatus')"><el-tag size="small" :type="detailRow.status === 1 ? 'success' : 'info'">{{ transactionStatusText(detailRow.status) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('accessConfig.submitSource')">{{ submitSourceText(detailRow.submitSource) }}</el-descriptions-item>
@@ -104,9 +116,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Connection, Link, Plus, Refresh, View } from '@element-plus/icons-vue';
+import { Plus, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { accessConfigApi, type MerchantIpWhitelistItem, type MerchantSourceUrlItem } from '@/api/accessConfigApi';
 import { hasPermission } from '@/utils/permission';
@@ -114,40 +127,54 @@ import { hasPermission } from '@/utils/permission';
 type AccessConfigKind = 'source-url' | 'ip-whitelist';
 type AccessConfigItem = MerchantSourceUrlItem | MerchantIpWhitelistItem;
 
+interface AccessConfigQuery {
+    keyword: string;
+    approvalStatus?: number;
+    status?: number;
+}
+
 const props = defineProps<{ kind: AccessConfigKind }>();
 const { t } = useI18n();
 const rows = ref<AccessConfigItem[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
+const showSearch = ref(true);
 const submitVisible = ref(false);
 const detailVisible = ref(false);
 const detailRow = ref<AccessConfigItem>();
 const page = ref(1);
-const pageSize = ref(10);
-const query = reactive<{ approvalStatus?: number; status?: number }>({});
+const pageSize = ref(20);
+const query = reactive<AccessConfigQuery>({ keyword: '' });
+const appliedQuery = reactive<AccessConfigQuery>({ keyword: '' });
 const submitForm = reactive({ values: '', remark: '' });
 const isSourceUrl = computed(() => props.kind === 'source-url');
+const title = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlTitle' : 'accessConfig.ipWhitelistTitle'));
+const submitTitle = computed(() => t(isSourceUrl.value ? 'accessConfig.submitSourceUrl' : 'accessConfig.submitIpWhitelist'));
+const detailTitle = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlDetailTitle' : 'accessConfig.ipWhitelistDetailTitle'));
+const valueColumnLabel = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlValue' : 'accessConfig.ipValue'));
+const keywordPlaceholder = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlKeywordPlaceholder' : 'accessConfig.ipKeywordPlaceholder'));
+const inputPlaceholder = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlPlaceholder' : 'accessConfig.ipPlaceholder'));
+const emptyText = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlEmpty' : 'accessConfig.ipWhitelistEmpty'));
+const tableKey = computed(() => `merchant-access-config-${props.kind}`);
 const canSubmit = computed(() => hasPermission(isSourceUrl.value
     ? 'merchant:access-config:source-url:submit'
     : 'merchant:access-config:ip-whitelist:submit'));
-const canViewDetail = computed(() => hasPermission(isSourceUrl.value
+const canDetail = computed(() => hasPermission(isSourceUrl.value
     ? 'merchant:access-config:source-url:detail'
     : 'merchant:access-config:ip-whitelist:detail'));
-const title = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlTitle' : 'accessConfig.ipWhitelistTitle'));
-const submitTitle = computed(() => t(isSourceUrl.value ? 'accessConfig.submitSourceUrl' : 'accessConfig.submitIpWhitelist'));
-const valueColumnLabel = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlValue' : 'accessConfig.ipValue'));
-const secondaryColumnLabel = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceHost' : 'accessConfig.ipType'));
-const inputPlaceholder = computed(() => t(isSourceUrl.value ? 'accessConfig.sourceUrlPlaceholder' : 'accessConfig.ipPlaceholder'));
-const filteredRows = computed(() => rows.value.filter((item) =>
-    (query.approvalStatus === undefined || item.approvalStatus === query.approvalStatus)
-    && (query.status === undefined || item.status === query.status),
-));
+const filteredRows = computed(() => {
+    const keyword = appliedQuery.keyword.trim().toLowerCase();
+    return rows.value.filter((item) =>
+        (!keyword || itemValue(item).toLowerCase().includes(keyword))
+        && (appliedQuery.approvalStatus === undefined || item.approvalStatus === appliedQuery.approvalStatus)
+        && (appliedQuery.status === undefined || item.status === appliedQuery.status));
+});
 const pagedRows = computed(() => {
     const start = (page.value - 1) * pageSize.value;
     return filteredRows.value.slice(start, start + pageSize.value);
 });
 
-watch([() => query.approvalStatus, () => query.status, pageSize], () => { page.value = 1; });
+watch(pageSize, () => { page.value = 1; });
 onMounted(loadData);
 
 async function loadData() {
@@ -156,13 +183,23 @@ async function loadData() {
         rows.value = isSourceUrl.value
             ? await accessConfigApi.listSourceUrls()
             : await accessConfigApi.listIpWhitelists();
-        if ((page.value - 1) * pageSize.value >= rows.value.length) page.value = 1;
+        if ((page.value - 1) * pageSize.value >= filteredRows.value.length) page.value = 1;
     } catch (error: any) {
         rows.value = [];
         ElMessage.error(error?.friendlyMessage || error?.message || t('accessConfig.loadFailed'));
     } finally {
         loading.value = false;
     }
+}
+
+function applyQuery() {
+    Object.assign(appliedQuery, query);
+    page.value = 1;
+}
+
+function resetQuery() {
+    Object.assign(query, { keyword: '', approvalStatus: undefined, status: undefined });
+    applyQuery();
 }
 
 function openSubmit() {
@@ -223,10 +260,6 @@ function isValidIp(value: string) {
     return value.includes(':') && /^[0-9a-f:]+$/i.test(value) && value.length <= 45;
 }
 
-function statusCount(status: number) {
-    return rows.value.filter((item) => item.approvalStatus === status).length;
-}
-
 function approvalStatusText(status?: number) {
     if (status === 0) return t('accessConfig.pending');
     if (status === 1) return t('accessConfig.approved');
@@ -255,8 +288,8 @@ function itemValue(item: AccessConfigItem) {
     return 'sourceUrl' in item ? item.sourceUrl : item.ipValue;
 }
 
-function secondaryValue(item: AccessConfigItem) {
-    return 'sourceUrl' in item ? item.sourceHost || '-' : item.ipType || '-';
+function ipTypeText(item: AccessConfigItem) {
+    return 'ipValue' in item ? item.ipType || '-' : '-';
 }
 
 function createdAt(item: AccessConfigItem) {
@@ -269,95 +302,10 @@ function updatedAt(item: AccessConfigItem) {
 </script>
 
 <style scoped>
-.access-config-page {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+.access-config-search-form :deep(.el-input),
+.access-config-search-form :deep(.el-select) {
+    width: 210px;
 }
-
-.access-config-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 4px 0 14px;
-    border-bottom: 1px solid var(--el-border-color-light);
-}
-
-.access-config-header__title,
-.access-config-header__actions,
-.access-config-toolbar,
-.status-rail {
-    display: flex;
-    align-items: center;
-}
-
-.access-config-header__title {
-    min-width: 0;
-    gap: 10px;
-}
-
-.access-config-header__title h2 {
-    margin: 0;
-    overflow: hidden;
-    color: var(--el-text-color-primary);
-    font-size: 20px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.access-config-header__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--el-border-color);
-    border-radius: 6px;
-    color: var(--el-color-primary);
-    font-size: 18px;
-}
-
-.access-config-header__actions {
-    gap: 10px;
-}
-
-.status-rail {
-    height: 32px;
-    border: 1px solid var(--el-border-color-light);
-    border-radius: 6px;
-    background: var(--el-bg-color);
-}
-
-.status-rail span {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    padding: 0 10px;
-    border-right: 1px solid var(--el-border-color-lighter);
-    color: var(--el-text-color-secondary);
-    font-size: 12px;
-    white-space: nowrap;
-}
-
-.status-rail span:last-child { border-right: 0; }
-.status-rail strong { color: var(--el-text-color-primary); font-size: 15px; }
-.status-rail .is-pending strong { color: var(--el-color-warning); }
-.status-rail .is-approved strong { color: var(--el-color-success); }
-.status-rail .is-rejected strong { color: var(--el-color-danger); }
-
-.access-config-content {
-    min-width: 0;
-}
-
-.access-config-toolbar {
-    justify-content: flex-end;
-    gap: 8px;
-    margin-bottom: 10px;
-}
-
-.status-filter { width: 174px; }
 
 .config-value {
     color: var(--el-text-color-primary);
@@ -370,38 +318,24 @@ function updatedAt(item: AccessConfigItem) {
     white-space: normal;
 }
 
-.pagination-container {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 14px;
+.access-config-detail {
+    padding: 0 18px;
 }
 
-.access-config-detail { padding: 0 18px; }
-
-@media (max-width: 900px) {
-    .access-config-header {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .access-config-header__actions {
+@media (max-width: 640px) {
+    .access-config-search-form :deep(.el-form-item),
+    .access-config-search-form :deep(.el-input),
+    .access-config-search-form :deep(.el-select) {
         width: 100%;
-        flex-wrap: wrap;
     }
 
-    .status-rail {
-        max-width: 100%;
+    .pagination-container {
+        justify-content: flex-start;
         overflow-x: auto;
     }
-}
 
-@media (max-width: 560px) {
-    .access-config-toolbar {
-        align-items: stretch;
-        flex-direction: column;
+    .pagination-container :deep(.el-pagination__jump) {
+        display: none;
     }
-
-    .status-filter { width: 100%; }
-    .status-rail span { padding: 0 8px; }
 }
 </style>
