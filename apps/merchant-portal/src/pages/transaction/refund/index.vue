@@ -6,9 +6,6 @@
                     <el-form-item :label="t('transaction.refund.refundTransactionId')">
                         <el-input v-model.trim="query.refundTransactionId" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" />
                     </el-form-item>
-                    <el-form-item :label="t('transaction.refund.sourceTransactionId')">
-                        <el-input v-model.trim="query.sourceTransactionId" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" />
-                    </el-form-item>
                     <el-form-item :label="t('transaction.refund.merchantOrderNo')">
                         <el-input v-model.trim="query.merchantOrderNo" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" />
                     </el-form-item>
@@ -46,8 +43,16 @@
 
         <section class="merchant-refund-summary" aria-live="polite">
             <div v-for="item in summaryItems" :key="item.key" :class="['merchant-refund-summary__item', `is-${item.tone}`]">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
+                <div class="merchant-refund-summary__head">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                </div>
+                <div v-if="item.amounts.length" class="merchant-refund-summary__amounts">
+                    <span v-for="amount in item.amounts" :key="amount.key" class="merchant-refund-summary__amount" :title="amount.description">
+                        <small>{{ amount.currency }}</small>
+                        <b>{{ amount.amount }}</b>
+                    </span>
+                </div>
             </div>
         </section>
 
@@ -62,7 +67,6 @@
             </div>
             <StandardTable table-key="merchant-transaction-refund" v-loading="loading" :data="rows" row-key="refundTransactionId" size="small">
                 <el-table-column prop="refundTransactionId" :label="t('transaction.refund.refundTransactionId')" min-width="210" fixed="left" show-overflow-tooltip />
-                <el-table-column prop="sourceTransactionId" :label="t('transaction.refund.sourceTransactionId')" min-width="210" show-overflow-tooltip />
                 <el-table-column prop="merchantOrderNo" :label="t('transaction.refund.merchantOrderNo')" min-width="184" show-overflow-tooltip />
                 <el-table-column :label="t('transaction.refund.transactionType')" width="110" align="center">
                     <template #default="{ row }"><el-tag size="small" effect="plain">{{ optionText(refundTypeOptions, row.transactionType) }}</el-tag></template>
@@ -70,17 +74,20 @@
                 <el-table-column :label="t('transaction.refund.refundScope')" width="112" align="center">
                     <template #default="{ row }">{{ optionText(refundScopeOptions, row.refundScope) }}</template>
                 </el-table-column>
-                <el-table-column :label="t('transaction.refund.transactionAmount')" min-width="142" align="right">
+                <el-table-column :label="t('transaction.refund.transactionAmount')" min-width="142" align="center">
                     <template #default="{ row }"><span class="merchant-refund-money">{{ moneyText(row.transactionAmount, row.transactionCurrency, row.currencyExponent) }}</span></template>
                 </el-table-column>
                 <el-table-column :label="t('transaction.refund.transactionStatus')" width="120" align="center">
                     <template #default="{ row }"><el-tag size="small" :type="statusTagType(row.transactionStatus, transactionStatusOptions)">{{ optionText(transactionStatusOptions, row.transactionStatus) }}</el-tag></template>
                 </el-table-column>
                 <el-table-column :label="t('transaction.refund.approvalStatus')" width="126" align="center">
-                    <template #default="{ row }"><el-tag size="small" :type="approvalTagType(row.approvalStatus)" effect="plain">{{ optionText(approvalStatusOptions, row.approvalStatus) }}</el-tag></template>
+                    <template #default="{ row }"><el-tag class="merchant-refund-status-tag" size="small" :type="approvalTagType(row.approvalStatus)" effect="light">{{ optionText(approvalStatusOptions, row.approvalStatus) }}</el-tag></template>
                 </el-table-column>
                 <el-table-column :label="t('transaction.refund.paymentMethod')" min-width="132" align="center">
-                    <template #default="{ row }">{{ [row.paymentMethod, row.paymentBrand].filter(Boolean).join(' / ') || '-' }}</template>
+                    <template #default="{ row }">
+                        <PaymentLogoGroup v-if="paymentLogoKeys(row).length" :keys="paymentLogoKeys(row)" size="sm" align="center" :wrap="false" fallback="text" />
+                        <span v-else>{{ [row.paymentMethod, row.paymentBrand].filter(Boolean).join(' / ') || '-' }}</span>
+                    </template>
                 </el-table-column>
                 <el-table-column :label="t('transaction.refund.processingResult')" min-width="190" align="center" show-overflow-tooltip>
                     <template #default="{ row }">{{ visibleMessage(row) }}</template>
@@ -109,11 +116,18 @@
                     <h3>{{ t('transaction.refund.baseInfo') }}</h3>
                     <el-descriptions :column="2" border size="small">
                         <el-descriptions-item :label="t('transaction.refund.refundTransactionId')">{{ detail.refund.refundTransactionId }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.refund.sourceTransactionId')">{{ detail.refund.sourceTransactionId || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.refund.merchantOrderNo')">{{ detail.refund.merchantOrderNo || '-' }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.refund.transactionAmount')">{{ moneyText(detail.refund.transactionAmount, detail.refund.transactionCurrency, detail.refund.currencyExponent) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.refund.transactionStatus')">{{ optionText(transactionStatusOptions, detail.refund.transactionStatus) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.refund.approvalStatus')">{{ optionText(approvalStatusOptions, detail.refund.approvalStatus) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.transactionType')">{{ optionText(refundTypeOptions, detail.refund.transactionType) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.refundScope')">{{ optionText(refundScopeOptions, detail.refund.refundScope) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.transactionAmount')"><span class="merchant-refund-money">{{ moneyText(detail.refund.transactionAmount, detail.refund.transactionCurrency, detail.refund.currencyExponent) }}</span></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.transactionStatus')"><el-tag size="small" :type="statusTagType(detail.refund.transactionStatus, transactionStatusOptions)">{{ optionText(transactionStatusOptions, detail.refund.transactionStatus) }}</el-tag></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.approvalStatus')"><el-tag class="merchant-refund-status-tag" size="small" :type="approvalTagType(detail.refund.approvalStatus)" effect="light">{{ optionText(approvalStatusOptions, detail.refund.approvalStatus) }}</el-tag></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.paymentMethod')">
+                            <PaymentLogoGroup v-if="paymentLogoKeys(detail.refund).length" :keys="paymentLogoKeys(detail.refund)" size="sm" align="start" :wrap="false" fallback="text" />
+                            <span v-else>{{ [detail.refund.paymentMethod, detail.refund.paymentBrand].filter(Boolean).join(' / ') || '-' }}</span>
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.transactionTime')"><BaseDateTime :value="detail.refund.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.refund.completeTime')"><BaseDateTime :value="detail.refund.completeTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.refund.requestReason')" :span="2">{{ detail.refund.requestReason || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.refund.processingResult')" :span="2">{{ visibleMessage(detail.refund) }}</el-descriptions-item>
                     </el-descriptions>
@@ -126,6 +140,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
+import { PaymentLogoGroup } from '@acquiring/shared';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -148,6 +163,7 @@ import {
     resolveTransactionQueryRange,
     splitDateRange,
     statusTagType,
+    transactionPaymentLogoKeys,
     type TransactionDictOption,
 } from '../shared';
 
@@ -167,7 +183,7 @@ const dateRange = ref<string[]>(defaultTransactionTodayRange());
 const quickPreset = ref('today');
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const query = reactive({
-    refundTransactionId: '', sourceTransactionId: '', merchantOrderNo: '',
+    refundTransactionId: '', merchantOrderNo: '',
     transactionStatus: '', approvalStatus: '', refundScope: '',
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
@@ -178,10 +194,10 @@ const approvalStatusOptions = options(['PENDING', 'APPROVED', 'REJECTED', 'EXPIR
 const refundTypeOptions = options(['REFUND', 'VOID'], 'transaction.type');
 const refundScopeOptions = options(['FULL', 'PARTIAL', 'VOID'], 'transaction.refund.scopeOption');
 const summaryItems = computed(() => [
-    { key: 'total', label: t('transaction.refund.summary.total'), value: summary.value.totalCount, tone: 'neutral' },
-    { key: 'pending', label: t('transaction.refund.summary.pendingApproval'), value: summary.value.pendingApprovalCount, tone: 'warning' },
-    { key: 'processing', label: t('transaction.refund.summary.processing'), value: summary.value.processingCount, tone: 'primary' },
-    { key: 'success', label: t('transaction.refund.summary.success'), value: summary.value.successCount, tone: 'success' },
+    { key: 'total', label: t('transaction.refund.summary.total'), value: summary.value.totalCount, tone: 'neutral', amounts: currencyAmounts('totalAmount') },
+    { key: 'pending', label: t('transaction.refund.summary.pendingApproval'), value: summary.value.pendingApprovalCount, tone: 'warning', amounts: currencyAmounts('pendingApprovalAmount') },
+    { key: 'processing', label: t('transaction.refund.summary.processing'), value: summary.value.processingCount, tone: 'primary', amounts: currencyAmounts('pendingAmount') },
+    { key: 'success', label: t('transaction.refund.summary.success'), value: summary.value.successCount, tone: 'success', amounts: currencyAmounts('successfulAmount') },
 ]);
 
 onMounted(loadData);
@@ -192,6 +208,32 @@ function options(values: string[], key: string): TransactionDictOption[] {
 
 function optionText(items: TransactionDictOption[], value?: string) {
     return value ? items.find((item) => item.value === value)?.label || value : '-';
+}
+
+function currencyAmounts(field: 'totalAmount' | 'pendingApprovalAmount' | 'successfulAmount' | 'pendingAmount') {
+    return (summary.value.currencyAmounts || []).flatMap((item) => {
+        const currency = item.currency?.trim();
+        const amount = Number(item[field]);
+        if (!currency || !Number.isFinite(amount) || amount <= 0) return [];
+        return [{
+            key: `${field}:${currency}`,
+            currency,
+            amount: summaryAmountText(item[field]),
+            description: t(`transaction.refund.summary.${field}`),
+        }];
+    }).slice(0, 4);
+}
+
+function summaryAmountText(amount?: number | string) {
+    const value = Number(amount || 0);
+    if (!Number.isFinite(value)) return String(amount || 0);
+    const decimalLength = String(amount ?? '').split('.')[1]?.length || 2;
+    const digits = Math.min(Math.max(decimalLength, 2), 8);
+    return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function paymentLogoKeys(row: MerchantRefundRecord) {
+    return transactionPaymentLogoKeys(row.paymentMethod, row.paymentBrand);
 }
 
 async function loadData() {
@@ -217,7 +259,6 @@ function buildQuery(pageNo?: number, currentPageSize?: number): MerchantRefundQu
         pageNo,
         pageSize: currentPageSize,
         refundTransactionId: query.refundTransactionId || undefined,
-        sourceTransactionId: query.sourceTransactionId || undefined,
         merchantOrderNo: query.merchantOrderNo || undefined,
         transactionStatus: query.transactionStatus || undefined,
         approvalStatus: query.approvalStatus || undefined,
@@ -234,7 +275,7 @@ function applyQuery() {
 
 function resetQuery() {
     Object.assign(query, {
-        refundTransactionId: '', sourceTransactionId: '', merchantOrderNo: '',
+        refundTransactionId: '', merchantOrderNo: '',
         transactionStatus: '', approvalStatus: '', refundScope: '',
         queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     });
@@ -253,10 +294,13 @@ async function handleExport() {
 }
 
 async function openDetail(row: MerchantRefundRecord) {
+    detail.value = { refund: row };
     detailVisible.value = true;
     detailLoading.value = true;
     try {
         detail.value = await transactionApi.refundDetail(row.refundTransactionId, row.transactionDateTime);
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.refund.detailLoadFailed'));
     } finally {
         detailLoading.value = false;
     }
@@ -318,12 +362,11 @@ function emptySummary(): MerchantRefundSummary {
 }
 
 .merchant-refund-summary__item {
-    display: flex;
+    display: grid;
     min-width: 0;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 52px;
+    align-content: center;
+    gap: 7px;
+    min-height: 68px;
     border-right: 1px solid #e8eff4;
     padding: 8px 14px;
 }
@@ -332,16 +375,57 @@ function emptySummary(): MerchantRefundSummary {
     border-right: 0;
 }
 
-.merchant-refund-summary__item span {
+.merchant-refund-summary__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.merchant-refund-summary__head span {
     color: #607181;
     font-size: 12px;
     font-weight: 700;
 }
 
-.merchant-refund-summary__item strong {
+.merchant-refund-summary__head strong {
     color: #19374b;
     font-size: 20px;
     font-variant-numeric: tabular-nums;
+}
+
+.merchant-refund-summary__amounts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.merchant-refund-summary__amount {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid #d7e4ec;
+    border-radius: 4px;
+    background: #f8fbfc;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.merchant-refund-summary__amount small {
+    border-right: 1px solid #d7e4ec;
+    padding: 1px 5px;
+    background: #edf5f7;
+    color: #276278;
+    font-size: 10px;
+    line-height: 16px;
+}
+
+.merchant-refund-summary__amount b {
+    padding: 1px 6px;
+    color: #19374b;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
 }
 
 .merchant-refund-summary__item.is-success {
@@ -365,8 +449,12 @@ function emptySummary(): MerchantRefundSummary {
 
 .merchant-refund-money {
     color: #19374b;
-    font-weight: 700;
     font-variant-numeric: tabular-nums;
+}
+
+.merchant-refund-status-tag {
+    min-width: 64px;
+    justify-content: center;
 }
 
 .merchant-refund-detail h3 {

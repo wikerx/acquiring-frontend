@@ -307,6 +307,8 @@ export interface RefundManagementRecord {
 
 export interface RefundCurrencySummary {
     currency?: string;
+    totalAmount?: number | string;
+    pendingApprovalAmount?: number | string;
     successfulAmount?: number | string;
     pendingAmount?: number | string;
 }
@@ -459,6 +461,11 @@ function normalizeTransactionShardTime(value: string) {
     return `${match[1]}.${(match[2] || '').padEnd(3, '0').slice(0, 3)}`;
 }
 
+/** Spring MVC 的 ISO LocalDateTime 请求参数必须使用 T 分隔日期和时间。 */
+function normalizeTransactionDateTimeParam(value: string) {
+    return normalizeTransactionShardTime(value).replace(' ', 'T');
+}
+
 function normalizeTransactionActionShardTimes(data: TransactionActionRequest): TransactionActionRequest {
     return {
         ...data,
@@ -585,7 +592,7 @@ export async function searchRefundManagement(data: RefundManagementQuery) {
 export async function getRefundManagementDetail(transactionId: string, transactionDateTime: string) {
     const result = await http.get<CommonResult<RefundManagementDetail>>(
         `/admin/transactions/refunds/${encodeURIComponent(transactionId)}`,
-        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime) } },
+        { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
     );
     return unwrapResult(result.data);
 }
@@ -620,7 +627,7 @@ export async function searchChannelMatchAbnormalities(data: ChannelMatchAbnormal
 export async function getChannelMatchAbnormalityDetail(eventId: string, transactionDateTime: string) {
     const result = await http.get<CommonResult<ChannelMatchAbnormalDetail>>(
         `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}`,
-        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime) } },
+        { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
     );
     return unwrapResult(result.data);
 }
@@ -634,7 +641,8 @@ export async function claimChannelMatchAbnormality(
     data: { transactionDateTime: string; expectedVersion: number; assigneeAccountId?: string; assigneeName?: string },
 ) {
     const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
-        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/claim`, data,
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/claim`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
     );
     return unwrapResult(result.data);
 }
@@ -644,14 +652,21 @@ export async function requeryChannelMatchAbnormality(
     data: { transactionDateTime: string; expectedVersion: number },
 ) {
     const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
-        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/requery`, data,
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/requery`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
     );
     return unwrapResult(result.data);
 }
 
 export async function batchRequeryChannelMatchAbnormalities(cases: ChannelMatchAbnormalCaseReference[]) {
     const result = await http.post<CommonResult<ChannelMatchAbnormalBatchResult>>(
-        '/admin/transactions/channel-match-abnormalities/batch-requery', { cases },
+        '/admin/transactions/channel-match-abnormalities/batch-requery',
+        {
+            cases: cases.map((item) => ({
+                ...item,
+                transactionDateTime: normalizeTransactionDateTimeParam(item.transactionDateTime),
+            })),
+        },
     );
     return unwrapResult(result.data);
 }
@@ -661,7 +676,8 @@ export async function resolveChannelMatchAbnormality(
     data: { transactionDateTime: string; expectedVersion: number; resolutionType: string; reason: string; referenceId?: string },
 ) {
     const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
-        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/resolve`, data,
+        `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/resolve`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
     );
     return unwrapResult(result.data);
 }
