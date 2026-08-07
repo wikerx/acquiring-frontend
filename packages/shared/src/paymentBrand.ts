@@ -268,6 +268,38 @@ export const DEFAULT_CHECKOUT_TRUST_LOGOS: PaymentLogoKey[] = [
     'googlePay',
 ];
 
+const PAYMENT_METHOD_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
+    BANK_CARD: ['visa', 'mastercard', 'jcb', 'americanExpress'],
+    PAYPAL: ['paypal'],
+    APPLE_PAY: ['applePay'],
+    GOOGLE_PAY: ['googlePay'],
+    ALIPAY_PLUS: ['alipayPlus'],
+    CASH_APP_PAY: ['cashAppPay'],
+    ACH_DEBIT: ['achDebit'],
+    BANK_TRANSFER: ['bankTransfer'],
+    SPEI: ['spei'],
+    PIX: ['pix'],
+};
+
+const PAYMENT_BRAND_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
+    VISA: ['visa'],
+    MASTERCARD: ['mastercard'],
+    JCB: ['jcb'],
+    MAESTRO: ['maestro'],
+    AMEX: ['americanExpress'],
+    AMERICAN_EXPRESS: ['americanExpress'],
+    DINERS_CLUB: ['dinersClub'],
+    DISCOVER: ['discover'],
+    UNIONPAY: ['unionPay'],
+};
+
+/** 按支付品牌优先、支付方式兜底解析统一 Logo，供筛选项和统计维度复用。 */
+export function resolvePaymentLogoKeys(paymentMethod?: string, paymentBrand?: string): PaymentLogoKey[] {
+    const brandKeys = PAYMENT_BRAND_LOGO_KEYS[(paymentBrand || '').toUpperCase()] || [];
+    const methodKeys = PAYMENT_METHOD_LOGO_KEYS[(paymentMethod || '').toUpperCase()] || [];
+    return (brandKeys.length ? brandKeys : methodKeys).filter((key, index, keys) => keys.indexOf(key) === index);
+}
+
 export function getPaymentLogo(key: PaymentLogoKey): PaymentLogoConfig {
     return PAYMENT_LOGO_REGISTRY[key];
 }

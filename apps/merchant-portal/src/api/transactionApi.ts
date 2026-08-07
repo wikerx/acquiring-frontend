@@ -1,4 +1,10 @@
-import type { CommonResult, PageResult } from '@acquiring/shared';
+import type {
+    CommonResult,
+    PageResult,
+    TransactionAnalyticsFailure,
+    TransactionAnalyticsOverview,
+    TransactionAnalyticsQuery,
+} from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { downloadBlob } from '@/utils/download';
 import { http } from './http';
@@ -260,6 +266,18 @@ function normalizeTransactionDateTimeParam(value: string) {
 }
 
 export const transactionApi = {
+    async analyticsOverview(data: TransactionAnalyticsQuery) {
+        const result = await http.post<CommonResult<TransactionAnalyticsOverview>>(
+            '/merchant/transactions/analytics/overview', data,
+        );
+        return unwrapResult(result.data);
+    },
+    async analyticsFailures(data: TransactionAnalyticsQuery) {
+        const result = await http.post<CommonResult<TransactionAnalyticsFailure>>(
+            '/merchant/transactions/analytics/failures', data,
+        );
+        return unwrapResult(result.data);
+    },
     async pageOrders(data: TransactionPageQuery) {
         const result = await http.post<CommonResult<PageResult<TransactionOrder>>>('/merchant/transactions/orders/search', data);
         return unwrapResult(result.data);
