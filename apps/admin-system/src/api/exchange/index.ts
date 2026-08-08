@@ -80,6 +80,7 @@ export interface ExchangeBusinessRate {
     rateStatus: string;
     remark?: string;
     createTime?: string;
+    updateBy?: string;
     updateTime?: string;
 }
 
@@ -116,6 +117,8 @@ export interface RawRateQuery extends PageQuery {
     publishEndTime?: string;
     fetchStartTime?: string;
     fetchEndTime?: string;
+    effectiveStartTime?: string;
+    effectiveEndTime?: string;
 }
 
 export interface RuleQuery extends PageQuery {
@@ -135,6 +138,10 @@ export interface BusinessRateQuery extends PageQuery {
     quoteCurrency?: string;
     rateStatus?: string;
     generateMethod?: string;
+    effectiveStartTime?: string;
+    effectiveEndTime?: string;
+    createStartTime?: string;
+    createEndTime?: string;
 }
 
 export interface BusinessRateSaveRequest {

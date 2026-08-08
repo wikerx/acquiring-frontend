@@ -221,7 +221,12 @@
                             <p>{{ t('checkout.paymentMethod') }}</p>
                             <h2>{{ t('checkout.chooseMethod') }}</h2>
                         </div>
-                        <PaymentLogoGroup :keys="paymentHeaderLogoKeys" size="sm" align="end" />
+                        <PaymentLogoGroup
+                            class="checkout-section-card__logos"
+                            :keys="paymentHeaderLogoKeys"
+                            size="sm"
+                            align="end"
+                        />
                     </div>
 
                     <div v-if="supportedPaymentMethods.length === 0" class="checkout-inline-note checkout-inline-note--error">
@@ -277,6 +282,7 @@
                                         placeholder="4111 1111 1111 1111"
                                         :aria-invalid="Boolean(fieldErrors.cardNumber)"
                                         @input="formatCardNumber"
+                                        @blur="handleCardNumberBlur"
                                     />
                                     <small v-if="fieldErrors.cardNumber" class="checkout-field__hint checkout-field__hint--error">
                                         {{ fieldErrors.cardNumber }}
@@ -300,6 +306,7 @@
                                         <span>{{ t('checkout.cvc') }}</span>
                                         <input
                                             v-model="cardForm.cvc"
+                                            type="password"
                                             inputmode="numeric"
                                             autocomplete="cc-csc"
                                             placeholder="123"
@@ -473,10 +480,13 @@ import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkou
 import {
     queryCheckoutPaymentStatus,
     queryCheckoutSession,
+    resolveCheckoutCardBin,
     returnCheckoutThreeDs,
     submitCheckoutPayment,
     type CheckoutPageState,
     type HostedCheckoutClientContext,
+    type HostedCheckoutCardDataEnvelope,
+    type HostedCheckoutCardEncryption,
     type HostedCheckoutPaymentMethod,
     type HostedCheckoutPaymentResult,
     type HostedCheckoutSession,
@@ -493,6 +503,7 @@ interface PaymentOption {
     channelCode?: string;
     label: string;
     description: string;
+    brands: string[];
     logoKeys: PaymentLogoKey[];
     threeDsMode?: string;
 }
@@ -549,19 +560,6 @@ const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     DINERS: 'dinersClub',
     UNIONPAY: 'unionPay',
 };
-const SYSTEM_PAYMENT_LOGOS: PaymentLogoKey[] = [
-    'visa',
-    'mastercard',
-    'jcb',
-    'maestro',
-    'americanExpress',
-    'discover',
-    'unionPay',
-    'dinersClub',
-    'applePay',
-    'googlePay',
-    'paypal',
-];
 const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
     RISK_REJECTED: 'status.failureReasons.RISK_REJECTED',
     ROUTE_FAILED: 'status.failureReasons.ROUTE_FAILED',
@@ -610,6 +608,11 @@ const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
 const threeDsReturnHandling = ref(false);
+const attemptRequestId = ref(createAttemptRequestId());
+const resolvedCardBin = ref('');
+const resolvedCardBrand = ref('');
+const resolvedCardSupported = ref<boolean | null>(null);
+let cardBinRequestSequence = 0;
 
 const billingForm = reactive({
     email: '',
@@ -662,9 +665,9 @@ const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionTyp
 
 const paymentHeaderLogoKeys = computed<PaymentLogoKey[]>(() => {
     const logos = supportedPaymentMethods.value.flatMap((method) => method.logoKeys);
-    return uniqueLogos(logos.length ? logos : ['visa', 'mastercard', 'jcb', 'maestro']);
+    return uniqueLogos(logos);
 });
-const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => SYSTEM_PAYMENT_LOGOS);
+const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => paymentHeaderLogoKeys.value);
 
 const selectedCountry = computed(() => (
     countryOptions.value.find((country) => country.countryCode === selectedCountryCode.value)
@@ -947,35 +950,69 @@ async function initializeCheckout() {
 
 function hydrateSession(response: HostedCheckoutSession) {
     session.value = response;
+    paymentResult.value = response.paymentResult || null;
+    hydratePrefill(response);
+}
+
+function hydratePrefill(response: HostedCheckoutSession) {
+    const prefill = response.billingInfo || response.payerInfo;
+    if (!prefill) {
+        return;
+    }
+    billingForm.email = prefill.email || '';
+    billingForm.firstName = prefill.firstName || '';
+    billingForm.lastName = prefill.lastName || '';
+    billingForm.phone = prefill.phone || '';
+    billingForm.state = prefill.state || '';
+    billingForm.city = prefill.city || '';
+    billingForm.street = prefill.street || '';
+    billingForm.postal = prefill.postal || '';
+    if (prefill.country) {
+        selectedCountryCode.value = normalizeCode(prefill.country);
+    }
+    if (!cardForm.cardholderName) {
+        cardForm.cardholderName = [prefill.firstName, prefill.lastName].filter(Boolean).join(' ');
+    }
 }
 
 async function handleSubmitPayment() {
+    if (submitting.value) {
+        return;
+    }
     formMessageKey.value = '';
     if (!validateForm() || !routeToken.value || !session.value || !selectedMethod.value) {
         return;
     }
     submitting.value = true;
     clearPolling();
-    if (isDevToken(routeToken.value)) {
-        devStatusPolls.value = 0;
-        handlePaymentResult(mockThreeDsRequiredResult());
-        submitting.value = false;
-        return;
-    }
     try {
+        if (!await ensureCardBrandSupported()) {
+            return;
+        }
+        if (isDevToken(routeToken.value)) {
+            handlePaymentResult(mockSuccessResult());
+            return;
+        }
         const expiry = parseExpiry(cardForm.expiry);
-        const response = await submitCheckoutPayment({
-            opaqueToken: routeToken.value,
-            checkoutSessionId: session.value.checkoutSessionId,
-            attemptRequestId: createAttemptRequestId(),
-            paymentMethod: selectedMethod.value.paymentMethod,
-            cardInfo: {
+        const cardDataEnvelope = await encryptCardData(
+            session.value.cardEncryption,
+            session.value.checkoutSessionId,
+            attemptRequestId.value,
+            {
                 cardNo: digitsOnly(cardForm.cardNumber),
                 expirationMonth: expiry.month,
                 expirationYear: expiry.year,
                 securityCode: digitsOnly(cardForm.cvc),
                 cardholderName: cardForm.cardholderName,
             },
+        );
+        cardForm.cvc = '';
+        const response = await submitCheckoutPayment({
+            opaqueToken: routeToken.value,
+            checkoutSessionId: session.value.checkoutSessionId,
+            attemptRequestId: attemptRequestId.value,
+            paymentMethod: selectedMethod.value.paymentMethod,
+            cardDataEnvelope,
             billingCardHolderInfo: {
                 firstName: billingForm.firstName,
                 lastName: billingForm.lastName,
@@ -997,6 +1034,7 @@ async function handleSubmitPayment() {
             return;
         }
         formMessageKey.value = 'checkout.submitFailed';
+        await refreshSessionEncryption();
     } finally {
         submitting.value = false;
     }
@@ -1146,11 +1184,68 @@ function applyPageState(pageState?: string) {
     blockCheckout('checkout.invalidLink');
 }
 
-function retryPayment() {
+async function retryPayment() {
     clearPolling();
     formMessageKey.value = '';
     paymentResult.value = null;
-    runtimeState.value = 'checkout';
+    attemptRequestId.value = createAttemptRequestId();
+    cardForm.cardNumber = '';
+    cardForm.expiry = '';
+    cardForm.cvc = '';
+    resetCardBinResolution();
+    if (isDevToken(routeToken.value)) {
+        runtimeState.value = 'checkout';
+        if (countryOptions.value.length === 0) {
+            await loadCountries();
+        }
+        return;
+    }
+    runtimeState.value = 'loading';
+    try {
+        const response = await queryCheckoutSession({
+            opaqueToken: routeToken.value,
+            cover: routeCover.value,
+            clientContext: buildClientContext(),
+        });
+        hydrateSession(response);
+        const pageState = normalizeCode(response.pageState);
+        if (isRetryablePageState(pageState)
+            && response.checkout?.retryAllowed
+            && response.cardEncryption) {
+            session.value = { ...response, pageState: 'PAYABLE', paymentResult: undefined };
+            paymentResult.value = null;
+            runtimeState.value = 'checkout';
+            if (countryOptions.value.length === 0) {
+                await loadCountries();
+            }
+            return;
+        }
+        applyPageState(response.pageState);
+        if (pageState === 'PAYABLE' && countryOptions.value.length === 0) {
+            await loadCountries();
+        }
+    } catch {
+        blockCheckout('checkout.invalidLink');
+    }
+}
+
+async function refreshSessionEncryption() {
+    if (!routeToken.value || !session.value || isDevToken(routeToken.value)) {
+        return;
+    }
+    try {
+        const response = await queryCheckoutSession({
+            opaqueToken: routeToken.value,
+            cover: routeCover.value,
+            clientContext: buildClientContext(),
+        });
+        session.value.cardEncryption = response.cardEncryption;
+        if (response.paymentResult) {
+            handlePaymentResult(response.paymentResult);
+        }
+    } catch {
+        // The current error remains visible; a later retry will query the session again.
+    }
 }
 
 function startPolling() {
@@ -1234,6 +1329,103 @@ function clearFieldErrors() {
 
 function formatCardNumber() {
     cardForm.cardNumber = digitsOnly(cardForm.cardNumber).slice(0, 19).replace(/(.{4})/g, '$1 ').trim();
+    const currentBin = cardBinPrefix(cardForm.cardNumber);
+    if (currentBin !== resolvedCardBin.value) {
+        resetCardBinResolution();
+    }
+    delete fieldErrors.cardNumber;
+}
+
+async function handleCardNumberBlur() {
+    const cardNumber = digitsOnly(cardForm.cardNumber);
+    if (cardNumber.length < 6) {
+        return;
+    }
+    await ensureCardBrandSupported();
+}
+
+/** BIN 结论必须来自当前会话的 MID 能力；查询不可用时失败关闭，禁止继续提交支付。 */
+async function ensureCardBrandSupported(): Promise<boolean> {
+    if (!session.value || !routeToken.value || !selectedMethod.value) {
+        return false;
+    }
+    const cardNumber = digitsOnly(cardForm.cardNumber);
+    if (cardNumber.length < 6) {
+        return false;
+    }
+    const cardBin = cardBinPrefix(cardNumber);
+    if (resolvedCardBin.value === cardBin && resolvedCardSupported.value !== null) {
+        applyCardBrandValidation();
+        return resolvedCardSupported.value;
+    }
+    const requestSequence = ++cardBinRequestSequence;
+    try {
+        if (isDevToken(routeToken.value)) {
+            const cardBrand = resolveDevCardBrand(cardNumber);
+            resolvedCardBin.value = cardBin;
+            resolvedCardBrand.value = cardBrand;
+            resolvedCardSupported.value = selectedMethod.value.brands.includes(cardBrand);
+        } else {
+            const result = await resolveCheckoutCardBin({
+                opaqueToken: routeToken.value,
+                checkoutSessionId: session.value.checkoutSessionId,
+                cardBin,
+            });
+            if (requestSequence !== cardBinRequestSequence || cardBin !== cardBinPrefix(cardForm.cardNumber)) {
+                return false;
+            }
+            resolvedCardBin.value = cardBin;
+            resolvedCardBrand.value = normalizeCode(result.cardBrand) || 'UNKNOWN';
+            resolvedCardSupported.value = result.recognized && result.supported;
+        }
+        applyCardBrandValidation();
+        return resolvedCardSupported.value === true;
+    } catch {
+        if (requestSequence === cardBinRequestSequence) {
+            resolvedCardBin.value = cardBin;
+            resolvedCardBrand.value = '';
+            resolvedCardSupported.value = false;
+            fieldErrors.cardNumber = t('checkout.validation.cardBrandUnavailable');
+        }
+        return false;
+    }
+}
+
+function applyCardBrandValidation() {
+    if (resolvedCardSupported.value === true) {
+        delete fieldErrors.cardNumber;
+        return;
+    }
+    fieldErrors.cardNumber = t('checkout.validation.cardBrandUnsupported', {
+        brand: resolvedCardBrand.value || t('checkout.validation.unknownCardBrand'),
+    });
+}
+
+function resetCardBinResolution() {
+    cardBinRequestSequence += 1;
+    resolvedCardBin.value = '';
+    resolvedCardBrand.value = '';
+    resolvedCardSupported.value = null;
+}
+
+function isRetryablePageState(pageState: string): boolean {
+    return pageState === 'FAILED_RETRYABLE' || pageState === 'EXPIRED';
+}
+
+function cardBinPrefix(value: string): string {
+    const digits = digitsOnly(value);
+    return digits.slice(0, Math.min(11, digits.length));
+}
+
+function resolveDevCardBrand(value: string): string {
+    const digits = digitsOnly(value);
+    if (digits.startsWith('4')) return 'VISA';
+    if (digits.startsWith('34') || digits.startsWith('37')) return 'AMEX';
+    if (digits.startsWith('35')) return 'JCB';
+    if (digits.startsWith('5') || digits.startsWith('22')) return 'MASTERCARD';
+    if (digits.startsWith('62')) return 'UNIONPAY';
+    if (digits.startsWith('6011') || digits.startsWith('65')) return 'DISCOVER';
+    return 'UNKNOWN';
 }
 
 function formatExpiry() {
@@ -1287,6 +1479,79 @@ function digitsOnly(value: string): string {
     return value.replace(/\D/g, '');
 }
 
+/** 卡数据只以 Web Crypto 信封离开浏览器；AAD 与 payment 服务协议保持逐字节一致。 */
+async function encryptCardData(
+    metadata: HostedCheckoutCardEncryption | undefined,
+    checkoutSessionId: string,
+    currentAttemptRequestId: string,
+    cardData: {
+        cardNo: string;
+        expirationMonth: string;
+        expirationYear: string;
+        securityCode: string;
+        cardholderName: string;
+    },
+): Promise<HostedCheckoutCardDataEnvelope> {
+    if (!metadata
+        || metadata.algorithm !== 'RSA-OAEP-256+A256GCM'
+        || !metadata.keyId
+        || !metadata.publicKey
+        || !metadata.nonce
+        || !window.crypto?.subtle) {
+        throw new Error('Checkout card encryption is unavailable');
+    }
+    const publicKeyBytes = decodeBase64(metadata.publicKey);
+    const publicKey = await window.crypto.subtle.importKey(
+        'spki',
+        publicKeyBytes.buffer as ArrayBuffer,
+        { name: 'RSA-OAEP', hash: 'SHA-256' },
+        false,
+        ['encrypt'],
+    );
+    const contentKey = await window.crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt'],
+    );
+    const rawContentKey = await window.crypto.subtle.exportKey('raw', contentKey);
+    const encryptedKey = await window.crypto.subtle.encrypt(
+        { name: 'RSA-OAEP' },
+        publicKey,
+        rawContentKey,
+    );
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const aad = new TextEncoder().encode(
+        `checkout-card-v1|${checkoutSessionId}|${currentAttemptRequestId}|${metadata.nonce}`,
+    );
+    const plaintext = new TextEncoder().encode(JSON.stringify(cardData));
+    const ciphertext = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
+        contentKey,
+        plaintext,
+    );
+    return {
+        algorithm: metadata.algorithm,
+        keyId: metadata.keyId,
+        encryptedKey: encodeBase64Url(new Uint8Array(encryptedKey)),
+        iv: encodeBase64Url(iv),
+        ciphertext: encodeBase64Url(new Uint8Array(ciphertext)),
+        nonce: metadata.nonce,
+    };
+}
+
+function decodeBase64(value: string): Uint8Array {
+    const binary = window.atob(value.replace(/\s/g, ''));
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function encodeBase64Url(value: Uint8Array): string {
+    let binary = '';
+    value.forEach((byte) => {
+        binary += String.fromCharCode(byte);
+    });
+    return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
 function buildClientContext(): HostedCheckoutClientContext {
     return {
         timezoneOffset: String(new Date().getTimezoneOffset()),
@@ -1336,7 +1601,7 @@ function isRoutableCheckoutToken(token: string): boolean {
 }
 
 function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
-    const brands = method.brands?.length ? method.brands : ['VISA', 'MASTERCARD', 'JCB', 'MAESTRO'];
+    const brands = (method.brands || []).map(normalizeCode).filter(Boolean);
     const logoKeys = uniqueLogos(brands
         .map((brand) => CARD_BRAND_LOGOS[normalizeCode(brand)])
         .filter((logo): logo is PaymentLogoKey => Boolean(logo)));
@@ -1347,6 +1612,7 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
         channelCode,
         label: t('checkout.bankCardLabel'),
         description: brands.join(' / '),
+        brands,
         logoKeys,
         threeDsMode: method.threeDsMode,
     };
@@ -1556,7 +1822,7 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
             cardNumberMasked: cardNumber ? `**** ${cardNumber.slice(-4)}` : '**** 1111',
             transactionId: `TXDEV${Date.now()}`,
             transactionDateTime: new Date().toISOString(),
-            authCode: 'DEV3DS',
+            authCode: 'DEV001',
         },
     };
 }

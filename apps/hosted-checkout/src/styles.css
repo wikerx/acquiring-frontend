@@ -1251,6 +1251,15 @@ body {
         width: 100%;
     }
 
+    .checkout-section-card__header {
+        flex-direction: column;
+    }
+
+    .checkout-section-card__logos {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .checkout-payment-option {
         grid-template-columns: auto minmax(0, 1fr);
         justify-items: flex-start;

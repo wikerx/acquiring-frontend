@@ -42,6 +42,30 @@ export interface HostedCheckoutSession {
         remainingAttemptCount?: number;
         pollingIntervalSeconds?: number;
     };
+    payerInfo?: HostedCheckoutPrefillInfo;
+    billingInfo?: HostedCheckoutPrefillInfo;
+    paymentResult?: HostedCheckoutPaymentResult;
+    cardEncryption?: HostedCheckoutCardEncryption;
+}
+
+export interface HostedCheckoutCardEncryption {
+    algorithm: 'RSA-OAEP-256+A256GCM' | string;
+    keyId: string;
+    publicKey: string;
+    nonce: string;
+}
+
+export interface HostedCheckoutPrefillInfo {
+    payerId?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    street?: string;
+    postal?: string;
 }
 
 export interface HostedCheckoutPaymentMethod {
@@ -49,6 +73,12 @@ export interface HostedCheckoutPaymentMethod {
     channelCode?: string;
     brands?: string[];
     threeDsMode?: string;
+}
+
+export interface HostedCheckoutCardBinResult {
+    cardBrand?: string;
+    recognized: boolean;
+    supported: boolean;
 }
 
 export interface HostedCheckoutPaymentResult {
@@ -94,13 +124,7 @@ export interface PaymentSubmitPayload {
     checkoutSessionId: string;
     attemptRequestId: string;
     paymentMethod: string;
-    cardInfo: {
-        cardNo: string;
-        expirationMonth: string;
-        expirationYear: string;
-        securityCode: string;
-        cardholderName: string;
-    };
+    cardDataEnvelope: HostedCheckoutCardDataEnvelope;
     billingCardHolderInfo: {
         firstName: string;
         lastName: string;
@@ -113,6 +137,15 @@ export interface PaymentSubmitPayload {
         postal?: string;
     };
     clientContext: HostedCheckoutClientContext;
+}
+
+export interface HostedCheckoutCardDataEnvelope {
+    algorithm: string;
+    keyId: string;
+    encryptedKey: string;
+    iv: string;
+    ciphertext: string;
+    nonce: string;
 }
 
 /** 收银台接口失败只保留稳定错误码，后端诊断消息不得直接展示给付款人。 */
@@ -136,6 +169,14 @@ export async function queryCheckoutSession(payload: {
 
 export async function submitCheckoutPayment(payload: PaymentSubmitPayload): Promise<HostedCheckoutPaymentResult> {
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/payment/submit', payload);
+}
+
+export async function resolveCheckoutCardBin(payload: {
+    opaqueToken: string;
+    checkoutSessionId: string;
+    cardBin: string;
+}): Promise<HostedCheckoutCardBinResult> {
+    return postCheckout<HostedCheckoutCardBinResult>('/checkout/api/v1/card-bin/resolve', payload);
 }
 
 export async function queryCheckoutPaymentStatus(payload: {
