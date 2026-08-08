@@ -349,7 +349,14 @@ function emptySummary(): MerchantRefundSummary {
 }
 
 .merchant-refund-time-item {
-    flex: 1 1 650px;
+    /* 为完整时间筛选器预留一行空间，避免日期范围被挤到下一行。 */
+    flex: 1 1 780px;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.merchant-refund-time-item :deep(.el-form-item__content) {
+    min-width: 0;
 }
 
 .merchant-refund-summary {

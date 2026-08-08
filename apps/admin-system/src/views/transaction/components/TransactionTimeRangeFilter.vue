@@ -134,7 +134,7 @@ function timezoneLabel(option: SelectOption) {
 <style scoped>
 .transaction-time-range-filter {
     display: inline-flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
     width: 100%;
@@ -171,6 +171,10 @@ function timezoneLabel(option: SelectOption) {
 }
 
 @media (max-width: 1200px) {
+    .transaction-time-range-filter {
+        flex-wrap: wrap;
+    }
+
     .transaction-time-range-filter__picker,
     .transaction-time-range-filter :deep(.el-date-editor.transaction-time-range-filter__picker) {
         max-width: none;
