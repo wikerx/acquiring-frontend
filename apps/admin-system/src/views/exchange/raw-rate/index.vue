@@ -1,3 +1,4 @@
+<!-- 原始汇率记录页：统一提供报价时间筛选、记录展示、手工录入和作废操作。 -->
 <template>
     <div class="app-container exchange-page">
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
@@ -15,7 +16,13 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('exchange.fields.publishTime')">
-                <el-date-picker v-model="publishRange" type="datetimerange" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+                <el-date-picker v-model="publishRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+            </el-form-item>
+            <el-form-item :label="$t('exchange.fields.fetchTime')">
+                <el-date-picker v-model="fetchRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+            </el-form-item>
+            <el-form-item :label="$t('exchange.fields.effectiveTime')">
+                <el-date-picker v-model="effectiveRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button>
@@ -40,6 +47,8 @@
             <el-table-column :label="$t('exchange.fields.cashSellRate')" min-width="130" align="right"><template #default="{ row }">{{ formatRate(row.cashSellRate) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.middleRate')" min-width="130" align="right"><template #default="{ row }">{{ formatRate(row.middleRate) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.publishTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.publishTime" /></template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.fetchTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.fetchTime" /></template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.effectiveTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.effectiveTime" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.createMethod')" width="105" align="center"><template #default="{ row }">{{ optionLabel(createMethodOptions, row.createMethod) }}</template></el-table-column>
             <el-table-column :label="$t('common.status')" width="95" align="center"><template #default="{ row }"><el-tag size="small" :type="statusType(row.rateStatus)">{{ optionLabel(rawRateStatusOptions, row.rateStatus) }}</el-tag></template></el-table-column>
             <el-table-column :label="$t('common.operation')" width="170" align="center" fixed="right">
@@ -129,7 +138,7 @@ import { createExchangeRawRate, exportExchangeRawRates, getExchangeRawRate, sear
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
 import RateNumberInput from '../RateNumberInput.vue';
-import { createMethodOptions as buildCreateMethodOptions, formatCurrencyPair, formatRate, optionLabel, rawRateStatusOptions as buildRawRateStatusOptions, statusType } from '../shared';
+import { createMethodOptions as buildCreateMethodOptions, formatCurrencyPair, formatRate, optionLabel, rawRateStatusOptions as buildRawRateStatusOptions, statusType, todayDateTimeRange } from '../shared';
 
 const { t } = useI18n();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
@@ -141,6 +150,8 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const publishRange = ref<[string, string] | null>(null);
+const fetchRange = ref<[string, string] | null>(todayDateTimeRange());
+const effectiveRange = ref<[string, string] | null>(null);
 const detailVisible = ref(false);
 const detailRow = ref<ExchangeRawRate | null>(null);
 const formVisible = ref(false);
@@ -201,8 +212,7 @@ onMounted(loadData);
 async function loadData() {
     loading.value = true;
     try {
-        const [publishStartTime, publishEndTime] = publishRange.value || [];
-        const result = await searchExchangeRawRates({ pageNo: page.value, pageSize: pageSize.value, ...query, publishStartTime, publishEndTime });
+        const result = await searchExchangeRawRates(buildQueryParams());
         rows.value = result.records;
         total.value = result.total;
     } finally {
@@ -222,6 +232,8 @@ function resetQuery() {
     query.rateStatus = '';
     query.createMethod = '';
     publishRange.value = null;
+    fetchRange.value = todayDateTimeRange();
+    effectiveRange.value = null;
     handleSearch();
 }
 
@@ -269,11 +281,41 @@ async function submitVoid() {
 }
 
 async function handleExport() {
+    await exportExchangeRawRates(buildQueryParams());
+}
+
+function buildQueryParams() {
     const [publishStartTime, publishEndTime] = publishRange.value || [];
-    await exportExchangeRawRates({ pageNo: page.value, pageSize: pageSize.value, ...query, publishStartTime, publishEndTime });
+    const [fetchStartTime, fetchEndTime] = fetchRange.value || [];
+    const [effectiveStartTime, effectiveEndTime] = effectiveRange.value || [];
+    return {
+        pageNo: page.value,
+        pageSize: pageSize.value,
+        ...query,
+        publishStartTime,
+        publishEndTime,
+        fetchStartTime,
+        fetchEndTime,
+        effectiveStartTime,
+        effectiveEndTime,
+    };
 }
 
 function toRawRatePayload() {
     return Object.fromEntries(Object.entries(form).filter(([, value]) => value !== ''));
 }
 </script>
+
+<style scoped>
+:deep(.time-range-picker.el-date-editor) {
+    width: 400px;
+    max-width: calc(100vw - 160px);
+}
+
+@media (max-width: 768px) {
+    :deep(.time-range-picker.el-date-editor) {
+        width: calc(100vw - 48px);
+        max-width: 100%;
+    }
+}
+</style>

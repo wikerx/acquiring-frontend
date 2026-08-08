@@ -2389,6 +2389,8 @@ export default {
             appliedTime: 'Applied Time',
             adjustDescription: 'Adjustment Note',
             calculationDescription: 'Calculation Note',
+            updateBy: 'Updated By',
+            neverExpire: 'Never expires',
         },
         enums: {
             sourceType: {

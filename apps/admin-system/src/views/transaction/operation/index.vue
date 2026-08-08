@@ -9,6 +9,7 @@
             :collapse-text="t('transaction.search.collapse')"
             :search-text="t('common.search')"
             :reset-text="t('common.reset')"
+            inline-time
             @search="handleSearch"
             @reset="handleReset"
         >
@@ -39,12 +40,12 @@
                     <el-option v-for="item in channelOptions" :key="item.channelCode" :label="item.channelName ? `${item.channelCode} / ${item.channelName}` : item.channelCode" :value="item.channelCode" />
                 </el-select>
             </el-form-item>
-            <el-form-item :label="t('transaction.fields.paymentMethod')">
-                <el-select v-model="query.paymentMethod" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
-                </el-select>
-            </el-form-item>
             <template #advanced>
+                <el-form-item :label="t('transaction.fields.paymentMethod')">
+                    <el-select v-model="query.paymentMethod" :placeholder="t('common.pleaseSelect')" clearable filterable>
+                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    </el-select>
+                </el-form-item>
                 <el-form-item :label="t('transaction.fields.cardBrand')">
                     <el-select v-model="query.paymentBrand" :placeholder="t('common.pleaseSelect')" clearable filterable>
                         <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />

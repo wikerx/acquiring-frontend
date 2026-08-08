@@ -5,6 +5,17 @@ export interface SelectOption {
 
 export type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
 
+export type DateTimeRange = [string, string];
+
+/** 返回浏览器本地日期对应的全天查询范围，避免 UTC 转换导致日期偏移。 */
+export function todayDateTimeRange(now = new Date()): DateTimeRange {
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const date = `${year}-${month}-${day}`;
+    return [`${date}T00:00:00`, `${date}T23:59:59`];
+}
+
 export function sourceTypeOptions(t: TranslateFn): SelectOption[] {
     return ['WEB', 'API', 'MANUAL', 'IMPORT'].map((value) => ({ value, label: t(`exchange.enums.sourceType.${value}`) }));
 }

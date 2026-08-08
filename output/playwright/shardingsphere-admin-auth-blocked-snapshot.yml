@@ -1,0 +1,47 @@
+- main [ref=e3]:
+  - button "🇨🇳 简体中文" [ref=e7] [cursor=pointer]:
+    - generic [ref=e8]: 🇨🇳
+    - generic [ref=e9]: 简体中文
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e12]: VEXRA BRAND SYSTEM
+      - img "Vexra Admin" [ref=e13]
+      - generic [ref=e14]:
+        - heading "让管理、审计与运营控制回到一个清晰入口" [level=1] [ref=e15]
+        - paragraph [ref=e16]: Vexra Admin 是 Vexra 品牌体系下的管理控制台，为企业支付团队提供安全、高效、可扩展的运营管理能力。
+      - generic [ref=e17]:
+        - generic [ref=e18]: 安全审计
+        - generic [ref=e19]: 统一控制台
+        - generic [ref=e20]: 实时可视
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - strong [ref=e23]: 256-bit
+          - text: 链路加密
+        - generic [ref=e24]:
+          - strong [ref=e25]: 24/7
+          - text: 连续可用
+        - generic [ref=e26]:
+          - strong [ref=e27]: Global
+          - text: 全球覆盖
+      - generic [ref=e28]: Vexra 智能支付交换网络
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - img "Vexra Admin" [ref=e32]
+        - generic [ref=e33]:
+          - heading "欢迎登录" [level=2] [ref=e34]
+          - generic [ref=e35]: Management Console
+      - generic [ref=e36]: 使用管理账号、密码与图形验证码登录，进入 Vexra Admin 的统一运营控制台。
+      - generic [ref=e37]:
+        - textbox "账号" [ref=e46]: admin
+        - textbox "密码" [ref=e56]: Admin@123456
+        - generic [ref=e64]:
+          - textbox "验证码" [ref=e71]
+          - button "加载中..." [disabled] [ref=e72]
+        - generic [ref=e76]:
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]:
+              - checkbox "记住我" [checked]
+            - generic [ref=e80]: 记住我
+          - button "换一张" [disabled] [ref=e81]
+        - button "登录" [ref=e84] [cursor=pointer]
+      - generic [ref=e86]: Copyright © 2026 scott. All rights reserved.
