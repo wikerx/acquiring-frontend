@@ -19,7 +19,7 @@
         <el-form :model="model" :inline="true" size="small" class="search-form transaction-search" :label-width="labelWidth">
             <div class="transaction-search__grid">
                 <slot />
-                <template v-if="inlineTime && $slots.time">
+                <template v-if="inlineTime && $slots.time && (!$slots.advanced || !advancedVisible)">
                     <slot name="time" />
                 </template>
                 <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="transaction-search__actions transaction-search__actions--inline">
@@ -30,6 +30,9 @@
             <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__advanced">
                 <div class="transaction-search__grid">
                     <slot name="advanced" />
+                    <template v-if="inlineTime && $slots.time && advancedVisible">
+                        <slot name="time" />
+                    </template>
                     <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
                         <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                         <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>

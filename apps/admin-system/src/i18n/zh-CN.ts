@@ -2376,6 +2376,8 @@ export default {
             appliedTime: '使用时间',
             adjustDescription: '调整说明',
             calculationDescription: '计算说明',
+            updateBy: '更新人',
+            neverExpire: '永不过期',
         },
         enums: {
             sourceType: {

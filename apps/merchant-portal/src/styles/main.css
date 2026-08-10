@@ -548,14 +548,6 @@ body {
 }
 
 @media (max-width: 920px) {
-    .side-mode .app-sidebar {
-        display: none;
-    }
-
-    .side-mode .merchant-layout-content {
-        width: 100%;
-    }
-
     .app-header {
         gap: 10px;
         padding: 0 14px;
@@ -2631,6 +2623,14 @@ body {
 }
 
 @media (max-width: 720px) {
+    .side-mode .app-sidebar {
+        display: none;
+    }
+
+    .side-mode .merchant-layout-content {
+        width: 100%;
+    }
+
     .merchant-login-page {
         padding: 16px;
     }
