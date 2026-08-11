@@ -155,6 +155,7 @@
                         :total-label="t('transactionAnalytics.totalSeries')"
                         :success-label="chartLabels.success"
                         :failed-label="chartLabels.failed"
+                        :pending-label="chartLabels.pending"
                         :processing-label="chartLabels.processing"
                         :rate-label="chartLabels.rate"
                         :unknown-label="chartLabels.unknown"
@@ -179,7 +180,7 @@
 
         <template v-else>
             <section class="analytics-metric-band analytics-metric-band--merchant">
-                <article class="analytics-metric is-teal">
+                <article class="analytics-metric is-green">
                     <span>{{ t('transactionAnalytics.merchantCount') }}</span>
                     <strong>{{ formatCount(merchantPerformance?.merchantCount ?? 0) }}</strong>
                     <small>{{ t('transactionAnalytics.merchantSubtitle') }}</small>
@@ -329,6 +330,7 @@ const chartLabels = computed(() => ({
     total: t('transactionAnalytics.totalSeries'),
     success: t('transactionAnalytics.successSeries'),
     failed: t('transactionAnalytics.failedSeries'),
+    pending: t('transactionAnalytics.pendingSeries'),
     processing: t('transactionAnalytics.processingSeries'),
     terminal: t('transactionAnalytics.terminalSeries'),
     rate: t('transactionAnalytics.rateSeries'),
@@ -369,19 +371,22 @@ const overviewMetrics = computed(() => {
     const total = analyticsNumber(data?.totalCount);
     const success = analyticsNumber(data?.successCount);
     const failed = analyticsNumber(data?.failedCount);
-    const inFlight = analyticsNumber(data?.pendingCount) + analyticsNumber(data?.processingCount);
+    const pending = analyticsNumber(data?.pendingCount);
+    const processing = analyticsNumber(data?.processingCount);
     const terminal = success + failed;
     return [
         { key: 'total', label: t('transactionAnalytics.totalCount'), value: formatCount(total), hint: t('transactionAnalytics.totalHint'), tone: 'ink' },
-        { key: 'success', label: t('transactionAnalytics.successCount'), value: formatCount(success), hint: ratioHint(success, total), tone: 'teal' },
+        { key: 'success', label: t('transactionAnalytics.successCount'), value: formatCount(success), hint: ratioHint(success, total), tone: 'green' },
         { key: 'failed', label: t('transactionAnalytics.failedCount'), value: formatCount(failed), hint: ratioHint(failed, total), tone: 'red' },
-        { key: 'flight', label: t('transactionAnalytics.inFlightCount'), value: formatCount(inFlight), hint: ratioHint(inFlight, total), tone: 'amber' },
-        { key: 'rate', label: t('transactionAnalytics.successRate'), value: formatRate(data?.successRate ?? 0), hint: t('transactionAnalytics.terminalCountHint', { count: formatCount(terminal) }), tone: 'blue' },
+        { key: 'pending', label: t('transactionAnalytics.pendingCount'), value: formatCount(pending), hint: ratioHint(pending, total), tone: 'amber' },
+        { key: 'processing', label: t('transactionAnalytics.processingCount'), value: formatCount(processing), hint: ratioHint(processing, total), tone: 'blue' },
+        { key: 'rate', label: t('transactionAnalytics.successRate'), value: formatRate(data?.successRate ?? 0), hint: t('transactionAnalytics.terminalCountHint', { count: formatCount(terminal) }), tone: 'ink' },
     ];
 });
 
 const translatedStatusRows = computed(() => (overview.value?.statusDistribution ?? []).map((item) => ({
     ...item,
+    status: item.key,
     key: te(`transaction.status.${item.key}`) ? t(`transaction.status.${item.key}`) : item.key,
 })));
 const trendOption = computed(() => createAnalyticsTrendOption(overview.value?.trend ?? [], chartLabels.value));
@@ -583,7 +588,7 @@ onMounted(async () => {
 
 .analytics-metric-band {
     display: grid;
-    grid-template-columns: repeat(5, minmax(118px, 0.72fr)) minmax(290px, 1.7fr);
+    grid-template-columns: repeat(6, minmax(108px, 0.68fr)) minmax(270px, 1.6fr);
     margin-bottom: 10px;
     overflow: hidden;
     border: 1px solid var(--analytics-line);
@@ -605,10 +610,10 @@ onMounted(async () => {
 }
 
 .analytics-metric::before { position: absolute; top: 17px; bottom: 17px; left: 8px; width: 3px; border-radius: 2px; background: #83a7e8; content: ''; }
-.analytics-metric.is-teal::before { background: #4f7fd7; }
-.analytics-metric.is-red::before { background: #7296d3; }
-.analytics-metric.is-amber::before { background: #9ab3dd; }
-.analytics-metric.is-blue::before { background: var(--analytics-blue); }
+.analytics-metric.is-green::before { background: #16a34a; }
+.analytics-metric.is-red::before { background: #dc2626; }
+.analytics-metric.is-amber::before { background: #d97706; }
+.analytics-metric.is-blue::before { background: #2563eb; }
 .analytics-metric > span:first-child { color: var(--analytics-muted); font-size: 11px; }
 .analytics-metric > strong { margin-top: 5px; font-size: 22px; line-height: 1.15; letter-spacing: 0; }
 .analytics-metric > small { min-height: 15px; margin-top: 4px; color: #98a2b3; font-size: 10px; }

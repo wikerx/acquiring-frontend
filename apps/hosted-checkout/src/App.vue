@@ -452,18 +452,38 @@
                     >
                         {{ t('status.processingPrimary') }}
                     </button>
+                    <button v-else class="checkout-status-button checkout-status-button--primary" type="button" @click="goToReturnUrl">
+                        {{ localizedStatusConfig.primaryAction }}
+                    </button>
                     <button
-                        v-else
-                        class="checkout-status-button checkout-status-button--primary"
+                        v-if="statusViewState !== 'blocked'"
+                        class="checkout-status-button checkout-status-button--secondary"
+                        type="button"
+                        :disabled="receiptDownloading"
+                        @click="downloadCurrentReceipt"
+                    >
+                        {{ receiptDownloading ? t('status.downloadingReceipt') : t('status.downloadReceipt') }}
+                    </button>
+                    <button
+                        v-if="statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable)"
+                        class="checkout-status-button checkout-status-button--secondary"
                         type="button"
                         @click="goToReturnUrl"
                     >
-                        {{ localizedStatusConfig.primaryAction }}
+                        {{ t('status.returnToMerchant') }}
                     </button>
-                    <button class="checkout-status-button checkout-status-button--secondary" type="button" @click="goToCancelUrl">
+                    <button
+                        v-if="statusViewState === 'blocked'"
+                        class="checkout-status-button checkout-status-button--secondary"
+                        type="button"
+                        @click="goToCancelUrl"
+                    >
                         {{ localizedStatusConfig.secondaryAction }}
                     </button>
                 </div>
+                <p v-if="receiptError" class="checkout-receipt-error" role="alert">
+                    {{ receiptError }}
+                </p>
             </article>
         </section>
 
@@ -492,6 +512,7 @@ import {
     type HostedCheckoutSession,
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
+import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'processing' | 'blocked';
 type CheckoutStatusViewState = 'success' | 'failed' | 'processing' | 'blocked';
@@ -608,6 +629,8 @@ const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
 const threeDsReturnHandling = ref(false);
+const receiptDownloading = ref(false);
+const receiptError = ref('');
 const attemptRequestId = ref(createAttemptRequestId());
 const resolvedCardBin = ref('');
 const resolvedCardBrand = ref('');
@@ -1045,6 +1068,14 @@ async function refreshPaymentStatus() {
         return;
     }
     if (isDevToken(routeToken.value)) {
+        if (routeToken.value === 'dev-success') {
+            handlePaymentResult(mockSuccessResult());
+            return;
+        }
+        if (routeToken.value === 'dev-failed') {
+            handlePaymentResult(mockFailedResult());
+            return;
+        }
         if (routeToken.value === 'dev-processing') {
             handlePaymentResult(mockProcessingResult());
             return;
@@ -1679,6 +1710,86 @@ function readablePageState(value?: string): string {
         return t('checkout.statusLoading');
     }
     return t(`pageState.${state}`, state);
+}
+
+/** 刷新当前结果后，仅使用页面已允许展示的脱敏字段生成交易回执。 */
+async function downloadCurrentReceipt() {
+    if (receiptDownloading.value || statusViewState.value === 'blocked') {
+        return;
+    }
+    receiptDownloading.value = true;
+    receiptError.value = '';
+    try {
+        await refreshPaymentStatus();
+        const refreshedViewState = String(statusViewState.value);
+        if (refreshedViewState === 'blocked') {
+            throw new Error('Blocked checkout does not provide a receipt');
+        }
+
+        const receiptStatus = refreshedViewState as ReceiptStatus;
+        const result = paymentResult.value?.result;
+        const paymentDetails = [
+            result?.paymentMethod || selectedMethodLabel.value || t('checkout.bankCardLabel'),
+            result?.cardBrand,
+            result?.cardNumberMasked,
+        ]
+            .filter(Boolean)
+            .join(' / ');
+        const rows: ReceiptRow[] = [
+            { label: t('status.receiptMerchant'), value: merchantName.value || '-' },
+            {
+                label: t('status.merchantOrder'),
+                value: result?.merchantOrderNo || order.value?.orderNo || '-',
+            },
+            { label: t('status.paymentMethod'), value: paymentDetails || '-' },
+            {
+                label: t('status.paymentId'),
+                value: result?.transactionId || paymentResult.value?.checkoutAttemptId || '-',
+            },
+        ];
+        if (result?.transactionDateTime) {
+            rows.push({
+                label: t('status.time'),
+                value: formatDateTime(result.transactionDateTime),
+            });
+        }
+        if (receiptStatus === 'success') {
+            rows.push({ label: t('status.authorizationCode'), value: result?.authCode || '-' });
+        } else if (receiptStatus === 'failed') {
+            rows.push({ label: t('status.failureReason'), value: failureReasonText.value });
+        } else {
+            rows.push({
+                label: t('status.receiptCheckoutSession'),
+                value: session.value?.checkoutSessionId || '-',
+            });
+        }
+
+        const orderReference = result?.merchantOrderNo || order.value?.orderNo || 'transaction';
+        const safeOrderReference = orderReference.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 48);
+        const generatedAt = formatDateTime(new Date().toISOString());
+        await downloadReceiptPdf({
+            locale: language.value,
+            status: receiptStatus,
+            brandName: checkoutBrand.name,
+            brandSubtitle: checkoutBrand.subtitleEn,
+            logoUrl: checkoutBrand.logos.horizontal,
+            title: t('status.receiptTitle'),
+            statusLabel: localizedStatusConfig.value.title,
+            amountLabel: t('status.amount'),
+            amount: formattedResultAmount.value,
+            rows,
+            noticeTitle: t('status.receiptNoticeTitle'),
+            notice: t(`status.receiptNotice${receiptStatus[0].toUpperCase()}${receiptStatus.slice(1)}`),
+            generatedAtLabel: t('status.receiptGeneratedAt'),
+            generatedAt,
+            footer: t('status.receiptFooter'),
+            fileName: `Vexra-Receipt-${safeOrderReference}-${receiptStatus}.pdf`,
+        });
+    } catch {
+        receiptError.value = t('status.receiptDownloadFailed');
+    } finally {
+        receiptDownloading.value = false;
+    }
 }
 
 function goToReturnUrl() {

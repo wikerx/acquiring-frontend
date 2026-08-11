@@ -275,9 +275,19 @@
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('transaction.actions.refundAmount')" required>
-                        <el-input v-model.trim="refundForm.amount" :disabled="refundForm.mode === 'FULL'" :placeholder="t('transaction.actions.amountPlaceholder')" clearable @blur="normalizeRefundAmount">
-                            <template #append>{{ refundForm.currency || labelCurrency(selectedOperation) || '-' }}</template>
-                        </el-input>
+                        <div class="transaction-action-amount-control">
+                            <el-input-number
+                                v-model="refundForm.amount"
+                                :disabled="refundForm.mode === 'FULL'"
+                                :min="0.01"
+                                :max="refundAmountMax"
+                                :precision="2"
+                                :step="0.01"
+                                :controls="false"
+                                :placeholder="t('transaction.actions.amountPlaceholder')"
+                            />
+                            <span>{{ refundForm.currency || labelCurrency(selectedOperation) || '-' }}</span>
+                        </div>
                         <div v-if="refundAmountError" class="transaction-action-error">{{ refundAmountError }}</div>
                     </el-form-item>
                     <el-form-item :label="t('transaction.actions.reason')">
@@ -520,7 +530,7 @@ const settlementStatusOptions = ref<TransactionDictOption[]>([]);
 const merchantNotificationStatusOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
 const refundForm = reactive({
-    amount: '',
+    amount: null as number | null,
     currency: '',
     mode: 'PARTIAL',
     reason: '',
@@ -936,7 +946,7 @@ function toNullableAmount(value?: number | string | null) {
 function openRefundDialog(row: TransactionOperation) {
     selectedOperation.value = row;
     const defaultAmount = availableRefundLabelAmount(row);
-    refundForm.amount = defaultAmount === undefined || defaultAmount === null ? '' : String(defaultAmount);
+    refundForm.amount = defaultAmount === undefined || defaultAmount === null ? null : Number(defaultAmount);
     refundForm.currency = labelCurrency(row);
     refundForm.mode = 'PARTIAL';
     refundForm.reason = '';
@@ -955,22 +965,14 @@ function fillRemainingRefundAmount() {
         return;
     }
     const amount = availableRefundLabelAmount(selectedOperation.value);
-    refundForm.amount = amount === undefined || amount === null ? '' : String(amount);
-}
-
-function normalizeRefundAmount() {
-    const amount = Number(refundForm.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-        return;
-    }
-    refundForm.amount = String(amount);
+    refundForm.amount = amount === undefined || amount === null ? null : Number(amount);
 }
 
 function validateRefundAmount() {
-    if (!refundVisible.value || !selectedOperation.value || !refundForm.amount) {
+    if (!refundVisible.value || !selectedOperation.value || refundForm.amount === null) {
         return '';
     }
-    const refundAmount = Number(refundForm.amount);
+    const refundAmount = refundForm.amount;
     if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
         return t('transaction.actions.amountRequired');
     }
@@ -981,6 +983,14 @@ function validateRefundAmount() {
     }
     return '';
 }
+
+const refundAmountMax = computed(() => {
+    if (!selectedOperation.value) {
+        return undefined;
+    }
+    const amount = availableRefundLabelAmount(selectedOperation.value);
+    return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+});
 
 function openCaptureDialog(row: TransactionOperation) {
     selectedOperation.value = row;
@@ -1000,16 +1010,16 @@ async function submitRefund() {
     if (!selectedOperation.value) {
         return;
     }
-    const refundAmount = Number(refundForm.amount);
+    const refundAmount = refundForm.amount;
     const errorMessage = validateRefundAmount();
-    if (errorMessage || !refundForm.amount || !Number.isFinite(refundAmount) || refundAmount <= 0) {
+    if (errorMessage || refundAmount === null || !Number.isFinite(refundAmount) || refundAmount <= 0) {
         ElMessage.error(errorMessage || t('transaction.actions.amountRequired'));
         return;
     }
     actionSubmitting.value = true;
     try {
         const result = await refundTransactionOperation(selectedOperation.value.transactionId, {
-            amount: refundForm.amount,
+            amount: refundAmount,
             currency: refundForm.currency || labelCurrency(selectedOperation.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
             transactionDateTime: selectedOperation.value.transactionDateTime!,
@@ -1018,6 +1028,12 @@ async function submitRefund() {
         ElMessage.success(t('transaction.actions.refundSuccess', { transactionId: result.transactionId }));
         refundVisible.value = false;
         await refreshAfterAction(selectedOperation.value);
+    } catch (error: any) {
+        ElMessage.error(
+            error?.friendlyMessage
+            || error?.message
+            || t('transaction.actions.refundFailed'),
+        );
     } finally {
         actionSubmitting.value = false;
     }
@@ -1348,6 +1364,29 @@ async function refreshAfterAction(row: TransactionOperation) {
 .transaction-action-form :deep(.el-select),
 .transaction-action-form :deep(.el-textarea) {
     width: 100%;
+}
+
+.transaction-action-amount-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+}
+
+.transaction-action-amount-control > span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 58px;
+    padding: 0 14px;
+    border: 1px solid var(--el-border-color);
+    border-left: 0;
+    border-radius: 0 6px 6px 0;
+    background: var(--el-fill-color-light);
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+}
+
+.transaction-action-amount-control :deep(.el-input__wrapper) {
+    border-radius: 6px 0 0 6px;
 }
 
 .transaction-action-form :deep(.el-input__wrapper),

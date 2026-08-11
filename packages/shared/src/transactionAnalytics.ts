@@ -30,11 +30,14 @@ export interface TransactionAnalyticsTrendMetric {
 
 export interface TransactionAnalyticsDimensionMetric {
     key: string;
+    status?: string;
     paymentMethod?: string;
     paymentBrand?: string;
     totalCount: number;
     successCount: number;
     failedCount: number;
+    pendingCount?: number;
+    processingCount?: number;
     successRate: number | string;
 }
 
@@ -87,6 +90,7 @@ export interface TransactionAnalyticsChartLabels {
     total: string;
     success: string;
     failed: string;
+    pending: string;
     processing: string;
     terminal: string;
     rate: string;
@@ -100,11 +104,25 @@ const analyticsColors = {
     muted: '#667085',
     grid: '#e8eef7',
     blue: '#2563eb',
-    blueStrong: '#155eef',
-    blueSoft: '#83a7e8',
-    bluePale: '#b9cae6',
-    red: '#df5964',
+    success: '#16a34a',
+    failed: '#dc2626',
+    pending: '#d97706',
+    processing: '#2563eb',
+    neutral: '#6b7280',
 };
+
+const analyticsFallbackColors = ['#0f766e', '#7c3aed', '#0891b2', '#64748b', '#be185d', '#4f46e5'];
+
+function analyticsStatusColor(status: string | undefined, fallbackIndex = 0): string {
+    switch (String(status || '').trim().toUpperCase()) {
+        case 'SUCCESS': return analyticsColors.success;
+        case 'FAILED': return analyticsColors.failed;
+        case 'PENDING': return analyticsColors.pending;
+        case 'PROCESSING': return analyticsColors.processing;
+        case 'TOTAL': return analyticsColors.neutral;
+        default: return analyticsFallbackColors[fallbackIndex % analyticsFallbackColors.length];
+    }
+}
 
 /** 将后端百分比统一转换为图表使用的有限数值。 */
 export function analyticsNumber(value: number | string | null | undefined): number {
@@ -148,10 +166,10 @@ export function createAnalyticsTrendOption(
     labels: TransactionAnalyticsChartLabels,
 ): AnalyticsChartOption {
     return {
-        color: [analyticsColors.blueStrong, analyticsColors.red, analyticsColors.bluePale, analyticsColors.blue],
+        color: [analyticsColors.success, analyticsColors.failed, analyticsColors.pending, analyticsColors.processing, analyticsColors.blue],
         aria: {
             enabled: true,
-            description: `${labels.total}；${labels.success}；${labels.failed}；${labels.processing}；${labels.rate}`,
+            description: `${labels.total}；${labels.success}；${labels.failed}；${labels.pending}；${labels.processing}；${labels.rate}`,
         },
         tooltip: {
             trigger: 'axis',
@@ -168,15 +186,17 @@ export function createAnalyticsTrendOption(
                 if (!row) return '';
                 const successCount = analyticsNumber(row.successCount);
                 const failedCount = analyticsNumber(row.failedCount);
-                const inFlightCount = analyticsNumber(row.pendingCount) + analyticsNumber(row.processingCount);
+                const pendingCount = analyticsNumber(row.pendingCount);
+                const processingCount = analyticsNumber(row.processingCount);
                 const terminalCount = successCount + failedCount;
                 const totalCount = analyticsNumber(row.totalCount);
                 return [
                     `<strong style="display:block;margin-bottom:7px;color:${analyticsColors.ink}">${row.date}</strong>`,
                     `${labels.total}<b style="float:right;margin-left:28px">${totalCount}</b>`,
-                    `${labels.success}<b style="float:right;color:${analyticsColors.blueStrong}">${successCount}</b>`,
-                    `${labels.failed}<b style="float:right;color:${analyticsColors.red}">${failedCount}</b>`,
-                    `${labels.processing}<b style="float:right;color:${analyticsColors.blueSoft}">${inFlightCount}</b>`,
+                    `${labels.success}<b style="float:right;color:${analyticsColors.success}">${successCount}</b>`,
+                    `${labels.failed}<b style="float:right;color:${analyticsColors.failed}">${failedCount}</b>`,
+                    `${labels.pending}<b style="float:right;color:${analyticsColors.pending}">${pendingCount}</b>`,
+                    `${labels.processing}<b style="float:right;color:${analyticsColors.processing}">${processingCount}</b>`,
                     `${labels.terminal}<b style="float:right">${terminalCount}</b>`,
                     `${labels.rate}<b style="float:right;color:${analyticsColors.blue}">${analyticsNumber(row.successRate).toFixed(2)}%</b>`,
                 ].join('<br/>');
@@ -225,12 +245,19 @@ export function createAnalyticsTrendOption(
                 data: rows.map((row) => analyticsNumber(row.failedCount)),
             },
             {
+                name: labels.pending,
+                type: 'bar',
+                stack: 'volume',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.pendingCount)),
+            },
+            {
                 name: labels.processing,
                 type: 'bar',
                 stack: 'volume',
                 barMaxWidth: 24,
                 itemStyle: { borderRadius: [3, 3, 0, 0] },
-                data: rows.map((row) => analyticsNumber(row.pendingCount) + analyticsNumber(row.processingCount)),
+                data: rows.map((row) => analyticsNumber(row.processingCount)),
             },
             {
                 name: labels.rate,
@@ -258,7 +285,6 @@ export function createAnalyticsDonutOption(
     const total = rows.reduce((sum, row) => sum + analyticsNumber(row.totalCount), 0);
     return {
         baseOption: {
-            color: [analyticsColors.blueStrong, analyticsColors.red, analyticsColors.blueSoft, analyticsColors.bluePale, '#6f8fc7', '#9aa9bd'],
             aria: {
                 enabled: true,
                 description: `${totalLabel || unknownLabel}: ${total}`,
@@ -289,7 +315,11 @@ export function createAnalyticsDonutOption(
                 itemStyle: { borderColor: '#fff', borderWidth: 3, borderRadius: 3 },
                 label: { show: false },
                 emphasis: { label: { show: true, fontSize: 13, fontWeight: 600, color: analyticsColors.ink } },
-                data: rows.map((row) => ({ name: row.key || unknownLabel, value: analyticsNumber(row.totalCount) })),
+                data: rows.map((row, index) => ({
+                    name: row.key || unknownLabel,
+                    value: analyticsNumber(row.totalCount),
+                    itemStyle: { color: analyticsStatusColor(row.status, index) },
+                })),
             }],
         },
         media: [{
@@ -312,7 +342,7 @@ export function createAnalyticsDimensionOption(
         .slice(0, 10)
         .reverse();
     return {
-        color: [analyticsColors.blueStrong, analyticsColors.red],
+        color: [analyticsColors.success, analyticsColors.failed],
         aria: {
             enabled: true,
             description: `${labels.total}；${labels.success}；${labels.failed}；${labels.rate}`,
@@ -369,7 +399,7 @@ export function createAnalyticsFailureTrendOption(
     failedLabel: string,
 ): AnalyticsChartOption {
     return {
-        color: [analyticsColors.red],
+        color: [analyticsColors.failed],
         aria: { enabled: true, description: failedLabel },
         tooltip: {
             trigger: 'axis',
@@ -416,7 +446,7 @@ export function createAnalyticsCountOption(
         .slice(0, 10)
         .reverse();
     return {
-        color: [analyticsColors.red],
+        color: [analyticsColors.failed],
         aria: { enabled: true, description: seriesLabel },
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { top: 18, right: 18, bottom: 18, left: 16, containLabel: true },
