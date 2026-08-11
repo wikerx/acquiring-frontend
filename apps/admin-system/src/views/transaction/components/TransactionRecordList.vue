@@ -230,7 +230,9 @@ function metaItems(row: Record<string, unknown>) {
         { label: 'httpStatus', value: row.httpStatus },
         { label: 'merchantResponseCode', value: row.merchantResponseCode },
         { label: 'merchantResponseMessage', value: row.merchantResponseMessage },
-        { label: 'acknowledgement', value: callbackAcknowledgement(row) },
+        ...(recordType(row) === 'merchantNotificationLog'
+            ? [{ label: 'acknowledgement', value: callbackAcknowledgement(row) }]
+            : []),
         { label: 'errorMessage', value: row.errorMessage },
         { label: 'status', value: statusText(row) },
         { label: 'requestTime', value: requestTimeText(row) },
@@ -241,7 +243,7 @@ function metaItems(row: Record<string, unknown>) {
 }
 
 function requestTimeText(row: Record<string, unknown>) {
-    return String(formatDisplayTime(row.requestTime || row.requestStartTime || row.interactionTime || row.callbackReceivedTime || row.notifyTime || row.createTime) || '-');
+    return String(formatDisplayTime(row.requestStartTime || row.requestTime || row.interactionTime || row.callbackReceivedTime || row.notifyTime || row.createTime) || '-');
 }
 
 function responseTimeText(row: Record<string, unknown>) {

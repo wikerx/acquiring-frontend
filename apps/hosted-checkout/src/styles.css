@@ -1133,6 +1133,14 @@ body {
     color: #334155;
 }
 
+.checkout-receipt-error {
+    margin: 12px 0 0;
+    color: #b91c1c;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
+}
+
 .checkout-trust-footer {
     width: min(1280px, 100%);
     margin: auto auto 0;

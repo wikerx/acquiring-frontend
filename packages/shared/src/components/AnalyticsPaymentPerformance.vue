@@ -26,13 +26,15 @@
                     <span class="analytics-payment-performance__volume" :style="barStyle(row)">
                         <span class="is-success" />
                         <span class="is-failed" />
+                        <span class="is-pending" />
                         <span class="is-processing" />
                     </span>
                 </span>
                 <span class="analytics-payment-performance__legend" aria-hidden="true">
                     <span v-if="row.successCount"><i class="is-success" />{{ successLabel }} {{ formatCount(row.successCount) }}</span>
                     <span v-if="row.failedCount"><i class="is-failed" />{{ failedLabel }} {{ formatCount(row.failedCount) }}</span>
-                    <span v-if="inFlightCount(row)"><i class="is-processing" />{{ processingLabel }} {{ formatCount(inFlightCount(row)) }}</span>
+                    <span v-if="row.pendingCount"><i class="is-pending" />{{ pendingLabel }} {{ formatCount(row.pendingCount) }}</span>
+                    <span v-if="processingCount(row)"><i class="is-processing" />{{ processingLabel }} {{ formatCount(processingCount(row)) }}</span>
                 </span>
             </span>
             <span class="analytics-payment-performance__metric">
@@ -59,6 +61,7 @@ const props = withDefaults(defineProps<{
     totalLabel: string;
     successLabel: string;
     failedLabel: string;
+    pendingLabel: string;
     processingLabel: string;
     rateLabel: string;
     unknownLabel: string;
@@ -87,22 +90,25 @@ function paymentLogoKeys(row: TransactionAnalyticsDimensionMetric) {
     return resolvePaymentLogoKeys(row.paymentMethod, row.paymentBrand || row.key);
 }
 
-function inFlightCount(row: TransactionAnalyticsDimensionMetric) {
-    return Math.max(0,
-        analyticsNumber(row.totalCount)
+function processingCount(row: TransactionAnalyticsDimensionMetric) {
+    if (row.processingCount !== undefined) return analyticsNumber(row.processingCount);
+    return Math.max(0, analyticsNumber(row.totalCount)
         - analyticsNumber(row.successCount)
-        - analyticsNumber(row.failedCount));
+        - analyticsNumber(row.failedCount)
+        - analyticsNumber(row.pendingCount));
 }
 
 function barStyle(row: TransactionAnalyticsDimensionMetric): CSSProperties {
-    const inFlight = inFlightCount(row);
+    const pending = analyticsNumber(row.pendingCount);
+    const processing = processingCount(row);
     const rowTotal = analyticsNumber(row.totalCount);
     const total = Math.max(1, rowTotal);
     return {
         '--analytics-total-share': `${Math.max(6, rowTotal / maximumCount.value * 100)}%`,
         '--analytics-success-share': `${analyticsNumber(row.successCount) / total * 100}%`,
         '--analytics-failed-share': `${analyticsNumber(row.failedCount) / total * 100}%`,
-        '--analytics-processing-share': `${inFlight / total * 100}%`,
+        '--analytics-pending-share': `${pending / total * 100}%`,
+        '--analytics-processing-share': `${processing / total * 100}%`,
     } as CSSProperties;
 }
 
@@ -221,9 +227,10 @@ function formatRate(value: number | string) {
     border-radius: 3px;
 }
 
-.analytics-payment-performance__volume > .is-success { width: var(--analytics-success-share); background: #155eef; }
-.analytics-payment-performance__volume > .is-failed { width: var(--analytics-failed-share); background: #df5964; }
-.analytics-payment-performance__volume > .is-processing { width: var(--analytics-processing-share); background: #b9cae6; }
+.analytics-payment-performance__volume > .is-success { width: var(--analytics-success-share); background: #16a34a; }
+.analytics-payment-performance__volume > .is-failed { width: var(--analytics-failed-share); background: #dc2626; }
+.analytics-payment-performance__volume > .is-pending { width: var(--analytics-pending-share); background: #d97706; }
+.analytics-payment-performance__volume > .is-processing { width: var(--analytics-processing-share); background: #2563eb; }
 
 .analytics-payment-performance__legend {
     display: flex;
@@ -244,9 +251,10 @@ function formatRate(value: number | string) {
     border-radius: 50%;
 }
 
-.analytics-payment-performance__legend i.is-success { background: #155eef; }
-.analytics-payment-performance__legend i.is-failed { background: #df5964; }
-.analytics-payment-performance__legend i.is-processing { background: #b9cae6; }
+.analytics-payment-performance__legend i.is-success { background: #16a34a; }
+.analytics-payment-performance__legend i.is-failed { background: #dc2626; }
+.analytics-payment-performance__legend i.is-pending { background: #d97706; }
+.analytics-payment-performance__legend i.is-processing { background: #2563eb; }
 
 .analytics-payment-performance__metric {
     align-items: flex-end;

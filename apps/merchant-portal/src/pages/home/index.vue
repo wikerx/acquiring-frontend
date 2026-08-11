@@ -228,6 +228,7 @@ const chartLabels = computed(() => ({
     total: t('transactionAnalytics.totalSeries'),
     success: t('transactionAnalytics.successSeries'),
     failed: t('transactionAnalytics.failedSeries'),
+    pending: t('transactionAnalytics.pendingSeries'),
     processing: t('transactionAnalytics.processingSeries'),
     terminal: t('transactionAnalytics.terminalSeries'),
     rate: t('transactionAnalytics.rateSeries'),

@@ -482,7 +482,7 @@ function mergeChannelInteractionGroup(logs: Record<string, unknown>[]): Record<s
         responseBodyJsonMasked: firstPresent(responseLog?.responseBodyJsonMasked, merged.responseBodyJsonMasked),
         exceptionType: firstPresent(responseLog?.exceptionType, merged.exceptionType),
         exceptionMessage: firstPresent(responseLog?.exceptionMessage, merged.exceptionMessage),
-        requestTime: firstPresent(merged.requestTime, requestLog?.requestTime, requestLog?.interactionTime),
+        requestStartTime: firstPresent(merged.requestStartTime, requestLog?.requestStartTime, requestLog?.requestTime, requestLog?.interactionTime),
         responseTime: firstPresent(merged.responseTime, responseLog?.responseTime, responseLog?.interactionTime),
     };
 }
