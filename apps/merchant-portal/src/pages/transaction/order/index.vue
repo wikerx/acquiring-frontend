@@ -56,11 +56,6 @@
                             </el-option>
                         </el-select>
                     </el-form-item>
-                    <el-form-item :label="t('transaction.order.channelMatchStatus')">
-                        <el-select v-model="query.channelMatchStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                            <el-option v-for="item in channelMatchStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                        </el-select>
-                    </el-form-item>
                     <el-form-item :label="t('transaction.order.reconciliationStatus')">
                         <el-select v-model="query.reconciliationStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
                             <el-option v-for="item in reconciliationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -134,7 +129,7 @@
                 </div>
                 <RightToolbar class="transaction-table-toolbar" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </div>
-            <StandardTable table-key="merchant-transaction-order" v-loading="loading" :data="rows" row-key="transactionId" size="small">
+            <StandardTable table-key="merchant-transaction-order-v2" v-loading="loading" :data="rows" row-key="transactionId" size="small">
                 <el-table-column :label="t('transaction.order.merchantOrderNo')" prop="merchantOrderNo" min-width="190" fixed="left" show-overflow-tooltip>
                     <template #default="{ row }">
                         <button class="transaction-copy-link" type="button" :disabled="!row.merchantOrderNo" @click="copyOrderNo(row.merchantOrderNo)">
@@ -196,10 +191,24 @@
                         <span class="transaction-auth-code">{{ row.authCode || '-' }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column :label="t('transaction.order.channelMatchStatus')" min-width="130" align="center">
+                <el-table-column :label="t('transaction.order.threeDs')" prop="threeDsEnabled" min-width="92" align="center">
                     <template #default="{ row }">
-                        <el-tag size="small" :type="statusTag(row.channelMatchStatus, channelMatchStatusOptions)" effect="plain">
-                            {{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">
+                            {{ row.threeDsEnabled === 1 ? t('common.yes') : t('common.no') }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('transaction.order.dcc')" prop="dccEnabled" min-width="104" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': row.dccEnabled === 1 }">
+                            {{ t(row.dccEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('transaction.order.edc')" prop="edcEnabled" min-width="104" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">
+                            {{ t(row.edcEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}
                         </el-tag>
                     </template>
                 </el-table-column>
@@ -328,6 +337,18 @@
                                 <dd class="transaction-detail-code">{{ detail.order?.authCode || '-' }}</dd>
                             </div>
                             <div>
+                                <dt>{{ t('transaction.order.threeDs') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': detail.order?.threeDsEnabled === 1 }">{{ detail.order?.threeDsEnabled === 1 ? t('common.yes') : t('common.no') }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.dcc') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': detail.order?.dccEnabled === 1 }">{{ t(detail.order?.dccEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.edc') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': detail.order?.edcEnabled === 1 }">{{ t(detail.order?.edcEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}</el-tag></dd>
+                            </div>
+                            <div>
                                 <dt>{{ t('transaction.order.channelCode') }}</dt>
                                 <dd>{{ detail.order?.channelCode || '-' }}</dd>
                             </div>
@@ -345,10 +366,6 @@
                     <section class="transaction-detail-section">
                         <h3 class="transaction-drawer-title">{{ t('transaction.order.processingStatus') }}</h3>
                         <dl class="transaction-detail-statuses">
-                            <div>
-                                <dt>{{ t('transaction.order.channelMatchStatus') }}</dt>
-                                <dd><el-tag size="small" :type="statusTag(detail.order?.channelMatchStatus, channelMatchStatusOptions)" effect="plain">{{ tagText(channelMatchStatusOptions, detail.order?.channelMatchStatus) }}</el-tag></dd>
-                            </div>
                             <div>
                                 <dt>{{ t('transaction.order.reconciliationStatus') }}</dt>
                                 <dd><el-tag size="small" :type="statusTag(detail.order?.reconciliationStatus, reconciliationStatusOptions)" effect="plain">{{ tagText(reconciliationStatusOptions, detail.order?.reconciliationStatus) }}</el-tag></dd>
@@ -622,7 +639,6 @@ const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionT
 const transactionStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
 const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
 const cardBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
-const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'channelMatch'));
 const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'reconciliation'));
 const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'settlement'));
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
@@ -697,17 +713,15 @@ async function loadDictionaries() {
     transactionStatusOptions.value = fallbackTransactionStatusOptions(t);
     paymentMethodOptions.value = fallbackPaymentMethodOptions(t);
     cardBrandOptions.value = fallbackCardBrandOptions();
-    channelMatchStatusOptions.value = fallbackStatusOptions(t, 'channelMatch');
     reconciliationStatusOptions.value = fallbackStatusOptions(t, 'reconciliation');
     settlementStatusOptions.value = fallbackStatusOptions(t, 'settlement');
     timezoneOptions.value = ensureTransactionTimezoneOptions([]);
     try {
-        const [types, statuses, methods, brands, channelMatches, reconciliations, settlements, timezones] = await Promise.all([
+        const [types, statuses, methods, brands, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('payment_method', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('card_brand', String(locale.value || 'zh-CN')).catch(() => []),
-            loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('reconciliation_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
@@ -716,7 +730,6 @@ async function loadDictionaries() {
         transactionStatusOptions.value = statuses.length ? statuses : transactionStatusOptions.value;
         paymentMethodOptions.value = methods.length ? methods : paymentMethodOptions.value;
         cardBrandOptions.value = brands.length ? brands : cardBrandOptions.value;
-        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
         reconciliationStatusOptions.value = reconciliations.length ? reconciliations : reconciliationStatusOptions.value;
         settlementStatusOptions.value = settlements.length ? settlements : settlementStatusOptions.value;
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
@@ -1566,6 +1579,42 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-payment-cell__logos {
     min-height: 18px;
+}
+
+.transaction-capability-tag {
+    --capability-color: #64748b;
+    --capability-border: #cbd5e1;
+    --capability-background: #f8fafc;
+    gap: 6px;
+    min-width: 66px;
+    height: 24px;
+    border-color: var(--capability-border) !important;
+    border-radius: 3px;
+    background: var(--capability-background) !important;
+    color: var(--capability-color) !important;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.transaction-capability-tag::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+    opacity: 0.55;
+}
+
+.transaction-capability-tag--three-ds { --capability-color: #397a73; --capability-border: #b4d7d1; --capability-background: #f3faf8; }
+.transaction-capability-tag--dcc { --capability-color: #5270a6; --capability-border: #c5d3ea; --capability-background: #f5f8fd; }
+.transaction-capability-tag--edc { --capability-color: #92703b; --capability-border: #dfcfac; --capability-background: #fcfaf4; }
+.transaction-capability-tag--three-ds.is-enabled { --capability-color: #0f766e; --capability-border: #5eead4; --capability-background: #ecfdf5; }
+.transaction-capability-tag--dcc.is-enabled { --capability-color: #1d4ed8; --capability-border: #93c5fd; --capability-background: #eff6ff; }
+.transaction-capability-tag--edc.is-enabled { --capability-color: #b45309; --capability-border: #fcd34d; --capability-background: #fffbeb; }
+
+.transaction-capability-tag.is-enabled::before {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
 }
 
 .transaction-drawer-title {

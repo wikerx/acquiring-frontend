@@ -21,7 +21,6 @@ export interface TransactionPageQuery {
     paymentBrand?: string;
     channelOrderNo?: string;
     merchantResponseCode?: string;
-    channelMatchStatus?: string;
     reconciliationStatus?: string;
     settlementStatus?: string;
     beginTime?: string;
@@ -54,6 +53,7 @@ export interface TransactionOrder {
     currentCurrency?: string;
     currencyExponent?: number;
     transactionRate?: number | string;
+    threeDsEnabled?: number;
     dccEnabled?: number;
     edcEnabled?: number;
     merchantResponseCode?: string;
@@ -66,7 +66,6 @@ export interface TransactionOrder {
     settlementStatus?: string;
     reconciliationStatus?: string;
     accountingStatus?: string;
-    channelMatchStatus?: string;
     channelCode?: string;
     channelOrderNo?: string;
     transactionDateTime: string;
@@ -91,6 +90,9 @@ export interface TransactionOperation {
     transactionAmount?: number | string;
     currencyExponent?: number;
     transactionRate?: number | string;
+    threeDsEnabled?: number;
+    dccEnabled?: number;
+    edcEnabled?: number;
     merchantResponseCode?: string;
     merchantResponseMessage?: string;
     merchantNotificationStatus?: string;
@@ -112,7 +114,6 @@ export interface TransactionOperation {
     settlementStatus?: string;
     reconciliationStatus?: string;
     accountingStatus?: string;
-    channelMatchStatus?: string;
     transactionDateTime: string;
     rootTransactionDateTime: string;
     operationTime?: string;

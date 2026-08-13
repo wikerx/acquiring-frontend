@@ -16,6 +16,12 @@ export interface HostedCheckoutClientContext {
     timezoneOffset?: string;
     language?: string;
     screen?: string;
+    challengeWindowSize?: string;
+    colorDepth?: number;
+    javaEnabled?: boolean;
+    javaScriptEnabled?: boolean;
+    screenHeight?: number;
+    screenWidth?: number;
     deviceId?: string;
 }
 
@@ -98,9 +104,11 @@ export interface HostedCheckoutPaymentResult {
     };
     threeDsAction?: {
         actionType?: 'HTML' | 'REDIRECT' | string;
+        phase?: 'INITIALIZE' | 'AUTHENTICATE' | 'VERIFY' | string;
         html?: string;
         returnUrl?: string;
         timeoutSeconds?: number;
+        cardEncryption?: HostedCheckoutCardEncryption;
     };
     failure?: {
         reasonCode?: string;
@@ -193,6 +201,8 @@ export async function returnCheckoutThreeDs(payload: {
     checkoutSessionId: string;
     checkoutAttemptId: string;
     authenticationData?: string;
+    cardDataEnvelope: HostedCheckoutCardDataEnvelope;
+    billingCardHolderInfo: PaymentSubmitPayload['billingCardHolderInfo'];
     clientContext: HostedCheckoutClientContext;
 }): Promise<HostedCheckoutPaymentResult> {
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/3ds/return', payload);

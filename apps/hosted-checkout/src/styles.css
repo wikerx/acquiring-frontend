@@ -705,6 +705,17 @@ body {
     background: #fff;
 }
 
+.checkout-three-ds-frame--method {
+    position: absolute;
+    width: 1px;
+    min-height: 1px;
+    height: 1px;
+    margin: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .checkout-status-shell {
     width: min(760px, 100%);
     margin: 0 auto 24px;

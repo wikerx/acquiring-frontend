@@ -15,11 +15,11 @@ export default defineConfig({
     server: {
         proxy: {
             '/checkout/api': {
-                target: 'http://127.0.0.1:8000',
+                target: process.env.CHECKOUT_API_PROXY_TARGET || 'http://127.0.0.1:8000',
                 changeOrigin: true,
             },
             '/checkout/config': {
-                target: 'http://127.0.0.1:8000',
+                target: process.env.CHECKOUT_API_PROXY_TARGET || 'http://127.0.0.1:8000',
                 changeOrigin: true,
             },
         },
