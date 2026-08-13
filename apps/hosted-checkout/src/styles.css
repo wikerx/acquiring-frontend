@@ -1010,14 +1010,18 @@ body {
 }
 
 .checkout-status-detail__row span {
+    flex: 0 0 auto;
     color: #64748b;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 .checkout-status-detail__row strong {
+    min-width: 0;
     color: #0f172a;
     font-size: 14px;
     text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .checkout-status-detail__payment-logo {

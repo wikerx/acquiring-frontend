@@ -593,6 +593,7 @@ const COUNTRY_FLAG_ASSETS: Record<string, string> = {
     CHN: new URL('./assets/flags/cn.svg', import.meta.url).href,
 };
 const POLLING_MAX_ATTEMPTS = 30;
+const THREE_DS_RECOVERY_WAIT_SECONDS = 660;
 const THREE_DS_METHOD_WAIT_MS = 10_000;
 const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     VISA: 'visa',
@@ -650,6 +651,7 @@ const formMessage = computed(() => formMessageKey.value ? t(formMessageKey.value
 const fieldErrors = reactive<FieldErrors>({});
 const pollTimer = ref<number | null>(null);
 const pollAttempts = ref(0);
+const pollAttemptLimit = ref(POLLING_MAX_ATTEMPTS);
 const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
@@ -689,7 +691,9 @@ const merchantName = computed(() => session.value?.merchant?.displayName || chec
 const order = computed(() => session.value?.order);
 const checkoutInfo = computed(() => session.value?.checkout);
 const latestPageState = computed(() => paymentResult.value?.pageState || session.value?.pageState || '');
-const statusChipText = computed(() => readablePageState(latestPageState.value));
+const statusChipText = computed(() => readablePageState(
+    runtimeState.value === 'processing' ? 'PROCESSING' : latestPageState.value,
+));
 const orderReferenceText = computed(() => (
     order.value?.orderNo
         ? t('checkout.orderReferenceDynamic', { orderNo: order.value.orderNo })
@@ -980,6 +984,10 @@ async function initializeCheckout() {
             handlePaymentResult(mockProcessingResult());
             return;
         }
+        if (token === 'dev-3ds-recovery') {
+            handlePaymentResult(await mockThreeDsRequiredResult());
+            return;
+        }
         applyPageState('PAYABLE');
         return;
     }
@@ -1043,10 +1051,6 @@ async function handleSubmitPayment() {
         if (!await ensureCardBrandSupported()) {
             return;
         }
-        if (isDevToken(routeToken.value)) {
-            handlePaymentResult(mockSuccessResult());
-            return;
-        }
         const expiry = parseExpiry(cardForm.expiry);
         const cardData: CheckoutCardData = {
             cardNo: digitsOnly(cardForm.cardNumber),
@@ -1066,6 +1070,17 @@ async function handleSubmitPayment() {
             street: billingForm.street,
             postal: billingForm.postal,
         };
+        if (isDevToken(routeToken.value)) {
+            if (routeToken.value === 'dev-3ds') {
+                threeDsContinuation.value = { cardData, billingCardHolderInfo };
+                cardForm.cvc = '';
+                devStatusPolls.value = 0;
+                handlePaymentResult(await mockThreeDsRequiredResult());
+                return;
+            }
+            handlePaymentResult(mockSuccessResult());
+            return;
+        }
         const cardDataEnvelope = await encryptCardData(
             session.value.cardEncryption,
             session.value.checkoutSessionId,
@@ -1088,7 +1103,7 @@ async function handleSubmitPayment() {
         clearThreeDsContinuation();
         if (isDevToken(routeToken.value)) {
             devStatusPolls.value = 0;
-            handlePaymentResult(mockThreeDsRequiredResult());
+            handlePaymentResult(await mockThreeDsRequiredResult());
             return;
         }
         formMessageKey.value = 'checkout.submitFailed';
@@ -1320,9 +1335,18 @@ function applyPageState(pageState?: string) {
         return;
     }
     if (state === 'THREE_DS_REQUIRED') {
-        clearPolling();
-        runtimeState.value = 'threeDs';
-        scheduleThreeDsMethodContinuation();
+        const canContinueThreeDs = Boolean(paymentResult.value?.threeDsAction && threeDsContinuation.value);
+        if (canContinueThreeDs) {
+            clearPolling();
+            runtimeState.value = 'threeDs';
+            scheduleThreeDsMethodContinuation();
+            return;
+        }
+        clearThreeDsContinuation();
+        runtimeState.value = 'processing';
+        if (!pollTimer.value) {
+            startPolling(Math.ceil(THREE_DS_RECOVERY_WAIT_SECONDS / Math.max(1, pollingIntervalSeconds.value)));
+        }
         return;
     }
     if (state === 'PROCESSING') {
@@ -1400,15 +1424,16 @@ async function refreshSessionEncryption() {
     }
 }
 
-function startPolling() {
+function startPolling(maxAttempts = POLLING_MAX_ATTEMPTS) {
     clearPolling();
     pollAttempts.value = 0;
+    pollAttemptLimit.value = Math.max(POLLING_MAX_ATTEMPTS, maxAttempts);
     scheduleNextPoll();
 }
 
 function scheduleNextPoll() {
     clearPolling();
-    if (pollAttempts.value >= POLLING_MAX_ATTEMPTS) {
+    if (pollAttempts.value >= pollAttemptLimit.value) {
         runtimeState.value = 'processing';
         return;
     }
@@ -1993,35 +2018,13 @@ function mockSession(token = 'dev-token'): HostedCheckoutSession {
     };
 }
 
-function mockThreeDsRequiredResult(): HostedCheckoutPaymentResult {
+async function mockThreeDsRequiredResult(): Promise<HostedCheckoutPaymentResult> {
+    if (!import.meta.env.DEV) {
+        throw new Error('Development 3DS fixture is unavailable');
+    }
+    const { createMockThreeDsRequiredResult } = await import('./dev/mockThreeDs');
     const checkoutSessionId = session.value?.checkoutSessionId || 'CSDEV202607270001';
-    const checkoutAttemptId = 'CADEV202607270001';
-    const threeDsReturnToken = 'dev-return-token';
-    return {
-        checkoutSessionId,
-        checkoutAttemptId,
-        pageState: 'THREE_DS_REQUIRED',
-        threeDsAction: {
-            actionType: 'HTML',
-            html: `
-                <main style="font-family: Inter, Arial, sans-serif; padding: 28px; color: #0f172a;">
-                    <p style="margin: 0 0 8px; color: #475569; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;">VISA SECURE</p>
-                    <h2 style="margin: 0 0 12px; font-size: 24px;">Approve this demo payment</h2>
-                    <p style="margin: 0 0 18px; color: #64748b; line-height: 1.6;">This local development challenge simulates an issuer 3DS authentication page.</p>
-                    <button
-                        type="button"
-                        onclick="parent.postMessage({type:'HOSTED_CHECKOUT_3DS_RETURN', checkoutSessionId:'${checkoutSessionId}', checkoutAttemptId:'${checkoutAttemptId}', threeDsReturnToken:'${threeDsReturnToken}', authenticationData:{result:'AUTHENTICATED'}}, '*')"
-                        style="height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #4f46e5; color: white; font-weight: 800;"
-                    >Authentication completed</button>
-                </main>
-            `,
-            timeoutSeconds: 300,
-        },
-        polling: {
-            intervalSeconds: 6,
-            maxIntervalSeconds: 5,
-        },
-    };
+    return createMockThreeDsRequiredResult(checkoutSessionId);
 }
 
 function mockProcessingResult(): HostedCheckoutPaymentResult {
@@ -2095,7 +2098,8 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
 }
 
 function isDevToken(token: string): boolean {
-    return import.meta.env.DEV && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-failed', 'dev-processing'].includes(token);
+    return import.meta.env.DEV
+        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-failed', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
 }
 
 applyLocale(resolveInitialLocale(), false);
