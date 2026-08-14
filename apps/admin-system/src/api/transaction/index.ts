@@ -97,6 +97,7 @@ export interface TransactionOrder {
     currentAmount?: number | string;
     currencyExponent?: number;
     transactionRate?: number | string;
+    threeDsEnabled?: number;
     dccEnabled?: number;
     edcEnabled?: number;
     merchantResponseCode?: string;
@@ -136,6 +137,7 @@ export interface TransactionOperation {
     transactionAmount?: number | string;
     currencyExponent?: number;
     transactionRate?: number | string;
+    threeDsEnabled?: number;
     dccEnabled?: number;
     edcEnabled?: number;
     merchantResponseCode?: string;

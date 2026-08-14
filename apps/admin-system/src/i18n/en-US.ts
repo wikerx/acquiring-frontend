@@ -1249,6 +1249,9 @@ export default {
             acquirerReferenceNo: 'ARN',
             transactionAmount: 'Transaction Amount',
             transactionRate: 'Transaction Rate',
+            threeDs: '3DS',
+            dcc: 'DCC',
+            edc: 'EDC',
             currentAmount: 'Current Amount',
             labelAmount: 'Label Amount',
             authorizedAmount: 'Authorized Amount',
@@ -1290,6 +1293,10 @@ export default {
             responseResult: 'Response Result',
             responseCipher: 'Platform Response Cipher',
             responsePlain: 'Platform Response Plaintext',
+        },
+        capability: {
+            enabled: 'Enabled',
+            disabled: 'Disabled',
         },
         statusOption: {
             NOT_REQUIRED: 'Not required',

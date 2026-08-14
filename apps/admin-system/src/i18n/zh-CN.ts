@@ -1236,6 +1236,9 @@ export default {
             acquirerReferenceNo: 'ARN',
             transactionAmount: '交易金额',
             transactionRate: '交易汇率',
+            threeDs: '3DS',
+            dcc: 'DCC',
+            edc: 'EDC',
             currentAmount: '当前金额',
             labelAmount: '标签金额',
             authorizedAmount: '授权金额',
@@ -1277,6 +1280,10 @@ export default {
             responseResult: '响应结果',
             responseCipher: '系统响应商户密文',
             responsePlain: '系统响应商户明文',
+        },
+        capability: {
+            enabled: '启用',
+            disabled: '未启用',
         },
         statusOption: {
             NOT_REQUIRED: '无需勾兑',

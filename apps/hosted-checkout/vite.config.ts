@@ -2,6 +2,11 @@ import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
+const allowedHosts = (process.env.CHECKOUT_ALLOWED_HOSTS || '21872i5858.imdo.co')
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean);
+
 export default defineConfig({
     plugins: [vue()],
     resolve: {
@@ -13,13 +18,14 @@ export default defineConfig({
         },
     },
     server: {
+        allowedHosts,
         proxy: {
             '/checkout/api': {
-                target: 'http://127.0.0.1:8000',
+                target: process.env.CHECKOUT_API_PROXY_TARGET || 'http://127.0.0.1:8000',
                 changeOrigin: true,
             },
             '/checkout/config': {
-                target: 'http://127.0.0.1:8000',
+                target: process.env.CHECKOUT_API_PROXY_TARGET || 'http://127.0.0.1:8000',
                 changeOrigin: true,
             },
         },

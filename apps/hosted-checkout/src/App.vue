@@ -347,12 +347,13 @@
                 <p class="checkout-status-description">{{ t('checkout.threeDsDescription') }}</p>
                 <iframe
                     v-if="threeDsHtml"
-                    class="checkout-three-ds-frame"
+                    :key="threeDsFrameKey"
+                    :class="['checkout-three-ds-frame', { 'checkout-three-ds-frame--method': threeDsPhase === 'INITIALIZE' }]"
                     :srcdoc="threeDsHtml"
                     sandbox="allow-forms allow-scripts"
                     title="3DS authentication"
                 ></iframe>
-                <div v-else class="checkout-processing-box">
+                <div v-if="threeDsPhase === 'INITIALIZE' || !threeDsHtml" class="checkout-processing-box">
                     <span>{{ t('checkout.threeDsRedirectLabel') }}</span>
                     <strong>{{ t('checkout.threeDsRedirectTitle') }}</strong>
                     <p>{{ t('checkout.threeDsRedirectDescription') }}</p>
@@ -360,9 +361,6 @@
                 <div class="checkout-status-actions">
                     <button class="checkout-status-button checkout-status-button--primary" type="button" @click="refreshPaymentStatus">
                         {{ t('status.processingPrimary') }}
-                    </button>
-                    <button class="checkout-status-button checkout-status-button--secondary" type="button" @click="goToCancelUrl">
-                        {{ t('status.processingSecondary') }}
                     </button>
                 </div>
             </article>
@@ -417,6 +415,10 @@
                     {{ localizedStatusConfig.message }}
                 </div>
 
+                <p v-if="redirectCountdown !== null" class="checkout-redirect-countdown" role="status">
+                    {{ t('status.redirectCountdown', { seconds: redirectCountdown }) }}
+                </p>
+
                 <div v-if="statusViewState === 'failed'" class="checkout-failed-panel">
                     <strong>{{ t('status.failedHelpTitle') }}</strong>
                     <p>{{ failureHelpText }}</p>
@@ -452,7 +454,12 @@
                     >
                         {{ t('status.processingPrimary') }}
                     </button>
-                    <button v-else class="checkout-status-button checkout-status-button--primary" type="button" @click="goToReturnUrl">
+                    <button
+                        v-else-if="hasMerchantRedirect"
+                        class="checkout-status-button checkout-status-button--primary"
+                        type="button"
+                        @click="submitMerchantReturnForm"
+                    >
                         {{ localizedStatusConfig.primaryAction }}
                     </button>
                     <button
@@ -465,20 +472,12 @@
                         {{ receiptDownloading ? t('status.downloadingReceipt') : t('status.downloadReceipt') }}
                     </button>
                     <button
-                        v-if="statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable)"
+                        v-if="hasMerchantRedirect && (statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable))"
                         class="checkout-status-button checkout-status-button--secondary"
                         type="button"
-                        @click="goToReturnUrl"
+                        @click="submitMerchantReturnForm"
                     >
                         {{ t('status.returnToMerchant') }}
-                    </button>
-                    <button
-                        v-if="statusViewState === 'blocked'"
-                        class="checkout-status-button checkout-status-button--secondary"
-                        type="button"
-                        @click="goToCancelUrl"
-                    >
-                        {{ localizedStatusConfig.secondaryAction }}
                     </button>
                 </div>
                 <p v-if="receiptError" class="checkout-receipt-error" role="alert">
@@ -509,6 +508,7 @@ import {
     type HostedCheckoutCardEncryption,
     type HostedCheckoutPaymentMethod,
     type HostedCheckoutPaymentResult,
+    type HostedCheckoutMerchantReturnFormFields,
     type HostedCheckoutSession,
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
@@ -548,6 +548,29 @@ interface ThreeDsReturnMessage {
     authenticationData?: unknown;
 }
 
+interface CheckoutCardData {
+    cardNo: string;
+    expirationMonth: string;
+    expirationYear: string;
+    securityCode: string;
+    cardholderName: string;
+}
+
+interface ThreeDsContinuationContext {
+    cardData: CheckoutCardData;
+    billingCardHolderInfo: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone?: string;
+        country: string;
+        state?: string;
+        city?: string;
+        street?: string;
+        postal?: string;
+    };
+}
+
 const DEFAULT_LOCALE: CheckoutLocale = 'en-US';
 const LOCALE_KEY = 'acquiring_checkout_locale';
 const COUNTRY_KEY = 'acquiring_checkout_country';
@@ -569,6 +592,19 @@ const COUNTRY_FLAG_ASSETS: Record<string, string> = {
     CHN: new URL('./assets/flags/cn.svg', import.meta.url).href,
 };
 const POLLING_MAX_ATTEMPTS = 30;
+const THREE_DS_RECOVERY_WAIT_SECONDS = 660;
+const THREE_DS_METHOD_WAIT_MS = 10_000;
+const MERCHANT_RETURN_FIELD_NAMES: ReadonlyArray<keyof HostedCheckoutMerchantReturnFormFields> = [
+    'merchantId',
+    'orderNo',
+    'orderId',
+    'transactionId',
+    'transactionType',
+    'transactionStatus',
+    'transactionDateTime',
+    'code',
+    'message',
+];
 const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     VISA: 'visa',
     MASTERCARD: 'mastercard',
@@ -625,10 +661,16 @@ const formMessage = computed(() => formMessageKey.value ? t(formMessageKey.value
 const fieldErrors = reactive<FieldErrors>({});
 const pollTimer = ref<number | null>(null);
 const pollAttempts = ref(0);
+const pollAttemptLimit = ref(POLLING_MAX_ATTEMPTS);
+const redirectCountdown = ref<number | null>(null);
+const redirectTimer = ref<number | null>(null);
+const redirectSubmitted = ref(false);
 const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
 const threeDsReturnHandling = ref(false);
+const threeDsContinuation = ref<ThreeDsContinuationContext | null>(null);
+const threeDsMethodTimer = ref<number | null>(null);
 const receiptDownloading = ref(false);
 const receiptError = ref('');
 const attemptRequestId = ref(createAttemptRequestId());
@@ -662,7 +704,9 @@ const merchantName = computed(() => session.value?.merchant?.displayName || chec
 const order = computed(() => session.value?.order);
 const checkoutInfo = computed(() => session.value?.checkout);
 const latestPageState = computed(() => paymentResult.value?.pageState || session.value?.pageState || '');
-const statusChipText = computed(() => readablePageState(latestPageState.value));
+const statusChipText = computed(() => readablePageState(
+    runtimeState.value === 'processing' ? 'PROCESSING' : latestPageState.value,
+));
 const orderReferenceText = computed(() => (
     order.value?.orderNo
         ? t('checkout.orderReferenceDynamic', { orderNo: order.value.orderNo })
@@ -682,9 +726,14 @@ const retryAvailable = computed(() => (
 ));
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
+const hasMerchantRedirect = computed(() => resolveMerchantRedirectUrl() !== null);
 const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionType === 'HTML'
     ? paymentResult.value?.threeDsAction?.html || ''
     : '');
+const threeDsPhase = computed(() => normalizeCode(paymentResult.value?.threeDsAction?.phase));
+const threeDsFrameKey = computed(() => (
+    `${paymentResult.value?.checkoutAttemptId || 'pending'}:${threeDsPhase.value || 'unknown'}`
+));
 
 const paymentHeaderLogoKeys = computed<PaymentLogoKey[]>(() => {
     const logos = supportedPaymentMethods.value.flatMap((method) => method.logoKeys);
@@ -937,7 +986,7 @@ async function initializeCheckout() {
     }
     if (isDevToken(token)) {
         hydrateSession(mockSession(token));
-        if (token === 'dev-success') {
+        if (token === 'dev-success' || token === 'dev-success-redirect') {
             handlePaymentResult(mockSuccessResult());
             return;
         }
@@ -947,6 +996,10 @@ async function initializeCheckout() {
         }
         if (token === 'dev-processing') {
             handlePaymentResult(mockProcessingResult());
+            return;
+        }
+        if (token === 'dev-3ds-recovery') {
+            handlePaymentResult(await mockThreeDsRequiredResult());
             return;
         }
         applyPageState('PAYABLE');
@@ -1012,23 +1065,43 @@ async function handleSubmitPayment() {
         if (!await ensureCardBrandSupported()) {
             return;
         }
+        const expiry = parseExpiry(cardForm.expiry);
+        const cardData: CheckoutCardData = {
+            cardNo: digitsOnly(cardForm.cardNumber),
+            expirationMonth: expiry.month,
+            expirationYear: expiry.year,
+            securityCode: digitsOnly(cardForm.cvc),
+            cardholderName: cardForm.cardholderName,
+        };
+        const billingCardHolderInfo = {
+            firstName: billingForm.firstName,
+            lastName: billingForm.lastName,
+            email: billingForm.email,
+            phone: billingForm.phone,
+            country: selectedCountryCode.value,
+            state: billingForm.state,
+            city: billingForm.city,
+            street: billingForm.street,
+            postal: billingForm.postal,
+        };
         if (isDevToken(routeToken.value)) {
+            if (routeToken.value === 'dev-3ds') {
+                threeDsContinuation.value = { cardData, billingCardHolderInfo };
+                cardForm.cvc = '';
+                devStatusPolls.value = 0;
+                handlePaymentResult(await mockThreeDsRequiredResult());
+                return;
+            }
             handlePaymentResult(mockSuccessResult());
             return;
         }
-        const expiry = parseExpiry(cardForm.expiry);
         const cardDataEnvelope = await encryptCardData(
             session.value.cardEncryption,
             session.value.checkoutSessionId,
             attemptRequestId.value,
-            {
-                cardNo: digitsOnly(cardForm.cardNumber),
-                expirationMonth: expiry.month,
-                expirationYear: expiry.year,
-                securityCode: digitsOnly(cardForm.cvc),
-                cardholderName: cardForm.cardholderName,
-            },
+            cardData,
         );
+        threeDsContinuation.value = { cardData, billingCardHolderInfo };
         cardForm.cvc = '';
         const response = await submitCheckoutPayment({
             opaqueToken: routeToken.value,
@@ -1036,24 +1109,15 @@ async function handleSubmitPayment() {
             attemptRequestId: attemptRequestId.value,
             paymentMethod: selectedMethod.value.paymentMethod,
             cardDataEnvelope,
-            billingCardHolderInfo: {
-                firstName: billingForm.firstName,
-                lastName: billingForm.lastName,
-                email: billingForm.email,
-                phone: billingForm.phone,
-                country: selectedCountryCode.value,
-                state: billingForm.state,
-                city: billingForm.city,
-                street: billingForm.street,
-                postal: billingForm.postal,
-            },
+            billingCardHolderInfo,
             clientContext: buildClientContext(),
         });
         handlePaymentResult(response);
     } catch {
+        clearThreeDsContinuation();
         if (isDevToken(routeToken.value)) {
             devStatusPolls.value = 0;
-            handlePaymentResult(mockThreeDsRequiredResult());
+            handlePaymentResult(await mockThreeDsRequiredResult());
             return;
         }
         formMessageKey.value = 'checkout.submitFailed';
@@ -1134,14 +1198,7 @@ async function handleThreeDsReturnMessage(event: MessageEvent) {
         return;
     }
     try {
-        const response = await returnCheckoutThreeDs({
-            threeDsReturnToken: payload.threeDsReturnToken || '',
-            checkoutSessionId: payload.checkoutSessionId || '',
-            checkoutAttemptId: payload.checkoutAttemptId || '',
-            authenticationData: JSON.stringify(payload.authenticationData || {}),
-            clientContext: buildClientContext(),
-        });
-        handlePaymentResult(response);
+        await continueThreeDs(payload);
     } catch {
         paymentResult.value = {
             checkoutSessionId: session.value?.checkoutSessionId || payload.checkoutSessionId || '',
@@ -1156,6 +1213,89 @@ async function handleThreeDsReturnMessage(event: MessageEvent) {
     } finally {
         threeDsReturnHandling.value = false;
     }
+}
+
+async function continueThreeDs(payload: ThreeDsReturnMessage) {
+    const continuation = threeDsContinuation.value;
+    const action = paymentResult.value?.threeDsAction;
+    const checkoutSessionId = payload.checkoutSessionId || '';
+    const checkoutAttemptId = payload.checkoutAttemptId || '';
+    const threeDsReturnToken = payload.threeDsReturnToken || extractThreeDsReturnToken(action?.returnUrl);
+    if (!continuation || !action?.cardEncryption || !checkoutSessionId || !checkoutAttemptId || !threeDsReturnToken) {
+        throw new Error('3DS continuation context is unavailable');
+    }
+    const cardDataEnvelope = await encryptCardData(
+        action.cardEncryption,
+        checkoutSessionId,
+        attemptRequestId.value,
+        continuation.cardData,
+    );
+    const response = await returnCheckoutThreeDs({
+        threeDsReturnToken,
+        checkoutSessionId,
+        checkoutAttemptId,
+        authenticationData: JSON.stringify(payload.authenticationData || {}),
+        cardDataEnvelope,
+        billingCardHolderInfo: continuation.billingCardHolderInfo,
+        clientContext: buildClientContext(),
+    });
+    handlePaymentResult(response);
+}
+
+function extractThreeDsReturnToken(returnUrl?: string): string {
+    if (!returnUrl) {
+        return '';
+    }
+    try {
+        return new URL(returnUrl, window.location.origin).searchParams.get('threeDsReturnToken') || '';
+    } catch {
+        return '';
+    }
+}
+
+function scheduleThreeDsMethodContinuation() {
+    clearThreeDsMethodTimer();
+    const action = paymentResult.value?.threeDsAction;
+    if (normalizeCode(action?.phase) !== 'INITIALIZE'
+        || !action?.html
+        || !action.returnUrl
+        || !session.value
+        || !paymentResult.value?.checkoutAttemptId) {
+        return;
+    }
+    threeDsMethodTimer.value = window.setTimeout(async () => {
+        threeDsMethodTimer.value = null;
+        if (threeDsReturnHandling.value || runtimeState.value !== 'threeDs') {
+            return;
+        }
+        threeDsReturnHandling.value = true;
+        try {
+            await continueThreeDs({
+                type: 'HOSTED_CHECKOUT_3DS_RETURN',
+                checkoutSessionId: session.value?.checkoutSessionId,
+                checkoutAttemptId: paymentResult.value?.checkoutAttemptId,
+                threeDsReturnToken: extractThreeDsReturnToken(action.returnUrl),
+                authenticationData: { result: 'METHOD_COMPLETED' },
+            });
+        } catch {
+            runtimeState.value = 'processing';
+            startPolling();
+        } finally {
+            threeDsReturnHandling.value = false;
+        }
+    }, THREE_DS_METHOD_WAIT_MS);
+}
+
+function clearThreeDsMethodTimer() {
+    if (threeDsMethodTimer.value) {
+        window.clearTimeout(threeDsMethodTimer.value);
+        threeDsMethodTimer.value = null;
+    }
+}
+
+function clearThreeDsContinuation() {
+    clearThreeDsMethodTimer();
+    threeDsContinuation.value = null;
 }
 
 function normalizeThreeDsReturnMessage(data: unknown): ThreeDsReturnMessage | null {
@@ -1177,35 +1317,59 @@ function matchesActiveThreeDsAttempt(payload: ThreeDsReturnMessage): boolean {
 }
 
 function handlePaymentResult(response: HostedCheckoutPaymentResult) {
-    paymentResult.value = response;
+    const activeResult = paymentResult.value;
+    paymentResult.value = normalizeCode(response.pageState) === 'THREE_DS_REQUIRED'
+        && !response.threeDsAction
+        && activeResult !== null
+        && activeResult?.checkoutAttemptId === response.checkoutAttemptId
+        && Boolean(activeResult.threeDsAction)
+        ? { ...response, threeDsAction: activeResult.threeDsAction }
+        : response;
     applyPageState(response.pageState);
 }
 
 function applyPageState(pageState?: string) {
     const state = normalizeCode(pageState) as CheckoutPageState;
     if (state === 'PAYABLE') {
+        clearMerchantRedirect();
         clearPolling();
+        clearThreeDsContinuation();
         runtimeState.value = 'checkout';
         return;
     }
     if (state === 'SUCCEEDED') {
         clearPolling();
+        clearThreeDsContinuation();
         runtimeState.value = 'success';
+        startMerchantRedirectCountdown();
         return;
     }
     if (state === 'FAILED_RETRYABLE' || state === 'FAILED_FINAL' || state === 'EXPIRED' || state === 'CANCELLED') {
         clearPolling();
+        clearThreeDsContinuation();
         runtimeState.value = 'failed';
+        startMerchantRedirectCountdown();
         return;
     }
     if (state === 'THREE_DS_REQUIRED') {
-        runtimeState.value = 'threeDs';
+        clearMerchantRedirect();
+        const canContinueThreeDs = Boolean(paymentResult.value?.threeDsAction && threeDsContinuation.value);
+        if (canContinueThreeDs) {
+            clearPolling();
+            runtimeState.value = 'threeDs';
+            scheduleThreeDsMethodContinuation();
+            return;
+        }
+        clearThreeDsContinuation();
+        runtimeState.value = 'processing';
         if (!pollTimer.value) {
-            startPolling();
+            startPolling(Math.ceil(THREE_DS_RECOVERY_WAIT_SECONDS / Math.max(1, pollingIntervalSeconds.value)));
         }
         return;
     }
     if (state === 'PROCESSING') {
+        clearMerchantRedirect();
+        clearThreeDsContinuation();
         runtimeState.value = 'processing';
         if (!pollTimer.value) {
             startPolling();
@@ -1279,15 +1443,16 @@ async function refreshSessionEncryption() {
     }
 }
 
-function startPolling() {
+function startPolling(maxAttempts = POLLING_MAX_ATTEMPTS) {
     clearPolling();
     pollAttempts.value = 0;
+    pollAttemptLimit.value = Math.max(POLLING_MAX_ATTEMPTS, maxAttempts);
     scheduleNextPoll();
 }
 
 function scheduleNextPoll() {
     clearPolling();
-    if (pollAttempts.value >= POLLING_MAX_ATTEMPTS) {
+    if (pollAttempts.value >= pollAttemptLimit.value) {
         runtimeState.value = 'processing';
         return;
     }
@@ -1309,7 +1474,9 @@ function clearPolling() {
 }
 
 function blockCheckout(messageKey: string) {
+    clearMerchantRedirect();
     clearPolling();
+    clearThreeDsContinuation();
     initErrorKey.value = messageKey;
     runtimeState.value = 'blocked';
 }
@@ -1588,6 +1755,12 @@ function buildClientContext(): HostedCheckoutClientContext {
         timezoneOffset: String(new Date().getTimezoneOffset()),
         language: language.value,
         screen: `${window.screen.width}x${window.screen.height}`,
+        challengeWindowSize: 'FULL_SCREEN',
+        colorDepth: window.screen.colorDepth,
+        javaEnabled: typeof window.navigator.javaEnabled === 'function' && window.navigator.javaEnabled(),
+        javaScriptEnabled: true,
+        screenHeight: window.screen.height,
+        screenWidth: window.screen.width,
         deviceId: getOrCreateDeviceId(),
     };
 }
@@ -1792,20 +1965,79 @@ async function downloadCurrentReceipt() {
     }
 }
 
-function goToReturnUrl() {
-    const url = paymentResult.value?.actions?.returnUrl;
-    if (url) {
-        window.location.assign(url);
+function startMerchantRedirectCountdown() {
+    const action = paymentResult.value?.actions;
+    if (!action || !hasMerchantRedirect.value || redirectTimer.value !== null || redirectSubmitted.value) {
+        redirectCountdown.value = null;
+        return;
+    }
+    const delaySeconds = Number.isInteger(action.delaySeconds) && action.delaySeconds >= 0
+        ? action.delaySeconds
+        : 5;
+    redirectCountdown.value = delaySeconds;
+    if (delaySeconds === 0) {
+        submitMerchantReturnForm();
+        return;
+    }
+    redirectTimer.value = window.setInterval(() => {
+        const remaining = Math.max(0, (redirectCountdown.value ?? 1) - 1);
+        redirectCountdown.value = remaining;
+        if (remaining === 0) {
+            submitMerchantReturnForm();
+        }
+    }, 1000);
+}
+
+function clearMerchantRedirect(resetSubmission = true) {
+    if (redirectTimer.value !== null) {
+        window.clearInterval(redirectTimer.value);
+        redirectTimer.value = null;
+    }
+    redirectCountdown.value = null;
+    if (resetSubmission) {
+        redirectSubmitted.value = false;
     }
 }
 
-function goToCancelUrl() {
-    const url = paymentResult.value?.actions?.cancelUrl;
-    if (url) {
-        window.location.assign(url);
+function resolveMerchantRedirectUrl(): string | null {
+    const action = paymentResult.value?.actions;
+    if (!action || normalizeCode(action.method) !== 'POST' || !action.formFields) {
+        return null;
+    }
+    try {
+        const url = new URL(action.redirectUrl);
+        return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+    } catch {
+        return null;
+    }
+}
+
+function submitMerchantReturnForm() {
+    if (redirectSubmitted.value) {
         return;
     }
-    goToReturnUrl();
+    const action = paymentResult.value?.actions;
+    const redirectUrl = resolveMerchantRedirectUrl();
+    if (!action || !redirectUrl) {
+        clearMerchantRedirect();
+        return;
+    }
+    redirectSubmitted.value = true;
+    clearMerchantRedirect(false);
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = redirectUrl;
+    form.acceptCharset = 'UTF-8';
+    form.hidden = true;
+    for (const fieldName of MERCHANT_RETURN_FIELD_NAMES) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = fieldName;
+        input.value = String(action.formFields[fieldName] ?? '');
+        form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function fallbackCountries(): CheckoutCountryConfig[] {
@@ -1865,35 +2097,13 @@ function mockSession(token = 'dev-token'): HostedCheckoutSession {
     };
 }
 
-function mockThreeDsRequiredResult(): HostedCheckoutPaymentResult {
+async function mockThreeDsRequiredResult(): Promise<HostedCheckoutPaymentResult> {
+    if (!import.meta.env.DEV) {
+        throw new Error('Development 3DS fixture is unavailable');
+    }
+    const { createMockThreeDsRequiredResult } = await import('./dev/mockThreeDs');
     const checkoutSessionId = session.value?.checkoutSessionId || 'CSDEV202607270001';
-    const checkoutAttemptId = 'CADEV202607270001';
-    const threeDsReturnToken = 'dev-return-token';
-    return {
-        checkoutSessionId,
-        checkoutAttemptId,
-        pageState: 'THREE_DS_REQUIRED',
-        threeDsAction: {
-            actionType: 'HTML',
-            html: `
-                <main style="font-family: Inter, Arial, sans-serif; padding: 28px; color: #0f172a;">
-                    <p style="margin: 0 0 8px; color: #475569; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;">VISA SECURE</p>
-                    <h2 style="margin: 0 0 12px; font-size: 24px;">Approve this demo payment</h2>
-                    <p style="margin: 0 0 18px; color: #64748b; line-height: 1.6;">This local development challenge simulates an issuer 3DS authentication page.</p>
-                    <button
-                        type="button"
-                        onclick="parent.postMessage({type:'HOSTED_CHECKOUT_3DS_RETURN', checkoutSessionId:'${checkoutSessionId}', checkoutAttemptId:'${checkoutAttemptId}', threeDsReturnToken:'${threeDsReturnToken}', authenticationData:{result:'AUTHENTICATED'}}, '*')"
-                        style="height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #4f46e5; color: white; font-weight: 800;"
-                    >Authentication completed</button>
-                </main>
-            `,
-            timeoutSeconds: 300,
-        },
-        polling: {
-            intervalSeconds: 6,
-            maxIntervalSeconds: 5,
-        },
-    };
+    return createMockThreeDsRequiredResult(checkoutSessionId);
 }
 
 function mockProcessingResult(): HostedCheckoutPaymentResult {
@@ -1920,6 +2130,9 @@ function mockProcessingResult(): HostedCheckoutPaymentResult {
 
 function mockSuccessResult(): HostedCheckoutPaymentResult {
     const cardNumber = digitsOnly(cardForm.cardNumber);
+    const transactionId = `TXDEV${Date.now()}`;
+    const transactionDateTime = new Date().toISOString();
+    const merchantOrderNo = order.value?.orderNo || 'DEV202607270001';
     return {
         checkoutSessionId: session.value?.checkoutSessionId || 'CSDEV202607270001',
         checkoutAttemptId: paymentResult.value?.checkoutAttemptId || 'CADEV202607270001',
@@ -1927,14 +2140,30 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
         result: {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
-            merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
+            merchantOrderNo,
             paymentMethod: selectedMethod.value?.label || 'Bank Card',
             cardBrand: 'VISA',
             cardNumberMasked: cardNumber ? `**** ${cardNumber.slice(-4)}` : '**** 1111',
-            transactionId: `TXDEV${Date.now()}`,
-            transactionDateTime: new Date().toISOString(),
+            transactionId,
+            transactionDateTime,
             authCode: 'DEV001',
         },
+        actions: routeToken.value === 'dev-success-redirect' ? {
+            method: 'POST',
+            redirectUrl: `${window.location.origin}/dev/merchant-result`,
+            delaySeconds: 5,
+            formFields: {
+                merchantId: '200001',
+                orderNo: merchantOrderNo,
+                orderId: 'REQ-DEV-001',
+                transactionId,
+                transactionType: 'PAYMENT',
+                transactionStatus: 'SUCCESS',
+                transactionDateTime,
+                code: 'T200',
+                message: 'Success',
+            },
+        } : undefined,
     };
 }
 
@@ -1959,15 +2188,12 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             retryAllowed: true,
             remainingAttemptCount: 2,
         },
-        actions: {
-            returnUrl: '',
-            cancelUrl: '',
-        },
     };
 }
 
 function isDevToken(token: string): boolean {
-    return import.meta.env.DEV && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-failed', 'dev-processing'].includes(token);
+    return import.meta.env.DEV
+        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-success-redirect', 'dev-failed', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
 }
 
 applyLocale(resolveInitialLocale(), false);
@@ -1983,5 +2209,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     window.removeEventListener('message', handleThreeDsReturnMessage);
     clearPolling();
+    clearThreeDsContinuation();
+    clearMerchantRedirect();
 });
 </script>

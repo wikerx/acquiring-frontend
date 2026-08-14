@@ -705,6 +705,17 @@ body {
     background: #fff;
 }
 
+.checkout-three-ds-frame--method {
+    position: absolute;
+    width: 1px;
+    min-height: 1px;
+    height: 1px;
+    margin: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .checkout-status-shell {
     width: min(760px, 100%);
     margin: 0 auto 24px;
@@ -999,14 +1010,18 @@ body {
 }
 
 .checkout-status-detail__row span {
+    flex: 0 0 auto;
     color: #64748b;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 .checkout-status-detail__row strong {
+    min-width: 0;
     color: #0f172a;
     font-size: 14px;
     text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .checkout-status-detail__payment-logo {
@@ -1112,6 +1127,14 @@ body {
     margin-top: 22px;
     display: grid;
     gap: 12px;
+}
+
+.checkout-redirect-countdown {
+    margin: 14px 0 0;
+    color: #52606d;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
 }
 
 .checkout-status-button {
