@@ -66,7 +66,17 @@
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'monitor:job:query'">{{ $t('common.detail') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Document" @click="openJobLogs(row)" v-hasPermi="'monitor:jobLog:query'">{{ $t('monitor.job.viewLogs') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="VideoPlay" @click="handleTrigger(row)" v-hasPermi="'monitor:job:run'">{{ $t('monitor.job.execute') }}</el-button>
+                    <el-button
+                        size="small"
+                        type="primary"
+                        link
+                        :icon="VideoPlay"
+                        :disabled="row.status !== 'ENABLED'"
+                        @click="handleTrigger(row)"
+                        v-hasPermi="'monitor:job:run'"
+                    >
+                        {{ $t('monitor.job.execute') }}
+                    </el-button>
                     <el-button
                         size="small"
                         type="primary"
@@ -528,6 +538,9 @@ async function handleToggleStatus(row: JobTaskRow) {
 }
 
 function handleTrigger(row: JobTaskRow) {
+    if (row.status !== 'ENABLED') {
+        return;
+    }
     triggerTarget.value = row;
     triggerForm.paramsJson = row.params || '';
     triggerDialogVisible.value = true;

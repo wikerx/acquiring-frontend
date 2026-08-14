@@ -113,6 +113,7 @@ export default {
         downloadingReceipt: 'Preparing Receipt...',
         receiptDownloadFailed: 'The receipt could not be generated. Refresh the status and try again.',
         returnToMerchant: 'Return to Merchant',
+        redirectCountdown: 'Returning to the merchant in {seconds} seconds.',
         receiptTitle: 'Transaction Receipt',
         receiptMerchant: 'Merchant',
         receiptCheckoutSession: 'Checkout Session',

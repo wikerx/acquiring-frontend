@@ -113,6 +113,7 @@ export default {
         downloadingReceipt: '正在生成回执...',
         receiptDownloadFailed: '电子回执生成失败，请刷新交易状态后重试。',
         returnToMerchant: '返回商户网站',
+        redirectCountdown: '{seconds} 秒后自动返回商户网站。',
         receiptTitle: '交易电子回执',
         receiptMerchant: '商户',
         receiptCheckoutSession: '收银台会话',

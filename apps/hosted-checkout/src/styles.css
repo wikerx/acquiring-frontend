@@ -1129,6 +1129,14 @@ body {
     gap: 12px;
 }
 
+.checkout-redirect-countdown {
+    margin: 14px 0 0;
+    color: #52606d;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+}
+
 .checkout-status-button {
     height: 52px;
     border-radius: 16px;

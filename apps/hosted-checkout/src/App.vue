@@ -362,9 +362,6 @@
                     <button class="checkout-status-button checkout-status-button--primary" type="button" @click="refreshPaymentStatus">
                         {{ t('status.processingPrimary') }}
                     </button>
-                    <button class="checkout-status-button checkout-status-button--secondary" type="button" @click="goToCancelUrl">
-                        {{ t('status.processingSecondary') }}
-                    </button>
                 </div>
             </article>
         </section>
@@ -418,6 +415,10 @@
                     {{ localizedStatusConfig.message }}
                 </div>
 
+                <p v-if="redirectCountdown !== null" class="checkout-redirect-countdown" role="status">
+                    {{ t('status.redirectCountdown', { seconds: redirectCountdown }) }}
+                </p>
+
                 <div v-if="statusViewState === 'failed'" class="checkout-failed-panel">
                     <strong>{{ t('status.failedHelpTitle') }}</strong>
                     <p>{{ failureHelpText }}</p>
@@ -453,7 +454,12 @@
                     >
                         {{ t('status.processingPrimary') }}
                     </button>
-                    <button v-else class="checkout-status-button checkout-status-button--primary" type="button" @click="goToReturnUrl">
+                    <button
+                        v-else-if="hasMerchantRedirect"
+                        class="checkout-status-button checkout-status-button--primary"
+                        type="button"
+                        @click="submitMerchantReturnForm"
+                    >
                         {{ localizedStatusConfig.primaryAction }}
                     </button>
                     <button
@@ -466,20 +472,12 @@
                         {{ receiptDownloading ? t('status.downloadingReceipt') : t('status.downloadReceipt') }}
                     </button>
                     <button
-                        v-if="statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable)"
+                        v-if="hasMerchantRedirect && (statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable))"
                         class="checkout-status-button checkout-status-button--secondary"
                         type="button"
-                        @click="goToReturnUrl"
+                        @click="submitMerchantReturnForm"
                     >
                         {{ t('status.returnToMerchant') }}
-                    </button>
-                    <button
-                        v-if="statusViewState === 'blocked'"
-                        class="checkout-status-button checkout-status-button--secondary"
-                        type="button"
-                        @click="goToCancelUrl"
-                    >
-                        {{ localizedStatusConfig.secondaryAction }}
                     </button>
                 </div>
                 <p v-if="receiptError" class="checkout-receipt-error" role="alert">
@@ -510,6 +508,7 @@ import {
     type HostedCheckoutCardEncryption,
     type HostedCheckoutPaymentMethod,
     type HostedCheckoutPaymentResult,
+    type HostedCheckoutMerchantReturnFormFields,
     type HostedCheckoutSession,
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
@@ -595,6 +594,17 @@ const COUNTRY_FLAG_ASSETS: Record<string, string> = {
 const POLLING_MAX_ATTEMPTS = 30;
 const THREE_DS_RECOVERY_WAIT_SECONDS = 660;
 const THREE_DS_METHOD_WAIT_MS = 10_000;
+const MERCHANT_RETURN_FIELD_NAMES: ReadonlyArray<keyof HostedCheckoutMerchantReturnFormFields> = [
+    'merchantId',
+    'orderNo',
+    'orderId',
+    'transactionId',
+    'transactionType',
+    'transactionStatus',
+    'transactionDateTime',
+    'code',
+    'message',
+];
 const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     VISA: 'visa',
     MASTERCARD: 'mastercard',
@@ -652,6 +662,9 @@ const fieldErrors = reactive<FieldErrors>({});
 const pollTimer = ref<number | null>(null);
 const pollAttempts = ref(0);
 const pollAttemptLimit = ref(POLLING_MAX_ATTEMPTS);
+const redirectCountdown = ref<number | null>(null);
+const redirectTimer = ref<number | null>(null);
+const redirectSubmitted = ref(false);
 const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
@@ -713,6 +726,7 @@ const retryAvailable = computed(() => (
 ));
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
+const hasMerchantRedirect = computed(() => resolveMerchantRedirectUrl() !== null);
 const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionType === 'HTML'
     ? paymentResult.value?.threeDsAction?.html || ''
     : '');
@@ -972,7 +986,7 @@ async function initializeCheckout() {
     }
     if (isDevToken(token)) {
         hydrateSession(mockSession(token));
-        if (token === 'dev-success') {
+        if (token === 'dev-success' || token === 'dev-success-redirect') {
             handlePaymentResult(mockSuccessResult());
             return;
         }
@@ -1317,6 +1331,7 @@ function handlePaymentResult(response: HostedCheckoutPaymentResult) {
 function applyPageState(pageState?: string) {
     const state = normalizeCode(pageState) as CheckoutPageState;
     if (state === 'PAYABLE') {
+        clearMerchantRedirect();
         clearPolling();
         clearThreeDsContinuation();
         runtimeState.value = 'checkout';
@@ -1326,15 +1341,18 @@ function applyPageState(pageState?: string) {
         clearPolling();
         clearThreeDsContinuation();
         runtimeState.value = 'success';
+        startMerchantRedirectCountdown();
         return;
     }
     if (state === 'FAILED_RETRYABLE' || state === 'FAILED_FINAL' || state === 'EXPIRED' || state === 'CANCELLED') {
         clearPolling();
         clearThreeDsContinuation();
         runtimeState.value = 'failed';
+        startMerchantRedirectCountdown();
         return;
     }
     if (state === 'THREE_DS_REQUIRED') {
+        clearMerchantRedirect();
         const canContinueThreeDs = Boolean(paymentResult.value?.threeDsAction && threeDsContinuation.value);
         if (canContinueThreeDs) {
             clearPolling();
@@ -1350,6 +1368,7 @@ function applyPageState(pageState?: string) {
         return;
     }
     if (state === 'PROCESSING') {
+        clearMerchantRedirect();
         clearThreeDsContinuation();
         runtimeState.value = 'processing';
         if (!pollTimer.value) {
@@ -1455,6 +1474,7 @@ function clearPolling() {
 }
 
 function blockCheckout(messageKey: string) {
+    clearMerchantRedirect();
     clearPolling();
     clearThreeDsContinuation();
     initErrorKey.value = messageKey;
@@ -1945,20 +1965,79 @@ async function downloadCurrentReceipt() {
     }
 }
 
-function goToReturnUrl() {
-    const url = paymentResult.value?.actions?.returnUrl;
-    if (url) {
-        window.location.assign(url);
+function startMerchantRedirectCountdown() {
+    const action = paymentResult.value?.actions;
+    if (!action || !hasMerchantRedirect.value || redirectTimer.value !== null || redirectSubmitted.value) {
+        redirectCountdown.value = null;
+        return;
+    }
+    const delaySeconds = Number.isInteger(action.delaySeconds) && action.delaySeconds >= 0
+        ? action.delaySeconds
+        : 5;
+    redirectCountdown.value = delaySeconds;
+    if (delaySeconds === 0) {
+        submitMerchantReturnForm();
+        return;
+    }
+    redirectTimer.value = window.setInterval(() => {
+        const remaining = Math.max(0, (redirectCountdown.value ?? 1) - 1);
+        redirectCountdown.value = remaining;
+        if (remaining === 0) {
+            submitMerchantReturnForm();
+        }
+    }, 1000);
+}
+
+function clearMerchantRedirect(resetSubmission = true) {
+    if (redirectTimer.value !== null) {
+        window.clearInterval(redirectTimer.value);
+        redirectTimer.value = null;
+    }
+    redirectCountdown.value = null;
+    if (resetSubmission) {
+        redirectSubmitted.value = false;
     }
 }
 
-function goToCancelUrl() {
-    const url = paymentResult.value?.actions?.cancelUrl;
-    if (url) {
-        window.location.assign(url);
+function resolveMerchantRedirectUrl(): string | null {
+    const action = paymentResult.value?.actions;
+    if (!action || normalizeCode(action.method) !== 'POST' || !action.formFields) {
+        return null;
+    }
+    try {
+        const url = new URL(action.redirectUrl);
+        return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+    } catch {
+        return null;
+    }
+}
+
+function submitMerchantReturnForm() {
+    if (redirectSubmitted.value) {
         return;
     }
-    goToReturnUrl();
+    const action = paymentResult.value?.actions;
+    const redirectUrl = resolveMerchantRedirectUrl();
+    if (!action || !redirectUrl) {
+        clearMerchantRedirect();
+        return;
+    }
+    redirectSubmitted.value = true;
+    clearMerchantRedirect(false);
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = redirectUrl;
+    form.acceptCharset = 'UTF-8';
+    form.hidden = true;
+    for (const fieldName of MERCHANT_RETURN_FIELD_NAMES) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = fieldName;
+        input.value = String(action.formFields[fieldName] ?? '');
+        form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function fallbackCountries(): CheckoutCountryConfig[] {
@@ -2051,6 +2130,9 @@ function mockProcessingResult(): HostedCheckoutPaymentResult {
 
 function mockSuccessResult(): HostedCheckoutPaymentResult {
     const cardNumber = digitsOnly(cardForm.cardNumber);
+    const transactionId = `TXDEV${Date.now()}`;
+    const transactionDateTime = new Date().toISOString();
+    const merchantOrderNo = order.value?.orderNo || 'DEV202607270001';
     return {
         checkoutSessionId: session.value?.checkoutSessionId || 'CSDEV202607270001',
         checkoutAttemptId: paymentResult.value?.checkoutAttemptId || 'CADEV202607270001',
@@ -2058,14 +2140,30 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
         result: {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
-            merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
+            merchantOrderNo,
             paymentMethod: selectedMethod.value?.label || 'Bank Card',
             cardBrand: 'VISA',
             cardNumberMasked: cardNumber ? `**** ${cardNumber.slice(-4)}` : '**** 1111',
-            transactionId: `TXDEV${Date.now()}`,
-            transactionDateTime: new Date().toISOString(),
+            transactionId,
+            transactionDateTime,
             authCode: 'DEV001',
         },
+        actions: routeToken.value === 'dev-success-redirect' ? {
+            method: 'POST',
+            redirectUrl: `${window.location.origin}/dev/merchant-result`,
+            delaySeconds: 5,
+            formFields: {
+                merchantId: '200001',
+                orderNo: merchantOrderNo,
+                orderId: 'REQ-DEV-001',
+                transactionId,
+                transactionType: 'PAYMENT',
+                transactionStatus: 'SUCCESS',
+                transactionDateTime,
+                code: 'T200',
+                message: 'Success',
+            },
+        } : undefined,
     };
 }
 
@@ -2090,16 +2188,12 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             retryAllowed: true,
             remainingAttemptCount: 2,
         },
-        actions: {
-            returnUrl: '',
-            cancelUrl: '',
-        },
     };
 }
 
 function isDevToken(token: string): boolean {
     return import.meta.env.DEV
-        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-failed', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
+        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-success-redirect', 'dev-failed', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
 }
 
 applyLocale(resolveInitialLocale(), false);
@@ -2116,5 +2210,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('message', handleThreeDsReturnMessage);
     clearPolling();
     clearThreeDsContinuation();
+    clearMerchantRedirect();
 });
 </script>

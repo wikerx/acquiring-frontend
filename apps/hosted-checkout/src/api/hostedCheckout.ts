@@ -122,9 +122,23 @@ export interface HostedCheckoutPaymentResult {
         maxIntervalSeconds?: number;
     };
     actions?: {
-        returnUrl?: string;
-        cancelUrl?: string;
+        method: 'POST' | string;
+        redirectUrl: string;
+        delaySeconds: number;
+        formFields: HostedCheckoutMerchantReturnFormFields;
     };
+}
+
+export interface HostedCheckoutMerchantReturnFormFields {
+    merchantId: string;
+    orderNo: string;
+    orderId: string;
+    transactionId: string;
+    transactionType: string;
+    transactionStatus: string;
+    transactionDateTime: string;
+    code: string;
+    message: string;
 }
 
 export interface PaymentSubmitPayload {
