@@ -799,10 +799,7 @@ const localizedStatusDetailRows = computed(() => {
         return rows;
     }
     if (statusViewState.value === 'failed') {
-        rows.push(
-            { label: t('status.failureReason'), value: failureReasonText.value },
-            { label: t('status.remainingAttempts'), value: String(paymentResult.value?.failure?.remainingAttemptCount ?? '-') },
-        );
+        rows.push({ label: t('status.failureReason'), value: failureReasonText.value });
         return rows;
     }
     if (statusViewState.value === 'blocked') {
@@ -1607,7 +1604,7 @@ function resetCardBinResolution() {
 }
 
 function isRetryablePageState(pageState: string): boolean {
-    return pageState === 'FAILED_RETRYABLE' || pageState === 'EXPIRED';
+    return pageState === 'FAILED_RETRYABLE';
 }
 
 function cardBinPrefix(value: string): string {
@@ -2091,7 +2088,6 @@ function mockSession(token = 'dev-token'): HostedCheckoutSession {
         }],
         checkout: {
             retryAllowed: true,
-            remainingAttemptCount: 3,
             pollingIntervalSeconds: 2,
         },
     };
@@ -2186,7 +2182,6 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             reasonCode: 'ISSUER_DECLINED',
             message: t('status.failedHelpDesc'),
             retryAllowed: true,
-            remainingAttemptCount: 2,
         },
     };
 }

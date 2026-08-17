@@ -89,6 +89,25 @@
                     </el-descriptions>
                 </el-tab-pane>
 
+                <el-tab-pane v-if="partyInfoSections.length" :label="t('transaction.detail.partyInfo')" name="partyInfo">
+                    <div class="transaction-detail__party-sections">
+                        <section v-for="section in partyInfoSections" :key="section.key" class="transaction-detail__party-section">
+                            <h3>{{ section.title }}</h3>
+                            <dl class="transaction-detail__party-grid">
+                                <div
+                                    v-for="field in section.fields"
+                                    :key="field.key"
+                                    class="transaction-detail__party-field"
+                                    :class="{ 'is-wide': field.wide }"
+                                >
+                                    <dt>{{ field.label }}</dt>
+                                    <dd><CopyableText :value="field.value" :label="field.label" wrap /></dd>
+                                </div>
+                            </dl>
+                        </section>
+                    </div>
+                </el-tab-pane>
+
                 <el-tab-pane :label="t('transaction.detail.operations')" name="operations">
                     <StandardTable table-key="transaction-detail-operations" :data="detail.operations || []" row-key="transactionId" size="small">
                         <el-table-column :label="t('transaction.fields.transactionId')" min-width="230" align="center" :show-overflow-tooltip="true">
@@ -203,7 +222,7 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import type { TransactionDetail, TransactionOperation, TransactionOrder } from '@/api/transaction';
+import type { TransactionContactInfo, TransactionDetail, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
@@ -264,6 +283,99 @@ const channelRecordRows = computed(() => mergeChannelRecords(
     (props.detail?.channelRequests || []) as Record<string, unknown>[],
     (props.detail?.channelInteractionLogs || []) as Record<string, unknown>[],
 ));
+
+interface PartyInfoField {
+    key: string;
+    label: string;
+    value: string;
+    wide?: boolean;
+}
+
+interface PartyInfoSection {
+    key: string;
+    title: string;
+    fields: PartyInfoField[];
+}
+
+const partyInfoSections = computed<PartyInfoSection[]>(() => {
+    const sections: PartyInfoSection[] = [];
+    if (props.detail?.billingCardHolderInfo) {
+        appendPartyInfoSection(
+            sections,
+            'billingCardHolderInfo',
+            t('transaction.detail.billingCardHolderInfo'),
+            contactInfoFields(props.detail.billingCardHolderInfo),
+        );
+    }
+    if (props.detail?.payerInfo) {
+        appendPartyInfoSection(
+            sections,
+            'payerInfo',
+            t('transaction.detail.payerInfo'),
+            payerInfoFields(props.detail.payerInfo),
+        );
+    }
+    if (props.detail?.shippingInfo) {
+        appendPartyInfoSection(
+            sections,
+            'shippingInfo',
+            t('transaction.detail.shippingInfo'),
+            contactInfoFields(props.detail.shippingInfo),
+        );
+    }
+    return sections;
+});
+
+function appendPartyInfoSection(sections: PartyInfoSection[], key: string, title: string, fields: PartyInfoField[]) {
+    const populatedFields = fields.filter((field) => field.value);
+    if (populatedFields.length) {
+        sections.push({ key, title, fields: populatedFields });
+    }
+}
+
+function contactInfoFields(info: TransactionContactInfo): PartyInfoField[] {
+    return [
+        partyInfoField('firstName', info.firstName),
+        partyInfoField('lastName', info.lastName),
+        partyInfoField('phone', info.phone),
+        partyInfoField('email', info.email),
+        partyInfoField('country', info.country),
+        partyInfoField('state', info.state),
+        partyInfoField('city', info.city),
+        partyInfoField('postal', info.postal),
+        partyInfoField('street', info.street, true),
+    ];
+}
+
+function payerInfoFields(info: TransactionPayerInfo): PartyInfoField[] {
+    return [
+        partyInfoField('payerId', info.payerId),
+        ...contactInfoFields(info),
+        partyInfoField('ipAddress', info.ipAddress),
+        partyInfoField('sessionId', info.sessionId),
+        partyInfoField('browserInfo', info.browserInfo, true),
+        partyInfoField('userAgent', info.userAgent, true),
+    ];
+}
+
+function partyInfoField(key: string, value: unknown, wide = false): PartyInfoField {
+    return {
+        key,
+        label: t(`transaction.detail.partyFields.${key}`),
+        value: partyInfoValue(value),
+        wide,
+    };
+}
+
+function partyInfoValue(value: unknown): string {
+    if (value === undefined || value === null || value === '') {
+        return '';
+    }
+    if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+}
 
 const focusedOperation = computed(() => {
     const operations = props.detail?.operations || [];
@@ -1012,6 +1124,109 @@ function timelineSequence(row: Record<string, unknown>) {
     min-width: 0;
 }
 
+.transaction-detail__party-sections {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 14px;
+}
+
+.transaction-detail__party-section {
+    overflow: hidden;
+    min-width: 0;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    background: var(--el-bg-color);
+}
+
+.transaction-detail__party-section h3 {
+    margin: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 10px 14px;
+    background: var(--el-fill-color-extra-light);
+    color: var(--el-text-color-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.transaction-detail__party-grid {
+    margin: 0;
+}
+
+.transaction-detail__party-field {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 8px 12px;
+    transition: background-color 0.16s ease;
+}
+
+.transaction-detail__party-field:last-child {
+    border-bottom: 0;
+}
+
+.transaction-detail__party-field.is-wide {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 3px;
+}
+
+.transaction-detail__party-field:hover {
+    background: var(--el-fill-color-extra-light);
+}
+
+.transaction-detail__party-field dt,
+.transaction-detail__party-field dd {
+    min-width: 0;
+    margin: 0;
+    line-height: 22px;
+}
+
+.transaction-detail__party-field dt {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.transaction-detail__party-field dd {
+    color: var(--el-text-color-primary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.transaction-detail__party-field :deep(.copyable-text) {
+    width: 100%;
+    justify-content: flex-start;
+    color: var(--el-text-color-primary);
+    text-align: left;
+}
+
+.transaction-detail__party-field :deep(.copyable-text .el-icon) {
+    opacity: 0;
+    color: var(--el-text-color-secondary);
+    transition: color 0.16s ease, opacity 0.16s ease;
+}
+
+.transaction-detail__party-field:hover :deep(.copyable-text .el-icon),
+.transaction-detail__party-field:focus-within :deep(.copyable-text .el-icon) {
+    opacity: 1;
+}
+
+.transaction-detail__party-field :deep(.copyable-text:hover .el-icon),
+.transaction-detail__party-field :deep(.copyable-text:focus-visible .el-icon) {
+    color: var(--el-color-primary);
+}
+
+.transaction-detail__party-field.is-wide :deep(.copyable-text.is-wrap span) {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .transaction-detail__timezone {
     margin-left: 8px;
     color: var(--el-text-color-secondary);
@@ -1121,6 +1336,10 @@ function timelineSequence(row: Record<string, unknown>) {
     .transaction-detail__amount-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .transaction-detail__party-sections {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 640px) {
@@ -1141,6 +1360,28 @@ function timelineSequence(row: Record<string, unknown>) {
 
     .transaction-detail__amount-grid {
         grid-template-columns: 1fr;
+    }
+
+    .transaction-detail__party-grid {
+        display: block;
+    }
+
+    .transaction-detail__party-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .transaction-detail__party-field {
+        grid-template-columns: 96px minmax(0, 1fr);
+    }
+
+    .transaction-detail__party-field.is-wide {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (hover: none) {
+    .transaction-detail__party-field :deep(.copyable-text .el-icon) {
+        opacity: 0.65;
     }
 }
 </style>

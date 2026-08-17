@@ -197,8 +197,31 @@ export interface TransactionOperationSearchResult {
     summary: TransactionOperationSummary;
 }
 
+export interface TransactionContactInfo {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    street?: string;
+    postal?: string;
+}
+
+export interface TransactionPayerInfo extends TransactionContactInfo {
+    payerId?: string;
+    ipAddress?: string;
+    sessionId?: string;
+    browserInfo?: Record<string, unknown>;
+    userAgent?: string;
+}
+
 export interface TransactionDetail {
     order?: TransactionOrder;
+    billingCardHolderInfo?: TransactionContactInfo;
+    payerInfo?: TransactionPayerInfo;
+    shippingInfo?: TransactionContactInfo;
     operations: TransactionOperation[];
     statusHistory: Record<string, unknown>[];
     flowEvents: Record<string, unknown>[];

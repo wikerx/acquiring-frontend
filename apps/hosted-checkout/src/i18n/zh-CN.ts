@@ -105,7 +105,6 @@ export default {
         securityPolicyValue: '请求安全校验',
         estimatedCompletion: '预计完成时间',
         processingEstimate: '1 - 5 分钟',
-        remainingAttempts: '剩余尝试次数',
         pollingInterval: '刷新间隔',
         pollingIntervalValue: '{seconds} 秒',
         processingHint: '请保持当前页面开启，支付结果确认后会自动刷新。',
