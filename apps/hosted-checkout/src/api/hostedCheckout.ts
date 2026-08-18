@@ -45,7 +45,6 @@ export interface HostedCheckoutSession {
     checkout?: {
         expireTime?: string;
         retryAllowed?: boolean;
-        remainingAttemptCount?: number;
         pollingIntervalSeconds?: number;
     };
     payerInfo?: HostedCheckoutPrefillInfo;
@@ -114,7 +113,6 @@ export interface HostedCheckoutPaymentResult {
         reasonCode?: string;
         message?: string;
         retryAllowed?: boolean;
-        remainingAttemptCount?: number;
     };
     polling?: {
         statusUrl?: string;

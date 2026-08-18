@@ -2,9 +2,12 @@ import type {
     CommonResult,
     PageQuery,
     PageResult,
+    TransactionAnalyticsChannelPerformance,
+    TransactionAnalyticsFailureAnalysis,
     TransactionAnalyticsMerchantPerformance,
     TransactionAnalyticsOverview,
     TransactionAnalyticsQuery,
+    TransactionAnalyticsThreeDs,
 } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
@@ -197,8 +200,31 @@ export interface TransactionOperationSearchResult {
     summary: TransactionOperationSummary;
 }
 
+export interface TransactionContactInfo {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    street?: string;
+    postal?: string;
+}
+
+export interface TransactionPayerInfo extends TransactionContactInfo {
+    payerId?: string;
+    ipAddress?: string;
+    sessionId?: string;
+    browserInfo?: Record<string, unknown>;
+    userAgent?: string;
+}
+
 export interface TransactionDetail {
     order?: TransactionOrder;
+    billingCardHolderInfo?: TransactionContactInfo;
+    payerInfo?: TransactionPayerInfo;
+    shippingInfo?: TransactionContactInfo;
     operations: TransactionOperation[];
     statusHistory: Record<string, unknown>[];
     flowEvents: Record<string, unknown>[];
@@ -518,6 +544,30 @@ export async function getTransactionAnalyticsOverview(data: TransactionAnalytics
 export async function getTransactionAnalyticsMerchants(data: TransactionAnalyticsQuery) {
     const result = await http.post<CommonResult<TransactionAnalyticsMerchantPerformance>>(
         '/admin/transactions/analytics/merchants', data,
+    );
+    return unwrapResult(result.data);
+}
+
+/** 查询管理端失败原因、趋势和渠道分布。 */
+export async function getTransactionAnalyticsFailures(data: TransactionAnalyticsQuery) {
+    const result = await http.post<CommonResult<TransactionAnalyticsFailureAnalysis>>(
+        '/admin/transactions/analytics/failures', data,
+    );
+    return unwrapResult(result.data);
+}
+
+/** 查询管理端渠道请求及最终交易表现。 */
+export async function getTransactionAnalyticsChannels(data: TransactionAnalyticsQuery) {
+    const result = await http.post<CommonResult<TransactionAnalyticsChannelPerformance>>(
+        '/admin/transactions/analytics/channels', data,
+    );
+    return unwrapResult(result.data);
+}
+
+/** 查询管理端按交易去重的3DS认证表现。 */
+export async function getTransactionAnalyticsThreeDs(data: TransactionAnalyticsQuery) {
+    const result = await http.post<CommonResult<TransactionAnalyticsThreeDs>>(
+        '/admin/transactions/analytics/three-ds', data,
     );
     return unwrapResult(result.data);
 }

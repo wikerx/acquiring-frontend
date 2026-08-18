@@ -105,7 +105,6 @@ export default {
         securityPolicyValue: 'Request security verification',
         estimatedCompletion: 'Estimated completion time',
         processingEstimate: '1 - 5 minutes',
-        remainingAttempts: 'Remaining Attempts',
         pollingInterval: 'Refresh Interval',
         pollingIntervalValue: '{seconds}s',
         processingHint: 'Please keep this page open while we confirm the payment result.',
