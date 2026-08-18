@@ -56,11 +56,6 @@
                             </el-option>
                         </el-select>
                     </el-form-item>
-                    <el-form-item :label="t('transaction.order.channelMatchStatus')">
-                        <el-select v-model="query.channelMatchStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                            <el-option v-for="item in channelMatchStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                        </el-select>
-                    </el-form-item>
                     <el-form-item :label="t('transaction.order.reconciliationStatus')">
                         <el-select v-model="query.reconciliationStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
                             <el-option v-for="item in reconciliationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -134,7 +129,7 @@
                 </div>
                 <RightToolbar class="transaction-table-toolbar" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </div>
-            <StandardTable table-key="merchant-transaction-order" v-loading="loading" :data="rows" row-key="transactionId" size="small">
+            <StandardTable table-key="merchant-transaction-order-v2" v-loading="loading" :data="rows" row-key="transactionId" size="small">
                 <el-table-column :label="t('transaction.order.merchantOrderNo')" prop="merchantOrderNo" min-width="190" fixed="left" show-overflow-tooltip>
                     <template #default="{ row }">
                         <button class="transaction-copy-link" type="button" :disabled="!row.merchantOrderNo" @click="copyOrderNo(row.merchantOrderNo)">
@@ -196,10 +191,24 @@
                         <span class="transaction-auth-code">{{ row.authCode || '-' }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column :label="t('transaction.order.channelMatchStatus')" min-width="130" align="center">
+                <el-table-column :label="t('transaction.order.threeDs')" prop="threeDsEnabled" min-width="92" align="center">
                     <template #default="{ row }">
-                        <el-tag size="small" :type="statusTag(row.channelMatchStatus, channelMatchStatusOptions)" effect="plain">
-                            {{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">
+                            {{ row.threeDsEnabled === 1 ? t('common.yes') : t('common.no') }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('transaction.order.dcc')" prop="dccEnabled" min-width="104" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': row.dccEnabled === 1 }">
+                            {{ t(row.dccEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('transaction.order.edc')" prop="edcEnabled" min-width="104" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">
+                            {{ t(row.edcEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}
                         </el-tag>
                     </template>
                 </el-table-column>
@@ -249,71 +258,138 @@
             </div>
         </section>
 
-        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(720px, 92vw)" class="transaction-detail-drawer" destroy-on-close>
+        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(800px, 94vw)" class="transaction-detail-drawer" destroy-on-close>
             <el-skeleton v-if="detailLoading" :rows="8" animated />
             <template v-else-if="detail">
                 <div class="transaction-detail-shell">
-                    <section class="transaction-detail-summary">
-                        <div class="transaction-detail-summary__main">
-                            <span>{{ t('transaction.order.status') }}</span>
-                            <strong>{{ tagText(transactionStatusOptions, detail.order?.transactionStatus) }}</strong>
-                            <small>{{ detail.order?.latestTransactionId || '-' }}</small>
+                    <section class="transaction-detail-hero">
+                        <div class="transaction-detail-hero__identity">
+                            <span class="transaction-detail-eyebrow">{{ t('transaction.order.merchantOrderNo') }}</span>
+                            <strong>{{ detail.order?.merchantOrderNo || '-' }}</strong>
+                            <div class="transaction-detail-hero__meta">
+                                <PaymentLogoGroup v-if="assetPaymentLogos(detail.order).length" :keys="assetPaymentLogos(detail.order)" size="sm" align="start" fallback="hide" />
+                                <span>{{ tagText(transactionTypeOptions, detail.order?.transactionType) }}</span>
+                                <span class="transaction-detail-hero__separator" aria-hidden="true"></span>
+                                <BaseDateTime :value="detail.order?.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" />
+                            </div>
                         </div>
-                        <div class="transaction-detail-summary__amount">
-                            <span>{{ t('transaction.order.amount') }}</span>
+                        <div class="transaction-detail-hero__result">
+                            <span class="transaction-detail-eyebrow">{{ t('transaction.order.amount') }}</span>
                             <strong>{{ money(orderDisplayAmount(detail.order), defaultCurrency(detail.order), detail.order?.currencyExponent) }}</strong>
+                            <el-tag :type="statusTag(detail.order?.transactionStatus, transactionStatusOptions)" effect="light" round>
+                                {{ tagText(transactionStatusOptions, detail.order?.transactionStatus) }}
+                            </el-tag>
                         </div>
                     </section>
 
-                    <dl class="transaction-detail-grid">
-                        <div>
-                            <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
-                            <dd>{{ detail.order?.merchantOrderNo || '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.systemOrderNo') }}</dt>
-                            <dd>{{ systemOrderNo(detail.order) }}</dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.transactionType') }}</dt>
-                            <dd>{{ tagText(transactionTypeOptions, detail.order?.transactionType) }}</dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.payment') }}</dt>
-                            <dd>
-                                <span class="transaction-detail-payment">
-                                    <PaymentLogoGroup v-if="assetPaymentLogos(detail.order).length" :keys="assetPaymentLogos(detail.order)" size="sm" align="start" fallback="hide" />
-                                    <span v-else>-</span>
-                                </span>
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.cardBin') }}</dt>
-                            <dd>{{ detail.order?.cardBin || '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.authCode') }}</dt>
-                            <dd>{{ detail.order?.authCode || '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.transactionTime') }}</dt>
-                            <dd><BaseDateTime :value="detail.order?.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></dd>
-                        </div>
-                        <div>
-                            <dt>{{ t('transaction.order.response') }}</dt>
-                            <dd>{{ responseTooltip(detail.order?.merchantResponseCode, detail.order?.merchantResponseMessage) }}</dd>
-                        </div>
-                    </dl>
+                    <section class="transaction-detail-section">
+                        <h3 class="transaction-drawer-title">{{ t('transaction.order.fundsOverview') }}</h3>
+                        <dl class="transaction-detail-metrics">
+                            <div>
+                                <dt>{{ t('transaction.order.authorizedAmount') }}</dt>
+                                <dd>{{ money(detail.order?.authorizedAmount, defaultCurrency(detail.order), detail.order?.currencyExponent) }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.capturedAmount') }}</dt>
+                                <dd>{{ money(detail.order?.capturedAmount, defaultCurrency(detail.order), detail.order?.currencyExponent) }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.refundedAmount') }}</dt>
+                                <dd>{{ money(detail.order?.refundedAmount, defaultCurrency(detail.order), detail.order?.currencyExponent) }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.availableRefund') }}</dt>
+                                <dd>{{ money(detail.order?.availableRefundAmount, defaultCurrency(detail.order), detail.order?.currencyExponent) }}</dd>
+                            </div>
+                        </dl>
+                    </section>
 
-                    <section class="transaction-timeline-panel">
+                    <section class="transaction-detail-section">
+                        <h3 class="transaction-drawer-title">{{ t('transaction.order.transactionInformation') }}</h3>
+                        <dl class="transaction-detail-grid">
+                            <div>
+                                <dt>{{ t('transaction.order.systemOrderNo') }}</dt>
+                                <dd class="transaction-detail-code">{{ detailOperation?.transactionId || systemOrderNo(detail.order) }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.transactionType') }}</dt>
+                                <dd>{{ tagText(transactionTypeOptions, detail.order?.transactionType) }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.payment') }}</dt>
+                                <dd>
+                                    <span class="transaction-detail-payment">
+                                        <PaymentLogoGroup v-if="assetPaymentLogos(detail.order).length" :keys="assetPaymentLogos(detail.order)" size="sm" align="start" fallback="hide" />
+                                        <span v-else>-</span>
+                                    </span>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.cardNumber') }}</dt>
+                                <dd class="transaction-detail-code">{{ detail.order?.cardNumberMasked || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.cardBin') }}</dt>
+                                <dd class="transaction-detail-code">{{ detail.order?.cardBin || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.authCode') }}</dt>
+                                <dd class="transaction-detail-code">{{ detail.order?.authCode || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.threeDs') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': detail.order?.threeDsEnabled === 1 }">{{ detail.order?.threeDsEnabled === 1 ? t('common.yes') : t('common.no') }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.dcc') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': detail.order?.dccEnabled === 1 }">{{ t(detail.order?.dccEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.edc') }}</dt>
+                                <dd><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': detail.order?.edcEnabled === 1 }">{{ t(detail.order?.edcEnabled === 1 ? 'transaction.order.capabilityEnabled' : 'transaction.order.capabilityDisabled') }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.channelCode') }}</dt>
+                                <dd>{{ detail.order?.channelCode || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.channelOrderNo') }}</dt>
+                                <dd class="transaction-detail-code">{{ detail.order?.channelOrderNo || '-' }}</dd>
+                            </div>
+                            <div class="transaction-detail-grid__wide">
+                                <dt>{{ t('transaction.order.response') }}</dt>
+                                <dd>{{ responseTooltip(detail.order?.merchantResponseCode, detail.order?.merchantResponseMessage) }}</dd>
+                            </div>
+                        </dl>
+                    </section>
+
+                    <section class="transaction-detail-section">
+                        <h3 class="transaction-drawer-title">{{ t('transaction.order.processingStatus') }}</h3>
+                        <dl class="transaction-detail-statuses">
+                            <div>
+                                <dt>{{ t('transaction.order.reconciliationStatus') }}</dt>
+                                <dd><el-tag size="small" :type="statusTag(detail.order?.reconciliationStatus, reconciliationStatusOptions)" effect="plain">{{ tagText(reconciliationStatusOptions, detail.order?.reconciliationStatus) }}</el-tag></dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('transaction.order.settlementStatus') }}</dt>
+                                <dd><el-tag size="small" :type="statusTag(detail.order?.settlementStatus, settlementStatusOptions)" effect="plain">{{ tagText(settlementStatusOptions, detail.order?.settlementStatus) }}</el-tag></dd>
+                            </div>
+                        </dl>
+                    </section>
+
+                    <section class="transaction-detail-section transaction-timeline-panel">
                         <h3 class="transaction-drawer-title">{{ t('transaction.order.operationTimeline') }}</h3>
                         <el-empty v-if="!(detail.operations || []).length" :description="t('transaction.order.noTimeline')" />
                         <el-timeline v-else>
-                            <el-timeline-item v-for="item in detail.operations || []" :key="item.transactionId" :timestamp="operationTimestamp(item)">
+                            <el-timeline-item v-for="item in detail.operations || []" :key="item.transactionId" :timestamp="operationTimestamp(item)" :type="statusTag(item.transactionStatus, transactionStatusOptions) || 'primary'">
                                 <div class="transaction-timeline-item">
-                                    <strong>{{ tagText(transactionTypeOptions, item.transactionType) }} / {{ tagText(transactionStatusOptions, item.transactionStatus) }}</strong>
-                                    <span>{{ item.transactionId }}</span>
-                                    <small>{{ money(item.transactionAmount, item.transactionCurrency, item.currencyExponent) }} · {{ responseTooltip(item.merchantResponseCode, item.merchantResponseMessage) }}</small>
+                                    <div class="transaction-timeline-item__head">
+                                        <strong>{{ tagText(transactionTypeOptions, item.transactionType) }}</strong>
+                                        <el-tag size="small" :type="statusTag(item.transactionStatus, transactionStatusOptions)" effect="plain">{{ tagText(transactionStatusOptions, item.transactionStatus) }}</el-tag>
+                                        <span>{{ money(item.transactionAmount, item.transactionCurrency, item.currencyExponent) }}</span>
+                                    </div>
+                                    <code>{{ item.transactionId || '-' }}</code>
+                                    <small>{{ responseTooltip(item.merchantResponseCode, item.merchantResponseMessage) }}</small>
                                 </div>
                             </el-timeline-item>
                         </el-timeline>
@@ -548,6 +624,7 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const detail = ref<TransactionDetail>();
+const detailOperation = ref<TransactionOperation | null>(null);
 const summary = ref<Awaited<ReturnType<typeof transactionApi.searchOperations>>['summary']>();
 const activeActionRow = ref<TransactionOperation | null>(null);
 const refundFormRef = ref<FormInstance>();
@@ -562,7 +639,6 @@ const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionT
 const transactionStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
 const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
 const cardBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
-const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'channelMatch'));
 const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'reconciliation'));
 const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'settlement'));
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
@@ -637,17 +713,15 @@ async function loadDictionaries() {
     transactionStatusOptions.value = fallbackTransactionStatusOptions(t);
     paymentMethodOptions.value = fallbackPaymentMethodOptions(t);
     cardBrandOptions.value = fallbackCardBrandOptions();
-    channelMatchStatusOptions.value = fallbackStatusOptions(t, 'channelMatch');
     reconciliationStatusOptions.value = fallbackStatusOptions(t, 'reconciliation');
     settlementStatusOptions.value = fallbackStatusOptions(t, 'settlement');
     timezoneOptions.value = ensureTransactionTimezoneOptions([]);
     try {
-        const [types, statuses, methods, brands, channelMatches, reconciliations, settlements, timezones] = await Promise.all([
+        const [types, statuses, methods, brands, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('payment_method', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('card_brand', String(locale.value || 'zh-CN')).catch(() => []),
-            loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('reconciliation_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
@@ -656,7 +730,6 @@ async function loadDictionaries() {
         transactionStatusOptions.value = statuses.length ? statuses : transactionStatusOptions.value;
         paymentMethodOptions.value = methods.length ? methods : paymentMethodOptions.value;
         cardBrandOptions.value = brands.length ? brands : cardBrandOptions.value;
-        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
         reconciliationStatusOptions.value = reconciliations.length ? reconciliations : reconciliationStatusOptions.value;
         settlementStatusOptions.value = settlements.length ? settlements : settlementStatusOptions.value;
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
@@ -711,13 +784,18 @@ async function handleExport() {
 
 async function openDetail(row: TransactionOperation) {
     const transactionId = row.transactionId;
-    if (!transactionId) return;
+    const transactionDateTime = row.transactionDateTime;
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
+    detailOperation.value = row;
     detailVisible.value = true;
     detailLoading.value = true;
     try {
-        detail.value = await transactionApi.detail(transactionId);
+        detail.value = await transactionApi.detail(
+            transactionId, transactionDateTime, rootTransactionDateTime);
     } catch (error: any) {
         detail.value = undefined;
+        detailOperation.value = null;
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.detailFailed'));
     } finally {
         detailLoading.value = false;
@@ -765,6 +843,8 @@ async function submitRefund() {
             amount: refundForm.amount,
             currency: refundForm.currency || labelCurrency(activeActionRow.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.refundSuccess'));
         refundVisible.value = false;
@@ -784,6 +864,8 @@ async function submitCapture() {
             amount: captureAmount.value,
             currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.captureSuccess'));
         captureVisible.value = false;
@@ -803,6 +885,8 @@ async function submitVoid() {
             amount: voidAmount.value,
             currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
+            transactionDateTime: activeActionRow.value.transactionDateTime!,
+            rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.order.voidSuccess'));
         voidVisible.value = false;
@@ -1313,8 +1397,9 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     min-width: 0;
 }
 
-.transaction-time-form-item {
-    flex: 1 1 688px;
+.transaction-search-form__fields :deep(.el-form-item.transaction-time-form-item) {
+    flex: 1 1 780px;
+    max-width: 100%;
 }
 
 .transaction-search-form :deep(.el-form-item__label) {
@@ -1496,83 +1581,204 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     min-height: 18px;
 }
 
+.transaction-capability-tag {
+    --capability-color: #64748b;
+    --capability-border: #cbd5e1;
+    --capability-background: #f8fafc;
+    gap: 6px;
+    min-width: 66px;
+    height: 24px;
+    border-color: var(--capability-border) !important;
+    border-radius: 3px;
+    background: var(--capability-background) !important;
+    color: var(--capability-color) !important;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.transaction-capability-tag::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+    opacity: 0.55;
+}
+
+.transaction-capability-tag--three-ds { --capability-color: #397a73; --capability-border: #b4d7d1; --capability-background: #f3faf8; }
+.transaction-capability-tag--dcc { --capability-color: #5270a6; --capability-border: #c5d3ea; --capability-background: #f5f8fd; }
+.transaction-capability-tag--edc { --capability-color: #92703b; --capability-border: #dfcfac; --capability-background: #fcfaf4; }
+.transaction-capability-tag--three-ds.is-enabled { --capability-color: #0f766e; --capability-border: #5eead4; --capability-background: #ecfdf5; }
+.transaction-capability-tag--dcc.is-enabled { --capability-color: #1d4ed8; --capability-border: #93c5fd; --capability-background: #eff6ff; }
+.transaction-capability-tag--edc.is-enabled { --capability-color: #b45309; --capability-border: #fcd34d; --capability-background: #fffbeb; }
+
+.transaction-capability-tag.is-enabled::before {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
 .transaction-drawer-title {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: var(--merchant-ink);
-    font-size: 15px;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: 0;
 }
 
 .transaction-detail-drawer :deep(.el-drawer__header) {
-    padding: 18px 22px 12px;
+    padding: 16px 24px 13px;
     margin-bottom: 0;
     border-bottom: 1px solid #edf2f7;
 }
 
+.transaction-detail-drawer :deep(.el-drawer__title) {
+    color: var(--merchant-ink);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
 .transaction-detail-drawer :deep(.el-drawer__body) {
-    padding: 18px 22px 24px;
+    padding: 0 24px 24px;
 }
 
 .transaction-detail-shell {
     display: grid;
-    gap: 14px;
+    min-width: 0;
 }
 
-.transaction-detail-summary {
+.transaction-detail-hero {
     display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 24px;
+    padding: 18px 0;
+    border-bottom: 1px solid #e8edf3;
 }
 
-.transaction-detail-summary__main,
-.transaction-detail-summary__amount {
+.transaction-detail-hero__identity,
+.transaction-detail-hero__result {
     display: grid;
-    gap: 5px;
-    padding: 14px 16px;
-    border: 1px solid #dde7f0;
-    border-radius: 8px;
-    background: #f8fbff;
+    min-width: 0;
+    gap: 7px;
 }
 
-.transaction-detail-summary span,
+.transaction-detail-hero__identity > strong {
+    overflow: hidden;
+    color: #172033;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.transaction-detail-eyebrow,
 .transaction-detail-grid dt,
+.transaction-detail-metrics dt,
+.transaction-detail-statuses dt,
 .transaction-action-detail-grid dt {
     color: #64748b;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 500;
+    line-height: 18px;
 }
 
-.transaction-detail-summary strong {
-    color: var(--merchant-ink);
-    font-size: 20px;
-}
-
-.transaction-detail-summary small {
+.transaction-detail-hero__meta {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 10px;
     color: #64748b;
     font-size: 12px;
+    line-height: 20px;
+}
+
+.transaction-detail-hero__separator {
+    width: 1px;
+    height: 12px;
+    background: #d8e0ea;
+}
+
+.transaction-detail-hero__result {
+    justify-items: end;
+}
+
+.transaction-detail-hero__result > strong {
+    color: #172033;
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 32px;
+}
+
+.transaction-detail-section {
+    min-width: 0;
+    padding: 16px 0;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.transaction-detail-section:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.transaction-detail-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid #e5eaf1;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.transaction-detail-metrics > div {
+    min-width: 0;
+    padding: 11px 14px;
+    border-right: 1px solid #e5eaf1;
+}
+
+.transaction-detail-metrics > div:last-child {
+    border-right: 0;
+}
+
+.transaction-detail-metrics dd {
+    margin: 5px 0 0;
+    overflow: hidden;
+    color: #263244;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .transaction-detail-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    padding: 1px;
     margin: 0;
-    border: 1px solid #e5edf5;
-    border-radius: 8px;
-    background: #e5edf5;
-    overflow: hidden;
+    border-top: 1px solid #e8edf3;
 }
 
-.transaction-detail-grid div {
-    display: grid;
-    gap: 6px;
+.transaction-detail-grid > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     min-width: 0;
-    padding: 12px 14px;
-    background: #ffffff;
+    padding: 11px 14px;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.transaction-detail-grid > .transaction-detail-grid__wide {
+    grid-column: 1 / -1;
 }
 
 .transaction-detail-grid dd {
+    flex: 1;
     min-width: 0;
     margin: 0;
     color: #1f2937;
@@ -1580,6 +1786,14 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     font-weight: 400;
     line-height: 1.45;
     overflow-wrap: anywhere;
+    text-align: right;
+}
+
+.transaction-detail-code,
+.transaction-timeline-item code {
+    color: #334155;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
 }
 
 .transaction-detail-payment {
@@ -1589,20 +1803,75 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     min-width: 0;
 }
 
+.transaction-detail-statuses {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid #e5eaf1;
+    border-radius: 6px;
+}
+
+.transaction-detail-statuses > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    gap: 12px;
+    padding: 11px 14px;
+    border-right: 1px solid #e5eaf1;
+}
+
+.transaction-detail-statuses > div:last-child {
+    border-right: 0;
+}
+
+.transaction-detail-statuses dd {
+    margin: 0;
+}
+
 .transaction-timeline-panel {
-    padding: 14px 16px 4px;
-    border: 1px solid #e5edf5;
-    border-radius: 8px;
-    background: #ffffff;
+    padding-right: 2px;
+    padding-left: 2px;
 }
 
 .transaction-timeline-panel :deep(.el-timeline) {
-    padding-left: 4px;
+    padding: 2px 0 0 5px;
 }
 
 .transaction-timeline-panel :deep(.el-timeline-item__timestamp) {
     color: #94a3b8;
     font-size: 12px;
+}
+
+.transaction-timeline-item {
+    gap: 6px;
+    padding: 0 0 6px;
+}
+
+.transaction-timeline-item__head {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 8px;
+}
+
+.transaction-timeline-item__head strong {
+    color: #263244;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.transaction-timeline-item__head > span {
+    margin-left: auto;
+    color: #263244;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.transaction-timeline-item code {
+    overflow-wrap: anywhere;
 }
 
 .transaction-action-dialog :deep(.el-dialog) {
@@ -1801,11 +2070,59 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
         gap: 12px;
     }
 
-    .transaction-detail-summary,
+    .transaction-detail-hero,
     .transaction-detail-grid,
+    .transaction-detail-metrics,
+    .transaction-detail-statuses,
     .transaction-action-detail-grid,
     .transaction-action-form {
         grid-template-columns: 1fr;
+    }
+
+    .transaction-detail-drawer :deep(.el-drawer__header) {
+        padding: 16px 18px 13px;
+    }
+
+    .transaction-detail-drawer :deep(.el-drawer__body) {
+        padding: 0 18px 22px;
+    }
+
+    .transaction-detail-hero {
+        align-items: start;
+        gap: 18px;
+        padding: 20px 0;
+    }
+
+    .transaction-detail-hero__identity > strong {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .transaction-detail-hero__meta {
+        flex-wrap: wrap;
+    }
+
+    .transaction-detail-hero__result {
+        justify-items: start;
+    }
+
+    .transaction-detail-metrics > div,
+    .transaction-detail-statuses > div {
+        border-right: 0;
+        border-bottom: 1px solid #e5eaf1;
+    }
+
+    .transaction-detail-metrics > div:last-child,
+    .transaction-detail-statuses > div:last-child {
+        border-bottom: 0;
+    }
+
+    .transaction-detail-grid > div {
+        border-right: 0;
+    }
+
+    .transaction-detail-grid > .transaction-detail-grid__wide {
+        grid-column: auto;
     }
 
     .transaction-search-form {

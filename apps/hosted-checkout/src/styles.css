@@ -705,6 +705,17 @@ body {
     background: #fff;
 }
 
+.checkout-three-ds-frame--method {
+    position: absolute;
+    width: 1px;
+    min-height: 1px;
+    height: 1px;
+    margin: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .checkout-status-shell {
     width: min(760px, 100%);
     margin: 0 auto 24px;
@@ -999,14 +1010,18 @@ body {
 }
 
 .checkout-status-detail__row span {
+    flex: 0 0 auto;
     color: #64748b;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 .checkout-status-detail__row strong {
+    min-width: 0;
     color: #0f172a;
     font-size: 14px;
     text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .checkout-status-detail__payment-logo {
@@ -1114,6 +1129,14 @@ body {
     gap: 12px;
 }
 
+.checkout-redirect-countdown {
+    margin: 14px 0 0;
+    color: #52606d;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+}
+
 .checkout-status-button {
     height: 52px;
     border-radius: 16px;
@@ -1131,6 +1154,14 @@ body {
     border: 1px solid #cbd5e1;
     background: #fff;
     color: #334155;
+}
+
+.checkout-receipt-error {
+    margin: 12px 0 0;
+    color: #b91c1c;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
 }
 
 .checkout-trust-footer {
@@ -1249,6 +1280,15 @@ body {
         grid-template-columns: 1fr;
         flex-direction: column;
         width: 100%;
+    }
+
+    .checkout-section-card__header {
+        flex-direction: column;
+    }
+
+    .checkout-section-card__logos {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .checkout-payment-option {

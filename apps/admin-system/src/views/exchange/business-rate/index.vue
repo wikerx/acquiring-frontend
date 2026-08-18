@@ -1,3 +1,4 @@
+<!-- 业务汇率管理页：提供汇率时效查询、审计信息展示和人工汇率维护。 -->
 <template>
     <div class="app-container exchange-page">
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
@@ -19,6 +20,12 @@
                     <el-option v-for="item in generateMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
+            <el-form-item :label="$t('exchange.fields.effectiveTime')">
+                <el-date-picker v-model="effectiveRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+            </el-form-item>
+            <el-form-item :label="$t('common.createTime')">
+                <el-date-picker v-model="createRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+            </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button>
                 <el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button>
@@ -39,6 +46,13 @@
             <el-table-column :label="$t('exchange.fields.originalRate')" width="120" align="right"><template #default="{ row }"><span class="rate-value">{{ formatRate(row.originalRate) }}</span></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.finalRate')" min-width="180" align="right"><template #default="{ row }"><strong class="final-rate-value">{{ formatRate(row.finalRate) }}</strong></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.effectiveTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.effectiveTime" /></template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.expireTime')" min-width="170" align="center">
+                <template #default="{ row }"><BaseDateTime v-if="row.expireTime" :value="row.expireTime" /><span v-else>{{ $t('exchange.fields.neverExpire') }}</span></template>
+            </el-table-column>
+            <el-table-column :label="$t('exchange.fields.generateMethod')" width="115" align="center"><template #default="{ row }">{{ optionLabel(generateMethodOptions, row.generateMethod) }}</template></el-table-column>
+            <el-table-column :label="$t('common.createTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createTime" /></template></el-table-column>
+            <el-table-column prop="updateBy" :label="$t('exchange.fields.updateBy')" min-width="120" align="center"><template #default="{ row }">{{ row.updateBy || '-' }}</template></el-table-column>
+            <el-table-column :label="$t('common.updateTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.updateTime" /></template></el-table-column>
             <el-table-column :label="$t('common.status')" width="95" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusType(row.rateStatus)">{{ optionLabel(businessRateStatusOptions, row.rateStatus) }}</el-tag></template>
             </el-table-column>
@@ -65,8 +79,10 @@
                 <el-descriptions-item :label="$t('exchange.fields.rawRateId')">{{ detailRow.rawRateId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.ruleId')">{{ detailRow.ruleId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.effectiveTime')"><BaseDateTime :value="detailRow.effectiveTime" /></el-descriptions-item>
-                <el-descriptions-item :label="$t('exchange.fields.expireTime')"><BaseDateTime :value="detailRow.expireTime" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.expireTime')"><BaseDateTime v-if="detailRow.expireTime" :value="detailRow.expireTime" /><span v-else>{{ $t('exchange.fields.neverExpire') }}</span></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')"><el-tag size="small" :type="statusType(detailRow.rateStatus)">{{ optionLabel(businessRateStatusOptions, detailRow.rateStatus) }}</el-tag></el-descriptions-item>
+                <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.updateBy')">{{ detailRow.updateBy || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.adjustDescription')">{{ detailRow.adjustDescription || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')">{{ detailRow.remark || '-' }}</el-descriptions-item>
@@ -157,6 +173,7 @@ import {
     optionLabel,
     rateTypeOptions as buildRateTypeOptions,
     statusType,
+    todayDateTimeRange,
 } from '../shared';
 
 const { t } = useI18n();
@@ -167,6 +184,8 @@ const rows = ref<ExchangeBusinessRate[]>([]);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
+const effectiveRange = ref<[string, string] | null>(null);
+const createRange = ref<[string, string] | null>(todayDateTimeRange());
 const detailVisible = ref(false);
 const detailRow = ref<ExchangeBusinessRate | null>(null);
 const formVisible = ref(false);
@@ -218,7 +237,7 @@ onMounted(loadData);
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchExchangeBusinessRates({ pageNo: page.value, pageSize: pageSize.value, ...query });
+        const result = await searchExchangeBusinessRates(buildQueryParams());
         rows.value = result.records;
         total.value = result.total;
     } finally {
@@ -238,6 +257,8 @@ function resetQuery() {
     query.quoteCurrency = '';
     query.rateStatus = '';
     query.generateMethod = '';
+    effectiveRange.value = null;
+    createRange.value = todayDateTimeRange();
     handleSearch();
 }
 
@@ -278,7 +299,21 @@ async function toggleStatus(row: ExchangeBusinessRate) {
 }
 
 async function handleExport() {
-    await exportExchangeBusinessRates({ pageNo: page.value, pageSize: pageSize.value, ...query });
+    await exportExchangeBusinessRates(buildQueryParams());
+}
+
+function buildQueryParams() {
+    const [effectiveStartTime, effectiveEndTime] = effectiveRange.value || [];
+    const [createStartTime, createEndTime] = createRange.value || [];
+    return {
+        pageNo: page.value,
+        pageSize: pageSize.value,
+        ...query,
+        effectiveStartTime,
+        effectiveEndTime,
+        createStartTime,
+        createEndTime,
+    };
 }
 
 function openBatch() {
@@ -331,6 +366,11 @@ function toBusinessRatePayload(source: BusinessRateSaveRequest) {
 
 <style scoped>
 
+:deep(.time-range-picker.el-date-editor) {
+    width: 400px;
+    max-width: calc(100vw - 160px);
+}
+
 .batch-actions {
     margin-top: 12px;
 }
@@ -347,5 +387,12 @@ function toBusinessRatePayload(source: BusinessRateSaveRequest) {
 .final-rate-value {
     color: var(--el-color-primary);
     font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    :deep(.time-range-picker.el-date-editor) {
+        width: calc(100vw - 48px);
+        max-width: 100%;
+    }
 }
 </style>

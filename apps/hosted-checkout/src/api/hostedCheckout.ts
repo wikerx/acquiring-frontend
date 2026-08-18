@@ -16,6 +16,12 @@ export interface HostedCheckoutClientContext {
     timezoneOffset?: string;
     language?: string;
     screen?: string;
+    challengeWindowSize?: string;
+    colorDepth?: number;
+    javaEnabled?: boolean;
+    javaScriptEnabled?: boolean;
+    screenHeight?: number;
+    screenWidth?: number;
     deviceId?: string;
 }
 
@@ -39,9 +45,32 @@ export interface HostedCheckoutSession {
     checkout?: {
         expireTime?: string;
         retryAllowed?: boolean;
-        remainingAttemptCount?: number;
         pollingIntervalSeconds?: number;
     };
+    payerInfo?: HostedCheckoutPrefillInfo;
+    billingInfo?: HostedCheckoutPrefillInfo;
+    paymentResult?: HostedCheckoutPaymentResult;
+    cardEncryption?: HostedCheckoutCardEncryption;
+}
+
+export interface HostedCheckoutCardEncryption {
+    algorithm: 'RSA-OAEP-256+A256GCM' | string;
+    keyId: string;
+    publicKey: string;
+    nonce: string;
+}
+
+export interface HostedCheckoutPrefillInfo {
+    payerId?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    street?: string;
+    postal?: string;
 }
 
 export interface HostedCheckoutPaymentMethod {
@@ -49,6 +78,12 @@ export interface HostedCheckoutPaymentMethod {
     channelCode?: string;
     brands?: string[];
     threeDsMode?: string;
+}
+
+export interface HostedCheckoutCardBinResult {
+    cardBrand?: string;
+    recognized: boolean;
+    supported: boolean;
 }
 
 export interface HostedCheckoutPaymentResult {
@@ -68,15 +103,16 @@ export interface HostedCheckoutPaymentResult {
     };
     threeDsAction?: {
         actionType?: 'HTML' | 'REDIRECT' | string;
+        phase?: 'INITIALIZE' | 'AUTHENTICATE' | 'VERIFY' | string;
         html?: string;
         returnUrl?: string;
         timeoutSeconds?: number;
+        cardEncryption?: HostedCheckoutCardEncryption;
     };
     failure?: {
         reasonCode?: string;
         message?: string;
         retryAllowed?: boolean;
-        remainingAttemptCount?: number;
     };
     polling?: {
         statusUrl?: string;
@@ -84,9 +120,23 @@ export interface HostedCheckoutPaymentResult {
         maxIntervalSeconds?: number;
     };
     actions?: {
-        returnUrl?: string;
-        cancelUrl?: string;
+        method: 'POST' | string;
+        redirectUrl: string;
+        delaySeconds: number;
+        formFields: HostedCheckoutMerchantReturnFormFields;
     };
+}
+
+export interface HostedCheckoutMerchantReturnFormFields {
+    merchantId: string;
+    orderNo: string;
+    orderId: string;
+    transactionId: string;
+    transactionType: string;
+    transactionStatus: string;
+    transactionDateTime: string;
+    code: string;
+    message: string;
 }
 
 export interface PaymentSubmitPayload {
@@ -94,13 +144,7 @@ export interface PaymentSubmitPayload {
     checkoutSessionId: string;
     attemptRequestId: string;
     paymentMethod: string;
-    cardInfo: {
-        cardNo: string;
-        expirationMonth: string;
-        expirationYear: string;
-        securityCode: string;
-        cardholderName: string;
-    };
+    cardDataEnvelope: HostedCheckoutCardDataEnvelope;
     billingCardHolderInfo: {
         firstName: string;
         lastName: string;
@@ -115,6 +159,26 @@ export interface PaymentSubmitPayload {
     clientContext: HostedCheckoutClientContext;
 }
 
+export interface HostedCheckoutCardDataEnvelope {
+    algorithm: string;
+    keyId: string;
+    encryptedKey: string;
+    iv: string;
+    ciphertext: string;
+    nonce: string;
+}
+
+/** 收银台接口失败只保留稳定错误码，后端诊断消息不得直接展示给付款人。 */
+export class CheckoutApiError extends Error {
+    readonly code: string;
+
+    constructor(code: string) {
+        super('Checkout request failed');
+        this.name = 'CheckoutApiError';
+        this.code = code || 'UNKNOWN';
+    }
+}
+
 export async function queryCheckoutSession(payload: {
     opaqueToken: string;
     cover?: string;
@@ -125,6 +189,14 @@ export async function queryCheckoutSession(payload: {
 
 export async function submitCheckoutPayment(payload: PaymentSubmitPayload): Promise<HostedCheckoutPaymentResult> {
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/payment/submit', payload);
+}
+
+export async function resolveCheckoutCardBin(payload: {
+    opaqueToken: string;
+    checkoutSessionId: string;
+    cardBin: string;
+}): Promise<HostedCheckoutCardBinResult> {
+    return postCheckout<HostedCheckoutCardBinResult>('/checkout/api/v1/card-bin/resolve', payload);
 }
 
 export async function queryCheckoutPaymentStatus(payload: {
@@ -141,6 +213,8 @@ export async function returnCheckoutThreeDs(payload: {
     checkoutSessionId: string;
     checkoutAttemptId: string;
     authenticationData?: string;
+    cardDataEnvelope: HostedCheckoutCardDataEnvelope;
+    billingCardHolderInfo: PaymentSubmitPayload['billingCardHolderInfo'];
     clientContext: HostedCheckoutClientContext;
 }): Promise<HostedCheckoutPaymentResult> {
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/3ds/return', payload);
@@ -153,7 +227,7 @@ async function postCheckout<T>(url: string, payload: unknown): Promise<T> {
         },
     });
     if (result.data.code !== 'T200' && result.data.code !== 'SUCCESS') {
-        throw new Error(result.data.message || 'Checkout request failed');
+        throw new CheckoutApiError(result.data.code);
     }
     return result.data.data;
 }

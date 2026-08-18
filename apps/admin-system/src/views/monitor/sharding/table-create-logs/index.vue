@@ -184,14 +184,7 @@ function formatResultSummary(value: unknown) {
     if (!value) {
         return '-';
     }
-    if (typeof value !== 'string') {
-        return JSON.stringify(value, null, 2);
-    }
-    try {
-        return JSON.stringify(JSON.parse(value), null, 2);
-    } catch {
-        return value;
-    }
+    return typeof value === 'string' ? value : String(value);
 }
 </script>
 

@@ -106,6 +106,15 @@
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="140" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.channelMatchStatus)">{{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}</el-tag></template>
             </el-table-column>
+            <el-table-column prop="threeDsEnabled" :label="t('transaction.fields.threeDs')" width="92" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">{{ t(row.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="dccEnabled" :label="t('transaction.fields.dcc')" width="100" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': row.dccEnabled === 1 }">{{ t(row.dccEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="edcEnabled" :label="t('transaction.fields.edc')" width="100" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">{{ t(row.edcEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
+            </el-table-column>
             <el-table-column :label="t('transaction.fields.settlementStatus')" width="130" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.settlementStatus)">{{ tagText(settlementStatusOptions, row.settlementStatus) }}</el-tag></template>
             </el-table-column>
@@ -117,7 +126,7 @@
             </el-table-column>
             <el-table-column :label="t('common.operation')" width="100" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.rootTransactionId)" v-hasPermi="'transaction:order:detail'">{{ t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:order:detail'">{{ t('common.detail') }}</el-button>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -319,9 +328,15 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(transactionId: string) {
+function openDetail(row: TransactionOrder) {
+    const transactionId = row.rootTransactionId;
+    const transactionDateTime = row.transactionDateTime;
+    // 根主单时间必须来自列表契约，不能用当前交易时间替代后误路由到其他季度。
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     selectedDetailTransactionId.value = transactionId;
-    openTransactionDetail(transactionId, detailLoading, detailVisible, detail, getTransactionOrderDetail, t('common.loadFailed'));
+    openTransactionDetail(transactionId, transactionDateTime, rootTransactionDateTime,
+        detailLoading, detailVisible, detail, getTransactionOrderDetail, t('common.loadFailed'));
 }
 
 function openMerchant(merchantId: string) {
@@ -422,4 +437,41 @@ function lifecycleTagType(row: TransactionOrder) {
     justify-content: center;
     border-radius: 4px;
 }
+
+.transaction-capability-tag {
+    --capability-color: #64748b;
+    --capability-border: #cbd5e1;
+    --capability-background: #f8fafc;
+    gap: 6px;
+    min-width: 66px !important;
+    height: 24px;
+    border-color: var(--capability-border) !important;
+    border-radius: 3px !important;
+    background: var(--capability-background) !important;
+    color: var(--capability-color) !important;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.transaction-capability-tag::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+    opacity: 0.55;
+}
+
+.transaction-capability-tag--three-ds { --capability-color: #397a73; --capability-border: #b4d7d1; --capability-background: #f3faf8; }
+.transaction-capability-tag--dcc { --capability-color: #5270a6; --capability-border: #c5d3ea; --capability-background: #f5f8fd; }
+.transaction-capability-tag--edc { --capability-color: #92703b; --capability-border: #dfcfac; --capability-background: #fcfaf4; }
+.transaction-capability-tag--three-ds.is-enabled { --capability-color: #0f766e; --capability-border: #5eead4; --capability-background: #ecfdf5; }
+.transaction-capability-tag--dcc.is-enabled { --capability-color: #1d4ed8; --capability-border: #93c5fd; --capability-background: #eff6ff; }
+.transaction-capability-tag--edc.is-enabled { --capability-color: #b45309; --capability-border: #fcd34d; --capability-background: #fffbeb; }
+
+.transaction-capability-tag.is-enabled::before {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
 </style>

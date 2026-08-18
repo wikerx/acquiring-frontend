@@ -249,20 +249,26 @@ export function statusOptionTagType(value?: string) {
 
 export async function openTransactionDetail(
     transactionId: string,
+    transactionDateTime: string,
+    rootTransactionDateTime: string,
     loading: Ref<boolean>,
     detailVisible: Ref<boolean>,
     detail: Ref<TransactionDetail | null>,
-    loader: (transactionId: string) => Promise<TransactionDetail>,
+    loader: (
+        transactionId: string,
+        transactionDateTime: string,
+        rootTransactionDateTime: string,
+    ) => Promise<TransactionDetail>,
     failMessage: string,
 ) {
-    if (!transactionId) {
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) {
         return;
     }
     loading.value = true;
     detailVisible.value = true;
     detail.value = null;
     try {
-        detail.value = await loader(transactionId);
+        detail.value = await loader(transactionId, transactionDateTime, rootTransactionDateTime);
     } catch (error) {
         console.error(error);
         ElMessage.error(failMessage);

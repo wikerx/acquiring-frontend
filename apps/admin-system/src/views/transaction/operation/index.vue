@@ -9,6 +9,7 @@
             :collapse-text="t('transaction.search.collapse')"
             :search-text="t('common.search')"
             :reset-text="t('common.reset')"
+            inline-time
             @search="handleSearch"
             @reset="handleReset"
         >
@@ -39,12 +40,12 @@
                     <el-option v-for="item in channelOptions" :key="item.channelCode" :label="item.channelName ? `${item.channelCode} / ${item.channelName}` : item.channelCode" :value="item.channelCode" />
                 </el-select>
             </el-form-item>
-            <el-form-item :label="t('transaction.fields.paymentMethod')">
-                <el-select v-model="query.paymentMethod" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
-                </el-select>
-            </el-form-item>
             <template #advanced>
+                <el-form-item :label="t('transaction.fields.paymentMethod')">
+                    <el-select v-model="query.paymentMethod" :placeholder="t('common.pleaseSelect')" clearable filterable>
+                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    </el-select>
+                </el-form-item>
                 <el-form-item :label="t('transaction.fields.cardBrand')">
                     <el-select v-model="query.paymentBrand" :placeholder="t('common.pleaseSelect')" clearable filterable>
                         <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -136,6 +137,15 @@
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="128" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.channelMatchStatus)">{{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}</el-tag></template>
             </el-table-column>
+            <el-table-column prop="threeDsEnabled" :label="t('transaction.fields.threeDs')" width="92" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">{{ t(row.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="dccEnabled" :label="t('transaction.fields.dcc')" width="100" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': row.dccEnabled === 1 }">{{ t(row.dccEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="edcEnabled" :label="t('transaction.fields.edc')" width="100" align="center">
+                <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">{{ t(row.edcEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
+            </el-table-column>
             <el-table-column :label="t('transaction.fields.reconciliationStatus')" width="128" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.reconciliationStatus)">{{ tagText(reconciliationStatusOptions, row.reconciliationStatus) }}</el-tag></template>
             </el-table-column>
@@ -195,9 +205,25 @@
                     <CopyableText :value="row.acquirerReferenceNo" :label="t('transaction.fields.acquirerReferenceNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="260" fixed="right" align="center">
+            <el-table-column :label="t('common.operation')" width="360" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row.transactionId)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
+                    <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryCallbackDisabled')" placement="top">
+                        <span>
+                            <el-button
+                                size="small"
+                                type="warning"
+                                link
+                                :icon="RefreshRight"
+                                :disabled="!canRetryCallback(row)"
+                                :loading="retryingTransactionId === row.transactionId"
+                                @click="handleRetryCallback(row)"
+                                v-hasPermi="'transaction:merchant-notification:retry'"
+                            >
+                                {{ t('transaction.actions.retryCallback') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
                     <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
                     </el-tooltip>
@@ -258,9 +284,19 @@
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('transaction.actions.refundAmount')" required>
-                        <el-input v-model.trim="refundForm.amount" :disabled="refundForm.mode === 'FULL'" :placeholder="t('transaction.actions.amountPlaceholder')" clearable @blur="normalizeRefundAmount">
-                            <template #append>{{ refundForm.currency || labelCurrency(selectedOperation) || '-' }}</template>
-                        </el-input>
+                        <div class="transaction-action-amount-control">
+                            <el-input-number
+                                v-model="refundForm.amount"
+                                :disabled="refundForm.mode === 'FULL'"
+                                :min="0.01"
+                                :max="refundAmountMax"
+                                :precision="2"
+                                :step="0.01"
+                                :controls="false"
+                                :placeholder="t('transaction.actions.amountPlaceholder')"
+                            />
+                            <span>{{ refundForm.currency || labelCurrency(selectedOperation) || '-' }}</span>
+                        </div>
                         <div v-if="refundAmountError" class="transaction-action-error">{{ refundAmountError }}</div>
                     </el-form-item>
                     <el-form-item :label="t('transaction.actions.reason')">
@@ -396,8 +432,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Download, View } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -407,6 +443,7 @@ import {
     exportTransactionOperations,
     getTransactionOperationDetail,
     refundTransactionOperation,
+    retryMerchantNotification,
     searchTransactionOperationsWithSummary,
     voidTransactionOperation,
     type TransactionAmountSummary,
@@ -459,6 +496,7 @@ const captureVisible = ref(false);
 const voidVisible = ref(false);
 const merchantVisible = ref(false);
 const actionSubmitting = ref(false);
+const retryingTransactionId = ref('');
 const rows = ref<TransactionOperation[]>([]);
 const operationSummary = ref<TransactionOperationSummary | null>(null);
 const detail = ref<TransactionDetail | null>(null);
@@ -501,7 +539,7 @@ const settlementStatusOptions = ref<TransactionDictOption[]>([]);
 const merchantNotificationStatusOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
 const refundForm = reactive({
-    amount: '',
+    amount: null as number | null,
     currency: '',
     mode: 'PARTIAL',
     reason: '',
@@ -739,9 +777,14 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(transactionId: string) {
+function openDetail(row: TransactionOperation) {
+    const transactionId = row.transactionId;
+    const transactionDateTime = row.transactionDateTime;
+    const rootTransactionDateTime = row.rootTransactionDateTime;
+    if (!transactionId || !transactionDateTime || !rootTransactionDateTime) return;
     selectedDetailTransactionId.value = transactionId;
-    openTransactionDetail(transactionId, detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
+    openTransactionDetail(transactionId, transactionDateTime, rootTransactionDateTime,
+        detailLoading, detailVisible, detail, getTransactionOperationDetail, t('common.loadFailed'));
 }
 
 function openMerchant(merchantId: string) {
@@ -856,6 +899,40 @@ function canVoid(row: TransactionOperation) {
         && (refundedAmount === null || refundedAmount === 0);
 }
 
+function canRetryCallback(row: TransactionOperation) {
+    return ['SUCCESS', 'FAILED'].includes(row.transactionStatus)
+        && Boolean(row.transactionId && row.transactionDateTime);
+}
+
+async function handleRetryCallback(row: TransactionOperation) {
+    if (!canRetryCallback(row)) {
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(
+            t('transaction.actions.retryCallbackConfirm', { transactionId: row.transactionId }),
+            t('transaction.actions.retryCallbackTitle'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+            },
+        );
+    } catch {
+        return;
+    }
+    retryingTransactionId.value = row.transactionId;
+    try {
+        const eventId = await retryMerchantNotification({
+            transactionId: row.transactionId,
+            transactionDateTime: row.transactionDateTime,
+        });
+        ElMessage.success(t('transaction.actions.retryCallbackAccepted', { eventId }));
+    } finally {
+        retryingTransactionId.value = '';
+    }
+}
+
 function canCapture(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
         return false;
@@ -878,7 +955,7 @@ function toNullableAmount(value?: number | string | null) {
 function openRefundDialog(row: TransactionOperation) {
     selectedOperation.value = row;
     const defaultAmount = availableRefundLabelAmount(row);
-    refundForm.amount = defaultAmount === undefined || defaultAmount === null ? '' : String(defaultAmount);
+    refundForm.amount = defaultAmount === undefined || defaultAmount === null ? null : Number(defaultAmount);
     refundForm.currency = labelCurrency(row);
     refundForm.mode = 'PARTIAL';
     refundForm.reason = '';
@@ -897,22 +974,14 @@ function fillRemainingRefundAmount() {
         return;
     }
     const amount = availableRefundLabelAmount(selectedOperation.value);
-    refundForm.amount = amount === undefined || amount === null ? '' : String(amount);
-}
-
-function normalizeRefundAmount() {
-    const amount = Number(refundForm.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-        return;
-    }
-    refundForm.amount = String(amount);
+    refundForm.amount = amount === undefined || amount === null ? null : Number(amount);
 }
 
 function validateRefundAmount() {
-    if (!refundVisible.value || !selectedOperation.value || !refundForm.amount) {
+    if (!refundVisible.value || !selectedOperation.value || refundForm.amount === null) {
         return '';
     }
-    const refundAmount = Number(refundForm.amount);
+    const refundAmount = refundForm.amount;
     if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
         return t('transaction.actions.amountRequired');
     }
@@ -923,6 +992,14 @@ function validateRefundAmount() {
     }
     return '';
 }
+
+const refundAmountMax = computed(() => {
+    if (!selectedOperation.value) {
+        return undefined;
+    }
+    const amount = availableRefundLabelAmount(selectedOperation.value);
+    return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+});
 
 function openCaptureDialog(row: TransactionOperation) {
     selectedOperation.value = row;
@@ -942,22 +1019,30 @@ async function submitRefund() {
     if (!selectedOperation.value) {
         return;
     }
-    const refundAmount = Number(refundForm.amount);
+    const refundAmount = refundForm.amount;
     const errorMessage = validateRefundAmount();
-    if (errorMessage || !refundForm.amount || !Number.isFinite(refundAmount) || refundAmount <= 0) {
+    if (errorMessage || refundAmount === null || !Number.isFinite(refundAmount) || refundAmount <= 0) {
         ElMessage.error(errorMessage || t('transaction.actions.amountRequired'));
         return;
     }
     actionSubmitting.value = true;
     try {
         const result = await refundTransactionOperation(selectedOperation.value.transactionId, {
-            amount: refundForm.amount,
+            amount: refundAmount,
             currency: refundForm.currency || labelCurrency(selectedOperation.value),
             reason: actionReasonText(refundForm.reason, refundForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.refundSuccess', { transactionId: result.transactionId }));
         refundVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
+    } catch (error: any) {
+        ElMessage.error(
+            error?.friendlyMessage
+            || error?.message
+            || t('transaction.actions.refundFailed'),
+        );
     } finally {
         actionSubmitting.value = false;
     }
@@ -973,10 +1058,12 @@ async function submitCapture() {
             amount: availableCaptureLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.captureSuccess', { transactionId: result.transactionId }));
         captureVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -992,10 +1079,12 @@ async function submitVoid() {
             amount: fullLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
+            transactionDateTime: selectedOperation.value.transactionDateTime!,
+            rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
         voidVisible.value = false;
-        await refreshAfterAction(selectedOperation.value.transactionId);
+        await refreshAfterAction(selectedOperation.value);
     } finally {
         actionSubmitting.value = false;
     }
@@ -1053,10 +1142,10 @@ function actionReasonText(reason?: string, description?: string) {
     return text || undefined;
 }
 
-async function refreshAfterAction(transactionId: string) {
+async function refreshAfterAction(row: TransactionOperation) {
     await loadData();
     if (detailVisible.value) {
-        openDetail(transactionId);
+        openDetail(row);
     }
 }
 
@@ -1113,6 +1202,42 @@ async function refreshAfterAction(transactionId: string) {
     min-width: 54px;
     justify-content: center;
     border-radius: 4px;
+}
+
+.transaction-capability-tag {
+    --capability-color: #64748b;
+    --capability-border: #cbd5e1;
+    --capability-background: #f8fafc;
+    gap: 6px;
+    min-width: 66px !important;
+    height: 24px;
+    border-color: var(--capability-border) !important;
+    border-radius: 3px !important;
+    background: var(--capability-background) !important;
+    color: var(--capability-color) !important;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.transaction-capability-tag::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+    opacity: 0.55;
+}
+
+.transaction-capability-tag--three-ds { --capability-color: #397a73; --capability-border: #b4d7d1; --capability-background: #f3faf8; }
+.transaction-capability-tag--dcc { --capability-color: #5270a6; --capability-border: #c5d3ea; --capability-background: #f5f8fd; }
+.transaction-capability-tag--edc { --capability-color: #92703b; --capability-border: #dfcfac; --capability-background: #fcfaf4; }
+.transaction-capability-tag--three-ds.is-enabled { --capability-color: #0f766e; --capability-border: #5eead4; --capability-background: #ecfdf5; }
+.transaction-capability-tag--dcc.is-enabled { --capability-color: #1d4ed8; --capability-border: #93c5fd; --capability-background: #eff6ff; }
+.transaction-capability-tag--edc.is-enabled { --capability-color: #b45309; --capability-border: #fcd34d; --capability-background: #fffbeb; }
+
+.transaction-capability-tag.is-enabled::before {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
 }
 
 .transaction-page__table :deep(.payment-logo-group) {
@@ -1284,6 +1409,29 @@ async function refreshAfterAction(transactionId: string) {
 .transaction-action-form :deep(.el-select),
 .transaction-action-form :deep(.el-textarea) {
     width: 100%;
+}
+
+.transaction-action-amount-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+}
+
+.transaction-action-amount-control > span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 58px;
+    padding: 0 14px;
+    border: 1px solid var(--el-border-color);
+    border-left: 0;
+    border-radius: 0 6px 6px 0;
+    background: var(--el-fill-color-light);
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+}
+
+.transaction-action-amount-control :deep(.el-input__wrapper) {
+    border-radius: 6px 0 0 6px;
 }
 
 .transaction-action-form :deep(.el-input__wrapper),

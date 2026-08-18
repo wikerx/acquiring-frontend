@@ -13,6 +13,8 @@ import SystemPost from '@/pages/system/post/index.vue';
 import SystemRole from '@/pages/system/role/index.vue';
 import SystemRoleAuth from '@/pages/system/role-auth/index.vue';
 import TransactionOrder from '@/pages/transaction/order/index.vue';
+import TransactionRefund from '@/pages/transaction/refund/index.vue';
+import TransactionAnalytics from '@/pages/transaction/analytics/index.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { firstAvailableMenuPath, flattenRouteMenus, isMerchantHomePath, normalizeMenuPath, resolveMerchantMenuI18nKey, resolveMenuComponent } from '@/utils/menu';
 
@@ -28,6 +30,8 @@ const staticChildren: RouteRecordRaw[] = [
     { path: 'home', component: () => import('@/pages/home/index.vue'), meta: { titleKey: 'route.home' } },
     { path: 'profile', component: () => import('@/pages/profile/index.vue'), meta: { titleKey: 'route.profile' } },
     { path: 'transaction/order', component: TransactionOrder, meta: { titleKey: 'route.transactionOrder', permission: 'merchant:transaction:order:list' } },
+    { path: 'transaction/refund', component: TransactionRefund, meta: { titleKey: 'route.transactionRefund', permission: 'merchant:transaction:refund:list' } },
+    { path: 'transaction/analytics', component: TransactionAnalytics, meta: { titleKey: 'route.transactionAnalytics', permission: 'merchant:transaction:analytics:view' } },
     { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
     { path: 'system/account', component: SystemAccount, meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },
     { path: 'system/dept', component: SystemDept, meta: { titleKey: 'route.systemDept', permission: 'merchant:system:dept:list' } },

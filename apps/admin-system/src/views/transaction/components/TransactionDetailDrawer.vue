@@ -70,11 +70,42 @@
                         <el-descriptions-item :label="t('transaction.fields.labelAmount')">{{ moneyText(detail.order?.labelAmount, detail.order?.labelCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.transactionAmount')">{{ moneyText(detail.order?.transactionAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.transactionRate')">{{ rateText(detail.order?.transactionRate) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.channelMatchStatus')">
+                            <el-tag size="small" effect="plain">{{ optionText(channelMatchStatusOptions, capabilityRecord?.channelMatchStatus) }}</el-tag>
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.threeDs')">
+                            <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': capabilityRecord?.threeDsEnabled === 1 }">{{ t(capabilityRecord?.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag>
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.dcc')">
+                            <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--dcc" :class="{ 'is-enabled': capabilityRecord?.dccEnabled === 1 }">{{ t(capabilityRecord?.dccEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag>
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.edc')">
+                            <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': capabilityRecord?.edcEnabled === 1 }">{{ t(capabilityRecord?.edcEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag>
+                        </el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.authorizedAmount')">{{ moneyText(detail.order?.authorizedAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.capturedAmount')">{{ moneyText(detail.order?.capturedAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.refundedAmount')">{{ moneyText(detail.order?.refundedAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.availableRefundAmount')">{{ moneyText(detail.order?.availableRefundAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                     </el-descriptions>
+                </el-tab-pane>
+
+                <el-tab-pane v-if="partyInfoSections.length" :label="t('transaction.detail.partyInfo')" name="partyInfo">
+                    <div class="transaction-detail__party-sections">
+                        <section v-for="section in partyInfoSections" :key="section.key" class="transaction-detail__party-section">
+                            <h3>{{ section.title }}</h3>
+                            <dl class="transaction-detail__party-grid">
+                                <div
+                                    v-for="field in section.fields"
+                                    :key="field.key"
+                                    class="transaction-detail__party-field"
+                                    :class="{ 'is-wide': field.wide }"
+                                >
+                                    <dt>{{ field.label }}</dt>
+                                    <dd><CopyableText :value="field.value" :label="field.label" wrap /></dd>
+                                </div>
+                            </dl>
+                        </section>
+                    </div>
                 </el-tab-pane>
 
                 <el-tab-pane :label="t('transaction.detail.operations')" name="operations">
@@ -191,7 +222,7 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import type { TransactionDetail, TransactionOperation, TransactionOrder } from '@/api/transaction';
+import type { TransactionContactInfo, TransactionDetail, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
@@ -214,6 +245,7 @@ const { t, locale } = useI18n();
 const activeTab = ref('base');
 const typeOptions = ref<TransactionDictOption[]>([]);
 const statusOptions = ref<TransactionDictOption[]>([]);
+const channelMatchStatusOptions = ref<TransactionDictOption[]>([]);
 
 const displayTimeZone = computed(() => props.displayTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
 
@@ -252,6 +284,99 @@ const channelRecordRows = computed(() => mergeChannelRecords(
     (props.detail?.channelInteractionLogs || []) as Record<string, unknown>[],
 ));
 
+interface PartyInfoField {
+    key: string;
+    label: string;
+    value: string;
+    wide?: boolean;
+}
+
+interface PartyInfoSection {
+    key: string;
+    title: string;
+    fields: PartyInfoField[];
+}
+
+const partyInfoSections = computed<PartyInfoSection[]>(() => {
+    const sections: PartyInfoSection[] = [];
+    if (props.detail?.billingCardHolderInfo) {
+        appendPartyInfoSection(
+            sections,
+            'billingCardHolderInfo',
+            t('transaction.detail.billingCardHolderInfo'),
+            contactInfoFields(props.detail.billingCardHolderInfo),
+        );
+    }
+    if (props.detail?.payerInfo) {
+        appendPartyInfoSection(
+            sections,
+            'payerInfo',
+            t('transaction.detail.payerInfo'),
+            payerInfoFields(props.detail.payerInfo),
+        );
+    }
+    if (props.detail?.shippingInfo) {
+        appendPartyInfoSection(
+            sections,
+            'shippingInfo',
+            t('transaction.detail.shippingInfo'),
+            contactInfoFields(props.detail.shippingInfo),
+        );
+    }
+    return sections;
+});
+
+function appendPartyInfoSection(sections: PartyInfoSection[], key: string, title: string, fields: PartyInfoField[]) {
+    const populatedFields = fields.filter((field) => field.value);
+    if (populatedFields.length) {
+        sections.push({ key, title, fields: populatedFields });
+    }
+}
+
+function contactInfoFields(info: TransactionContactInfo): PartyInfoField[] {
+    return [
+        partyInfoField('firstName', info.firstName),
+        partyInfoField('lastName', info.lastName),
+        partyInfoField('phone', info.phone),
+        partyInfoField('email', info.email),
+        partyInfoField('country', info.country),
+        partyInfoField('state', info.state),
+        partyInfoField('city', info.city),
+        partyInfoField('postal', info.postal),
+        partyInfoField('street', info.street),
+    ];
+}
+
+function payerInfoFields(info: TransactionPayerInfo): PartyInfoField[] {
+    return [
+        partyInfoField('payerId', info.payerId),
+        ...contactInfoFields(info),
+        partyInfoField('ipAddress', info.ipAddress),
+        partyInfoField('sessionId', info.sessionId),
+        partyInfoField('browserInfo', info.browserInfo, true),
+        partyInfoField('userAgent', info.userAgent, true),
+    ];
+}
+
+function partyInfoField(key: string, value: unknown, wide = false): PartyInfoField {
+    return {
+        key,
+        label: t(`transaction.detail.partyFields.${key}`),
+        value: partyInfoValue(value),
+        wide,
+    };
+}
+
+function partyInfoValue(value: unknown): string {
+    if (value === undefined || value === null || value === '') {
+        return '';
+    }
+    if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+}
+
 const focusedOperation = computed(() => {
     const operations = props.detail?.operations || [];
     if (props.focusTransactionId) {
@@ -259,6 +384,8 @@ const focusedOperation = computed(() => {
     }
     return undefined;
 });
+
+const capabilityRecord = computed(() => focusedOperation.value || props.detail?.order);
 
 const summaryRecord = computed(() => focusedOperation.value || props.detail?.order);
 
@@ -359,16 +486,24 @@ onMounted(loadDictionaries);
 async function loadDictionaries() {
     typeOptions.value = fallbackTransactionTypeOptions(t);
     statusOptions.value = fallbackTransactionStatusOptions(t);
+    channelMatchStatusOptions.value = fallbackChannelMatchStatusOptions();
     try {
-        const [types, statuses] = await Promise.all([
+        const [types, statuses, channelMatches] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')),
+            loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
         typeOptions.value = types.length ? types : typeOptions.value;
         statusOptions.value = statuses.length ? statuses : statusOptions.value;
+        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
     } catch (error) {
         console.warn('[admin-system] Failed to load transaction dictionaries, fallback options are used.', error);
     }
+}
+
+function fallbackChannelMatchStatusOptions(): TransactionDictOption[] {
+    return ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED']
+        .map((value) => ({ label: t(`transaction.statusOption.${value}`, value), value }));
 }
 
 function paymentText(paymentMethod?: string, paymentBrand?: string) {
@@ -482,7 +617,7 @@ function mergeChannelInteractionGroup(logs: Record<string, unknown>[]): Record<s
         responseBodyJsonMasked: firstPresent(responseLog?.responseBodyJsonMasked, merged.responseBodyJsonMasked),
         exceptionType: firstPresent(responseLog?.exceptionType, merged.exceptionType),
         exceptionMessage: firstPresent(responseLog?.exceptionMessage, merged.exceptionMessage),
-        requestTime: firstPresent(merged.requestTime, requestLog?.requestTime, requestLog?.interactionTime),
+        requestStartTime: firstPresent(merged.requestStartTime, requestLog?.requestStartTime, requestLog?.requestTime, requestLog?.interactionTime),
         responseTime: firstPresent(merged.responseTime, responseLog?.responseTime, responseLog?.interactionTime),
     };
 }
@@ -730,6 +865,42 @@ function timelineSequence(row: Record<string, unknown>) {
 </script>
 
 <style scoped>
+.transaction-capability-tag {
+    --capability-color: #64748b;
+    --capability-border: #cbd5e1;
+    --capability-background: #f8fafc;
+    gap: 6px;
+    min-width: 66px;
+    height: 24px;
+    border-color: var(--capability-border) !important;
+    border-radius: 3px;
+    background: var(--capability-background) !important;
+    color: var(--capability-color) !important;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.transaction-capability-tag::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+    opacity: 0.55;
+}
+
+.transaction-capability-tag--three-ds { --capability-color: #397a73; --capability-border: #b4d7d1; --capability-background: #f3faf8; }
+.transaction-capability-tag--dcc { --capability-color: #5270a6; --capability-border: #c5d3ea; --capability-background: #f5f8fd; }
+.transaction-capability-tag--edc { --capability-color: #92703b; --capability-border: #dfcfac; --capability-background: #fcfaf4; }
+.transaction-capability-tag--three-ds.is-enabled { --capability-color: #0f766e; --capability-border: #5eead4; --capability-background: #ecfdf5; }
+.transaction-capability-tag--dcc.is-enabled { --capability-color: #1d4ed8; --capability-border: #93c5fd; --capability-background: #eff6ff; }
+.transaction-capability-tag--edc.is-enabled { --capability-color: #b45309; --capability-border: #fcd34d; --capability-background: #fffbeb; }
+
+.transaction-capability-tag.is-enabled::before {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
 .transaction-detail {
     display: flex;
     flex-direction: column;
@@ -953,6 +1124,109 @@ function timelineSequence(row: Record<string, unknown>) {
     min-width: 0;
 }
 
+.transaction-detail__party-sections {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 14px;
+}
+
+.transaction-detail__party-section {
+    overflow: hidden;
+    min-width: 0;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    background: var(--el-bg-color);
+}
+
+.transaction-detail__party-section h3 {
+    margin: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 10px 14px;
+    background: var(--el-fill-color-extra-light);
+    color: var(--el-text-color-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.transaction-detail__party-grid {
+    margin: 0;
+}
+
+.transaction-detail__party-field {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 8px 12px;
+    transition: background-color 0.16s ease;
+}
+
+.transaction-detail__party-field:last-child {
+    border-bottom: 0;
+}
+
+.transaction-detail__party-field.is-wide {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 3px;
+}
+
+.transaction-detail__party-field:hover {
+    background: var(--el-fill-color-extra-light);
+}
+
+.transaction-detail__party-field dt,
+.transaction-detail__party-field dd {
+    min-width: 0;
+    margin: 0;
+    line-height: 22px;
+}
+
+.transaction-detail__party-field dt {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.transaction-detail__party-field dd {
+    color: var(--el-text-color-primary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.transaction-detail__party-field :deep(.copyable-text) {
+    width: 100%;
+    justify-content: flex-start;
+    color: var(--el-text-color-primary);
+    text-align: left;
+}
+
+.transaction-detail__party-field :deep(.copyable-text .el-icon) {
+    opacity: 0;
+    color: var(--el-text-color-secondary);
+    transition: color 0.16s ease, opacity 0.16s ease;
+}
+
+.transaction-detail__party-field:hover :deep(.copyable-text .el-icon),
+.transaction-detail__party-field:focus-within :deep(.copyable-text .el-icon) {
+    opacity: 1;
+}
+
+.transaction-detail__party-field :deep(.copyable-text:hover .el-icon),
+.transaction-detail__party-field :deep(.copyable-text:focus-visible .el-icon) {
+    color: var(--el-color-primary);
+}
+
+.transaction-detail__party-field.is-wide :deep(.copyable-text.is-wrap span) {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .transaction-detail__timezone {
     margin-left: 8px;
     color: var(--el-text-color-secondary);
@@ -1062,6 +1336,10 @@ function timelineSequence(row: Record<string, unknown>) {
     .transaction-detail__amount-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .transaction-detail__party-sections {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 640px) {
@@ -1082,6 +1360,28 @@ function timelineSequence(row: Record<string, unknown>) {
 
     .transaction-detail__amount-grid {
         grid-template-columns: 1fr;
+    }
+
+    .transaction-detail__party-grid {
+        display: block;
+    }
+
+    .transaction-detail__party-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .transaction-detail__party-field {
+        grid-template-columns: 96px minmax(0, 1fr);
+    }
+
+    .transaction-detail__party-field.is-wide {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (hover: none) {
+    .transaction-detail__party-field :deep(.copyable-text .el-icon) {
+        opacity: 0.65;
     }
 }
 </style>

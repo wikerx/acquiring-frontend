@@ -67,6 +67,10 @@
             <el-table-column prop="schemaCheckStatus" :label="$t('monitor.sharding.schemaCheckStatus')" width="140" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="row.schemaCheckStatus === 'MATCHED' ? 'success' : 'warning'">{{ row.schemaCheckStatus || '-' }}</el-tag></template>
             </el-table-column>
+            <el-table-column prop="nodeRegistered" :label="$t('monitor.sharding.nodeRegistered')" width="120" align="center">
+                <template #default="{ row }"><el-tag size="small" :type="row.nodeRegistered ? 'success' : 'danger'">{{ row.nodeRegistered ? $t('common.yes') : $t('common.no') }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="ruleVersion" :label="$t('monitor.sharding.ruleVersion')" min-width="160" show-overflow-tooltip />
             <el-table-column prop="autoIncrementCurrent" :label="$t('monitor.sharding.autoIncrementCurrent')" min-width="170" align="center" />
             <el-table-column :label="$t('monitor.sharding.lastCheckTime')" min-width="168" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.lastCheckTime" /></template>
@@ -98,10 +102,21 @@
 
         <el-dialog v-model="resultVisible" :title="$t('monitor.sharding.createResult')" width="860px" append-to-body>
             <el-alert v-for="warning in createResult?.warnings || []" :key="warning" type="warning" show-icon :closable="false" :title="warning" style="margin-bottom: 10px" />
+            <el-alert v-for="blocker in createResult?.publicationBlockers || []" :key="blocker" type="error" show-icon :closable="false" :title="`${$t('monitor.sharding.publicationBlocker')}: ${blocker}`" style="margin-bottom: 10px" />
             <el-descriptions :column="3" border size="small" class="mb16">
                 <el-descriptions-item :label="$t('monitor.sharding.dryRun')">{{ createResult?.dryRun ? $t('common.yes') : $t('common.no') }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('monitor.sharding.currentQuarter')">{{ createResult?.currentQuarter || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('monitor.sharding.targetQuarters')">{{ (createResult?.targetQuarters || []).join(', ') || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('monitor.sharding.candidateRuleVersion')">{{ createResult?.candidateRuleVersion || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('monitor.sharding.candidateRuleChecksum')">{{ formatChecksum(createResult?.candidateRuleChecksum) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('monitor.sharding.verifiedPhysicalNodes')">{{ (createResult?.verifiedPhysicalNodes || []).join(', ') || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('monitor.sharding.publicationReady')">
+                    <el-tag v-if="createResult?.publicationReady !== undefined" size="small" :type="createResult.publicationReady ? 'success' : 'danger'">
+                        {{ createResult.publicationReady ? $t('common.yes') : $t('common.no') }}
+                    </el-tag>
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('monitor.sharding.nextAction')" :span="2">{{ createResult?.nextAction || '-' }}</el-descriptions-item>
             </el-descriptions>
             <el-table :data="createResult?.tableResults || []" size="small">
                 <el-table-column prop="logicalTable" :label="$t('monitor.sharding.logicalTable')" min-width="150" />
@@ -109,6 +124,10 @@
                 <el-table-column prop="targetQuarter" :label="$t('monitor.sharding.targetQuarter')" width="120" />
                 <el-table-column prop="status" :label="$t('common.status')" width="120" />
                 <el-table-column prop="schemaCheckStatus" :label="$t('monitor.sharding.schemaCheckStatus')" width="140" />
+                <el-table-column prop="shardingTimeCheckStatus" :label="$t('monitor.sharding.shardingTimeCheckStatus')" width="150" />
+                <el-table-column prop="charsetCheckStatus" :label="$t('monitor.sharding.charsetCheckStatus')" width="130" />
+                <el-table-column prop="autoIncrementCheckStatus" :label="$t('monitor.sharding.autoIncrementCheckStatus')" width="130" />
+                <el-table-column prop="autoIncrementCurrent" :label="$t('monitor.sharding.autoIncrementCurrent')" min-width="180" />
                 <el-table-column prop="message" :label="$t('monitor.sharding.message')" min-width="220" show-overflow-tooltip />
             </el-table>
         </el-dialog>
@@ -167,6 +186,9 @@ const detailItems = computed(() => [
     { prop: 'dataSource', label: t('monitor.sharding.actualDataSource') },
     { prop: 'tableStatus', label: t('monitor.sharding.tableStatus') },
     { prop: 'schemaCheckStatus', label: t('monitor.sharding.schemaCheckStatus') },
+    { prop: 'nodeRegistered', label: t('monitor.sharding.nodeRegistered') },
+    { prop: 'ruleVersion', label: t('monitor.sharding.ruleVersion') },
+    { prop: 'ruleChecksumPrefix', label: t('monitor.sharding.ruleChecksum') },
     { prop: 'autoIncrementStart', label: t('monitor.sharding.autoIncrementStart') },
     { prop: 'autoIncrementCurrent', label: t('monitor.sharding.autoIncrementCurrent') },
     { prop: 'autoIncrementMax', label: t('monitor.sharding.autoIncrementMax') },
@@ -217,9 +239,20 @@ function handleReset() {
     handleSearch();
 }
 
+function formatChecksum(value?: string) {
+    if (!value) {
+        return '-';
+    }
+    return value.slice(0, 19);
+}
+
 async function openDetail(row: ShardingPhysicalTableRow) {
     try {
-        detailData.value = await getShardingPhysicalTable(row.id) as unknown as Record<string, unknown>;
+        const detail = await getShardingPhysicalTable(row.id);
+        detailData.value = {
+            ...detail,
+            nodeRegistered: detail.nodeRegistered ? t('common.yes') : t('common.no'),
+        } as unknown as Record<string, unknown>;
         detailVisible.value = true;
     } catch (error) {
         console.error(error);

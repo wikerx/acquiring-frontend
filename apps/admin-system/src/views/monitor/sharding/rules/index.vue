@@ -33,8 +33,22 @@
             </el-table-column>
             <el-table-column prop="actualDataSource" :label="$t('monitor.sharding.actualDataSource')" min-width="140" />
             <el-table-column prop="shardingColumn" :label="$t('monitor.sharding.shardingColumn')" min-width="150" />
+            <el-table-column prop="ruleVersion" :label="$t('monitor.sharding.ruleVersion')" min-width="160" show-overflow-tooltip />
             <el-table-column prop="currentPhysicalTable" :label="$t('monitor.sharding.currentPhysicalTable')" min-width="190" show-overflow-tooltip />
+            <el-table-column prop="currentNodeRegistered" :label="$t('monitor.sharding.currentNodeRegistered')" min-width="140" align="center">
+                <template #default="{ row }">
+                    <el-tag size="small" :type="row.currentNodeRegistered ? 'success' : 'danger'">{{ row.currentNodeRegistered ? $t('common.yes') : $t('common.no') }}</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column prop="nextPhysicalTable" :label="$t('monitor.sharding.nextPhysicalTable')" min-width="190" show-overflow-tooltip />
+            <el-table-column prop="nextNodeRegistered" :label="$t('monitor.sharding.nextNodeRegistered')" min-width="140" align="center">
+                <template #default="{ row }">
+                    <el-tag size="small" :type="row.nextNodeRegistered ? 'success' : 'warning'">{{ row.nextNodeRegistered ? $t('common.yes') : $t('common.no') }}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column :label="$t('monitor.sharding.registeredNodeCount')" width="130" align="center">
+                <template #default="{ row }">{{ (row.verifiedPhysicalNodes || []).length }}</template>
+            </el-table-column>
             <el-table-column prop="physicalTableCount" :label="$t('monitor.sharding.physicalTableCount')" width="120" align="center" />
             <el-table-column :label="$t('common.operation')" width="100" align="center" fixed="right">
                 <template #default="{ row }">
@@ -83,6 +97,9 @@ const query = reactive({
 
 const detailItems = computed(() => [
     { prop: 'ruleKey', label: t('monitor.sharding.ruleKey') },
+    { prop: 'ruleVersion', label: t('monitor.sharding.ruleVersion') },
+    { prop: 'ruleChecksumPrefix', label: t('monitor.sharding.ruleChecksum') },
+    { prop: 'verifiedPhysicalNodes', label: t('monitor.sharding.verifiedPhysicalNodes') },
     { prop: 'logicalTable', label: t('monitor.sharding.logicalTable') },
     { prop: 'templateTable', label: t('monitor.sharding.templateTable') },
     { prop: 'idColumn', label: t('monitor.sharding.idColumn') },
@@ -90,7 +107,10 @@ const detailItems = computed(() => [
     { prop: 'actualDataSource', label: t('monitor.sharding.actualDataSource') },
     { prop: 'tableNameFormat', label: t('monitor.sharding.tableNameFormat') },
     { prop: 'currentPhysicalTable', label: t('monitor.sharding.currentPhysicalTable') },
+    { prop: 'currentNodeRegistered', label: t('monitor.sharding.currentNodeRegistered') },
     { prop: 'nextPhysicalTable', label: t('monitor.sharding.nextPhysicalTable') },
+    { prop: 'nextNodeRegistered', label: t('monitor.sharding.nextNodeRegistered') },
+    { prop: 'registeredNodeCount', label: t('monitor.sharding.registeredNodeCount') },
     { prop: 'physicalTableCount', label: t('monitor.sharding.physicalTableCount') },
     { prop: 'description', label: t('common.remark') },
 ]);
@@ -142,6 +162,10 @@ async function openDetail(row: ShardingRuleRow) {
         detailData.value = {
             ...detail,
             physicalTables: (detail.physicalTables || []).join(', '),
+            registeredNodeCount: (detail.verifiedPhysicalNodes || []).length,
+            verifiedPhysicalNodes: (detail.verifiedPhysicalNodes || []).join(', '),
+            currentNodeRegistered: detail.currentNodeRegistered ? t('common.yes') : t('common.no'),
+            nextNodeRegistered: detail.nextNodeRegistered ? t('common.yes') : t('common.no'),
         };
         detailVisible.value = true;
     } catch (error) {

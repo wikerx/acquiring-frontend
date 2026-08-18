@@ -73,8 +73,25 @@
             <el-table-column :label="t('transaction.fields.nextRetryTime')" min-width="172" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.nextRetryTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="100" fixed="right" align="center">
-                <template #default="{ row }"><el-button type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:merchant-notification:detail'">{{ t('common.detail') }}</el-button></template>
+            <el-table-column :label="t('common.operation')" width="210" fixed="right" align="center">
+                <template #default="{ row }">
+                    <el-button type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:merchant-notification:detail'">{{ t('common.detail') }}</el-button>
+                    <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryNotificationDisabled')" placement="top">
+                        <span>
+                            <el-button
+                                type="warning"
+                                link
+                                :icon="RefreshRight"
+                                :disabled="!canRetryCallback(row)"
+                                :loading="retryingTransactionId === recordText(row, 'transactionId')"
+                                @click="handleRetryCallback(row)"
+                                v-hasPermi="'transaction:merchant-notification:retry'"
+                            >
+                                {{ t('transaction.actions.retryCallback') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
+                </template>
             </el-table-column>
         </StandardTable>
 
@@ -83,20 +100,25 @@
         </div>
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('transaction.merchantNotification.detailTitle')" size="lg">
-            <TransactionRecordList :rows="detailRow ? [detailRow] : []" :display-time-zone="query.queryTimeZone" />
+            <div v-loading="detailLoading">
+                <TransactionRecordList :rows="detailRow ? [detailRow] : []" :display-time-zone="query.queryTimeZone" />
+                <el-divider content-position="left">{{ t('transaction.merchantNotification.deliveryAttempts') }}</el-divider>
+                <TransactionRecordList :rows="deliveryLogs" variant="callback" :display-time-zone="query.queryTimeZone" />
+            </div>
         </CommonDetailDrawer>
     </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { Download, View } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
-import { exportMerchantNotifications, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
+import { exportMerchantNotifications, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionRecordList from '../components/TransactionRecordList.vue';
@@ -109,6 +131,7 @@ const { t, locale } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
+const retryingTransactionId = ref('');
 const rows = ref<TransactionRecord[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -116,7 +139,9 @@ const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 const quickPreset = ref('today');
 const detailVisible = ref(false);
+const detailLoading = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
+const deliveryLogs = ref<TransactionRecord[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
 const query = reactive({ merchantId: '', transactionId: '', notifyStatus: '', queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE });
 
@@ -182,9 +207,65 @@ function handleReset() {
     handleSearch();
 }
 
-function openDetail(row: TransactionRecord) {
+async function openDetail(row: TransactionRecord) {
     detailRow.value = row;
+    deliveryLogs.value = [];
     detailVisible.value = true;
+    const notifyId = recordText(row, 'notifyId');
+    const transactionDateTime = recordText(row, 'transactionDateTime');
+    if (!notifyId || !transactionDateTime) {
+        return;
+    }
+    detailLoading.value = true;
+    try {
+        const detail = await getMerchantNotificationDetail(notifyId, transactionDateTime);
+        detailRow.value = detail.notification || row;
+        deliveryLogs.value = detail.deliveryLogs || [];
+    } finally {
+        detailLoading.value = false;
+    }
+}
+
+function recordText(row: TransactionRecord, field: string) {
+    const value = row[field];
+    return typeof value === 'string' ? value : '';
+}
+
+function canRetryCallback(row: TransactionRecord) {
+    const status = recordText(row, 'notifyStatus').toUpperCase();
+    const retryableStatus = ['SUCCESS', 'FAILED', 'CLOSED'].includes(status)
+        || (status === 'INIT' && Boolean(recordText(row, 'nextRetryTime')));
+    return retryableStatus
+        && Boolean(recordText(row, 'transactionId') && recordText(row, 'transactionDateTime'));
+}
+
+async function handleRetryCallback(row: TransactionRecord) {
+    const transactionId = recordText(row, 'transactionId');
+    const transactionDateTime = recordText(row, 'transactionDateTime');
+    if (!transactionId || !transactionDateTime) {
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(
+            t('transaction.actions.retryCallbackConfirm', { transactionId }),
+            t('transaction.actions.retryCallbackTitle'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+            },
+        );
+    } catch {
+        return;
+    }
+    retryingTransactionId.value = transactionId;
+    try {
+        const eventId = await retryMerchantNotification({ transactionId, transactionDateTime });
+        ElMessage.success(t('transaction.actions.retryCallbackAccepted', { eventId }));
+        await loadData();
+    } finally {
+        retryingTransactionId.value = '';
+    }
 }
 
 function statusType(value?: unknown) {

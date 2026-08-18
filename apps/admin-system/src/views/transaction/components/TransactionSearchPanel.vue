@@ -19,7 +19,7 @@
         <el-form :model="model" :inline="true" size="small" class="search-form transaction-search" :label-width="labelWidth">
             <div class="transaction-search__grid">
                 <slot />
-                <template v-if="inlineTime && $slots.time">
+                <template v-if="inlineTime && $slots.time && (!$slots.advanced || !advancedVisible)">
                     <slot name="time" />
                 </template>
                 <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="transaction-search__actions transaction-search__actions--inline">
@@ -30,6 +30,9 @@
             <div v-if="$slots.advanced" v-show="advancedVisible" class="transaction-search__advanced">
                 <div class="transaction-search__grid">
                     <slot name="advanced" />
+                    <template v-if="inlineTime && $slots.time && advancedVisible">
+                        <slot name="time" />
+                    </template>
                     <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
                         <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                         <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
@@ -166,15 +169,14 @@ const advancedVisible = ref(false);
 }
 
 .transaction-search :deep(.transaction-time-form-item .el-form-item__content) {
-    width: auto;
+    width: 100%;
+    min-width: 0;
 }
 
-.transaction-search :deep(.transaction-time-range-filter__timezone) {
-    width: 244px;
-}
-
-.transaction-search :deep(.transaction-time-range-filter__picker) {
-    width: 460px;
+.transaction-search :deep(.transaction-time-form-item) {
+    flex: 1 1 760px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 @media (max-width: 980px) {
@@ -187,9 +189,7 @@ const advancedVisible = ref(false);
     .transaction-search :deep(.el-form-item),
     .transaction-search :deep(.el-form-item__content),
     .transaction-search :deep(.el-input),
-    .transaction-search :deep(.el-select),
-    .transaction-search :deep(.transaction-time-range-filter__timezone),
-    .transaction-search :deep(.transaction-time-range-filter__picker) {
+    .transaction-search :deep(.el-select) {
         width: 100%;
     }
 }

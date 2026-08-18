@@ -64,10 +64,12 @@
       <el-table-column :label="$t('common.createTime')" min-width="170" align="center" :show-overflow-tooltip="true">
         <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
       </el-table-column>
-      <el-table-column :label="$t('common.operation')" align="center" width="300" fixed="right">
+      <el-table-column :label="$t('common.operation')" align="center" width="390" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:query'">{{ $t('common.detail') }}</el-button>
+          <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:detail'">{{ $t('common.detail') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="'merchant:info:edit'">{{ $t('common.edit') }}</el-button>
+          <el-button v-if="row.merchantStatus === 1" size="small" type="danger" link :icon="VideoPause" :loading="statusChangingId === row.id" @click="changeStatus(row, 2)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.freeze') }}</el-button>
+          <el-button v-if="row.merchantStatus === 2" size="small" type="success" link :icon="VideoPlay" :loading="statusChangingId === row.id" @click="changeStatus(row, 1)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.unfreeze') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openKeys(row)" v-hasPermi="'merchant:key:manage'">{{ $t('merchant.info.keyManage') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openMaterial(row)" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.material') }}</el-button>
         </template>
@@ -159,8 +161,14 @@
                 <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
               </el-select>
             </el-form-item>
+            <el-form-item :label="$t('merchant.info.defaultLocale')" prop="defaultLocale">
+              <el-select v-model="form.defaultLocale" style="width:100%">
+                <el-option :label="$t('merchant.info.localeChinese')" value="zh-CN" />
+                <el-option :label="$t('merchant.info.localeEnglish')" value="en-US" />
+              </el-select>
+            </el-form-item>
             <el-form-item :label="$t('common.status')" prop="merchantStatus">
-              <el-select v-model="form.merchantStatus" style="width:100%">
+              <el-select v-model="form.merchantStatus" style="width:100%" :disabled="formMode === 'edit'">
                 <el-option :label="$t('merchant.info.statusNormal')" :value="1" />
                 <el-option :label="$t('merchant.info.statusFrozen')" :value="2" />
                 <el-option :label="$t('merchant.info.statusClosed')" :value="3" />
@@ -467,7 +475,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Edit, Key, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { Edit, Key, Plus, Refresh, Search, VideoPause, VideoPlay, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -475,6 +483,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   createMerchant,
+  changeMerchantStatus,
   copyOpenApiKeyMaterial,
   downloadOpenApiKeyMaterial,
   getMerchant,
@@ -529,6 +538,7 @@ const emptyForm = (): MerchantSaveRequest => ({
   billingDescriptor: '',
   merchantShortName: '',
   merchantStatus: 1,
+  defaultLocale: 'zh-CN',
   merchantCategoryCode: '',
   countryCode: '',
   regionCode: '',
@@ -565,6 +575,7 @@ const formRules = computed<FormRules>(() => ({
   settlementCurrency: [{ required: true, message: () => t('merchant.info.requiredSettlementCurrency'), trigger: 'change' }],
   timezone: [{ required: true, message: () => t('merchant.info.requiredTimezone'), trigger: 'change' }],
   merchantStatus: [{ required: true, message: () => t('merchant.info.requiredStatus'), trigger: 'change' }],
+  defaultLocale: [{ required: true, message: () => t('merchant.info.requiredDefaultLocale'), trigger: 'change' }],
   contactEmail: [
     { required: true, message: () => t('merchant.info.requiredContactEmail'), trigger: 'blur' },
     { type: 'email', message: () => t('merchant.info.invalidContactEmail'), trigger: 'blur' },
@@ -597,6 +608,7 @@ const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:do
 const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
 const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
 const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
+const statusChangingId = ref<string>();
 const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
 
 onMounted(() => {
@@ -787,28 +799,54 @@ async function submitForm() {
   }
 }
 
+async function changeStatus(row: MerchantInfo, targetStatus: 1 | 2) {
+  const action = targetStatus === 2 ? t('merchant.info.freeze') : t('merchant.info.unfreeze');
+  try {
+    await ElMessageBox.confirm(
+      t('merchant.info.statusChangeConfirm', { action, merchant: row.merchantName }),
+      t('common.operationConfirm'),
+      { type: targetStatus === 2 ? 'warning' : 'success' },
+    );
+    statusChangingId.value = row.id;
+    await changeMerchantStatus(row.id, targetStatus);
+    ElMessage.success(t('merchant.info.statusChangeSuccess', { action }));
+    await loadData();
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || t('common.operationFailed'));
+    }
+  } finally {
+    statusChangingId.value = undefined;
+  }
+}
+
 async function provisionMaterial() {
   if (!currentMerchant.value) return;
+  if (!await confirmSecretAction(t('merchant.info.provision'))) return;
   try {
-    await confirmSecretAction(t('merchant.info.provision'));
     material.value = await provisionSecurityMaterial(currentMerchant.value.merchantId);
     ElMessage.success(t('common.success'));
     loadData();
     loadMaterialSummary();
     loadMaterialLogs();
-  } catch { /* cancelled or failed */ }
+  } catch (error: unknown) {
+    showSecretActionError(error);
+  }
 }
 async function rotateJwt() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotateJwt')); material.value = await rotateJwtKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
+  if (!await confirmSecretAction(t('merchant.info.rotateJwt'))) return;
+  try { material.value = await rotateJwtKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch (error: unknown) { showSecretActionError(error); }
 }
 async function rotatePlatform() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotatePlatform')); material.value = await rotatePlatformPayloadKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
+  if (!await confirmSecretAction(t('merchant.info.rotatePlatform'))) return;
+  try { material.value = await rotatePlatformPayloadKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch (error: unknown) { showSecretActionError(error); }
 }
 async function rotateResponse() {
   if (!currentMerchant.value) return;
-  try { await confirmSecretAction(t('merchant.info.rotateResponse')); material.value = await rotateMerchantResponseKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch { /* ignore */ }
+  if (!await confirmSecretAction(t('merchant.info.rotateResponse'))) return;
+  try { material.value = await rotateMerchantResponseKey(currentMerchant.value.merchantId); ElMessage.success(t('common.success')); loadData(); loadMaterialSummary(); loadMaterialLogs(); } catch (error: unknown) { showSecretActionError(error); }
 }
 
 async function loadMaterialLogs() {
@@ -859,7 +897,16 @@ async function submitResponseKey() {
 }
 
 async function confirmSecretAction(action: string) {
-  await ElMessageBox.confirm(t('merchant.info.secretConfirm', { action }), t('common.operationConfirm'), { type: 'warning' });
+  try {
+    await ElMessageBox.confirm(t('merchant.info.secretConfirm', { action }), t('common.operationConfirm'), { type: 'warning' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showSecretActionError(error: unknown) {
+  ElMessage.error(error instanceof Error && error.message ? error.message : t('common.operationFailed'));
 }
 
 async function copyMaterial(keyType: OpenApiKeyType) {
@@ -867,15 +914,13 @@ async function copyMaterial(keyType: OpenApiKeyType) {
   const loadingKey = materialActionKey('copy', keyType);
   materialActionLoading[loadingKey] = true;
   try {
-    if (isSensitiveExportType(keyType)) {
-      await confirmSecretAction(t('merchant.info.copy'));
-    }
+    if (isSensitiveExportType(keyType) && !await confirmSecretAction(t('merchant.info.copy'))) return;
     const result = await copyOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, keyType === 'MERCHANT_CONFIG' ? 'PROPERTIES' : 'TEXT');
     await navigator.clipboard.writeText(result.content);
     ElMessage.success(t('merchant.info.copySuccess', { name: keyType }));
     loadMaterialLogs();
-  } catch (error: any) {
-    if (error?.message) ElMessage.error(error.message);
+  } catch (error: unknown) {
+    showSecretActionError(error);
   } finally {
     materialActionLoading[loadingKey] = false;
   }
@@ -886,16 +931,14 @@ async function viewMaterial(keyType: OpenApiKeyType) {
   const loadingKey = materialActionKey('view', keyType);
   materialActionLoading[loadingKey] = true;
   try {
-    if (isSensitiveExportType(keyType)) {
-      await confirmSecretAction(t('merchant.info.viewSecret'));
-    }
+    if (isSensitiveExportType(keyType) && !await confirmSecretAction(t('merchant.info.viewSecret'))) return;
     const result = await viewOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, keyType === 'MERCHANT_CONFIG' ? 'PROPERTIES' : 'TEXT');
     viewedMaterial.name = materialDisplayName(keyType);
     viewedMaterial.content = result.content;
     viewedMaterialVisible.value = true;
     loadMaterialLogs();
-  } catch (error: any) {
-    if (error?.message) ElMessage.error(error.message);
+  } catch (error: unknown) {
+    showSecretActionError(error);
   } finally {
     materialActionLoading[loadingKey] = false;
   }
@@ -912,13 +955,11 @@ async function downloadMaterial(keyType: OpenApiKeyType, format?: OpenApiKeyExpo
   const loadingKey = materialActionKey('download', keyType);
   materialActionLoading[loadingKey] = true;
   try {
-    if (isSensitiveExportType(keyType)) {
-      await confirmSecretAction(t('merchant.info.download'));
-    }
+    if (isSensitiveExportType(keyType) && !await confirmSecretAction(t('merchant.info.download'))) return;
     await downloadOpenApiKeyMaterial(currentMerchant.value.merchantId, keyType, format);
     loadMaterialLogs();
-  } catch (error: any) {
-    if (error?.message) ElMessage.error(error.message);
+  } catch (error: unknown) {
+    showSecretActionError(error);
   } finally {
     materialActionLoading[loadingKey] = false;
   }

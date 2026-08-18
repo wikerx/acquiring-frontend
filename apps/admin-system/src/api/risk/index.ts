@@ -90,6 +90,11 @@ export interface RiskRecord {
     validityDays?: number;
     sourceType?: string;
     status?: number;
+    approvalStatus?: number;
+    approvalRemark?: string;
+    submitSource?: string;
+    reviewBy?: string;
+    reviewTime?: string;
     remark?: string;
     createBy?: string;
     updateBy?: string;
@@ -142,6 +147,8 @@ export interface RiskRuleQuery extends PageQuery {
     currency?: string;
     triggerAction?: string;
     status?: number;
+    approvalStatus?: number;
+    submitSource?: string;
 }
 
 export type RiskListSaveRequest = Partial<RiskRecord>;
@@ -156,6 +163,12 @@ export interface RiskSourceUrlBatchSaveRequest {
     expireTime?: string;
     status?: number;
     remark?: string;
+}
+
+export interface MerchantAccessApprovalRequest {
+    approvalStatus: 1 | 2;
+    approvalRemark?: string;
+    status?: number;
 }
 
 export interface TradeBlackQuery extends PageQuery {
@@ -185,6 +198,9 @@ export interface EvaluationQuery extends PageQuery {
     merchantOrderNo?: string;
     paymentOrderNo?: string;
     decisionResult?: string;
+    riskLevel?: string;
+    evaluationStartTime?: string;
+    evaluationEndTimeExclusive?: string;
 }
 
 export async function getRiskFunctions() {
@@ -202,8 +218,8 @@ export async function getRiskDashboard() {
     return unwrapResult(result.data);
 }
 
-export async function getRiskTodayEvents() {
-    const result = await http.get<CommonResult<Record<string, unknown>[]>>('/admin/risk/dashboard/today-events');
+export async function pageRiskTodayEvents(data: EvaluationQuery = {}) {
+    const result = await http.post<CommonResult<PageResult<Record<string, unknown>>>>('/admin/risk/dashboard/today-events/page', data);
     return unwrapResult(result.data);
 }
 
@@ -279,6 +295,11 @@ export async function createRiskRule(functionCode: string, data: RiskRuleSaveReq
 
 export async function createRiskSourceUrls(data: RiskSourceUrlBatchSaveRequest) {
     const result = await http.post<CommonResult<RiskRecord[]>>('/admin/risk/rule/sourceUrl/batch-create', data);
+    return unwrapResult(result.data);
+}
+
+export async function approveRiskSourceUrl(id: number, data: MerchantAccessApprovalRequest) {
+    const result = await http.put<CommonResult<RiskRecord>>(`/admin/risk/rule/sourceUrl/${id}/approval`, data);
     return unwrapResult(result.data);
 }
 

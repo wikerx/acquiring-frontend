@@ -62,7 +62,20 @@
         </el-form-item>
       </template>
       <el-form-item v-if="profile.showCurrency && !isMerchantLimitRule && !isThreeDsRule" :label="$t('risk.common.currency')"><el-select v-model="query.currency" filterable clearable><el-option v-for="item in options.currencyOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-      <el-form-item :label="$t('common.status')"><el-select v-model="query.status" clearable><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="Number(item.value)" /></el-select></el-form-item>
+      <el-form-item :label="isSourceUrlRule ? $t('risk.approval.transactionStatus') : $t('common.status')"><el-select v-model="query.status" clearable><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="Number(item.value)" /></el-select></el-form-item>
+      <el-form-item v-if="isSourceUrlRule" :label="$t('risk.approval.approvalStatus')">
+        <el-select v-model="query.approvalStatus" clearable :placeholder="$t('common.pleaseSelect')">
+          <el-option :label="$t('risk.approval.pending')" :value="0" />
+          <el-option :label="$t('risk.approval.approved')" :value="1" />
+          <el-option :label="$t('risk.approval.rejected')" :value="2" />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-if="isSourceUrlRule" :label="$t('risk.approval.submitSource')">
+        <el-select v-model="query.submitSource" clearable :placeholder="$t('common.pleaseSelect')">
+          <el-option :label="$t('risk.approval.sourceAdmin')" value="ADMIN" />
+          <el-option :label="$t('risk.approval.sourceMerchant')" value="MERCHANT" />
+        </el-select>
+      </el-form-item>
       <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="handleReset">{{ $t('common.reset') }}</el-button></el-form-item>
     </el-form>
 
@@ -113,6 +126,12 @@
       <el-table-column v-if="isThreeDsRule" prop="priority" :label="$t('risk.rule.priority')" width="90" align="center" />
       <el-table-column v-if="isSourceUrlRule" prop="sourceUrl" :label="profileMatchLabel" min-width="190" align="center" show-overflow-tooltip />
       <el-table-column v-if="isSourceUrlRule" prop="sourceHost" :label="$t('risk.profile.rule.sourceHostLabel')" min-width="150" align="center" show-overflow-tooltip />
+      <el-table-column v-if="isSourceUrlRule" :label="$t('risk.approval.approvalStatus')" width="116" align="center">
+        <template #default="{ row }"><el-tag size="small" :type="approvalTagType(row.approvalStatus)" effect="plain">{{ approvalStatusText(row.approvalStatus) }}</el-tag></template>
+      </el-table-column>
+      <el-table-column v-if="isSourceUrlRule" :label="$t('risk.approval.submitSource')" width="108" align="center">
+        <template #default="{ row }">{{ submitSourceText(row.submitSource) }}</template>
+      </el-table-column>
       <el-table-column v-if="profile.showMatchValue && !isSourceUrlRule" prop="matchValue" :label="profileMatchLabel" min-width="150" align="center" show-overflow-tooltip />
       <el-table-column v-if="profile.showCardBrand" prop="cardBrand" :label="$t('risk.common.cardBrand')" width="124" align="center">
         <template #default="{ row }">
@@ -158,11 +177,12 @@
       <el-table-column v-if="!isThreeDsRule" prop="decisionAction" :label="$t('risk.common.decisionAction')" width="110" align="center">
         <template #default="{ row }"><el-tag size="small" :type="decisionActionTagType(row.decisionAction)">{{ decisionActionText(row.decisionAction) }}</el-tag></template>
       </el-table-column>
-      <el-table-column :label="$t('common.status')" width="92" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" :disabled="isStatusUpdating(row.id)" @change="(status: number) => handleStatus(row, status)" v-hasPermi="`${current.permissionPrefix}:status`" /></template></el-table-column>
+      <el-table-column :label="isSourceUrlRule ? $t('risk.approval.transactionStatus') : $t('common.status')" width="112" align="center"><template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" :disabled="isStatusUpdating(row.id) || (isSourceUrlRule && row.approvalStatus !== 1)" @change="(status: number) => handleStatus(row, status)" v-hasPermi="`${current.permissionPrefix}:status`" /></template></el-table-column>
       <el-table-column :label="$t('common.updateTime')" width="180" align="center"><template #default="{ row }"><BaseDateTime :value="row.updateTime" /></template></el-table-column>
-      <el-table-column :label="$t('common.operation')" width="320" align="center" fixed="right">
+      <el-table-column :label="$t('common.operation')" :width="isSourceUrlRule ? 380 : 320" align="center" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="`${current.permissionPrefix}:detail`">{{ $t('common.detail') }}</el-button>
+          <el-button v-if="isSourceUrlRule && row.approvalStatus === 0" size="small" type="primary" link :icon="CircleCheck" @click="openApproval(row)" v-hasPermi="`${current.permissionPrefix}:status`">{{ $t('risk.approval.approve') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('common.edit') }}</el-button>
           <el-button v-if="isMerchantLimitRule" size="small" type="primary" link :icon="Edit" @click="openMerchantLimitDimensionEdit(row)" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('risk.rule.dimensionEdit') }}</el-button>
           <el-button size="small" type="primary" link :icon="Delete" @click="handleDelete(row)" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('common.delete') }}</el-button>
@@ -319,10 +339,31 @@
           <el-col :span="12"><el-form-item :label="$t('risk.common.riskLevel')"><el-select v-model="form.riskLevel" style="width:100%"><el-option v-for="item in riskLevelOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
           <el-col :span="12"><el-form-item :label="$t('risk.common.decisionAction')"><el-select v-model="form.decisionAction" style="width:100%"><el-option v-for="item in decisionActionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
         </el-row>
-        <el-form-item :label="$t('common.status')"><el-select v-model="form.status" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="Number(item.value)" /></el-select></el-form-item>
+        <el-form-item :label="isSourceUrlRule ? $t('risk.approval.transactionStatus') : $t('common.status')"><el-select v-model="form.status" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="Number(item.value)" /></el-select></el-form-item>
         <el-form-item :label="$t('common.remark')"><el-input v-model.trim="form.remark" type="textarea" :rows="3" maxlength="500" /></el-form-item>
       </el-form>
       <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button><el-button @click="formOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
+    </el-dialog>
+
+    <el-dialog v-model="approvalOpen" :title="$t('risk.approval.sourceUrlTitle')" width="520px" append-to-body destroy-on-close>
+      <el-form :model="approvalForm" label-width="112px" size="small">
+        <el-form-item :label="$t('risk.profile.rule.sourceUrlLabel')">
+          <code class="approval-target">{{ approvalRow?.sourceUrl || '-' }}</code>
+        </el-form-item>
+        <el-form-item :label="$t('risk.approval.result')">
+          <el-radio-group v-model="approvalForm.approvalStatus" @change="handleApprovalResultChange">
+            <el-radio-button :value="1">{{ $t('risk.approval.approved') }}</el-radio-button>
+            <el-radio-button :value="2">{{ $t('risk.approval.rejected') }}</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="approvalForm.approvalStatus === 1" :label="$t('risk.approval.transactionStatus')">
+          <el-switch v-model="approvalForm.status" :active-value="1" :inactive-value="0" :active-text="$t('risk.approval.transactionAllowed')" :inactive-text="$t('risk.approval.transactionProhibited')" />
+        </el-form-item>
+        <el-form-item :label="$t('risk.approval.remark')" :required="approvalForm.approvalStatus === 2">
+          <el-input v-model.trim="approvalForm.approvalRemark" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('risk.approval.remarkPlaceholder')" />
+        </el-form-item>
+      </el-form>
+      <template #footer><div class="dialog-footer"><el-button type="primary" :loading="approvalSaving" @click="submitApproval">{{ $t('common.confirm') }}</el-button><el-button @click="approvalOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
     <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('common.detail')" size="lg">
@@ -378,7 +419,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
+import { CircleCheck, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import type { UploadFile } from 'element-plus';
 import { PaymentLogoGroup, PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
@@ -388,7 +429,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { listChannelOptions, searchChannelCapabilities, type ChannelCapability, type ChannelOption } from '@/api/channel';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
-import { batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, exportRiskConfig, getRiskOptions, importRiskConfig, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
+import { approveRiskSourceUrl, batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, exportRiskConfig, getRiskOptions, importRiskConfig, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
 import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOptions, localizeRiskOptions, resolveRiskFunction, resolveRiskRuleProfile, riskFunctionName, riskOptionLabel } from '@/views/risk/shared';
 import { cardLogoKeys, loadDictOptions, paymentLogoKeys, type SelectOption } from '@/views/channel/shared';
 
@@ -419,6 +460,10 @@ const options = ref<RiskOptions>(emptyRiskOptions());
 const formOpen = ref(false);
 const detailOpen = ref(false);
 const detailRow = ref<RiskRecord | null>(null);
+const approvalOpen = ref(false);
+const approvalSaving = ref(false);
+const approvalRow = ref<RiskRecord>();
+const approvalForm = reactive({ approvalStatus: 1 as 1 | 2, approvalRemark: '', status: 1 });
 const formRef = ref<FormInstance>();
 const formMode = ref<'add' | 'edit' | 'dimensionEdit'>('add');
 const editingId = ref<number>();
@@ -665,6 +710,13 @@ const detailItems = computed<DetailItem[]>(() => {
     ...(profile.value.showMatchMode ? [{ label: t('risk.rule.matchMode'), value: matchModeText(row.matchMode) }] : []),
     ...(profile.value.showCountry ? [{ label: profileMatchLabel.value, value: countryText(row.matchValue) }] : []),
     ...(isSourceUrlRule.value ? [{ label: profileMatchLabel.value, value: row.sourceUrl }, { label: t('risk.profile.rule.sourceHostLabel'), value: row.sourceHost }] : []),
+    ...(isSourceUrlRule.value ? [
+      { label: t('risk.approval.approvalStatus'), value: approvalStatusText(row.approvalStatus) },
+      { label: t('risk.approval.submitSource'), value: submitSourceText(row.submitSource) },
+      { label: t('risk.approval.remark'), value: row.approvalRemark },
+      { label: t('risk.approval.reviewBy'), value: row.reviewBy },
+      { label: t('risk.approval.reviewTime'), value: row.reviewTime, time: true },
+    ] : []),
     ...(profile.value.showMatchValue && !isSourceUrlRule.value ? [{ label: profileMatchLabel.value, value: row.matchValue }] : []),
     ...(profile.value.showCardBrand ? [{ label: t('risk.common.cardBrand'), value: row.cardBrand, cardBrand: true }] : []),
     ...(profile.value.showLimitType ? [{ label: t('risk.rule.limitType'), value: limitTypeText(row.limitType) }] : []),
@@ -710,7 +762,7 @@ async function loadData() {
   }
 }
 function handleSearch() { page.value = 1; loadData(); }
-function handleReset() { Object.assign(query, { merchantScope: undefined, merchantId: undefined, ruleName: undefined, matchValue: undefined, sourceUrl: undefined, sourceHost: undefined, limitType: undefined, ruleType: undefined, channelCode: undefined, paymentMethod: undefined, cardBrand: undefined, currency: undefined, triggerAction: undefined, status: undefined }); handleSearch(); }
+function handleReset() { Object.assign(query, { merchantScope: undefined, merchantId: undefined, ruleName: undefined, matchValue: undefined, sourceUrl: undefined, sourceHost: undefined, limitType: undefined, ruleType: undefined, channelCode: undefined, paymentMethod: undefined, cardBrand: undefined, currency: undefined, triggerAction: undefined, status: undefined, approvalStatus: undefined, submitSource: undefined }); handleSearch(); }
 function ruleQueryPayload() {
   const payload = { ...query };
   if (isMerchantLimitRule.value) {
@@ -807,6 +859,10 @@ async function handleBatchDelete() {
   await loadData();
 }
 async function handleStatus(row: RiskRecord, status: number) {
+  if (isSourceUrlRule.value && row.approvalStatus !== 1) {
+    ElMessage.warning(t('risk.approval.statusRequiresApproval'));
+    return;
+  }
   const action = status === 1 ? t('common.enable') : t('common.disable');
   const name = recordDisplayName(row);
   try {
@@ -824,6 +880,59 @@ async function handleStatus(row: RiskRecord, status: number) {
   } finally {
     setStatusUpdating(row.id, false);
   }
+}
+
+function openApproval(row: RiskRecord) {
+  approvalRow.value = row;
+  Object.assign(approvalForm, { approvalStatus: 1, approvalRemark: '', status: 1 });
+  approvalOpen.value = true;
+}
+
+function handleApprovalResultChange(value: string | number | boolean | undefined) {
+  approvalForm.status = Number(value) === 1 ? 1 : 0;
+}
+
+async function submitApproval() {
+  if (!approvalRow.value?.id) return;
+  if (approvalForm.approvalStatus === 2 && !approvalForm.approvalRemark) {
+    ElMessage.warning(t('risk.approval.rejectionReasonRequired'));
+    return;
+  }
+  approvalSaving.value = true;
+  try {
+    await approveRiskSourceUrl(approvalRow.value.id, {
+      approvalStatus: approvalForm.approvalStatus,
+      approvalRemark: approvalForm.approvalRemark || undefined,
+      status: approvalForm.approvalStatus === 1 ? approvalForm.status : 0,
+    });
+    ElMessage.success(t('risk.approval.success'));
+    approvalOpen.value = false;
+    await loadData();
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.saveFailed'));
+  } finally {
+    approvalSaving.value = false;
+  }
+}
+
+function approvalStatusText(status?: number) {
+  if (status === 0) return t('risk.approval.pending');
+  if (status === 1) return t('risk.approval.approved');
+  if (status === 2) return t('risk.approval.rejected');
+  return '-';
+}
+
+function approvalTagType(status?: number): 'warning' | 'success' | 'danger' | 'info' {
+  if (status === 0) return 'warning';
+  if (status === 1) return 'success';
+  if (status === 2) return 'danger';
+  return 'info';
+}
+
+function submitSourceText(source?: string) {
+  if (source === 'ADMIN') return t('risk.approval.sourceAdmin');
+  if (source === 'MERCHANT') return t('risk.approval.sourceMerchant');
+  return source || '-';
 }
 function isStatusUpdating(id?: number) { return id ? statusUpdatingIds.value.has(id) : false; }
 function setStatusUpdating(id: number | undefined, loading: boolean) {
@@ -1126,7 +1235,7 @@ function syncCurrentMerchantOption() {
   }
   const exists = merchantOptions.value.some((item) => item.merchantId === form.merchantId);
   if (!exists) {
-    merchantOptions.value = [{ id: '0', merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
+    merchantOptions.value = [{ id: '0', merchantId: form.merchantId, merchantName: form.merchantName || '', merchantStatus: 1, defaultLocale: 'zh-CN', merchantCategoryCode: '', countryCode: '', settlementCurrency: '', timezone: '', riskLevel: 1 }, ...merchantOptions.value];
   }
 }
 
@@ -2023,6 +2132,13 @@ function frequencyWindowUnitLabel(value: string) {
 </script>
 
 <style scoped>
+.approval-target {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--el-text-color-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 .card-brand-cell {
   display: inline-flex;
   align-items: center;
