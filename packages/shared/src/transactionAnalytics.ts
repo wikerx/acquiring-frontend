@@ -72,12 +72,114 @@ export interface TransactionAnalyticsMerchantPerformance {
     merchants: TransactionAnalyticsMerchantMetric[];
 }
 
+export interface TransactionAnalyticsCountMetric {
+    key: string;
+    totalCount: number;
+    percentage: number | string;
+}
+
+export interface TransactionAnalyticsFailureReasonMetric extends TransactionAnalyticsCountMetric {
+    message: string;
+    category: string;
+}
+
 export interface TransactionAnalyticsFailure {
     generatedAt: string;
     failedCount: number;
     trend: TransactionAnalyticsTrendMetric[];
     reasons: TransactionAnalyticsDimensionMetric[];
     paymentMethods: TransactionAnalyticsDimensionMetric[];
+}
+
+export interface TransactionAnalyticsFailureAnalysis {
+    generatedAt: string;
+    terminalCount: number;
+    failedCount: number;
+    affectedMerchantCount: number;
+    failureRate: number | string;
+    trend: TransactionAnalyticsTrendMetric[];
+    categories: TransactionAnalyticsCountMetric[];
+    reasons: TransactionAnalyticsFailureReasonMetric[];
+    channels: TransactionAnalyticsCountMetric[];
+}
+
+export interface TransactionAnalyticsChannelMetric {
+    channelCode: string;
+    totalRequestCount: number;
+    completedRequestCount: number;
+    successfulRequestCount: number;
+    failedRequestCount: number;
+    timeoutRequestCount: number;
+    inFlightRequestCount: number;
+    requestSuccessRate: number | string;
+    averageDurationMillis: number | string;
+    maximumDurationMillis: number;
+    transactionCount: number;
+    transactionSuccessCount: number;
+    transactionFailedCount: number;
+    transactionSuccessRate: number | string;
+}
+
+export interface TransactionAnalyticsChannelTrendMetric {
+    date: string;
+    totalRequestCount: number;
+    successfulRequestCount: number;
+    failedRequestCount: number;
+    timeoutRequestCount: number;
+    inFlightRequestCount: number;
+    requestSuccessRate: number | string;
+}
+
+export interface TransactionAnalyticsChannelPerformance {
+    generatedAt: string;
+    totalRequestCount: number;
+    completedRequestCount: number;
+    successfulRequestCount: number;
+    failedRequestCount: number;
+    timeoutRequestCount: number;
+    inFlightRequestCount: number;
+    requestSuccessRate: number | string;
+    averageDurationMillis: number | string;
+    maximumDurationMillis: number;
+    channels: TransactionAnalyticsChannelMetric[];
+    trend: TransactionAnalyticsChannelTrendMetric[];
+    responseCodes: TransactionAnalyticsCountMetric[];
+}
+
+export interface TransactionAnalyticsThreeDsTrendMetric {
+    date: string;
+    totalCount: number;
+    authenticatedCount: number;
+    failedCount: number;
+    processingCount: number;
+    authenticationSuccessRate: number | string;
+}
+
+export interface TransactionAnalyticsThreeDs {
+    generatedAt: string;
+    eligibleCardTransactionCount: number;
+    authenticationTransactionCount: number;
+    authenticatedCount: number;
+    failedCount: number;
+    processingCount: number;
+    coverageRate: number | string;
+    authenticationSuccessRate: number | string;
+    paymentSuccessCount: number;
+    paymentFailedCount: number;
+    paymentSuccessRate: number | string;
+    challengeRequiredCount: number;
+    challengeCompletedCount: number;
+    challengeFailedCount: number;
+    challengeRate: number | string;
+    liabilityShiftedCount: number;
+    liabilityNotShiftedCount: number;
+    liabilityUnknownCount: number;
+    trend: TransactionAnalyticsThreeDsTrendMetric[];
+    statuses: TransactionAnalyticsCountMetric[];
+    versions: TransactionAnalyticsCountMetric[];
+    sources: TransactionAnalyticsCountMetric[];
+    challenges: TransactionAnalyticsCountMetric[];
+    liabilityShifts: TransactionAnalyticsCountMetric[];
 }
 
 export interface AnalyticsChartClick {
@@ -437,7 +539,7 @@ export function createAnalyticsFailureTrendOption(
 }
 
 export function createAnalyticsCountOption(
-    rows: TransactionAnalyticsDimensionMetric[],
+    rows: Array<{ key: string; totalCount: number | string }>,
     seriesLabel: string,
     unknownLabel: string,
 ): AnalyticsChartOption {
@@ -470,6 +572,209 @@ export function createAnalyticsCountOption(
             itemStyle: { borderRadius: [0, 3, 3, 0] },
             data: visibleRows.map((row) => analyticsNumber(row.totalCount)),
         }],
+    };
+}
+
+export function createAnalyticsChannelTrendOption(
+    rows: TransactionAnalyticsChannelTrendMetric[],
+    labels: {
+        success: string;
+        failed: string;
+        timeout: string;
+        inFlight: string;
+        rate: string;
+    },
+): AnalyticsChartOption {
+    return {
+        color: [analyticsColors.success, analyticsColors.failed, analyticsColors.pending, analyticsColors.processing, analyticsColors.blue],
+        aria: { enabled: true, description: Object.values(labels).join('；') },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 7, textStyle: { color: analyticsColors.muted, fontSize: 11 } },
+        grid: { top: 48, right: 52, bottom: rows.length > 14 ? 38 : 24, left: 34, containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: rows.map((row) => row.date.slice(5)),
+            axisLine: { lineStyle: { color: '#cbd5dc' } },
+            axisTick: { show: false },
+            axisLabel: { color: analyticsColors.muted, hideOverlap: true },
+        },
+        yAxis: [
+            {
+                type: 'value',
+                minInterval: 1,
+                splitLine: { lineStyle: { color: analyticsColors.grid } },
+                axisLabel: { color: analyticsColors.muted },
+            },
+            {
+                type: 'value',
+                min: 0,
+                max: 100,
+                splitLine: { show: false },
+                axisLabel: { color: analyticsColors.muted, formatter: '{value}%' },
+            },
+        ],
+        dataZoom: rows.length > 14 ? [{ type: 'inside', startValue: Math.max(0, rows.length - 14), endValue: rows.length - 1 }] : [],
+        series: [
+            {
+                name: labels.success,
+                type: 'bar',
+                stack: 'request',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.successfulRequestCount)),
+            },
+            {
+                name: labels.failed,
+                type: 'bar',
+                stack: 'request',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.failedRequestCount)),
+            },
+            {
+                name: labels.timeout,
+                type: 'bar',
+                stack: 'request',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.timeoutRequestCount)),
+            },
+            {
+                name: labels.inFlight,
+                type: 'bar',
+                stack: 'request',
+                barMaxWidth: 24,
+                itemStyle: { borderRadius: [3, 3, 0, 0] },
+                data: rows.map((row) => analyticsNumber(row.inFlightRequestCount)),
+            },
+            {
+                name: labels.rate,
+                type: 'line',
+                yAxisIndex: 1,
+                smooth: 0.2,
+                symbol: 'circle',
+                symbolSize: 5,
+                showSymbol: rows.length <= 14,
+                lineStyle: { width: 2 },
+                data: rows.map((row) => analyticsNumber(row.requestSuccessRate)),
+                tooltip: { valueFormatter: (value: number) => `${value.toFixed(2)}%` },
+            },
+        ],
+    };
+}
+
+export function createAnalyticsChannelPerformanceOption(
+    rows: TransactionAnalyticsChannelMetric[],
+    labels: { requestRate: string; transactionRate: string },
+): AnalyticsChartOption {
+    const visibleRows = [...rows]
+        .sort((left, right) => analyticsNumber(right.totalRequestCount) - analyticsNumber(left.totalRequestCount))
+        .slice(0, 12)
+        .reverse();
+    return {
+        color: [analyticsColors.blue, analyticsColors.success],
+        aria: { enabled: true, description: `${labels.requestRate}；${labels.transactionRate}` },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 7, textStyle: { color: analyticsColors.muted, fontSize: 11 } },
+        grid: { top: 42, right: 24, bottom: 18, left: 16, containLabel: true },
+        xAxis: {
+            type: 'value',
+            min: 0,
+            max: 100,
+            splitLine: { lineStyle: { color: analyticsColors.grid } },
+            axisLabel: { color: analyticsColors.muted, formatter: '{value}%' },
+        },
+        yAxis: {
+            type: 'category',
+            data: visibleRows.map((row) => row.channelCode),
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: analyticsColors.ink, width: 140, overflow: 'truncate' },
+        },
+        series: [
+            {
+                name: labels.requestRate,
+                type: 'bar',
+                barMaxWidth: 12,
+                data: visibleRows.map((row) => analyticsNumber(row.requestSuccessRate)),
+            },
+            {
+                name: labels.transactionRate,
+                type: 'bar',
+                barMaxWidth: 12,
+                itemStyle: { borderRadius: [0, 3, 3, 0] },
+                data: visibleRows.map((row) => analyticsNumber(row.transactionSuccessRate)),
+            },
+        ],
+    };
+}
+
+export function createAnalyticsThreeDsTrendOption(
+    rows: TransactionAnalyticsThreeDsTrendMetric[],
+    labels: { authenticated: string; failed: string; processing: string; rate: string },
+): AnalyticsChartOption {
+    return {
+        color: [analyticsColors.success, analyticsColors.failed, analyticsColors.processing, analyticsColors.blue],
+        aria: { enabled: true, description: Object.values(labels).join('；') },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 7, textStyle: { color: analyticsColors.muted, fontSize: 11 } },
+        grid: { top: 48, right: 52, bottom: rows.length > 14 ? 38 : 24, left: 34, containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: rows.map((row) => row.date.slice(5)),
+            axisLine: { lineStyle: { color: '#cbd5dc' } },
+            axisTick: { show: false },
+            axisLabel: { color: analyticsColors.muted, hideOverlap: true },
+        },
+        yAxis: [
+            {
+                type: 'value',
+                minInterval: 1,
+                splitLine: { lineStyle: { color: analyticsColors.grid } },
+                axisLabel: { color: analyticsColors.muted },
+            },
+            {
+                type: 'value',
+                min: 0,
+                max: 100,
+                splitLine: { show: false },
+                axisLabel: { color: analyticsColors.muted, formatter: '{value}%' },
+            },
+        ],
+        dataZoom: rows.length > 14 ? [{ type: 'inside', startValue: Math.max(0, rows.length - 14), endValue: rows.length - 1 }] : [],
+        series: [
+            {
+                name: labels.authenticated,
+                type: 'bar',
+                stack: 'authentication',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.authenticatedCount)),
+            },
+            {
+                name: labels.failed,
+                type: 'bar',
+                stack: 'authentication',
+                barMaxWidth: 24,
+                data: rows.map((row) => analyticsNumber(row.failedCount)),
+            },
+            {
+                name: labels.processing,
+                type: 'bar',
+                stack: 'authentication',
+                barMaxWidth: 24,
+                itemStyle: { borderRadius: [3, 3, 0, 0] },
+                data: rows.map((row) => analyticsNumber(row.processingCount)),
+            },
+            {
+                name: labels.rate,
+                type: 'line',
+                yAxisIndex: 1,
+                smooth: 0.2,
+                symbol: 'circle',
+                symbolSize: 5,
+                showSymbol: rows.length <= 14,
+                lineStyle: { width: 2 },
+                data: rows.map((row) => analyticsNumber(row.authenticationSuccessRate)),
+                tooltip: { valueFormatter: (value: number) => `${value.toFixed(2)}%` },
+            },
+        ],
     };
 }
 

@@ -16,6 +16,7 @@
         </header>
 
         <TransactionSearchPanel
+            v-if="availableTabs.length"
             visible
             :model="filters"
             :title="t('transactionAnalytics.searchTitle')"
@@ -87,14 +88,19 @@
             </template>
         </TransactionSearchPanel>
 
-        <el-tabs v-model="activeTab" class="analytics-tabs" @tab-change="handleTabChange">
-            <el-tab-pane :label="t('transactionAnalytics.overview')" name="overview" />
-            <el-tab-pane :label="t('transactionAnalytics.merchants')" name="merchants" />
+        <el-tabs v-if="availableTabs.length" v-model="activeTab" class="analytics-tabs" @tab-change="handleTabChange">
+            <el-tab-pane v-for="tab in availableTabs" :key="tab.name" :label="t(tab.label)" :name="tab.name" />
         </el-tabs>
 
         <el-alert v-if="errorMessage" :title="errorMessage" type="error" :closable="false" show-icon class="analytics-alert" />
 
-        <template v-if="activeTab === 'overview'">
+        <el-empty
+            v-if="!availableTabs.length"
+            class="analytics-no-permission"
+            :description="t('transactionAnalytics.noFunctionPermission')"
+        />
+
+        <template v-if="activeTabAuthorized && activeTab === 'overview'">
             <section class="analytics-metric-band" aria-label="Transaction key metrics">
                 <article v-for="item in overviewMetrics" :key="item.key" class="analytics-metric" :class="`is-${item.tone}`">
                     <span>{{ item.label }}</span>
@@ -178,7 +184,7 @@
             </div>
         </template>
 
-        <template v-else>
+        <template v-else-if="activeTabAuthorized && activeTab === 'merchants'">
             <section class="analytics-metric-band analytics-metric-band--merchant">
                 <article class="analytics-metric is-green">
                     <span>{{ t('transactionAnalytics.merchantCount') }}</span>
@@ -244,6 +250,216 @@
                 <el-empty v-if="!loading && !merchantPerformance?.merchants.length" :description="t('transactionAnalytics.noData')" />
             </section>
         </template>
+
+        <template v-else-if="activeTabAuthorized && activeTab === 'failures'">
+            <section class="analytics-metric-band analytics-metric-band--diagnostic">
+                <article v-for="item in failureMetrics" :key="item.key" class="analytics-metric" :class="`is-${item.tone}`">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.hint }}</small>
+                </article>
+            </section>
+            <section class="analytics-panel analytics-panel--trend">
+                <header class="analytics-panel__header">
+                    <div>
+                        <h2>{{ t('transactionAnalytics.failureTrendTitle') }}</h2>
+                        <p>{{ t('transactionAnalytics.failureTrendSubtitle') }}</p>
+                    </div>
+                </header>
+                <AnalyticsChart
+                    :option="failureTrendOption"
+                    :loading="loading"
+                    :empty="!failureAnalysis?.failedCount"
+                    :empty-text="t('transactionAnalytics.noData')"
+                    :aria-label="t('transactionAnalytics.failureTrendTitle')"
+                    height="310px"
+                />
+            </section>
+            <div class="analytics-grid analytics-grid--diagnostic">
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.failureCategoryTitle') }}</h2></header>
+                    <AnalyticsChart
+                        :option="failureCategoryOption"
+                        :loading="loading"
+                        :empty="!failureAnalysis?.categories.length"
+                        :empty-text="t('transactionAnalytics.noData')"
+                        :aria-label="t('transactionAnalytics.failureCategoryTitle')"
+                        height="286px"
+                    />
+                </section>
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.failureChannelTitle') }}</h2></header>
+                    <AnalyticsChart
+                        :option="failureChannelOption"
+                        :loading="loading"
+                        :empty="!failureAnalysis?.channels.length"
+                        :empty-text="t('transactionAnalytics.noData')"
+                        :aria-label="t('transactionAnalytics.failureChannelTitle')"
+                        height="286px"
+                    />
+                </section>
+            </div>
+            <section class="analytics-panel analytics-panel--table">
+                <StandardTable
+                    table-key="transaction-analytics-failure-reasons"
+                    v-loading="loading"
+                    :data="failureAnalysis?.reasons ?? []"
+                    row-key="key"
+                    size="small"
+                >
+                    <el-table-column prop="key" :label="t('transactionAnalytics.failureCode')" min-width="190" fixed="left" />
+                    <el-table-column prop="category" :label="t('transactionAnalytics.failureCategory')" min-width="140">
+                        <template #default="{ row }">{{ failureCategoryLabel(row.category) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="message" :label="t('transactionAnalytics.failureMessage')" min-width="320" show-overflow-tooltip />
+                    <el-table-column prop="totalCount" :label="t('transactionAnalytics.tableFailed')" min-width="110" align="right">
+                        <template #default="{ row }"><span class="metric-failed">{{ formatCount(row.totalCount) }}</span></template>
+                    </el-table-column>
+                    <el-table-column prop="percentage" :label="t('transactionAnalytics.failureShare')" min-width="120" align="right">
+                        <template #default="{ row }">{{ formatRate(row.percentage) }}</template>
+                    </el-table-column>
+                </StandardTable>
+                <el-empty v-if="!loading && !failureAnalysis?.reasons.length" :description="t('transactionAnalytics.noData')" />
+            </section>
+        </template>
+
+        <template v-else-if="activeTabAuthorized && activeTab === 'channels'">
+            <section class="analytics-metric-band analytics-metric-band--diagnostic">
+                <article v-for="item in channelMetrics" :key="item.key" class="analytics-metric" :class="`is-${item.tone}`">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.hint }}</small>
+                </article>
+            </section>
+            <section class="analytics-panel analytics-panel--trend">
+                <header class="analytics-panel__header">
+                    <div>
+                        <h2>{{ t('transactionAnalytics.channelTrendTitle') }}</h2>
+                        <p>{{ t('transactionAnalytics.channelTrendSubtitle') }}</p>
+                    </div>
+                </header>
+                <AnalyticsChart
+                    :option="channelTrendOption"
+                    :loading="loading"
+                    :empty="!channelPerformance?.totalRequestCount"
+                    :empty-text="t('transactionAnalytics.noData')"
+                    :aria-label="t('transactionAnalytics.channelTrendTitle')"
+                    height="320px"
+                />
+            </section>
+            <div class="analytics-grid analytics-grid--diagnostic">
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header">
+                        <div>
+                            <h2>{{ t('transactionAnalytics.channelRateTitle') }}</h2>
+                            <p>{{ t('transactionAnalytics.channelRateSubtitle') }}</p>
+                        </div>
+                    </header>
+                    <AnalyticsChart
+                        :option="channelRateOption"
+                        :loading="loading"
+                        :empty="!channelPerformance?.channels.length"
+                        :empty-text="t('transactionAnalytics.noData')"
+                        :aria-label="t('transactionAnalytics.channelRateTitle')"
+                        height="320px"
+                    />
+                </section>
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.channelResponseCodeTitle') }}</h2></header>
+                    <AnalyticsChart
+                        :option="channelResponseCodeOption"
+                        :loading="loading"
+                        :empty="!channelPerformance?.responseCodes.length"
+                        :empty-text="t('transactionAnalytics.noData')"
+                        :aria-label="t('transactionAnalytics.channelResponseCodeTitle')"
+                        height="320px"
+                    />
+                </section>
+            </div>
+            <section class="analytics-panel analytics-panel--table">
+                <StandardTable
+                    table-key="transaction-analytics-channels"
+                    v-loading="loading"
+                    :data="channelPerformance?.channels ?? []"
+                    row-key="channelCode"
+                    size="small"
+                >
+                    <el-table-column prop="channelCode" :label="t('transactionAnalytics.channelCode')" min-width="150" fixed="left" />
+                    <el-table-column prop="totalRequestCount" :label="t('transactionAnalytics.channelRequests')" min-width="115" align="right">
+                        <template #default="{ row }">{{ formatCount(row.totalRequestCount) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="successfulRequestCount" :label="t('transactionAnalytics.channelRequestSuccess')" min-width="120" align="right">
+                        <template #default="{ row }"><span class="metric-success">{{ formatCount(row.successfulRequestCount) }}</span></template>
+                    </el-table-column>
+                    <el-table-column prop="failedRequestCount" :label="t('transactionAnalytics.channelRequestFailed')" min-width="115" align="right">
+                        <template #default="{ row }"><span class="metric-failed">{{ formatCount(row.failedRequestCount) }}</span></template>
+                    </el-table-column>
+                    <el-table-column prop="timeoutRequestCount" :label="t('transactionAnalytics.channelTimeout')" min-width="105" align="right">
+                        <template #default="{ row }">{{ formatCount(row.timeoutRequestCount) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="inFlightRequestCount" :label="t('transactionAnalytics.tableInFlight')" min-width="105" align="right">
+                        <template #default="{ row }">{{ formatCount(row.inFlightRequestCount) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="requestSuccessRate" :label="t('transactionAnalytics.channelRequestRate')" min-width="130" align="right">
+                        <template #default="{ row }"><strong>{{ formatRate(row.requestSuccessRate) }}</strong></template>
+                    </el-table-column>
+                    <el-table-column prop="transactionSuccessRate" :label="t('transactionAnalytics.channelTransactionRate')" min-width="140" align="right">
+                        <template #default="{ row }"><strong>{{ formatRate(row.transactionSuccessRate) }}</strong></template>
+                    </el-table-column>
+                    <el-table-column prop="averageDurationMillis" :label="t('transactionAnalytics.channelAverageDuration')" min-width="130" align="right">
+                        <template #default="{ row }">{{ formatMillis(row.averageDurationMillis) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="maximumDurationMillis" :label="t('transactionAnalytics.channelMaximumDuration')" min-width="130" align="right">
+                        <template #default="{ row }">{{ formatMillis(row.maximumDurationMillis) }}</template>
+                    </el-table-column>
+                </StandardTable>
+                <el-empty v-if="!loading && !channelPerformance?.channels.length" :description="t('transactionAnalytics.noData')" />
+            </section>
+        </template>
+
+        <template v-else-if="activeTabAuthorized && activeTab === 'threeDs'">
+            <section class="analytics-metric-band analytics-metric-band--diagnostic">
+                <article v-for="item in threeDsMetrics" :key="item.key" class="analytics-metric" :class="`is-${item.tone}`">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.hint }}</small>
+                </article>
+            </section>
+            <section class="analytics-panel analytics-panel--trend">
+                <header class="analytics-panel__header">
+                    <div>
+                        <h2>{{ t('transactionAnalytics.threeDsTrendTitle') }}</h2>
+                        <p>{{ t('transactionAnalytics.threeDsTrendSubtitle') }}</p>
+                    </div>
+                </header>
+                <AnalyticsChart
+                    :option="threeDsTrendOption"
+                    :loading="loading"
+                    :empty="!threeDsAnalysis?.authenticationTransactionCount"
+                    :empty-text="t('transactionAnalytics.noData')"
+                    :aria-label="t('transactionAnalytics.threeDsTrendTitle')"
+                    height="320px"
+                />
+            </section>
+            <div class="analytics-grid analytics-grid--four">
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.threeDsStatusTitle') }}</h2></header>
+                    <AnalyticsChart :option="threeDsStatusOption" :loading="loading" :empty="!threeDsAnalysis?.statuses.length" :empty-text="t('transactionAnalytics.noData')" :aria-label="t('transactionAnalytics.threeDsStatusTitle')" height="286px" />
+                </section>
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.threeDsVersionTitle') }}</h2></header>
+                    <AnalyticsChart :option="threeDsVersionOption" :loading="loading" :empty="!threeDsAnalysis?.versions.length" :empty-text="t('transactionAnalytics.noData')" :aria-label="t('transactionAnalytics.threeDsVersionTitle')" height="286px" />
+                </section>
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.threeDsLiabilityTitle') }}</h2></header>
+                    <AnalyticsChart :option="threeDsLiabilityOption" :loading="loading" :empty="!threeDsAnalysis?.liabilityShifts.length" :empty-text="t('transactionAnalytics.noData')" :aria-label="t('transactionAnalytics.threeDsLiabilityTitle')" height="286px" />
+                </section>
+                <section class="analytics-panel">
+                    <header class="analytics-panel__header"><h2>{{ t('transactionAnalytics.threeDsSourceTitle') }}</h2></header>
+                    <AnalyticsChart :option="threeDsSourceOption" :loading="loading" :empty="!threeDsAnalysis?.sources.length" :empty-text="t('transactionAnalytics.noData')" :aria-label="t('transactionAnalytics.threeDsSourceTitle')" height="286px" />
+                </section>
+            </div>
+        </template>
     </div>
 </template>
 
@@ -257,23 +473,38 @@ import {
     AnalyticsPaymentPerformance,
     PaymentLogoGroup,
     analyticsNumber,
+    createAnalyticsChannelPerformanceOption,
+    createAnalyticsChannelTrendOption,
+    createAnalyticsCountOption,
     createAnalyticsDimensionOption,
     createAnalyticsDonutOption,
+    createAnalyticsFailureTrendOption,
     createAnalyticsMerchantOption,
+    createAnalyticsThreeDsTrendOption,
     createAnalyticsTrendOption,
     createTransactionAnalyticsRange,
     formatAnalyticsAmountValue,
     resolvePaymentLogoKeys,
     type AnalyticsChartClick,
     type PaymentLogoKey,
+    type TransactionAnalyticsChannelPerformance,
     type TransactionAnalyticsDimensionMetric,
+    type TransactionAnalyticsFailureAnalysis,
     type TransactionAnalyticsMerchantPerformance,
     type TransactionAnalyticsOverview,
     type TransactionAnalyticsQuery,
+    type TransactionAnalyticsThreeDs,
 } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { getTransactionAnalyticsMerchants, getTransactionAnalyticsOverview } from '@/api/transaction';
+import {
+    getTransactionAnalyticsChannels,
+    getTransactionAnalyticsFailures,
+    getTransactionAnalyticsMerchants,
+    getTransactionAnalyticsOverview,
+    getTransactionAnalyticsThreeDs,
+} from '@/api/transaction';
+import { useUserStore } from '@/store/modules/user';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionSearchPanel from '../components/TransactionSearchPanel.vue';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
@@ -285,7 +516,15 @@ import {
     type TransactionDictOption,
 } from '../shared';
 
-type AnalyticsTab = 'overview' | 'merchants';
+type AnalyticsTab = 'overview' | 'merchants' | 'failures' | 'channels' | 'threeDs';
+
+const ANALYTICS_TABS: Array<{ name: AnalyticsTab; label: string; permission: string }> = [
+    { name: 'overview', label: 'transactionAnalytics.overview', permission: 'transaction:analytics:overview' },
+    { name: 'merchants', label: 'transactionAnalytics.merchants', permission: 'transaction:analytics:merchants' },
+    { name: 'failures', label: 'transactionAnalytics.failures', permission: 'transaction:analytics:failures' },
+    { name: 'channels', label: 'transactionAnalytics.channels', permission: 'transaction:analytics:channels' },
+    { name: 'threeDs', label: 'transactionAnalytics.threeDs', permission: 'transaction:analytics:three-ds' },
+];
 
 interface PaymentToolOption {
     value: string;
@@ -297,15 +536,21 @@ interface PaymentToolOption {
 
 /** 管理端交易分析主页面统一查询规范、统计口径和图表交互，不在前端执行跨币种金额合计。 */
 const { t, te, locale } = useI18n();
+const userStore = useUserStore();
 const supportedTransactionTypes = new Set(['PAYMENT', 'AUTHORIZATION', 'PRE_AUTHORIZATION']);
 const currencyOptions = ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'HKD', 'SGD', 'AUD'];
-const activeTab = ref<AnalyticsTab>('overview');
+const activeTab = ref<AnalyticsTab>(
+    ANALYTICS_TABS.find((tab) => userStore.hasPermission(tab.permission))?.name ?? 'overview',
+);
 const quickPreset = ref('last7');
 const dateRange = ref<string[]>(createTransactionAnalyticsRange(7, DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 const loading = ref(false);
 const errorMessage = ref('');
 const overview = ref<TransactionAnalyticsOverview>();
 const merchantPerformance = ref<TransactionAnalyticsMerchantPerformance>();
+const failureAnalysis = ref<TransactionAnalyticsFailureAnalysis>();
+const channelPerformance = ref<TransactionAnalyticsChannelPerformance>();
+const threeDsAnalysis = ref<TransactionAnalyticsThreeDs>();
 const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t)
     .filter((item) => supportedTransactionTypes.has(item.value)));
 const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethods());
@@ -319,6 +564,9 @@ const filters = reactive({
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
 let requestSequence = 0;
+
+const availableTabs = computed(() => ANALYTICS_TABS.filter((tab) => userStore.hasPermission(tab.permission)));
+const activeTabAuthorized = computed(() => availableTabs.value.some((tab) => tab.name === activeTab.value));
 
 const quickTimeOptions = computed(() => [
     { value: 'last7', label: t('transactionAnalytics.last7Days'), days: 7 },
@@ -362,9 +610,13 @@ const paymentToolOptions = computed<PaymentToolOption[]>(() => paymentMethodOpti
 }));
 
 const selectedPaymentTool = computed(() => paymentToolOptions.value.find((item) => item.value === filters.paymentTool));
-const generatedAt = computed(() => activeTab.value === 'overview'
-    ? overview.value?.generatedAt
-    : merchantPerformance.value?.generatedAt);
+const generatedAt = computed(() => ({
+    overview: overview.value?.generatedAt,
+    merchants: merchantPerformance.value?.generatedAt,
+    failures: failureAnalysis.value?.generatedAt,
+    channels: channelPerformance.value?.generatedAt,
+    threeDs: threeDsAnalysis.value?.generatedAt,
+})[activeTab.value]);
 
 const overviewMetrics = computed(() => {
     const data = overview.value;
@@ -398,12 +650,137 @@ const statusOption = computed(() => createAnalyticsDonutOption(
 const countryOption = computed(() => createAnalyticsDimensionOption(overview.value?.issuerCountries ?? [], chartLabels.value));
 const merchantOption = computed(() => createAnalyticsMerchantOption(merchantPerformance.value?.merchants ?? [], chartLabels.value));
 
+const failureMetrics = computed(() => [
+    { key: 'terminal', label: t('transactionAnalytics.failureTerminalCount'), value: formatCount(failureAnalysis.value?.terminalCount), hint: t('transactionAnalytics.failureTerminalHint'), tone: 'ink' },
+    { key: 'failed', label: t('transactionAnalytics.failedCount'), value: formatCount(failureAnalysis.value?.failedCount), hint: t('transactionAnalytics.failureCountHint'), tone: 'red' },
+    { key: 'rate', label: t('transactionAnalytics.failureRate'), value: formatRate(failureAnalysis.value?.failureRate ?? 0), hint: t('transactionAnalytics.failureRateHint'), tone: 'red' },
+    { key: 'merchants', label: t('transactionAnalytics.affectedMerchants'), value: formatCount(failureAnalysis.value?.affectedMerchantCount), hint: t('transactionAnalytics.affectedMerchantsHint'), tone: 'amber' },
+]);
+const translatedFailureCategories = computed(() => (failureAnalysis.value?.categories ?? []).map((item) => ({
+    ...item,
+    key: failureCategoryLabel(item.key),
+    status: item.key === 'RISK' || item.key === 'CHANNEL' ? 'FAILED' : undefined,
+    successCount: 0,
+    failedCount: item.totalCount,
+    successRate: 0,
+})));
+const failureTrendOption = computed(() => createAnalyticsFailureTrendOption(
+    failureAnalysis.value?.trend ?? [],
+    t('transactionAnalytics.failedSeries'),
+));
+const failureCategoryOption = computed(() => createAnalyticsDonutOption(
+    translatedFailureCategories.value,
+    chartLabels.value.unknown,
+    t('transactionAnalytics.failedSeries'),
+));
+const failureChannelOption = computed(() => createAnalyticsCountOption(
+    failureAnalysis.value?.channels ?? [],
+    t('transactionAnalytics.failedSeries'),
+    chartLabels.value.unknown,
+));
+
+const channelMetrics = computed(() => [
+    { key: 'total', label: t('transactionAnalytics.channelRequests'), value: formatCount(channelPerformance.value?.totalRequestCount), hint: t('transactionAnalytics.channelRequestsHint'), tone: 'ink' },
+    { key: 'completed', label: t('transactionAnalytics.channelCompleted'), value: formatCount(channelPerformance.value?.completedRequestCount), hint: t('transactionAnalytics.channelCompletedHint'), tone: 'blue' },
+    { key: 'success', label: t('transactionAnalytics.channelRequestSuccess'), value: formatCount(channelPerformance.value?.successfulRequestCount), hint: t('transactionAnalytics.channelRequestSuccessHint'), tone: 'green' },
+    { key: 'failed', label: t('transactionAnalytics.channelRequestFailed'), value: formatCount(channelPerformance.value?.failedRequestCount), hint: t('transactionAnalytics.channelRequestFailedHint'), tone: 'red' },
+    { key: 'timeout', label: t('transactionAnalytics.channelTimeout'), value: formatCount(channelPerformance.value?.timeoutRequestCount), hint: t('transactionAnalytics.channelTimeoutHint'), tone: 'amber' },
+    { key: 'inFlight', label: t('transactionAnalytics.tableInFlight'), value: formatCount(channelPerformance.value?.inFlightRequestCount), hint: t('transactionAnalytics.channelInFlightHint'), tone: 'blue' },
+    { key: 'rate', label: t('transactionAnalytics.channelRequestRate'), value: formatRate(channelPerformance.value?.requestSuccessRate ?? 0), hint: t('transactionAnalytics.channelRequestRateHint'), tone: 'green' },
+    { key: 'duration', label: t('transactionAnalytics.channelAverageDuration'), value: formatMillis(channelPerformance.value?.averageDurationMillis), hint: t('transactionAnalytics.channelMaximumDurationHint', { value: formatMillis(channelPerformance.value?.maximumDurationMillis) }), tone: 'ink' },
+]);
+const channelTrendOption = computed(() => createAnalyticsChannelTrendOption(
+    channelPerformance.value?.trend ?? [],
+    {
+        success: t('transactionAnalytics.successSeries'),
+        failed: t('transactionAnalytics.failedSeries'),
+        timeout: t('transactionAnalytics.channelTimeout'),
+        inFlight: t('transactionAnalytics.processingSeries'),
+        rate: t('transactionAnalytics.channelRequestRate'),
+    },
+));
+const channelRateOption = computed(() => createAnalyticsChannelPerformanceOption(
+    channelPerformance.value?.channels ?? [],
+    {
+        requestRate: t('transactionAnalytics.channelRequestRate'),
+        transactionRate: t('transactionAnalytics.channelTransactionRate'),
+    },
+));
+const channelResponseCodeOption = computed(() => createAnalyticsCountOption(
+    channelPerformance.value?.responseCodes ?? [],
+    t('transactionAnalytics.channelResponseCount'),
+    chartLabels.value.unknown,
+));
+
+const threeDsMetrics = computed(() => [
+    { key: 'eligible', label: t('transactionAnalytics.threeDsEligible'), value: formatCount(threeDsAnalysis.value?.eligibleCardTransactionCount), hint: t('transactionAnalytics.threeDsEligibleHint'), tone: 'ink' },
+    { key: 'covered', label: t('transactionAnalytics.threeDsTransactions'), value: formatCount(threeDsAnalysis.value?.authenticationTransactionCount), hint: t('transactionAnalytics.threeDsTransactionsHint'), tone: 'blue' },
+    { key: 'coverage', label: t('transactionAnalytics.threeDsCoverageRate'), value: formatRate(threeDsAnalysis.value?.coverageRate ?? 0), hint: t('transactionAnalytics.threeDsCoverageHint'), tone: 'blue' },
+    { key: 'success', label: t('transactionAnalytics.threeDsAuthenticated'), value: formatCount(threeDsAnalysis.value?.authenticatedCount), hint: t('transactionAnalytics.threeDsAuthenticatedHint'), tone: 'green' },
+    { key: 'failed', label: t('transactionAnalytics.threeDsFailed'), value: formatCount(threeDsAnalysis.value?.failedCount), hint: t('transactionAnalytics.threeDsFailedHint'), tone: 'red' },
+    { key: 'authRate', label: t('transactionAnalytics.threeDsAuthRate'), value: formatRate(threeDsAnalysis.value?.authenticationSuccessRate ?? 0), hint: t('transactionAnalytics.threeDsAuthRateHint'), tone: 'green' },
+    { key: 'paymentRate', label: t('transactionAnalytics.threeDsPaymentRate'), value: formatRate(threeDsAnalysis.value?.paymentSuccessRate ?? 0), hint: t('transactionAnalytics.threeDsPaymentRateHint'), tone: 'ink' },
+    { key: 'challengeRate', label: t('transactionAnalytics.threeDsChallengeRate'), value: formatRate(threeDsAnalysis.value?.challengeRate ?? 0), hint: t('transactionAnalytics.threeDsChallengeRateHint'), tone: 'amber' },
+]);
+const threeDsTrendOption = computed(() => createAnalyticsThreeDsTrendOption(
+    threeDsAnalysis.value?.trend ?? [],
+    {
+        authenticated: t('transactionAnalytics.threeDsAuthenticated'),
+        failed: t('transactionAnalytics.threeDsFailed'),
+        processing: t('transactionAnalytics.processingSeries'),
+        rate: t('transactionAnalytics.threeDsAuthRate'),
+    },
+));
+const threeDsStatusOption = computed(() => createAnalyticsDonutOption(
+    toDimensionMetrics(threeDsAnalysis.value?.statuses),
+    chartLabels.value.unknown,
+    t('transactionAnalytics.threeDsTransactions'),
+));
+const threeDsVersionOption = computed(() => createAnalyticsCountOption(
+    threeDsAnalysis.value?.versions ?? [],
+    t('transactionAnalytics.threeDsTransactions'),
+    chartLabels.value.unknown,
+));
+const threeDsLiabilityOption = computed(() => createAnalyticsDonutOption(
+    toDimensionMetrics(threeDsAnalysis.value?.liabilityShifts),
+    chartLabels.value.unknown,
+    t('transactionAnalytics.threeDsTransactions'),
+));
+const threeDsSourceOption = computed(() => createAnalyticsCountOption(
+    threeDsAnalysis.value?.sources ?? [],
+    t('transactionAnalytics.threeDsTransactions'),
+    chartLabels.value.unknown,
+));
+
 function formatCount(value: number | string | null | undefined) {
     return new Intl.NumberFormat(locale.value).format(analyticsNumber(value));
 }
 
 function formatRate(value: number | string) {
     return `${analyticsNumber(value).toFixed(2)}%`;
+}
+
+function formatMillis(value: number | string | null | undefined) {
+    return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 2 }).format(analyticsNumber(value))} ms`;
+}
+
+function failureCategoryLabel(category: string) {
+    const key = `transactionAnalytics.failureCategoryValue.${category || 'OTHER'}`;
+    return te(key) ? t(key) : category || chartLabels.value.unknown;
+}
+
+function toDimensionMetrics(rows: Array<{ key: string; totalCount: number }> | undefined): TransactionAnalyticsDimensionMetric[] {
+    return (rows ?? []).map((row) => ({
+        ...row,
+        status: row.key === 'AUTHENTICATED' || row.key === 'SHIFTED'
+            ? 'SUCCESS'
+            : row.key === 'FAILED' || row.key === 'NOT_SHIFTED'
+                ? 'FAILED'
+                : row.key === 'PROCESSING' ? 'PROCESSING' : undefined,
+        successCount: 0,
+        failedCount: 0,
+        successRate: 0,
+    }));
 }
 
 function ratioHint(value: number | string | null | undefined, total: number | string | null | undefined) {
@@ -439,16 +816,29 @@ function buildQuery(): TransactionAnalyticsQuery | undefined {
 }
 
 async function loadActiveTab() {
+    if (!availableTabs.value.some((tab) => tab.name === activeTab.value)) return;
     const query = buildQuery();
     if (!query) return;
     const currentRequest = ++requestSequence;
     loading.value = true;
     errorMessage.value = '';
     try {
-        if (activeTab.value === 'overview') {
-            overview.value = await getTransactionAnalyticsOverview(query);
-        } else {
-            merchantPerformance.value = await getTransactionAnalyticsMerchants(query);
+        switch (activeTab.value) {
+            case 'overview':
+                overview.value = await getTransactionAnalyticsOverview(query);
+                break;
+            case 'merchants':
+                merchantPerformance.value = await getTransactionAnalyticsMerchants(query);
+                break;
+            case 'failures':
+                failureAnalysis.value = await getTransactionAnalyticsFailures(query);
+                break;
+            case 'channels':
+                channelPerformance.value = await getTransactionAnalyticsChannels(query);
+                break;
+            case 'threeDs':
+                threeDsAnalysis.value = await getTransactionAnalyticsThreeDs(query);
+                break;
         }
     } catch {
         if (currentRequest === requestSequence) errorMessage.value = t('transactionAnalytics.loadFailed');
@@ -471,7 +861,9 @@ function resetFilters() {
 }
 
 function handleTabChange(name: string | number) {
-    activeTab.value = String(name) as AnalyticsTab;
+    const nextTab = availableTabs.value.find((tab) => tab.name === String(name));
+    if (!nextTab) return;
+    activeTab.value = nextTab.name;
     loadActiveTab();
 }
 
@@ -528,6 +920,9 @@ function fallbackPaymentBrands(): TransactionDictOption[] {
 }
 
 onMounted(async () => {
+    const firstAuthorizedTab = availableTabs.value[0];
+    if (!firstAuthorizedTab) return;
+    activeTab.value = firstAuthorizedTab.name;
     await loadFilterOptions();
     loadActiveTab();
 });
@@ -597,6 +992,7 @@ onMounted(async () => {
 }
 
 .analytics-metric-band--merchant { grid-template-columns: minmax(240px, 360px); }
+.analytics-metric-band--diagnostic { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
 
 .analytics-metric {
     position: relative;
@@ -659,10 +1055,13 @@ onMounted(async () => {
 
 .analytics-grid { display: grid; gap: 10px; margin-bottom: 10px; }
 .analytics-grid--overview { grid-template-columns: minmax(260px, 0.8fr) minmax(430px, 1.35fr) minmax(320px, 1fr); }
+.analytics-grid--diagnostic { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.analytics-grid--four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .metric-success { color: var(--analytics-teal); }
 .metric-failed { color: var(--analytics-red); }
 .analytics-panel--table :deep(.el-table) { border: 0; }
 .analytics-panel--table :deep(.el-empty) { border-top: 1px solid var(--analytics-line); }
+.analytics-no-permission { min-height: 360px; border: 1px solid var(--analytics-line); border-radius: 6px; background: #fff; }
 
 @media (max-width: 1500px) {
     .analytics-metric-band { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -677,6 +1076,8 @@ onMounted(async () => {
     .analytics-page__meta { align-items: flex-start; }
     .analytics-grid--overview { grid-template-columns: 1fr; }
     .analytics-grid--overview > :last-child { grid-column: auto; }
+    .analytics-grid--diagnostic,
+    .analytics-grid--four { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {

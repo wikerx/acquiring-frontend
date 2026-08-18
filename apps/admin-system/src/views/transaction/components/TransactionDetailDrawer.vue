@@ -343,7 +343,7 @@ function contactInfoFields(info: TransactionContactInfo): PartyInfoField[] {
         partyInfoField('state', info.state),
         partyInfoField('city', info.city),
         partyInfoField('postal', info.postal),
-        partyInfoField('street', info.street, true),
+        partyInfoField('street', info.street),
     ];
 }
 

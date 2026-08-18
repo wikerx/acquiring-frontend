@@ -258,7 +258,7 @@
             </div>
         </section>
 
-        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(860px, 94vw)" class="transaction-detail-drawer" destroy-on-close>
+        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(800px, 94vw)" class="transaction-detail-drawer" destroy-on-close>
             <el-skeleton v-if="detailLoading" :rows="8" animated />
             <template v-else-if="detail">
                 <div class="transaction-detail-shell">
@@ -1618,7 +1618,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-drawer-title {
-    margin: 0 0 14px;
+    margin: 0 0 10px;
     color: var(--merchant-ink);
     font-size: 14px;
     font-weight: 600;
@@ -1627,7 +1627,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-detail-drawer :deep(.el-drawer__header) {
-    padding: 20px 28px 16px;
+    padding: 16px 24px 13px;
     margin-bottom: 0;
     border-bottom: 1px solid #edf2f7;
 }
@@ -1640,7 +1640,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-detail-drawer :deep(.el-drawer__body) {
-    padding: 0 28px 28px;
+    padding: 0 24px 24px;
 }
 
 .transaction-detail-shell {
@@ -1652,8 +1652,8 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
-    gap: 28px;
-    padding: 24px 0;
+    gap: 24px;
+    padding: 18px 0;
     border-bottom: 1px solid #e8edf3;
 }
 
@@ -1715,7 +1715,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-detail-section {
     min-width: 0;
-    padding: 22px 0;
+    padding: 16px 0;
     border-bottom: 1px solid #e8edf3;
 }
 
@@ -1736,7 +1736,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-detail-metrics > div {
     min-width: 0;
-    padding: 13px 16px;
+    padding: 11px 14px;
     border-right: 1px solid #e5eaf1;
 }
 
@@ -1764,17 +1764,13 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-detail-grid > div {
-    display: grid;
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     min-width: 0;
-    padding: 13px 16px;
-    border-right: 1px solid #e8edf3;
+    padding: 11px 14px;
     border-bottom: 1px solid #e8edf3;
-}
-
-.transaction-detail-grid > div:nth-child(2n),
-.transaction-detail-grid > .transaction-detail-grid__wide {
-    border-right: 0;
 }
 
 .transaction-detail-grid > .transaction-detail-grid__wide {
@@ -1782,6 +1778,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-detail-grid dd {
+    flex: 1;
     min-width: 0;
     margin: 0;
     color: #1f2937;
@@ -1789,6 +1786,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     font-weight: 400;
     line-height: 1.45;
     overflow-wrap: anywhere;
+    text-align: right;
 }
 
 .transaction-detail-code,
@@ -1807,7 +1805,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
 .transaction-detail-statuses {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 0;
     overflow: hidden;
     border: 1px solid #e5eaf1;
@@ -1820,7 +1818,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     justify-content: space-between;
     min-width: 0;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 11px 14px;
     border-right: 1px solid #e5eaf1;
 }
 
