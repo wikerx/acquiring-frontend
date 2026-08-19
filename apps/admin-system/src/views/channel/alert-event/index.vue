@@ -28,7 +28,7 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.alert.triggerTime')">
-                <el-date-picker v-model="triggerRange" type="datetimerange" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" :range-separator="t('common.to')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+                <el-date-picker v-model="triggerRange" type="datetimerange" :default-time="FULL_DAY_RANGE_DEFAULT_TIMES" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" :range-separator="t('common.to')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ t('channel.common.search') }}</el-button>
@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue';
+import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleCheck, Delete, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';

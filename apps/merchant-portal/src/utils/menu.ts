@@ -33,6 +33,9 @@ const MENU_ROUTE_TITLE_KEYS: Record<string, string> = {
     '/system/role-auth': 'route.systemRoleAuth',
     '/security': 'route.securityCenter',
     '/security/intercept-events': 'route.securityInterceptEvents',
+    '/finance': 'route.financeManage',
+    '/finance/fee': 'route.currentFee',
+    '/finance/account': 'route.fundAccount',
 };
 
 const MENU_CODE_TITLE_KEYS: Record<string, string> = {
@@ -65,6 +68,9 @@ const MENU_CODE_TITLE_KEYS: Record<string, string> = {
     merchant_ip_whitelist_manage_v1: 'route.merchantIpWhitelist',
     security_center_v1: 'route.securityCenter',
     security_intercept_event_v1: 'route.securityInterceptEvents',
+    merchant_finance_catalog_v1: 'route.financeManage',
+    merchant_current_fee_v1: 'route.currentFee',
+    merchant_fund_account_v1: 'route.fundAccount',
 };
 
 export function createMerchantHomeMenu(): AuthMenu {

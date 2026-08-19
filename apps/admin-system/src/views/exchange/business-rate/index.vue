@@ -21,10 +21,10 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('exchange.fields.effectiveTime')">
-                <el-date-picker v-model="effectiveRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+                <el-date-picker v-model="effectiveRange" class="time-range-picker" type="datetimerange" :default-time="FULL_DAY_RANGE_DEFAULT_TIMES" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
             <el-form-item :label="$t('common.createTime')">
-                <el-date-picker v-model="createRange" class="time-range-picker" type="datetimerange" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
+                <el-date-picker v-model="createRange" class="time-range-picker" type="datetimerange" :default-time="FULL_DAY_RANGE_DEFAULT_TIMES" :range-separator="$t('common.to')" :start-placeholder="$t('exchange.placeholders.start')" :end-placeholder="$t('exchange.placeholders.end')" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button>
@@ -154,6 +154,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Plus, Refresh, Search, View } from '@element-plus/icons-vue';

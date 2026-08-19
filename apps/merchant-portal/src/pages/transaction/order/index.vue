@@ -276,7 +276,7 @@
                         <div class="transaction-detail-hero__result">
                             <span class="transaction-detail-eyebrow">{{ t('transaction.order.amount') }}</span>
                             <strong>{{ money(orderDisplayAmount(detail.order), defaultCurrency(detail.order), detail.order?.currencyExponent) }}</strong>
-                            <el-tag :type="statusTag(detail.order?.transactionStatus, transactionStatusOptions)" effect="light" round>
+                            <el-tag class="transaction-detail-status-tag transaction-detail-status-tag--hero" :type="statusTag(detail.order?.transactionStatus, transactionStatusOptions)" effect="light" round>
                                 {{ tagText(transactionStatusOptions, detail.order?.transactionStatus) }}
                             </el-tag>
                         </div>
@@ -368,11 +368,11 @@
                         <dl class="transaction-detail-statuses">
                             <div>
                                 <dt>{{ t('transaction.order.reconciliationStatus') }}</dt>
-                                <dd><el-tag size="small" :type="statusTag(detail.order?.reconciliationStatus, reconciliationStatusOptions)" effect="plain">{{ tagText(reconciliationStatusOptions, detail.order?.reconciliationStatus) }}</el-tag></dd>
+                                <dd><el-tag class="transaction-detail-status-tag" size="small" :type="statusTag(detail.order?.reconciliationStatus, reconciliationStatusOptions)" effect="plain">{{ tagText(reconciliationStatusOptions, detail.order?.reconciliationStatus) }}</el-tag></dd>
                             </div>
                             <div>
                                 <dt>{{ t('transaction.order.settlementStatus') }}</dt>
-                                <dd><el-tag size="small" :type="statusTag(detail.order?.settlementStatus, settlementStatusOptions)" effect="plain">{{ tagText(settlementStatusOptions, detail.order?.settlementStatus) }}</el-tag></dd>
+                                <dd><el-tag class="transaction-detail-status-tag" size="small" :type="statusTag(detail.order?.settlementStatus, settlementStatusOptions)" effect="plain">{{ tagText(settlementStatusOptions, detail.order?.settlementStatus) }}</el-tag></dd>
                             </div>
                         </dl>
                     </section>
@@ -385,8 +385,8 @@
                                 <div class="transaction-timeline-item">
                                     <div class="transaction-timeline-item__head">
                                         <strong>{{ tagText(transactionTypeOptions, item.transactionType) }}</strong>
-                                        <el-tag size="small" :type="statusTag(item.transactionStatus, transactionStatusOptions)" effect="plain">{{ tagText(transactionStatusOptions, item.transactionStatus) }}</el-tag>
-                                        <span>{{ money(item.transactionAmount, item.transactionCurrency, item.currencyExponent) }}</span>
+                                        <el-tag class="transaction-detail-status-tag transaction-timeline-item__status" size="small" :type="statusTag(item.transactionStatus, transactionStatusOptions)" effect="plain">{{ tagText(transactionStatusOptions, item.transactionStatus) }}</el-tag>
+                                        <span class="transaction-timeline-item__amount">{{ money(item.transactionAmount, item.transactionCurrency, item.currencyExponent) }}</span>
                                     </div>
                                     <code>{{ item.transactionId || '-' }}</code>
                                     <small>{{ responseTooltip(item.merchantResponseCode, item.merchantResponseMessage) }}</small>
@@ -1586,6 +1586,7 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     --capability-border: #cbd5e1;
     --capability-background: #f8fafc;
     gap: 6px;
+    justify-content: center;
     min-width: 66px;
     height: 24px;
     border-color: var(--capability-border) !important;
@@ -1615,6 +1616,31 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 .transaction-capability-tag.is-enabled::before {
     opacity: 1;
     box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.transaction-detail-status-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.transaction-detail-status-tag :deep(.el-tag__content) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.transaction-detail-status-tag--hero {
+    min-width: 68px;
+    height: 26px;
+    border-radius: 13px;
 }
 
 .transaction-drawer-title {
@@ -1850,7 +1876,8 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-timeline-item__head {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(64px, auto) 64px minmax(100px, 1fr);
     align-items: center;
     min-width: 0;
     gap: 8px;
@@ -1862,12 +1889,13 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
     font-weight: 600;
 }
 
-.transaction-timeline-item__head > span {
-    margin-left: auto;
+.transaction-timeline-item__amount {
+    justify-self: end;
     color: #263244;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .transaction-timeline-item code {
@@ -2123,6 +2151,20 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 
     .transaction-detail-grid > .transaction-detail-grid__wide {
         grid-column: auto;
+    }
+
+    .transaction-timeline-item__head {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .transaction-timeline-item__status {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .transaction-timeline-item__amount {
+        grid-column: 1 / -1;
+        justify-self: start;
     }
 
     .transaction-search-form {

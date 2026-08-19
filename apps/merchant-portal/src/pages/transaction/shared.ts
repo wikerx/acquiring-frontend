@@ -222,6 +222,12 @@ export function defaultTransactionTodayRange(timeZone = DEFAULT_TRANSACTION_QUER
     return [`${zonedNow.date}T00:00:00`, `${zonedNow.date}T${zonedNow.time}`];
 }
 
+/** 返回指定系统时区当天的完整闭区间，适用于按自然日查询的业务时间条件。 */
+export function defaultTodayFullDayRange(timeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE) {
+    const zonedNow = resolveZonedNow(timeZone);
+    return [`${zonedNow.date}T00:00:00`, `${zonedNow.date}T23:59:59`];
+}
+
 /**
  * 快捷时间范围的结束时刻必须随每次查询滚动到当前时间；自定义范围由调用方原样保留。
  */
