@@ -301,7 +301,7 @@ const quickAccessItems = computed(() => {
 const securityAccessItems = computed(() => {
     const items: QuickAccessItem[] = [
         createQuickAccess('mfaSecurity', '/system/user', 'sys:user:mfa:view', Key, 'rgba(15, 23, 42, 0.08)', '#0f172a', t('dashboard.mfaSecurity'), t('dashboard.mfaSecurityDesc'), true),
-        createQuickAccess('securityIntercept', '/security/intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
+        createQuickAccess('securityIntercept', '/monitor/security-intercept-event', 'security:intercept-event:list', WarnTriangleFilled, 'rgba(220, 38, 38, 0.1)', '#dc2626', t('dashboard.securityIntercept'), t('dashboard.securityInterceptDesc')),
         createQuickAccess('loginAudit', '/system/log?tab=login', 'system:login-log:list', Monitor, 'rgba(59, 130, 246, 0.12)', '#2563eb', t('dashboard.loginAudit'), t('dashboard.loginAuditDesc')),
         createQuickAccess('operationAudit', '/system/log?tab=oper', 'system:oper-log:list', DocumentChecked, 'rgba(124, 58, 237, 0.1)', '#7c3aed', t('dashboard.operationAuditEntry'), t('dashboard.operationAuditEntryDesc')),
     ];
@@ -323,7 +323,7 @@ const monitorEntries = computed<MonitorEntryItem[]>(() => {
             title: t('dashboard.securityIntercept'),
             description: t('dashboard.securityInterceptMonitorDesc'),
             summary: t('dashboard.securityInterceptSummary'),
-            path: '/security/intercept-event',
+            path: '/monitor/security-intercept-event',
             permission: 'security:intercept-event:list',
             icon: WarnTriangleFilled,
             iconBackground: 'rgba(220, 38, 38, 0.1)',

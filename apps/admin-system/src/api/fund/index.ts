@@ -84,6 +84,7 @@ export interface FundLedger {
     traceId?: string | null;
     reversalOfLedgerId?: number | null;
     rechargeDetail?: FundRecharge | null;
+    deductionDetail?: FundDeduction | null;
 }
 
 export interface FundRechargeQuery extends PageQuery {
@@ -130,6 +131,55 @@ export interface FundRechargeCreateRequest {
     amount: DecimalValue;
     requestId: string;
     remark: string;
+}
+
+export interface FundDeductionQuery extends PageQuery {
+    keyword?: string;
+    merchantId?: string;
+    deductionCategory?: string;
+    deductionStatus?: string;
+}
+
+export interface FundDeduction {
+    id: number;
+    deductionNo: string;
+    accountId: number;
+    accountNo: string;
+    merchantId: string;
+    merchantName?: string | null;
+    currency: string;
+    amount: DecimalValue;
+    deductionCategory: string;
+    deductionStatus: string;
+    reason: string;
+    submitById?: number | null;
+    submitByName: string;
+    submitTime: string;
+    auditById?: number | null;
+    auditByName?: string | null;
+    auditComment?: string | null;
+    auditTime?: string | null;
+    recheckById?: number | null;
+    recheckByName?: string | null;
+    recheckComment?: string | null;
+    recheckTime?: string | null;
+    rejectById?: number | null;
+    rejectByName?: string | null;
+    rejectComment?: string | null;
+    rejectTime?: string | null;
+    requestId: string;
+    ledgerNo?: string | null;
+    postedTime?: string | null;
+    createTime: string;
+    updateTime: string;
+}
+
+export interface FundDeductionCreateRequest {
+    accountId: number;
+    deductionCategory: string;
+    amount: DecimalValue;
+    requestId: string;
+    reason: string;
 }
 
 export interface FundAccountStatusRequest {
@@ -217,4 +267,38 @@ export async function rejectFundRecharge(id: number, comment: string) {
 
 export async function exportFundRecharges(data: FundRechargeQuery) {
     await downloadExcel('/admin/fund-accounts/recharges/export', { data });
+}
+
+export async function searchFundDeductions(data: FundDeductionQuery) {
+    const result = await http.post<CommonResult<PageResult<FundDeduction>>>('/admin/fund-accounts/deductions/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getFundDeduction(id: number) {
+    const result = await http.get<CommonResult<FundDeduction>>(`/admin/fund-accounts/deductions/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function createFundDeduction(data: FundDeductionCreateRequest) {
+    const result = await http.post<CommonResult<FundDeduction>>('/admin/fund-accounts/deductions', data);
+    return unwrapResult(result.data);
+}
+
+export async function auditFundDeduction(id: number, comment?: string) {
+    const result = await http.post<CommonResult<FundDeduction>>(`/admin/fund-accounts/deductions/${id}/audit`, { comment });
+    return unwrapResult(result.data);
+}
+
+export async function recheckFundDeduction(id: number, comment?: string) {
+    const result = await http.post<CommonResult<FundDeduction>>(`/admin/fund-accounts/deductions/${id}/recheck`, { comment });
+    return unwrapResult(result.data);
+}
+
+export async function rejectFundDeduction(id: number, comment: string) {
+    const result = await http.post<CommonResult<FundDeduction>>(`/admin/fund-accounts/deductions/${id}/reject`, { comment });
+    return unwrapResult(result.data);
+}
+
+export async function exportFundDeductions(data: FundDeductionQuery) {
+    await downloadExcel('/admin/fund-accounts/deductions/export', { data });
 }

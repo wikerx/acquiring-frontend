@@ -10,7 +10,8 @@
             <el-form label-position="top" class="simulation-form">
                 <el-row :gutter="18">
                     <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.merchant')" required><MerchantRemoteSelect v-model="form.merchantId" @change="selectMerchantPlan" /></el-form-item></el-col>
-                    <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.feeCategory')" required><el-select v-model="form.feeCategory"><el-option :label="$t('feeAccount.category.transaction')" value="TRANSACTION_FEE" /><el-option :label="$t('feeAccount.category.refund')" value="REFUND_FEE" /><el-option :label="$t('feeAccount.category.risk')" value="RISK_FEE" /><el-option :label="$t('feeAccount.category.dispute')" value="DISPUTE_FEE" /></el-select></el-form-item></el-col>
+                    <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.feeCategory')" required><el-select v-model="form.feeCategory" @change="handleFeeCategoryChange"><el-option :label="$t('feeAccount.category.transaction')" value="TRANSACTION_FEE" /><el-option :label="$t('feeAccount.category.refund')" value="REFUND_FEE" /><el-option :label="$t('feeAccount.category.risk')" value="RISK_FEE" /><el-option :label="$t('feeAccount.category.dispute')" value="DISPUTE_FEE" /></el-select></el-form-item></el-col>
+                    <el-col v-if="form.feeCategory === 'RISK_FEE'" :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.riskServiceType')" required><el-select v-model="form.riskServiceType"><el-option :label="$t('feeAccount.riskType.internal')" value="INTERNAL" /><el-option :label="$t('feeAccount.riskType.external')" value="EXTERNAL" /><el-option :label="$t('feeAccount.riskType.threeDs')" value="THREE_DS" /></el-select></el-form-item></el-col>
                     <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.transactionType')" required><FeeDictSelect v-model="form.transactionType" dict-type="transaction_type" /></el-form-item></el-col>
                     <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.paymentType')" required><FeeDictSelect v-model="form.paymentType" dict-type="acquiring_payment_method" @change="handlePaymentTypeChange" /></el-form-item></el-col>
                     <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.paymentMethod')" required><FeeDictSelect v-model="form.paymentMethod" dict-type="card_brand" allow-all :disabled="form.paymentType !== 'BANK_CARD'" /></el-form-item></el-col>
@@ -40,7 +41,7 @@
                     <el-tab-pane :label="$t('feeAccount.feeBreakdown')" name="fee">
                         <StandardTable table-key="admin-fee-simulation-result" :data="resultRows" row-key="simulationNo" size="small">
                             <el-table-column prop="ruleName" :label="$t('feeAccount.ruleName')" min-width="160" align="center" />
-                            <el-table-column :label="$t('feeAccount.matchDimension')" min-width="230" align="center"><template #default>{{ form.transactionType }} / {{ form.paymentType }} / {{ form.paymentMethod }}</template></el-table-column>
+                            <el-table-column :label="$t('feeAccount.matchDimension')" min-width="260" align="center"><template #default>{{ form.transactionType }} / {{ form.paymentType }} / {{ form.paymentMethod }}<template v-if="form.feeCategory === 'RISK_FEE'"> / {{ riskServiceText(form.riskServiceType) }}</template></template></el-table-column>
                             <el-table-column prop="feeMode" :label="$t('feeAccount.feeMode')" min-width="120" align="center" />
                             <el-table-column prop="formula" :label="$t('feeAccount.formulaSnapshot')" min-width="320" align="center" show-overflow-tooltip />
                             <el-table-column :label="$t('feeAccount.finalFee')" min-width="150" align="right"><template #default><BaseAmount :value="result.finalFeeUsd" currency="USD" currency-display="code" /></template></el-table-column>
@@ -88,6 +89,7 @@
                 <el-table-column prop="transactionType" :label="$t('feeAccount.transactionType')" min-width="130" align="center" />
                 <el-table-column prop="paymentType" :label="$t('feeAccount.paymentType')" min-width="130" align="center" />
                 <el-table-column prop="paymentMethod" :label="$t('feeAccount.paymentMethod')" min-width="120" align="center" />
+                <el-table-column :label="$t('feeAccount.riskServiceType')" min-width="120" align="center"><template #default="scope">{{ riskServiceText(scope.row.riskServiceType) }}</template></el-table-column>
                 <el-table-column :label="$t('feeAccount.labelAmount')" min-width="150" align="right"><template #default="scope"><BaseAmount :value="scope.row.labelAmount" :currency="scope.row.labelCurrency" currency-display="code" /></template></el-table-column>
                 <el-table-column :label="$t('feeAccount.finalFee')" min-width="145" align="right"><template #default="scope"><BaseAmount :value="scope.row.finalFeeUsd" currency="USD" currency-display="code" /></template></el-table-column>
                 <el-table-column :label="$t('feeAccount.reserveAmount')" min-width="145" align="right"><template #default="scope"><BaseAmount :value="scope.row.reserveAmountUsd" currency="USD" currency-display="code" /></template></el-table-column>
@@ -141,7 +143,7 @@ const matchedRule = computed(() => selectedVersion.value?.rules.find((item) => i
 const resultRows = computed(() => result.value ? [{ simulationNo: result.value.simulationNo, ruleName: matchedRule.value?.ruleName || `#${result.value.matchedRuleId}`, feeMode: matchedRule.value?.feeMode || '-', formula: result.value.formulaSnapshot }] : []);
 
 function emptySimulation(): FeeSimulationInput {
-    return { merchantId: '', feeCategory: 'TRANSACTION_FEE', transactionType: 'PAYMENT', paymentType: 'BANK_CARD', paymentMethod: 'ALL', labelAmount: '100', labelCurrency: 'USD', monthlyCountBefore: 0, monthlyAmountUsdBefore: '0' };
+    return { merchantId: '', feeCategory: 'TRANSACTION_FEE', transactionType: 'PAYMENT', paymentType: 'BANK_CARD', paymentMethod: 'ALL', riskServiceType: 'INTERNAL', labelAmount: '100', labelCurrency: 'USD', monthlyCountBefore: 0, monthlyAmountUsdBefore: '0' };
 }
 function applySelectedPlan(plan: FeePlanDetail | null) {
     selectedPlan.value = plan;
@@ -156,12 +158,28 @@ async function selectMerchantPlan(value: string | string[]) {
     if (!selectedPlan.value?.currentVersionId) ElMessage.warning(t('feeAccount.merchantFeeNotConfigured'));
 }
 
-function handlePaymentTypeChange(value: string) { if (value !== 'BANK_CARD') form.value.paymentMethod = 'ALL'; }
+function handlePaymentTypeChange(value: string | string[]) {
+    if (!Array.isArray(value) && value !== 'BANK_CARD') form.value.paymentMethod = 'ALL';
+}
+
+function handleFeeCategoryChange() {
+    result.value = null;
+    if (form.value.feeCategory !== 'RISK_FEE') form.value.riskServiceType = 'NONE';
+    else if (!form.value.riskServiceType || form.value.riskServiceType === 'NONE') form.value.riskServiceType = 'INTERNAL';
+}
+
+function riskServiceText(value?: FeeSimulationInput['riskServiceType']) {
+    if (value === 'INTERNAL') return t('feeAccount.riskType.internal');
+    if (value === 'EXTERNAL') return t('feeAccount.riskType.external');
+    if (value === 'THREE_DS') return t('feeAccount.riskType.threeDs');
+    return '-';
+}
 
 async function calculate() {
     if (!form.value.merchantId) return ElMessage.warning(t('feeAccount.selectMerchant'));
     if (!selectedVersion.value) return ElMessage.warning(t('feeAccount.merchantFeeNotConfigured'));
     if (!form.value.transactionType || !form.value.paymentType || !form.value.paymentMethod) return ElMessage.warning(t('feeAccount.completeMatchDimensions'));
+    if (form.value.feeCategory === 'RISK_FEE' && (!form.value.riskServiceType || form.value.riskServiceType === 'NONE')) return ElMessage.warning(t('feeAccount.riskServiceType'));
     if (!/^[A-Za-z]{3}$/.test(form.value.labelCurrency)) return ElMessage.warning(t('feeAccount.invalidCurrency'));
     loading.value = true;
     try {

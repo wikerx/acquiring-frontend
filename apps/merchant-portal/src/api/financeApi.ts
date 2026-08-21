@@ -17,11 +17,16 @@ export interface FeeTier {
 
 export interface FeeRule {
     id: number;
-    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE';
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE';
     ruleName: string;
     transactionType: string;
     paymentType: string;
     paymentMethod: string;
+    transactionTypes?: string[];
+    paymentTypes?: string[];
+    paymentMethods?: string[];
+    riskServiceType?: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE';
+    chargeTrigger?: 'NO_CHARGE' | 'SUCCESS' | 'SUCCESS_OR_FAILURE' | 'ON_CALL' | 'NOT_APPLICABLE';
     feeMode: string;
     percentageRate: DecimalValue;
     fixedAmountUsd: DecimalValue;
@@ -93,6 +98,8 @@ export interface FundLedger {
     accountSequence: number;
     operatorName: string;
     reviewerName?: string | null;
+    operationReason?: string | null;
+    reviewComment?: string | null;
     businessTime: string;
     postedTime: string;
 }

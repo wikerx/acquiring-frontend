@@ -128,6 +128,7 @@
                         <el-descriptions-item :label="$t('finance.balanceType')">{{ selectedLedger.balanceType }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.businessType')">{{ dictLabel(businessTypeOptions, selectedLedger.businessType) }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.summary')" :span="2">{{ selectedLedger.summary || '-' }}</el-descriptions-item>
+                        <el-descriptions-item :label="$t('finance.operationReason')" :span="2">{{ selectedLedger.operationReason || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.businessNo')">{{ selectedLedger.businessNo || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.transactionId')">{{ selectedLedger.transactionId || '-' }}</el-descriptions-item>
                     </el-descriptions>
@@ -137,6 +138,7 @@
                     <el-descriptions :column="2" size="small">
                         <el-descriptions-item :label="$t('finance.operator')">{{ selectedLedger.operatorName || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.reviewer')">{{ selectedLedger.reviewerName || '-' }}</el-descriptions-item>
+                        <el-descriptions-item :label="$t('finance.reviewComment')" :span="2">{{ selectedLedger.reviewComment || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.businessTime')"><BaseDateTime :value="selectedLedger.businessTime" /></el-descriptions-item>
                         <el-descriptions-item :label="$t('finance.postedTime')"><BaseDateTime :value="selectedLedger.postedTime" /></el-descriptions-item>
                     </el-descriptions>

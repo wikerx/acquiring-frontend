@@ -22,11 +22,17 @@ export interface FeeRuleTierInput {
 }
 
 export interface FeeRuleInput {
-    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE';
-    ruleName: string;
-    transactionType: string;
-    paymentType: string;
-    paymentMethod: string;
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE';
+    ruleName?: string;
+    /** Compatibility scalar fields; batch arrays take precedence in the backend. */
+    transactionType?: string;
+    paymentType?: string;
+    paymentMethod?: string;
+    transactionTypes: string[];
+    paymentTypes: string[];
+    paymentMethods: string[];
+    riskServiceType?: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE' | null;
+    chargeTrigger?: 'NO_CHARGE' | 'SUCCESS' | 'SUCCESS_OR_FAILURE' | 'ON_CALL' | 'NOT_APPLICABLE' | null;
     feeMode: 'STANDARD' | 'TIER';
     percentageRate: DecimalValue;
     fixedAmountUsd: DecimalValue;
@@ -41,7 +47,9 @@ export interface FeeRuleInput {
 
 export interface FeeVersionInput {
     reserveRate: DecimalValue;
+    reserveDelayUnit: 'T' | 'D';
     reserveDelayDays: number;
+    settlementCurrency?: string | null;
     initialDelayUnit: 'T' | 'D';
     initialDelayDays: number;
     regularDelayUnit: 'T' | 'D';
@@ -67,6 +75,7 @@ export interface MerchantFeeVersionInput extends FeeVersionInput {
 export interface MerchantTemplateAssignInput {
     templateId: number;
     changeReason: string;
+    settlementCurrency?: string;
     planName?: string;
     remark?: string;
 }
@@ -75,8 +84,17 @@ export interface FeeRuleTier extends FeeRuleTierInput {
     id: number;
 }
 
-export interface FeeRule extends FeeRuleInput {
+export interface FeeRule extends Omit<FeeRuleInput,
+    'ruleName' | 'transactionType' | 'paymentType' | 'paymentMethod'
+    | 'transactionTypes' | 'paymentTypes' | 'paymentMethods'> {
     id: number;
+    ruleName: string;
+    transactionType: string;
+    paymentType: string;
+    paymentMethod: string;
+    transactionTypes?: string[];
+    paymentTypes?: string[];
+    paymentMethods?: string[];
     tiers: FeeRuleTier[];
 }
 
@@ -90,7 +108,9 @@ export interface FeeVersion {
     sourceTemplateVersionNo?: number | null;
     originType: string;
     reserveRate: DecimalValue;
+    reserveDelayUnit: 'T' | 'D';
     reserveDelayDays: number;
+    settlementCurrency?: string | null;
     initialDelayUnit: 'T' | 'D';
     initialDelayDays: number;
     regularDelayUnit: 'T' | 'D';
@@ -117,6 +137,7 @@ export interface FeePlanSummary {
     planType: string;
     merchantId?: string | null;
     merchantName?: string | null;
+    settlementCurrency?: string | null;
     sourceTemplateId?: number | null;
     sourceTemplateVersionNo?: number | null;
     originType?: string | null;
@@ -124,7 +145,10 @@ export interface FeePlanSummary {
     currentVersionNo?: number | null;
     status: string;
     remark?: string | null;
+    pendingVersionId?: number | null;
+    pendingVersionNo?: number | null;
     pendingVersionStatus?: string | null;
+    pendingSubmitById?: number | null;
     createTime?: string | null;
     updateTime?: string | null;
 }
@@ -155,6 +179,7 @@ export interface FeeSimulationInput {
     transactionType: string;
     paymentType: string;
     paymentMethod: string;
+    riskServiceType?: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE';
     labelAmount: DecimalValue;
     labelCurrency: string;
     monthlyCountBefore: number;
@@ -199,6 +224,7 @@ export interface FeeSimulationRecord {
     transactionType: string;
     paymentType: string;
     paymentMethod: string;
+    riskServiceType: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE';
     labelAmount: DecimalValue;
     labelCurrency: string;
     labelToUsdRate: DecimalValue;
@@ -233,6 +259,24 @@ export async function createFeeTemplate(data: FeeTemplateCreateInput) {
 
 export async function createFeeTemplateVersion(id: number, data: FeeVersionInput) {
     const result = await http.post<CommonResult<FeePlanDetail>>(`/admin/fees/templates/${id}/versions`, data);
+    return unwrapResult(result.data);
+}
+
+export async function updateFeeTemplateDraft(planId: number, versionId: number, data: FeeVersionInput) {
+    const result = await http.put<CommonResult<FeePlanDetail>>(
+        `/admin/fees/templates/${planId}/versions/${versionId}`,
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function submitFeeTemplateVersion(versionId: number) {
+    const result = await http.put<CommonResult<FeePlanDetail>>(`/admin/fees/versions/${versionId}/submit`);
+    return unwrapResult(result.data);
+}
+
+export async function withdrawFeeTemplateVersion(versionId: number) {
+    const result = await http.put<CommonResult<FeePlanDetail>>(`/admin/fees/versions/${versionId}/withdraw`);
     return unwrapResult(result.data);
 }
 

@@ -326,10 +326,21 @@
                 <div v-if="formMessage" class="checkout-inline-note checkout-inline-note--error">
                     {{ formMessage }}
                 </div>
+                <div
+                    v-if="paymentDeadlineText"
+                    :class="['checkout-deadline', { 'checkout-deadline--expired': paymentDeadlineExpired }]"
+                    role="timer"
+                    aria-live="polite"
+                >
+                    <span class="checkout-deadline__label">
+                        {{ paymentDeadlineExpired ? t('checkout.paymentDeadlineExpired') : t('checkout.paymentDeadline') }}
+                    </span>
+                    <strong>{{ paymentDeadlineText }}</strong>
+                </div>
                 <button
                     class="checkout-submit"
                     type="button"
-                    :disabled="submitting || supportedPaymentMethods.length === 0"
+                    :disabled="submitting || paymentDeadlineExpired || supportedPaymentMethods.length === 0"
                     @click="handleSubmitPayment"
                 >
                     {{ submitting ? t('checkout.submitting') : payButtonText }}
@@ -618,6 +629,7 @@ const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     UNIONPAY: 'unionPay',
 };
 const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
+    PAYMENT_TIMEOUT: 'status.failureReasons.PAYMENT_TIMEOUT',
     RISK_REJECTED: 'status.failureReasons.RISK_REJECTED',
     ROUTE_FAILED: 'status.failureReasons.ROUTE_FAILED',
     CHANNEL_UNSUPPORTED: 'status.failureReasons.CHANNEL_UNSUPPORTED',
@@ -665,6 +677,10 @@ const pollAttemptLimit = ref(POLLING_MAX_ATTEMPTS);
 const redirectCountdown = ref<number | null>(null);
 const redirectTimer = ref<number | null>(null);
 const redirectSubmitted = ref(false);
+const paymentDeadlineRemainingSeconds = ref<number | null>(null);
+const paymentDeadlineTimer = ref<number | null>(null);
+const serverClockOffsetMs = ref(0);
+const paymentDeadlineRefreshPending = ref(false);
 const devStatusPolls = ref(0);
 const initErrorKey = ref('');
 const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) : '');
@@ -719,11 +735,30 @@ const formattedResultAmount = computed(() => (
         : formattedAmount.value
 ));
 const payButtonText = computed(() => t('checkout.payAmount', { amount: formattedAmount.value }));
-const retryAvailable = computed(() => (
-    paymentResult.value?.failure?.retryAllowed
-    ?? checkoutInfo.value?.retryAllowed
-    ?? false
+const paymentDeadlineExpired = computed(() => (
+    paymentDeadlineRemainingSeconds.value !== null && paymentDeadlineRemainingSeconds.value <= 0
 ));
+const retryAvailable = computed(() => (
+    !paymentDeadlineExpired.value && (
+        paymentResult.value?.failure?.retryAllowed
+        ?? checkoutInfo.value?.retryAllowed
+        ?? false
+    )
+));
+const linkExpired = computed(() => normalizeCode(latestPageState.value) === 'EXPIRED');
+const paymentDeadlineText = computed(() => {
+    const remaining = paymentDeadlineRemainingSeconds.value;
+    if (remaining === null) {
+        return '';
+    }
+    if (remaining <= 0) {
+        return t('checkout.paymentDeadlineExpiredValue');
+    }
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    const seconds = remaining % 60;
+    return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
+});
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
 const hasMerchantRedirect = computed(() => resolveMerchantRedirectUrl() !== null);
@@ -836,6 +871,17 @@ const localizedStatusConfig = computed(() => {
         };
     }
     if (statusViewState.value === 'failed') {
+        if (linkExpired.value) {
+            return {
+                icon: 'x',
+                eyebrow: t('status.expiredEyebrow'),
+                title: t('status.expiredTitle'),
+                description: t('status.expiredDescription'),
+                message: t('status.expiredMessage'),
+                primaryAction: t('status.failedSecondary'),
+                secondaryAction: t('status.failedSecondary'),
+            };
+        }
         return {
             icon: 'x',
             eyebrow: t('status.failedEyebrow'),
@@ -1024,6 +1070,7 @@ async function initializeCheckout() {
 function hydrateSession(response: HostedCheckoutSession) {
     session.value = response;
     paymentResult.value = response.paymentResult || null;
+    startPaymentDeadline(response.checkout?.expireTime, response.checkout?.serverTime);
     hydratePrefill(response);
 }
 
@@ -1049,7 +1096,10 @@ function hydratePrefill(response: HostedCheckoutSession) {
 }
 
 async function handleSubmitPayment() {
-    if (submitting.value) {
+    if (submitting.value || paymentDeadlineExpired.value) {
+        if (paymentDeadlineExpired.value) {
+            await refreshSessionAfterPaymentDeadline();
+        }
         return;
     }
     formMessageKey.value = '';
@@ -1335,6 +1385,7 @@ function applyPageState(pageState?: string) {
         return;
     }
     if (state === 'SUCCEEDED') {
+        clearPaymentDeadline();
         clearPolling();
         clearThreeDsContinuation();
         runtimeState.value = 'success';
@@ -1374,6 +1425,105 @@ function applyPageState(pageState?: string) {
         return;
     }
     blockCheckout('checkout.invalidLink');
+}
+
+/** 使用服务端响应时间校准 24 小时提交截止倒计时。 */
+function startPaymentDeadline(expireTime?: string, serverTime?: string) {
+    clearPaymentDeadline();
+    const expireAt = parseTimestamp(expireTime);
+    if (expireAt === null) {
+        paymentDeadlineRemainingSeconds.value = null;
+        return;
+    }
+    const serverAt = parseTimestamp(serverTime);
+    serverClockOffsetMs.value = serverAt === null ? 0 : serverAt - Date.now();
+    updatePaymentDeadline(expireAt);
+    if (!paymentDeadlineExpired.value) {
+        paymentDeadlineTimer.value = window.setInterval(() => updatePaymentDeadline(expireAt), 1000);
+    }
+}
+
+/** 更新倒计时，并在首次归零时重新查询服务端权威状态。 */
+function updatePaymentDeadline(expireAt: number) {
+    const previous = paymentDeadlineRemainingSeconds.value;
+    const estimatedServerNow = Date.now() + serverClockOffsetMs.value;
+    paymentDeadlineRemainingSeconds.value = Math.max(0, Math.ceil((expireAt - estimatedServerNow) / 1000));
+    if (paymentDeadlineRemainingSeconds.value === 0) {
+        if (paymentDeadlineTimer.value !== null) {
+            window.clearInterval(paymentDeadlineTimer.value);
+            paymentDeadlineTimer.value = null;
+        }
+        if (previous !== 0 && runtimeState.value === 'checkout') {
+            void refreshSessionAfterPaymentDeadline();
+        }
+    }
+}
+
+/** 截止时间到达后清除付款资格，并以服务端惰性超时结果覆盖页面。 */
+async function refreshSessionAfterPaymentDeadline() {
+    if (paymentDeadlineRefreshPending.value || !session.value) {
+        return;
+    }
+    const resultBeforeRefresh = paymentResult.value;
+    paymentDeadlineRefreshPending.value = true;
+    session.value.cardEncryption = undefined;
+    if (session.value.checkout) {
+        session.value.checkout.retryAllowed = false;
+    }
+    try {
+        if (!isDevToken(routeToken.value)) {
+            const response = await queryCheckoutSession({
+                opaqueToken: routeToken.value,
+                cover: routeCover.value,
+                clientContext: buildClientContext(),
+            });
+            hydrateSession(response);
+            applyPageState(response.pageState);
+            return;
+        }
+    } catch {
+        // 本地过期视图只收敛交互资格；服务端仍通过 CAS 和任务保证最终状态。
+    } finally {
+        paymentDeadlineRefreshPending.value = false;
+    }
+    const existingFailureReason = normalizeCode(resultBeforeRefresh?.failure?.reasonCode);
+    if (resultBeforeRefresh && existingFailureReason && existingFailureReason !== 'PAYMENT_TIMEOUT') {
+        handlePaymentResult({
+            ...resultBeforeRefresh,
+            pageState: 'FAILED_FINAL',
+            failure: {
+                ...resultBeforeRefresh.failure,
+                retryAllowed: false,
+            },
+        });
+        return;
+    }
+    const timeoutResult: HostedCheckoutPaymentResult = {
+        checkoutSessionId: session.value.checkoutSessionId,
+        pageState: 'EXPIRED',
+        failure: {
+            reasonCode: 'PAYMENT_TIMEOUT',
+            retryAllowed: false,
+        },
+    };
+    handlePaymentResult(timeoutResult);
+}
+
+/** 解析带偏移时间或 ISO 时间；无效输入不启动倒计时。 */
+function parseTimestamp(value?: string): number | null {
+    if (!value) {
+        return null;
+    }
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+/** 清理付款倒计时定时器，不改变已经计算出的剩余时间。 */
+function clearPaymentDeadline() {
+    if (paymentDeadlineTimer.value !== null) {
+        window.clearInterval(paymentDeadlineTimer.value);
+        paymentDeadlineTimer.value = null;
+    }
 }
 
 async function retryPayment() {
@@ -2087,6 +2237,8 @@ function mockSession(token = 'dev-token'): HostedCheckoutSession {
             threeDsMode: 'AUTO',
         }],
         checkout: {
+            expireTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            serverTime: new Date().toISOString(),
             retryAllowed: true,
             pollingIntervalSeconds: 2,
         },
@@ -2206,5 +2358,6 @@ onBeforeUnmount(() => {
     clearPolling();
     clearThreeDsContinuation();
     clearMerchantRedirect();
+    clearPaymentDeadline();
 });
 </script>

@@ -18,6 +18,24 @@
             </div>
         </section>
 
+        <section v-if="deduction" class="detail-band is-deduction">
+            <div class="detail-band__heading">
+                <h4>{{ $t('feeAccount.deductionInformation') }}</h4>
+                <el-tag :type="deductionStatusType" effect="light">{{ $t(`feeAccount.deductionStatus.${deduction.deductionStatus}`) }}</el-tag>
+            </div>
+            <el-descriptions :column="2" size="small">
+                <el-descriptions-item :label="$t('feeAccount.deductionNo')">{{ deduction.deductionNo }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.requestId')">{{ deduction.requestId || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ deduction.merchantId }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ deduction.merchantName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ deduction.accountNo || ledger.accountNo || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.deductionCategory')">{{ $t(`feeAccount.deductionCategoryValue.${deduction.deductionCategory}`) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.deductionReason')" :span="2">{{ deduction.reason }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.submitter')">{{ deduction.submitByName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.submitTime')"><BaseDateTime :value="deduction.submitTime" /></el-descriptions-item>
+            </el-descriptions>
+        </section>
+
         <section v-if="recharge" class="detail-band is-recharge">
             <div class="detail-band__heading">
                 <h4>{{ $t('feeAccount.rechargeInformation') }}</h4>
@@ -41,31 +59,31 @@
         <section v-if="hasAudit" class="detail-band is-audit">
             <h4>{{ $t('feeAccount.auditInformation') }}</h4>
             <el-descriptions :column="2" size="small">
-                <el-descriptions-item :label="$t('feeAccount.auditor')">{{ recharge?.auditByName || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.auditTime')"><BaseDateTime :value="recharge?.auditTime" /></el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.auditComment')" :span="2">{{ recharge?.auditComment || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.auditor')">{{ reviewRecord?.auditByName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.auditTime')"><BaseDateTime :value="reviewRecord?.auditTime" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.auditComment')" :span="2">{{ reviewRecord?.auditComment || '-' }}</el-descriptions-item>
             </el-descriptions>
         </section>
 
         <section v-if="hasRecheck" class="detail-band is-recheck">
             <h4>{{ $t('feeAccount.recheckInformation') }}</h4>
             <el-descriptions :column="2" size="small">
-                <el-descriptions-item :label="$t('feeAccount.rechecker')">{{ recharge?.recheckByName || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.recheckTime')"><BaseDateTime :value="recharge?.recheckTime" /></el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.recheckComment')" :span="2">{{ recharge?.recheckComment || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.rechecker')">{{ reviewRecord?.recheckByName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.recheckTime')"><BaseDateTime :value="reviewRecord?.recheckTime" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.recheckComment')" :span="2">{{ reviewRecord?.recheckComment || '-' }}</el-descriptions-item>
             </el-descriptions>
         </section>
 
         <section v-if="hasRejection" class="detail-band is-reject">
             <h4>{{ $t('feeAccount.rejectInformation') }}</h4>
             <el-descriptions :column="2" size="small">
-                <el-descriptions-item :label="$t('feeAccount.rejectOperator')">{{ recharge?.rejectByName || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.rejectTime')"><BaseDateTime :value="recharge?.rejectTime" /></el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.rejectComment')" :span="2">{{ recharge?.rejectComment || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.rejectOperator')">{{ reviewRecord?.rejectByName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.rejectTime')"><BaseDateTime :value="reviewRecord?.rejectTime" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.rejectComment')" :span="2">{{ reviewRecord?.rejectComment || '-' }}</el-descriptions-item>
             </el-descriptions>
         </section>
 
-        <section v-if="!recharge" class="detail-band is-business">
+        <section v-if="!recharge && !deduction" class="detail-band is-business">
             <h4>{{ $t('feeAccount.ledgerBusinessInfo') }}</h4>
             <el-descriptions :column="2" size="small">
                 <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ ledger.merchantId }}</el-descriptions-item>
@@ -78,7 +96,7 @@
             </el-descriptions>
         </section>
 
-        <section v-if="!recharge" class="detail-band is-operation">
+        <section v-if="!recharge && !deduction" class="detail-band is-operation">
             <h4>{{ $t('feeAccount.ledgerAuditInfo') }}</h4>
             <el-descriptions :column="2" size="small">
                 <el-descriptions-item :label="$t('feeAccount.operator')">{{ ledger.operatorName || '-' }}</el-descriptions-item>
@@ -125,13 +143,20 @@ const props = withDefaults(defineProps<{
 });
 
 const recharge = computed(() => props.ledger.rechargeDetail || null);
-const hasAudit = computed(() => Boolean(recharge.value?.auditByName || recharge.value?.auditTime || recharge.value?.auditComment));
-const hasRecheck = computed(() => Boolean(recharge.value?.recheckByName || recharge.value?.recheckTime || recharge.value?.recheckComment));
-const hasRejection = computed(() => Boolean(recharge.value?.rejectByName || recharge.value?.rejectTime || recharge.value?.rejectComment));
+const deduction = computed(() => props.ledger.deductionDetail || null);
+const reviewRecord = computed(() => recharge.value || deduction.value);
+const hasAudit = computed(() => Boolean(reviewRecord.value?.auditByName || reviewRecord.value?.auditTime || reviewRecord.value?.auditComment));
+const hasRecheck = computed(() => Boolean(reviewRecord.value?.recheckByName || reviewRecord.value?.recheckTime || reviewRecord.value?.recheckComment));
+const hasRejection = computed(() => Boolean(reviewRecord.value?.rejectByName || reviewRecord.value?.rejectTime || reviewRecord.value?.rejectComment));
 const rechargeStatusType = computed(() => {
     if (recharge.value?.rechargeStatus === 'POSTED') return 'success';
     if (recharge.value?.rechargeStatus === 'REJECTED') return 'danger';
     return recharge.value?.rechargeStatus === 'PENDING_RECHECK' ? 'warning' : 'info';
+});
+const deductionStatusType = computed(() => {
+    if (deduction.value?.deductionStatus === 'POSTED') return 'success';
+    if (deduction.value?.deductionStatus === 'REJECTED') return 'danger';
+    return deduction.value?.deductionStatus === 'PENDING_RECHECK' ? 'warning' : 'info';
 });
 </script>
 
@@ -154,6 +179,7 @@ const rechargeStatusType = computed(() => {
 .detail-band__heading .el-tag { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 4px; }
 .detail-band.is-recharge,
 .detail-band.is-business { border-left-color: #3b82c4; background: #f5faff; }
+.detail-band.is-deduction { border-left-color: #d45d56; background: #fff7f6; }
 .detail-band.is-audit { border-left-color: #d49b2f; background: #fffbf2; }
 .detail-band.is-recheck,
 .detail-band.is-operation { border-left-color: #1f9d78; background: #f3faf7; }

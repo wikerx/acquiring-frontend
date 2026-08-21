@@ -46,10 +46,11 @@
             <el-table-column :label="$t('common.updateTime')" min-width="170" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.updateTime" /></template>
             </el-table-column>
-            <el-table-column :label="$t('common.operation')" width="240" fixed="right" align="center">
+            <el-table-column :label="$t('common.operation')" width="300" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button v-hasPermi="'fund:account:detail'" link type="primary" :icon="View" @click="openDetail(row)">{{ $t('common.detail') }}</el-button>
                     <el-button v-hasPermi="'fund:recharge:add'" link type="primary" :icon="CreditCard" @click="openRecharge(row)">{{ $t('feeAccount.recharge') }}</el-button>
+                    <el-button v-if="row.accountStatus !== 'CLOSED'" v-hasPermi="'fund:deduction:add'" link type="danger" :icon="Remove" @click="openDeduction(row)">{{ $t('feeAccount.deduction') }}</el-button>
                     <el-dropdown v-if="hasStatusAction(row)" trigger="click" @command="(command: string | number | object) => openStatusAction(command, row)">
                         <el-button link type="primary" :icon="MoreFilled">{{ $t('feeAccount.accountActions') }}</el-button>
                         <template #dropdown>
@@ -200,7 +201,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
-import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Search, Unlock, View } from '@element-plus/icons-vue';
+import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Remove, Search, Unlock, View } from '@element-plus/icons-vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -342,6 +343,10 @@ async function openDetail(row: FundAccount) {
 
 function openRecharge(row: FundAccount) {
     router.push({ path: '/fund/recharge', query: { accountId: String(row.id), merchantId: row.merchantId } });
+}
+
+function openDeduction(row: FundAccount) {
+    router.push({ path: '/fund/deduction', query: { accountId: String(row.id), merchantId: row.merchantId } });
 }
 
 function handleLedgerSearch() {

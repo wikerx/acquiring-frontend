@@ -4,6 +4,10 @@
         :placeholder="placeholder || $t('common.pleaseSelect')"
         :loading="loading"
         :disabled="disabled"
+        :multiple="multiple"
+        :collapse-tags="multiple"
+        :collapse-tags-tooltip="multiple"
+        :max-collapse-tags="2"
         clearable
         filterable
         @update:model-value="handleChange"
@@ -19,21 +23,23 @@ import { useI18n } from 'vue-i18n';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 
 const props = withDefaults(defineProps<{
-    modelValue?: string;
+    modelValue?: string | string[];
     dictType: string;
     placeholder?: string;
     allowAll?: boolean;
     disabled?: boolean;
+    multiple?: boolean;
 }>(), {
     modelValue: '',
     placeholder: '',
     allowAll: false,
     disabled: false,
+    multiple: false,
 });
 
 const emit = defineEmits<{
-    'update:modelValue': [value: string];
-    change: [value: string];
+    'update:modelValue': [value: string | string[]];
+    change: [value: string | string[]];
 }>();
 
 const { locale } = useI18n();
@@ -53,8 +59,8 @@ async function loadOptions() {
     }
 }
 
-function handleChange(value?: string) {
-    const nextValue = value || '';
+function handleChange(value?: string | string[]) {
+    const nextValue = value || (props.multiple ? [] : '');
     emit('update:modelValue', nextValue);
     emit('change', nextValue);
 }

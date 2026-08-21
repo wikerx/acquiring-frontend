@@ -35,20 +35,15 @@
 
         <FeePlanDetailDrawer v-model:visible="detailVisible" :plan="detail" :title="$t('feeAccount.versionHistory', { name: detail?.planName || '' })" :show-merchant="detail?.planType === 'MERCHANT'" />
 
-        <el-dialog v-model="reviewVisible" :title="reviewAction === 'APPROVE' ? $t('feeAccount.approveVersionTitle') : $t('feeAccount.rejectVersionTitle')" width="520px">
-            <el-descriptions v-if="reviewing" :column="2" border size="small">
-                <el-descriptions-item :label="$t('feeAccount.plan')">{{ reviewing.planName }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.version')">v{{ reviewing.versionNo }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.submitter')">{{ reviewing.submitByName }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.submitTime')"><BaseDateTime :value="reviewing.submitTime" /></el-descriptions-item>
-            </el-descriptions>
-            <el-form label-position="top" class="review-comment-form">
-                <el-form-item :label="reviewAction === 'REJECT' ? $t('feeAccount.rejectionReason') : $t('feeAccount.reviewComment')" :required="reviewAction === 'REJECT'">
-                    <el-input v-model="reviewComment" type="textarea" :rows="4" maxlength="500" show-word-limit />
-                </el-form-item>
-            </el-form>
-            <template #footer><div class="dialog-footer"><el-button :type="reviewAction === 'APPROVE' ? 'success' : 'danger'" :loading="saving" @click="submitReview">{{ $t('common.confirm') }}</el-button><el-button @click="reviewVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
-        </el-dialog>
+        <FeeReviewDialog
+            v-model:visible="reviewVisible"
+            :target="reviewing"
+            :action="reviewAction"
+            :loading="saving"
+            :can-approve="userStore.hasPermission('fee:review:approve')"
+            :can-reject="userStore.hasPermission('fee:review:reject')"
+            @submit="submitReview"
+        />
     </div>
 </template>
 
@@ -61,10 +56,13 @@ import { approveFeeVersion, exportFeeReviews, getFeeTemplate, getMerchantFee, re
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { useUserStore } from '@/store/modules/user';
 import FeePlanDetailDrawer from '@/views/fee/components/FeePlanDetailDrawer.vue';
+import FeeReviewDialog from '@/views/fee/components/FeeReviewDialog.vue';
 
 const loading = ref(false);
 const { t } = useI18n();
+const userStore = useUserStore();
 const saving = ref(false);
 const showSearch = ref(true);
 const rows = ref<FeeReview[]>([]);
@@ -75,7 +73,6 @@ const detail = ref<FeePlanDetail | null>(null);
 const reviewVisible = ref(false);
 const reviewing = ref<FeeReview | null>(null);
 const reviewAction = ref<'APPROVE' | 'REJECT'>('APPROVE');
-const reviewComment = ref('');
 
 onMounted(load);
 
@@ -101,18 +98,16 @@ async function openDetail(row: FeeReview) {
 function openReview(row: FeeReview, action: 'APPROVE' | 'REJECT') {
     reviewing.value = row;
     reviewAction.value = action;
-    reviewComment.value = '';
     reviewVisible.value = true;
 }
 
-async function submitReview() {
+async function submitReview(action: 'APPROVE' | 'REJECT', reviewComment: string) {
     if (!reviewing.value) return;
-    if (reviewAction.value === 'REJECT' && !reviewComment.value.trim()) return ElMessage.warning(t('feeAccount.rejectionReasonRequired'));
     saving.value = true;
     try {
-        if (reviewAction.value === 'APPROVE') await approveFeeVersion(reviewing.value.versionId, reviewComment.value.trim() || undefined);
-        else await rejectFeeVersion(reviewing.value.versionId, reviewComment.value.trim());
-        ElMessage.success(t(reviewAction.value === 'APPROVE' ? 'feeAccount.versionActivated' : 'feeAccount.versionRejected'));
+        if (action === 'APPROVE') await approveFeeVersion(reviewing.value.versionId, reviewComment || undefined);
+        else await rejectFeeVersion(reviewing.value.versionId, reviewComment);
+        ElMessage.success(t(action === 'APPROVE' ? 'feeAccount.versionActivated' : 'feeAccount.versionRejected'));
         reviewVisible.value = false;
         await load();
     } finally { saving.value = false; }
@@ -121,5 +116,4 @@ async function submitReview() {
 
 <style scoped>
 .search-form :deep(.el-select) { width: 180px; }
-.review-comment-form { margin-top: 18px; }
 </style>
