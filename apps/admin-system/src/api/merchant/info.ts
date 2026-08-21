@@ -28,6 +28,10 @@ export interface MerchantInfo {
     jwtKey?: MerchantKeySummary;
     platformPayloadKey?: MerchantKeySummary;
     responseKey?: MerchantKeySummary;
+    loginInitialized?: boolean;
+    fundAccountNo?: string;
+    fundAccountStatus?: string;
+    currentFeeVersionNo?: number;
 }
 
 export interface MerchantKeySummary {

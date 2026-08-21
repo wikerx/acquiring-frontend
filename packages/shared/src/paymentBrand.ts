@@ -12,6 +12,7 @@ import sslLogo from './assets/payment-icons/security/ssl.svg';
 import visaSecureLogo from './assets/payment-icons/security/visa-secure.png';
 import alipayPlusLogo from './assets/payment-icons/wallets/alipay-plus.svg';
 import applePayLogo from './assets/payment-icons/wallets/apple-pay.svg';
+import cashAppPayLogo from './assets/payment-icons/wallets/cash-app-pay.png';
 import googlePayLogo from './assets/payment-icons/wallets/google-pay.svg';
 import paypalLogo from './assets/payment-icons/wallets/paypal.svg';
 
@@ -187,6 +188,8 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         kind: 'wallet',
         label: 'Cash App Pay',
         textFallback: 'Cash App Pay',
+        asset: cashAppPayLogo,
+        assetSource: 'Icons8 Cash App icon provided by user; usage is subject to the applicable Icons8 license',
     },
     achDebit: {
         key: 'achDebit',

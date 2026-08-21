@@ -1359,6 +1359,28 @@ textarea {
     margin-left: 0;
 }
 
+.fee-editor-dialog:not(.is-fullscreen) {
+    margin-top: 3vh !important;
+}
+
+.fee-editor-dialog .el-dialog__header {
+    margin-right: 0;
+    padding: 16px 20px 13px;
+    border-bottom: 1px solid var(--admin-panel-border-soft);
+}
+
+.fee-editor-dialog .el-dialog__body {
+    max-height: calc(88vh - 126px);
+    padding: 16px 20px !important;
+    overflow-y: auto;
+}
+
+.fee-editor-dialog .el-dialog__footer {
+    padding: 8px 20px 12px;
+    border-top: 1px solid var(--admin-panel-border-soft);
+    background: #fff;
+}
+
 /* ===== Card ===== */
 .el-card__header {
     padding: 12px 16px 8px;

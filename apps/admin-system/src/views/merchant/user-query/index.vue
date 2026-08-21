@@ -20,6 +20,7 @@
                 <el-date-picker
                     v-model="createdRange"
                     type="datetimerange"
+                    :default-time="FULL_DAY_RANGE_DEFAULT_TIMES"
                     start-placeholder="开始时间"
                     end-placeholder="结束时间"
                     value-format="YYYY-MM-DDTHH:mm:ss"
@@ -116,6 +117,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue';
+import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import { ElMessage, type FormInstance } from 'element-plus';
 import { Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';

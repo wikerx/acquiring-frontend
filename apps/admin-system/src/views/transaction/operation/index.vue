@@ -205,7 +205,7 @@
                     <CopyableText :value="row.acquirerReferenceNo" :label="t('transaction.fields.acquirerReferenceNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="360" fixed="right" align="center">
+            <el-table-column :label="t('common.operation')" width="430" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
                     <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryCallbackDisabled')" placement="top">
@@ -221,6 +221,22 @@
                                 v-hasPermi="'transaction:merchant-notification:retry'"
                             >
                                 {{ t('transaction.actions.retryCallback') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
+                    <el-tooltip :content="canRequeryChannelMatch(row) ? t('transaction.actions.channelMatchTip') : t('transaction.actions.channelMatchDisabled')" placement="top">
+                        <span>
+                            <el-button
+                                size="small"
+                                type="primary"
+                                link
+                                :icon="RefreshRight"
+                                :disabled="!canRequeryChannelMatch(row)"
+                                :loading="matchingTransactionId === row.transactionId"
+                                @click="handleChannelMatch(row)"
+                                v-hasPermi="'transaction:match-abnormal:requery'"
+                            >
+                                {{ t('transaction.actions.channelMatch') }}
                             </el-button>
                         </span>
                     </el-tooltip>
@@ -443,6 +459,7 @@ import {
     exportTransactionOperations,
     getTransactionOperationDetail,
     refundTransactionOperation,
+    requeryTransactionChannelMatch,
     retryMerchantNotification,
     searchTransactionOperationsWithSummary,
     voidTransactionOperation,
@@ -497,6 +514,7 @@ const voidVisible = ref(false);
 const merchantVisible = ref(false);
 const actionSubmitting = ref(false);
 const retryingTransactionId = ref('');
+const matchingTransactionId = ref('');
 const rows = ref<TransactionOperation[]>([]);
 const operationSummary = ref<TransactionOperationSummary | null>(null);
 const detail = ref<TransactionDetail | null>(null);
@@ -798,7 +816,7 @@ function paymentLogos(row: TransactionOperation): PaymentLogoKey[] {
 
 function fallbackStatusOptions(scope: 'channelMatch' | 'reconciliation' | 'settlement' | 'merchantNotification'): TransactionDictOption[] {
     const values = scope === 'channelMatch'
-        ? ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED']
+        ? ['NOT_REQUIRED', 'PENDING', 'REVIEW_REQUIRED', 'MATCHED', 'MISMATCHED', 'FAILED']
         : scope === 'reconciliation'
             ? ['NOT_RECONCILED', 'RECONCILED', 'MISMATCHED']
             : scope === 'settlement'
@@ -902,6 +920,46 @@ function canVoid(row: TransactionOperation) {
 function canRetryCallback(row: TransactionOperation) {
     return ['SUCCESS', 'FAILED'].includes(row.transactionStatus)
         && Boolean(row.transactionId && row.transactionDateTime);
+}
+
+function canRequeryChannelMatch(row: TransactionOperation) {
+    return ['PENDING', 'REVIEW_REQUIRED', 'MISMATCHED', 'FAILED'].includes(row.channelMatchStatus || '')
+        && Boolean(row.transactionId && row.transactionDateTime);
+}
+
+async function handleChannelMatch(row: TransactionOperation) {
+    if (!canRequeryChannelMatch(row)) {
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(
+            t('transaction.actions.channelMatchConfirm', { transactionId: row.transactionId }),
+            t('transaction.actions.channelMatchTitle'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+            },
+        );
+    } catch {
+        return;
+    }
+    matchingTransactionId.value = row.transactionId;
+    try {
+        const result = await requeryTransactionChannelMatch(row.transactionId, {
+            transactionDateTime: row.transactionDateTime,
+        });
+        if (result.matchedCount > 0) {
+            ElMessage.success(t('transaction.actions.channelMatchSuccess'));
+        } else if (result.failedCount > 0) {
+            ElMessage.warning(t('transaction.actions.channelMatchFailed'));
+        } else {
+            ElMessage.warning(t('transaction.actions.channelMatchPending'));
+        }
+        await loadData();
+    } finally {
+        matchingTransactionId.value = '';
+    }
 }
 
 async function handleRetryCallback(row: TransactionOperation) {

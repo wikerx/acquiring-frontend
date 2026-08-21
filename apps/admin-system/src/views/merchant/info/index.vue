@@ -119,6 +119,34 @@
             <el-descriptions-item :label="$t('merchant.info.address')" :span="2">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
           </el-descriptions>
         </section>
+
+        <section class="merchant-detail__section">
+          <h4>{{ $t('merchant.info.operationalFoundation') }}</h4>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item :label="$t('merchant.info.loginInitialization')">
+              <el-tag :type="detailMerchant.loginInitialized ? 'success' : 'warning'">
+                {{ detailMerchant.loginInitialized ? $t('merchant.info.initialized') : $t('merchant.info.notInitialized') }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.fundAccountStatus')">
+              <el-tag :type="detailMerchant.fundAccountNo ? 'success' : 'warning'">
+                {{ detailMerchant.fundAccountStatus || $t('merchant.info.notInitialized') }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.fundAccountNo')">{{ detailMerchant.fundAccountNo || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('merchant.info.currentFeeVersion')">
+              {{ detailMerchant.currentFeeVersionNo ? `v${detailMerchant.currentFeeVersionNo}` : $t('merchant.info.notConfigured') }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <div class="merchant-detail__actions">
+            <el-button v-if="canViewMerchantFee" type="primary" plain @click="goToMerchantFee(detailMerchant.merchantId)">
+              {{ $t('merchant.info.viewMerchantFee') }}
+            </el-button>
+            <el-button v-if="canViewFundAccount" plain @click="goToFundAccount(detailMerchant.merchantId)">
+              {{ $t('merchant.info.viewFundAccount') }}
+            </el-button>
+          </div>
+        </section>
       </div>
     </CommonDetailDrawer>
 
@@ -477,6 +505,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, VideoPause, VideoPlay, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -517,6 +546,7 @@ import { searchDictData, type SysDictData } from '@/api/system/dict';
 import { useUserStore } from '@/store/modules/user';
 
 const { t, locale } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
 const showSearch = ref(true);
 const loading = ref(false);
@@ -607,6 +637,8 @@ const canDownloadMaterial = userStore.hasPermission('merchant:material:download'
 const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:download') && userStore.hasPermission('merchant:material:private');
 const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
 const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
+const canViewMerchantFee = userStore.hasPermission('fee:merchant:list');
+const canViewFundAccount = userStore.hasPermission('fund:account:list');
 const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
 const statusChangingId = ref<string>();
 const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
@@ -663,9 +695,24 @@ async function loadFormData(mode: 'add' | 'edit', row?: MerchantInfo): Promise<P
     return undefined;
   }
 }
-function openDetail(row: MerchantInfo) {
-  detailMerchant.value = row;
-  detailVisible.value = true;
+async function openDetail(row: MerchantInfo) {
+  if (!row.id) return;
+  try {
+    detailMerchant.value = await getMerchant(row.id);
+    detailVisible.value = true;
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.loadFailed'));
+  }
+}
+
+function goToMerchantFee(merchantId: string) {
+  detailVisible.value = false;
+  void router.push({ path: '/fee/merchant', query: { merchantId } });
+}
+
+function goToFundAccount(merchantId: string) {
+  detailVisible.value = false;
+  void router.push({ path: '/fund/account', query: { merchantId } });
 }
 function openMaterial(row: MerchantInfo) {
   currentMerchant.value = row;
@@ -1154,6 +1201,13 @@ function businessTypeText(type?: number) {
   color: #303133;
   font-size: 14px;
   font-weight: 600;
+}
+
+.merchant-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .merchant-form-drawer :deep(.el-drawer__body) {

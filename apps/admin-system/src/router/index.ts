@@ -151,7 +151,7 @@ router.beforeEach(async (to) => {
         return '/dashboard';
     }
     if (isMissingRoute(to.name) && hasResolvedRoute(to.fullPath)) {
-        return { path: to.fullPath, replace: true };
+        return { path: to.path, query: to.query, hash: to.hash, replace: true };
     }
     if (to.meta.permission && !user.hasPermission(to.meta.permission)) {
         return '/403';

@@ -29,6 +29,7 @@ const props = defineProps<{
     disabled?: boolean;
     width?: string | number;
     allowAll?: boolean;
+    codeOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +95,9 @@ async function loadOptions(keyword = '') {
 function currencyLabel(item: IsoCurrency) {
     if (item.alpha3Code === 'ALL') {
         return t('exchange.placeholders.allCurrenciesOption');
+    }
+    if (props.codeOnly) {
+        return item.alpha3Code;
     }
     return [item.alpha3Code, item.chineseName, item.englishName].filter(Boolean).join(' - ');
 }

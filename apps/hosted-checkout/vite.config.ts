@@ -2,10 +2,10 @@ import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
-const allowedHosts = (process.env.CHECKOUT_ALLOWED_HOSTS || '96f5157.r11.vip.cpolar.cn')
-    .split(',')
-    .map((host) => host.trim())
-    .filter(Boolean);
+const allowedHosts = (process.env.CHECKOUT_ALLOWED_HOSTS || '49639ab0.r31.cpolar.top')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean);
 
 export default defineConfig({
     plugins: [vue()],

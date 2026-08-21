@@ -44,6 +44,7 @@ export interface HostedCheckoutSession {
     paymentMethods?: HostedCheckoutPaymentMethod[];
     checkout?: {
         expireTime?: string;
+        serverTime?: string;
         retryAllowed?: boolean;
         pollingIntervalSeconds?: number;
     };

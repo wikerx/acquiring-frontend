@@ -264,6 +264,17 @@ export interface TransactionActionResponse {
     currency?: string;
 }
 
+export interface ChannelMatchRequeryRequest {
+    transactionDateTime: string;
+}
+
+export interface ChannelMatchRequeryResponse {
+    scannedCount: number;
+    matchedCount: number;
+    pendingCount: number;
+    failedCount: number;
+}
+
 export interface RefundManagementQuery extends PageQuery {
     merchantId?: string;
     refundTransactionId?: string;
@@ -620,6 +631,17 @@ export async function voidTransactionOperation(transactionId: string, data: Tran
     const result = await http.post<CommonResult<TransactionActionResponse>>(
         `/admin/transactions/operations/${transactionId}/void`,
         normalizeTransactionActionShardTimes(data),
+    );
+    return unwrapResult(result.data);
+}
+
+export async function requeryTransactionChannelMatch(
+    transactionId: string,
+    data: ChannelMatchRequeryRequest,
+) {
+    const result = await http.post<CommonResult<ChannelMatchRequeryResponse>>(
+        `/admin/transactions/operations/${transactionId}/channel-match/requery`,
+        { transactionDateTime: normalizeTransactionShardTime(data.transactionDateTime) },
     );
     return unwrapResult(result.data);
 }

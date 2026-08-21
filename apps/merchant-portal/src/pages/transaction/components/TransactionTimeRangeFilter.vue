@@ -25,7 +25,7 @@
             type="datetimerange"
             value-format="YYYY-MM-DDTHH:mm:ss"
             format="YYYY-MM-DD HH:mm:ss"
-            :default-time="rangeDefaultTimes"
+            :default-time="FULL_DAY_RANGE_DEFAULT_TIMES"
             unlink-panels
             editable
             :range-separator="t('common.to')"
@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { createTransactionAnalyticsRange } from '@acquiring/shared';
+import { createTransactionAnalyticsRange, FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import type { SelectOption } from '../shared';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, resolveTransactionPresetRange } from '../shared';
 
@@ -61,11 +61,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const activePreset = ref(props.preset || props.defaultPreset || '');
-const rangeDefaultTimes: [Date, Date] = [
-    new Date(2000, 0, 1, 0, 0, 0),
-    new Date(2000, 0, 1, 23, 59, 59),
-];
-
 watch(() => props.preset, (value) => {
     if (value !== undefined && value !== activePreset.value) {
         activePreset.value = value || '';

@@ -1,8 +1,11 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 export * from './brand';
+export * from './amount';
+export * from './dateTime';
 export * from './paymentBrand';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
+export { default as PaymentMethodDisplay } from './components/PaymentMethodDisplay.vue';
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
 export { default as AnalyticsChart } from './components/AnalyticsChart.vue';
 export { default as AnalyticsPaymentPerformance } from './components/AnalyticsPaymentPerformance.vue';
