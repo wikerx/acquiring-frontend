@@ -10,6 +10,7 @@ const EXCLUSIVE_MODE_CATEGORIES = new Set<FeeRuleInput['feeCategory']>([
     'TRANSACTION_FEE',
     'REFUND_FEE',
     'DISPUTE_FEE',
+    'SETTLEMENT_PROCESSING_FEE',
 ]);
 
 function t(key: string, params?: Record<string, unknown>) {

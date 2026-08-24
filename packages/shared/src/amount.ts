@@ -32,3 +32,34 @@ export function formatDecimalAmount(
         .find((part) => part.type === 'decimal')?.value ?? '.';
     return `${groupedInteger}${decimalSeparator}${fractionText.padEnd(displayFractionLength, '0').slice(0, displayFractionLength)}`;
 }
+
+/**
+ * Round a decimal string with HALF_UP semantics without converting it to a
+ * JavaScript number. This keeps backend monetary values exact before display.
+ */
+export function roundDecimalAmount(
+    value: string | number,
+    fractionDigits = 2,
+): string {
+    const amountText = String(value).trim();
+    const decimalMatch = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(amountText);
+    if (!decimalMatch || !Number.isInteger(fractionDigits) || fractionDigits < 0) {
+        return amountText;
+    }
+
+    const [, sign, integerText, fractionText = ''] = decimalMatch;
+    const scale = 10n ** BigInt(fractionDigits);
+    const keptFraction = fractionText.slice(0, fractionDigits).padEnd(fractionDigits, '0');
+    let scaledAmount = BigInt(integerText) * scale + BigInt(keptFraction || '0');
+    if ((fractionText[fractionDigits] || '0') >= '5') {
+        scaledAmount += 1n;
+    }
+
+    const roundedSign = sign === '-' && scaledAmount !== 0n ? '-' : '';
+    const roundedInteger = scaledAmount / scale;
+    if (fractionDigits === 0) {
+        return `${roundedSign}${roundedInteger}`;
+    }
+    const roundedFraction = String(scaledAmount % scale).padStart(fractionDigits, '0');
+    return `${roundedSign}${roundedInteger}.${roundedFraction}`;
+}
