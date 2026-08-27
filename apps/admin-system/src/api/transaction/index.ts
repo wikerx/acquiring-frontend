@@ -494,6 +494,288 @@ export interface ChannelMatchAbnormalBatchResult {
     failedEventIds: string[];
 }
 
+export interface ClearingRecordQuery extends PageQuery {
+    merchantId?: string;
+    transactionId?: string;
+    clearingStatus?: string;
+    beginTime: string;
+    endTime: string;
+}
+
+export interface ClearingRecordSummary {
+    id: number;
+    financeStateId: string;
+    transactionId: string;
+    operationId?: string;
+    merchantId: string;
+    sourceTransactionId?: string;
+    transactionType?: string;
+    labelCurrency?: string;
+    labelAmount?: number | string;
+    clearingStatus: string;
+    clearingRevision: number;
+    clearingRetryCount?: number;
+    nextRetryTime?: string;
+    lastFailureCode?: string;
+    lastFailureMessage?: string;
+    feePlanId?: number;
+    feePlanVersionId?: number;
+    feePlanVersionNo?: number;
+    grossLabelAmount?: number | string;
+    feeEvaluationStatus?: string;
+    settlementStatus?: string;
+    settlementCurrency?: string;
+    settlementEligibleDate?: string;
+    platformFeeAmount?: number | string;
+    feeReversalAmount?: number | string;
+    reserveAmount?: number | string;
+    reserveReversalAmount?: number | string;
+    expectedReserveReleaseDate?: string;
+    transactionDateTime: string;
+    transactionUtcTime?: string;
+    transactionTimeZone?: string;
+    version: number;
+}
+
+export type ClearingRecordSearchResponse = PageResult<ClearingRecordSummary>;
+
+export interface ClearingTransactionLine {
+    clearingDetailNo: string;
+    clearingRevision: number;
+    lineNo: number;
+    itemType?: string;
+    feeCategory?: string;
+    riskServiceType?: string;
+    itemCode?: string;
+    itemName?: string;
+    direction?: string;
+    labelCurrency?: string;
+    labelAmount?: number | string;
+    componentType?: string;
+    basisCurrency?: string;
+    basisAmount?: number | string;
+    amount?: number | string;
+    currency?: string;
+    currencyExponent?: number;
+    percentageRate?: number | string;
+    fixedAmountUsd?: number | string;
+    minimumAmountUsd?: number | string;
+    maximumAmountUsd?: number | string;
+    limitEvaluationStatus?: string;
+    appliedLimit?: string;
+    formulaSnapshot?: string;
+    recordStatus?: string;
+}
+
+export interface ClearingReserveLine {
+    reserveClearingDetailNo: string;
+    originalTransactionId?: string;
+    sourceReserveDetailNo?: string;
+    clearingRevision: number;
+    lineNo: number;
+    reserveActionType?: string;
+    itemCode?: string;
+    itemName?: string;
+    direction?: string;
+    reserveCurrency?: string;
+    reserveCurrencyExponent?: number;
+    basisAmount?: number | string;
+    reserveRate?: number | string;
+    retainedAmount?: number | string;
+    returnedAmount?: number | string;
+    releasedAmount?: number | string;
+    adjustmentAmount?: number | string;
+    remainingAmount?: number | string;
+    expectedReserveReleaseDate?: string;
+    formulaSnapshot?: string;
+    recordStatus?: string;
+}
+
+export interface ClearingRecordDetail {
+    summary: ClearingRecordSummary;
+    transactionDetails: ClearingTransactionLine[];
+    reserveDetails: ClearingReserveLine[];
+}
+
+export interface ClearingActionRequest {
+    transactionDateTime: string;
+    expectedVersion: number;
+    reason: string;
+}
+
+export interface ClearingRecalculateRequest extends ClearingActionRequest {
+    expectedClearingRevision: number;
+    targetFeePlanId: number;
+    targetFeePlanVersionId: number;
+}
+
+export interface ClearingRecalculationVersionOption {
+    versionId: number;
+    versionNo: number;
+    versionStatus: string;
+}
+
+export interface ClearingRecalculationOptions {
+    merchantId: string;
+    feePlanId: number;
+    planCode?: string;
+    planName?: string;
+    currentVersionId?: number;
+    versions: ClearingRecalculationVersionOption[];
+}
+
+export interface ClearingBatchRecalculateItem {
+    transactionId: string;
+    transactionDateTime: string;
+    expectedVersion: number;
+    expectedClearingRevision: number;
+}
+
+export interface ClearingBatchRecalculateRequest {
+    records: ClearingBatchRecalculateItem[];
+    targetFeePlanId: number;
+    targetFeePlanVersionId: number;
+    reason: string;
+}
+
+export interface ClearingBatchRecalculateItemResult {
+    transactionId: string;
+    transactionDateTime: string;
+    success: boolean;
+    result: string;
+    message?: string;
+}
+
+export interface ClearingBatchRecalculateResponse {
+    requestedCount: number;
+    successCount: number;
+    failureCount: number;
+    results: ClearingBatchRecalculateItemResult[];
+}
+
+export interface ClearingCommandResponse {
+    transactionId: string;
+    transactionDateTime: string;
+    action: string;
+    clearingStatus: string;
+    clearingRevision: number;
+    version: number;
+    result: string;
+}
+
+export interface SettlementBatchQuery extends PageQuery {
+    settlementBatchNo?: string;
+    merchantId?: string;
+    batchType?: string;
+    batchStatus?: string;
+    beginBusinessDate: string;
+    endBusinessDate: string;
+}
+
+export interface SettlementBatchSummary {
+    id: number;
+    settlementBatchNo: string;
+    displayBatchNo: string;
+    businessDate: string;
+    businessTimeZone: string;
+    dailySequence: number;
+    merchantId: string;
+    settlementProfileId?: number;
+    settlementAccountId?: number;
+    targetCurrency: string;
+    targetCurrencyExponent: number;
+    batchType: string;
+    originalBatchNo?: string;
+    batchStatus: string;
+    candidateCount: number;
+    retryCount: number;
+    lastFailureStage?: string;
+    lastFailureCode?: string;
+    lastFailureMessage?: string;
+    rateLockedTime?: string;
+    calculatedTime?: string;
+    postedTime?: string;
+    cancelledTime?: string;
+    version: number;
+    createTime: string;
+    updateTime: string;
+}
+
+export type SettlementBatchSearchResponse = PageResult<SettlementBatchSummary>;
+
+export interface SettlementRateLine {
+    id: number;
+    sourceCurrency: string;
+    targetCurrency: string;
+    rateType: string;
+    directRate: number | string;
+    sourceCurrencyExponent: number;
+    targetCurrencyExponent: number;
+    rateSource: string;
+    quoteId?: string;
+    sourceQuoteDirection?: string;
+    effectiveTime?: string;
+    lockedTime?: string;
+    lockedBy?: string;
+}
+
+export interface SettlementResultSummaryLine {
+    paymentType?: string;
+    paymentMethod?: string;
+    transactionType?: string;
+    resultItemType: string;
+    feeCategory?: string;
+    direction: string;
+    sourceCurrency: string;
+    targetCurrency: string;
+    transactionCount: number;
+    sourceAmount: number | string;
+    targetAmount: number | string;
+}
+
+export interface SettlementNetPosting {
+    id: number;
+    settlementResultItemNo: string;
+    reversalOfResultItemId?: number;
+    direction: string;
+    targetAmount: number | string;
+    targetCurrency: string;
+    targetCurrencyExponent: number;
+    ledgerIdempotencyKey: string;
+    formulaSnapshot?: string;
+    createTime: string;
+}
+
+export interface SettlementOperationalState {
+    projectionTaskCount: number;
+    projectionCompletedCount: number;
+    projectionFailedCount: number;
+    outboxEventCount: number;
+    outboxSentCount: number;
+    outboxFailedCount: number;
+}
+
+export interface SettlementBatchDetail {
+    batch: SettlementBatchSummary;
+    rates: SettlementRateLine[];
+    resultSummaries: SettlementResultSummaryLine[];
+    netPosting?: SettlementNetPosting;
+    operationalState: SettlementOperationalState;
+}
+
+export interface SettlementBatchCommandRequest {
+    requestKey: string;
+    expectedVersion: number;
+    reason: string;
+}
+
+export interface SettlementBatchCommandResponse {
+    settlementBatchNo: string;
+    resultBatchNo: string;
+    resultStatus: string;
+    releasedCandidateCount: number;
+}
+
 /**
  * 保留后端返回的真实交易时间，只补齐 DATETIME(3) 契约需要的毫秒位。
  * 该转换不解析交易号，也不做时区换算，避免改变季度分片路由值。
@@ -775,6 +1057,102 @@ export async function resolveChannelMatchAbnormality(
     const result = await http.post<CommonResult<ChannelMatchAbnormalRecord>>(
         `/admin/transactions/channel-match-abnormalities/${encodeURIComponent(eventId)}/resolve`,
         { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchClearingRecords(data: ClearingRecordQuery) {
+    const result = await http.post<CommonResult<ClearingRecordSearchResponse>>(
+        '/admin/clearing/records/search',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getClearingRecordDetail(transactionId: string, transactionDateTime: string) {
+    const result = await http.get<CommonResult<ClearingRecordDetail>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}`,
+        { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function retryClearingRecord(transactionId: string, data: ClearingActionRequest) {
+    const result = await http.post<CommonResult<ClearingCommandResponse>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}/retry`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function reviewClearingRecord(transactionId: string, data: ClearingActionRequest) {
+    const result = await http.post<CommonResult<ClearingCommandResponse>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}/review`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function recalculateClearingRecord(transactionId: string, data: ClearingRecalculateRequest) {
+    const result = await http.post<CommonResult<ClearingCommandResponse>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}/recalculate`,
+        { ...data, transactionDateTime: normalizeTransactionDateTimeParam(data.transactionDateTime) },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getClearingRecalculationOptions(merchantId: string, feePlanId: number) {
+    const result = await http.get<CommonResult<ClearingRecalculationOptions>>(
+        '/admin/clearing/records/recalculation-options',
+        { params: { merchantId, feePlanId } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function batchRecalculateClearingRecords(data: ClearingBatchRecalculateRequest) {
+    const result = await http.post<CommonResult<ClearingBatchRecalculateResponse>>(
+        '/admin/clearing/records/recalculate-batch',
+        {
+            ...data,
+            records: data.records.map((item) => ({
+                ...item,
+                transactionDateTime: normalizeTransactionDateTimeParam(item.transactionDateTime),
+            })),
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchSettlementBatches(data: SettlementBatchQuery) {
+    const result = await http.post<CommonResult<SettlementBatchSearchResponse>>(
+        '/admin/settlement/batches/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getSettlementBatchDetail(settlementBatchNo: string) {
+    const result = await http.get<CommonResult<SettlementBatchDetail>>(
+        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function cancelSettlementBatch(
+    settlementBatchNo: string,
+    data: SettlementBatchCommandRequest,
+) {
+    const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
+        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/cancel`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function reverseSettlementBatch(
+    settlementBatchNo: string,
+    data: SettlementBatchCommandRequest,
+) {
+    const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
+        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/reverse`, data,
     );
     return unwrapResult(result.data);
 }
