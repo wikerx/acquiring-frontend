@@ -8,11 +8,28 @@
         <div class="login-page__grid">
             <section class="login-hero">
                 <div class="login-hero__eyebrow">{{ $t('login.brandEyebrow') }}</div>
-                <img
-                    class="login-hero__logo"
-                    :src="adminBrand.logos.horizontal"
-                    :alt="adminBrand.name"
-                />
+                <div
+                    class="login-hero__brand-lockup"
+                    role="img"
+                    :aria-label="adminBrand.name"
+                    translate="no"
+                >
+                    <img
+                        class="login-hero__brand-icon"
+                        :src="adminBrand.logos.icon"
+                        alt=""
+                        aria-hidden="true"
+                        :draggable="false"
+                    />
+                    <div class="login-hero__brand-copy">
+                        <div class="login-hero__brand-name">
+                            <span>{{ VEXRA_BRAND.brandName }}</span>
+                            <i aria-hidden="true"></i>
+                            <strong>{{ adminProductName }}</strong>
+                        </div>
+                        <small>{{ adminBrand.subtitleEn }}</small>
+                    </div>
+                </div>
                 <div class="login-hero__title-group">
                     <h1>{{ $t('login.heroTitle') }}</h1>
                     <p>{{ heroDescription }}</p>
@@ -221,6 +238,12 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 
 const { t, locale } = useI18n();
 const adminBrand = getSystemBrand('admin');
+const adminProductName = computed(() => {
+    const productPrefix = `${VEXRA_BRAND.brandName} `;
+    return adminBrand.name.startsWith(productPrefix)
+        ? adminBrand.name.slice(productPrefix.length)
+        : adminBrand.name;
+});
 const brandFullName = computed(() =>
     locale.value === 'en-US' ? VEXRA_BRAND.brandFullNameEn : VEXRA_BRAND.brandFullNameZh,
 );

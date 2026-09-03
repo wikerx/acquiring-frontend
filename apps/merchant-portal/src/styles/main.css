@@ -2459,9 +2459,10 @@ body {
 
 .merchant-login-page {
     position: relative;
-    min-height: 100vh;
-    overflow: hidden;
-    padding: 28px;
+    min-height: 100svh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: clamp(20px, 2.2vw, 32px);
     background:
         radial-gradient(circle at 14% 18%, rgb(13 148 136 / 16%), transparent 26%),
         radial-gradient(circle at 82% 18%, rgb(37 99 235 / 14%), transparent 28%),
@@ -2473,7 +2474,8 @@ body {
     z-index: 2;
     display: flex;
     justify-content: flex-end;
-    max-width: 1240px;
+    width: min(1440px, 100%);
+    max-width: none;
     margin: 0 auto;
     padding: 4px 6px 0 0;
 }
@@ -2481,13 +2483,14 @@ body {
 .merchant-login-page__grid {
     position: relative;
     z-index: 1;
-    min-height: calc(100vh - 112px);
-    max-width: 1240px;
+    width: min(1440px, 100%);
+    max-width: none;
+    min-height: calc(100svh - clamp(92px, 8vw, 112px));
     margin: 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(380px, 460px);
-    align-items: stretch;
-    gap: 28px;
+    grid-template-columns: minmax(0, 1fr) clamp(430px, 34vw, 470px);
+    align-items: center;
+    gap: clamp(36px, 4.5vw, 72px);
 }
 
 .merchant-login-page__orb {
@@ -2517,19 +2520,20 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 24px;
-    padding: 22px 12px 22px 8px;
+    min-width: 0;
+    gap: clamp(16px, 1.7vw, 24px);
+    padding: clamp(16px, 2vw, 26px) 0;
 }
 
 .merchant-login-hero__eyebrow {
     display: inline-flex;
     align-self: flex-start;
-    padding: 8px 14px;
-    border-radius: 999px;
+    padding: 7px 12px;
+    border-radius: 8px;
     background: rgb(255 255 255 / 78%);
     border: 1px solid rgb(125 211 252 / 38%);
     color: var(--merchant-primary-deep);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -2539,24 +2543,83 @@ body {
     align-items: center;
     justify-content: flex-end;
     padding: 8px 12px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: rgb(255 255 255 / 78%);
     border: 1px solid rgb(186 230 253 / 72%);
     box-shadow: 0 14px 26px rgb(15 23 42 / 5%);
 }
 
-.merchant-login-hero__logo {
-    width: min(520px, 100%);
+.merchant-login-hero__brand-lockup {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: clamp(13px, 1.1vw, 17px);
+    width: fit-content;
+    max-width: 100%;
+    color: var(--merchant-ink);
+    isolation: isolate;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.merchant-login-hero__brand-icon {
+    display: block;
+    width: clamp(62px, 5.2vw, 74px);
     height: auto;
-    filter: drop-shadow(0 18px 30px rgb(14 116 144 / 14%));
+    flex: 0 0 auto;
+    pointer-events: none;
+    filter: drop-shadow(0 15px 24px rgb(14 116 144 / 15%));
+    -webkit-user-drag: none;
+}
+
+.merchant-login-hero__brand-copy {
+    min-width: 0;
+}
+
+.merchant-login-hero__brand-name {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 0.95vw, 17px);
+    line-height: 0.94;
+    white-space: nowrap;
+}
+
+.merchant-login-hero__brand-name > span,
+.merchant-login-hero__brand-name > strong {
+    font-family: Inter, Satoshi, "SF Pro Display", Arial, sans-serif;
+    font-size: clamp(38px, 3vw, 52px);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+}
+
+.merchant-login-hero__brand-name > strong {
+    color: #0d9488;
+}
+
+.merchant-login-hero__brand-name > i {
+    width: 1px;
+    height: clamp(32px, 2.6vw, 42px);
+    flex: 0 0 1px;
+    background: #cbd5e1;
+}
+
+.merchant-login-hero__brand-copy > small {
+    display: block;
+    margin-top: 7px;
+    color: #64748b;
+    font-size: clamp(11px, 0.8vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.025em;
 }
 
 .merchant-login-hero__title-group h1 {
     margin: 0;
+    max-width: 820px;
     color: #0f172a;
-    font-size: clamp(40px, 5vw, 62px);
-    line-height: 1.02;
-    letter-spacing: -0.05em;
+    font-size: clamp(38px, 3.15vw, 54px);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
 }
 
 .merchant-login-hero__title-group p {
@@ -2570,12 +2633,12 @@ body {
 .merchant-login-hero__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 9px;
 }
 
 .merchant-login-hero__chip {
-    padding: 10px 16px;
-    border-radius: 999px;
+    padding: 8px 13px;
+    border-radius: 8px;
     background: rgb(255 255 255 / 82%);
     border: 1px solid rgb(186 230 253 / 72%);
     color: var(--merchant-primary-deep);
@@ -2584,24 +2647,83 @@ body {
 }
 
 .merchant-login-hero__metrics {
-    max-width: 640px;
+    max-width: 700px;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
 }
 
 .merchant-login-hero__metric {
-    padding: 18px 18px 16px;
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgb(255 255 255 / 94%), rgb(255 255 255 / 78%));
-    border: 1px solid rgb(207 250 254 / 86%);
-    box-shadow: 0 18px 44px rgb(15 23 42 / 5%);
+    --merchant-login-metric-accent: #0d9488;
+    --merchant-login-metric-ink: #0f766e;
+    --merchant-login-metric-border: rgb(13 148 136 / 20%);
+    --merchant-login-metric-surface: #e6f7f4;
+    --merchant-login-metric-glow: rgb(20 184 166 / 18%);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 86px;
+    padding: 16px 50px 14px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgb(247 253 252 / 96%) 0%, var(--merchant-login-metric-surface) 100%);
+    border: 1px solid var(--merchant-login-metric-border);
+    box-shadow:
+        0 16px 34px rgb(15 23 42 / 6%),
+        inset 0 1px 0 rgb(255 255 255 / 80%);
+}
+
+.merchant-login-hero__metric:nth-child(2) {
+    --merchant-login-metric-accent: #2563eb;
+    --merchant-login-metric-ink: #1d4ed8;
+    --merchant-login-metric-border: rgb(37 99 235 / 18%);
+    --merchant-login-metric-surface: #eaf2ff;
+    --merchant-login-metric-glow: rgb(59 130 246 / 18%);
+}
+
+.merchant-login-hero__metric:nth-child(3) {
+    --merchant-login-metric-accent: #0891b2;
+    --merchant-login-metric-ink: #0e7490;
+    --merchant-login-metric-border: rgb(8 145 178 / 18%);
+    --merchant-login-metric-surface: #e7f8fb;
+    --merchant-login-metric-glow: rgb(6 182 212 / 18%);
+}
+
+.merchant-login-hero__metric::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 14px;
+    left: 14px;
+    height: 3px;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(90deg, transparent 0%, var(--merchant-login-metric-accent) 50%, transparent 100%);
+    opacity: 0.72;
+}
+
+.merchant-login-hero__metric::after {
+    content: "";
+    position: absolute;
+    top: -28px;
+    right: -24px;
+    width: 92px;
+    height: 92px;
+    border: 1px solid var(--merchant-login-metric-border);
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, var(--merchant-login-metric-glow) 0%, transparent 68%);
+}
+
+.merchant-login-hero__metric > strong,
+.merchant-login-hero__metric > span {
+    position: relative;
+    z-index: 2;
 }
 
 .merchant-login-hero__metric strong {
     display: block;
     margin-bottom: 8px;
-    color: #0f172a;
+    color: var(--merchant-login-metric-ink);
     font-size: 24px;
     font-weight: 800;
 }
@@ -2614,14 +2736,15 @@ body {
 .merchant-login-panel {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
+    min-width: 0;
 }
 
 .merchant-login-panel__card {
     width: 100%;
-    max-width: 460px;
-    padding: 32px;
-    border-radius: 28px;
+    max-width: 470px;
+    padding: clamp(26px, 2.3vw, 32px);
+    border-radius: 12px;
     border: 1px solid rgb(207 250 254 / 90%);
     background:
         linear-gradient(155deg, rgb(255 255 255 / 94%) 0%, rgb(240 249 255 / 88%) 58%, rgb(236 253 245 / 86%) 100%);
@@ -2650,7 +2773,7 @@ body {
     color: #0f172a;
     font-size: 30px;
     font-weight: 800;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.025em;
 }
 
 .merchant-login-brand small {
@@ -2674,7 +2797,7 @@ body {
 
 .merchant-login-form .el-input__wrapper {
     min-height: 50px;
-    border-radius: 16px;
+    border-radius: 10px;
     background: rgb(255 255 255 / 90%);
     box-shadow: inset 0 0 0 1px rgb(165 243 252 / 88%);
 }
@@ -2695,7 +2818,7 @@ body {
 .merchant-login-verify-code__image {
     min-height: 50px;
     padding: 0;
-    border-radius: 16px !important;
+    border-radius: 10px !important;
     border: 1px solid rgb(14 165 233 / 26%) !important;
     background: linear-gradient(135deg, #f8fafc, #ecfeff);
     color: var(--merchant-primary-deep) !important;
@@ -2737,12 +2860,12 @@ body {
     width: 100%;
     height: 52px;
     border: none !important;
-    border-radius: 16px !important;
+    border-radius: 10px !important;
     background: linear-gradient(135deg, #0d9488 0%, #0ea5e9 54%, #2563eb 100%) !important;
     box-shadow: 0 18px 34px rgb(14 116 144 / 24%);
     font-size: 15px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.02em;
 }
 
 .merchant-mfa-panel {
@@ -2960,6 +3083,124 @@ body {
     line-height: 1.7;
 }
 
+@media (max-height: 820px) and (min-width: 1081px) {
+    .merchant-login-page {
+        padding-top: 14px;
+        padding-bottom: 14px;
+    }
+
+    .merchant-login-page__toolbar {
+        padding-top: 0;
+        padding-bottom: 4px;
+    }
+
+    .merchant-login-page__grid {
+        min-height: calc(100svh - 66px);
+    }
+
+    .merchant-login-hero {
+        gap: 13px;
+        padding: 8px 0;
+    }
+
+    .merchant-login-hero__brand-icon {
+        width: clamp(54px, 4.5vw, 62px);
+    }
+
+    .merchant-login-hero__brand-name > span,
+    .merchant-login-hero__brand-name > strong {
+        font-size: clamp(36px, 2.7vw, 44px);
+    }
+
+    .merchant-login-hero__brand-name > i {
+        height: 32px;
+    }
+
+    .merchant-login-hero__brand-copy > small {
+        margin-top: 4px;
+        font-size: 10px;
+    }
+
+    .merchant-login-hero__title-group h1 {
+        font-size: clamp(35px, 3.1vw, 46px);
+    }
+
+    .merchant-login-hero__title-group p {
+        margin-top: 8px;
+        line-height: 1.55;
+    }
+
+    .merchant-login-hero__chips {
+        gap: 8px;
+    }
+
+    .merchant-login-hero__chip {
+        padding: 6px 11px;
+    }
+
+    .merchant-login-hero__metrics {
+        gap: 10px;
+    }
+
+    .merchant-login-hero__metric {
+        min-height: 74px;
+        padding: 12px 44px 10px 14px;
+    }
+
+    .merchant-login-hero__metric strong {
+        margin-bottom: 5px;
+        font-size: 20px;
+    }
+
+    .merchant-login-panel__card {
+        padding: 20px 26px;
+    }
+
+    .merchant-login-brand {
+        margin-bottom: 8px;
+    }
+
+    .merchant-login-brand__icon {
+        width: 46px;
+        height: 46px;
+    }
+
+    .merchant-login-brand h2 {
+        font-size: 26px;
+    }
+
+    .merchant-login-panel__description {
+        margin-bottom: 12px;
+        line-height: 1.55;
+    }
+
+    .merchant-login-form .el-form-item {
+        margin-bottom: 11px;
+    }
+
+    .merchant-login-form .el-input__wrapper,
+    .merchant-login-verify-code__image,
+    .merchant-login-verify-code__image img,
+    .merchant-login-verify-code__image span {
+        min-height: 44px;
+        height: 44px;
+    }
+
+    .merchant-login-submit {
+        height: 46px;
+    }
+
+    .merchant-login-footer {
+        margin-top: 12px;
+        padding-top: 10px;
+        gap: 4px;
+    }
+
+    .merchant-login-footer small {
+        line-height: 1.45;
+    }
+}
+
 @media (max-width: 1440px) {
     .merchant-home-hero.has-balance-overview {
         grid-template-columns: minmax(0, 1fr) minmax(210px, 230px);
@@ -3110,14 +3351,23 @@ body {
     .merchant-login-page__grid {
         grid-template-columns: 1fr;
         min-height: auto;
+        gap: 24px;
     }
 
     .merchant-login-panel {
+        order: 1;
         justify-content: center;
     }
 
+    .merchant-login-hero {
+        order: 2;
+        width: min(100%, 720px);
+        margin: 0 auto;
+        padding: 8px 0 20px;
+    }
+
     .merchant-login-verify-code {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) 140px;
     }
 
     .merchant-mfa-bind__visual {
@@ -3200,7 +3450,37 @@ body {
 
     .merchant-login-panel__card {
         padding: 24px 20px;
-        border-radius: 24px;
+        border-radius: 12px;
+    }
+
+    .merchant-login-hero__lang-switch {
+        width: auto;
+    }
+
+    .merchant-login-hero__brand-lockup {
+        gap: 11px;
+    }
+
+    .merchant-login-hero__brand-icon {
+        width: 56px;
+    }
+
+    .merchant-login-hero__brand-name {
+        gap: 10px;
+    }
+
+    .merchant-login-hero__brand-name > span,
+    .merchant-login-hero__brand-name > strong {
+        font-size: clamp(32px, 7vw, 41px);
+    }
+
+    .merchant-login-hero__brand-name > i {
+        height: 31px;
+    }
+
+    .merchant-login-hero__brand-copy > small {
+        margin-top: 5px;
+        font-size: 10px;
     }
 
     .merchant-header-actions {
@@ -3231,6 +3511,29 @@ body {
     .merchant-list-summary,
     .merchant-skeleton-grid {
         grid-template-columns: 1fr;
+    }
+
+    .merchant-login-hero__metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .merchant-login-hero__metric {
+        min-height: 76px;
+        padding: 13px 30px 12px 11px;
+    }
+
+    .merchant-login-hero__metric strong {
+        margin-bottom: 5px;
+        font-size: 18px;
+    }
+
+    .merchant-login-hero__metric span {
+        font-size: 11px;
+    }
+
+    .merchant-login-verify-code {
+        grid-template-columns: minmax(0, 1fr) 118px;
     }
 
     .merchant-home-hero {
@@ -4246,6 +4549,35 @@ body {
 }
 
 @media (max-width: 420px) {
+    .merchant-login-hero__brand-icon {
+        width: 46px;
+    }
+
+    .merchant-login-hero__brand-name {
+        gap: 7px;
+    }
+
+    .merchant-login-hero__brand-name > span,
+    .merchant-login-hero__brand-name > strong {
+        font-size: 29px;
+    }
+
+    .merchant-login-hero__brand-name > i {
+        height: 25px;
+    }
+
+    .merchant-login-hero__title-group h1 {
+        font-size: 31px;
+    }
+
+    .merchant-login-hero__metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .merchant-login-verify-code {
+        grid-template-columns: minmax(0, 1fr) clamp(100px, 29vw, 110px);
+    }
+
     .merchant-home-intro__actions {
         grid-template-columns: 1fr;
     }
