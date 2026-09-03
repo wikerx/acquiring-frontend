@@ -102,6 +102,7 @@
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
                             tone="green"
+                            variant="balance"
                         />
                         <small>{{ $t('feeAccount.availableBalanceHint') }}</small>
                     </article>
@@ -113,6 +114,7 @@
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
                             tone="blue"
+                            variant="balance"
                         />
                         <small>{{ $t('feeAccount.pendingBalanceHint') }}</small>
                     </article>
@@ -124,6 +126,7 @@
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
                             tone="amber"
+                            variant="balance"
                         />
                         <small>{{ $t('feeAccount.reserveBalanceHint') }}</small>
                     </article>
