@@ -1425,6 +1425,78 @@ body {
     box-shadow: var(--merchant-card-shadow);
 }
 
+.merchant-home-hero.has-balance-overview {
+    grid-template-columns: minmax(340px, 1fr) minmax(390px, 1.05fr) 280px;
+}
+
+.merchant-home-balance-overview {
+    position: relative;
+    display: grid;
+    align-content: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 2px 24px;
+    border-right: 1px solid #d9e7f2;
+    border-left: 1px solid #d9e7f2;
+}
+
+.merchant-home-balance-overview header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.merchant-home-balance-overview header > div { min-width: 0; }
+.merchant-home-balance-overview header span {
+    display: block;
+    color: var(--merchant-ink);
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.merchant-home-balance-overview header small {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+    color: var(--merchant-muted);
+    font-size: 11px;
+}
+
+.merchant-home-balance-list { display: grid; gap: 8px; }
+.merchant-home-balance-list > div {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.merchant-home-balance-list > div > span {
+    color: var(--merchant-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.merchant-home-balance-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 68px;
+    color: #b42318;
+    font-size: 12px;
+}
+
+.merchant-home-balance-link {
+    justify-self: end;
+    height: 22px;
+    padding: 0;
+    font-size: 12px;
+}
+
 .merchant-home-hero__eyebrow {
     margin: 0 0 8px;
     color: var(--merchant-primary-deep);
@@ -1646,21 +1718,23 @@ body {
 .merchant-home-amount-list {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 5px;
     margin: 5px 0 3px;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    min-width: 0;
 }
 
 .merchant-home-amount-list > span {
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
-    min-width: max-content;
+    min-width: 0;
+    max-width: 100%;
     padding: 4px 7px;
     border: 1px solid #d9e6f5;
     border-radius: 4px;
     background: #f8fbff;
+    white-space: nowrap;
 }
 
 .merchant-home-amount-list b {
@@ -1669,8 +1743,11 @@ body {
 }
 
 .merchant-home-amount-list strong {
+    min-width: 0;
+    overflow: hidden;
     color: var(--merchant-ink);
     font-size: 15px;
+    text-overflow: ellipsis;
 }
 
 .merchant-home-amount-list small {
@@ -2553,12 +2630,88 @@ body {
     line-height: 1.7;
 }
 
+@media (max-width: 1440px) {
+    .merchant-home-hero.has-balance-overview {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+        align-items: stretch;
+    }
+
+    .merchant-home-hero.has-balance-overview > :first-child {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .merchant-home-hero.has-balance-overview .merchant-home-identity {
+        grid-column: 2;
+        grid-row: 1;
+        min-height: 118px;
+        padding: 18px 20px;
+    }
+
+    .merchant-home-balance-overview {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding: 16px 0 0;
+        border-top: 1px solid #d9e7f2;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+    }
+
+    .merchant-home-balance-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px 20px;
+    }
+
+    .merchant-home-balance-list > div {
+        grid-template-columns: 1fr;
+        align-content: start;
+        gap: 5px;
+    }
+
+    .merchant-home-metric-band {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .merchant-home-metric:nth-child(-n + 5) {
+        border-bottom: 1px solid #edf1f5;
+    }
+
+    .merchant-home-metric:nth-child(5) {
+        border-right: 0;
+    }
+
+    .merchant-home-metric--amount {
+        grid-column: 1 / -1;
+        border-right: 0;
+    }
+
+    .merchant-home-content {
+        grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+    }
+}
+
 @media (max-width: 1080px) {
     .merchant-page__hero,
     .merchant-content-grid,
     .merchant-home-hero,
     .merchant-home-content {
         grid-template-columns: 1fr;
+    }
+
+    .merchant-home-hero.has-balance-overview { grid-template-columns: 1fr; }
+    .merchant-home-hero.has-balance-overview > :first-child,
+    .merchant-home-hero.has-balance-overview .merchant-home-balance-overview,
+    .merchant-home-hero.has-balance-overview .merchant-home-identity {
+        grid-column: auto;
+        grid-row: auto;
+    }
+    .merchant-home-balance-overview {
+        padding: 16px 0;
+        border-top: 1px solid #d9e7f2;
+        border-right: 0;
+        border-bottom: 1px solid #d9e7f2;
+        border-left: 0;
     }
 
     .merchant-login-page__toolbar {
@@ -2601,6 +2754,14 @@ body {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    .merchant-home-metric--amount {
+        grid-column: auto;
+    }
+
+    .merchant-home-metric:nth-child(5) {
+        border-right: 1px solid #edf1f5;
+    }
+
     .merchant-home-metric:nth-child(3n) {
         border-right: 0;
     }
@@ -2611,6 +2772,18 @@ body {
 
     .merchant-home-content.is-without-analytics {
         grid-template-columns: 1fr;
+    }
+
+    .merchant-home-section-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .merchant-home-section-head__controls {
+        justify-content: space-between;
+        width: 100%;
+        padding-right: 52px;
     }
 
     .merchant-role-workspace {
@@ -2677,6 +2850,9 @@ body {
     .merchant-home-hero {
         padding: 22px 20px;
     }
+
+    .merchant-home-balance-list { grid-template-columns: 1fr; }
+    .merchant-home-balance-list > div { grid-template-columns: 1fr; gap: 5px; }
 
     .merchant-home-hero h1 {
         font-size: 25px;

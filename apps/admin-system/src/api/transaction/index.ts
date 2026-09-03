@@ -686,8 +686,23 @@ export interface SettlementBatchSummary {
     targetCurrencyExponent: number;
     batchType: string;
     originalBatchNo?: string;
+    reviewOrderNo?: string;
+    createMode?: string;
     batchStatus: string;
+    transactionCount: number;
     candidateCount: number;
+    projectableCandidateCount?: number;
+    netDirection?: string;
+    netAmount?: number | string;
+    resultFingerprint?: string;
+    makerAccountId?: number;
+    makerAccountName?: string;
+    makerReason?: string;
+    makerTime?: string;
+    checkerAccountId?: number;
+    checkerAccountName?: string;
+    checkerComment?: string;
+    checkerTime?: string;
     retryCount: number;
     lastFailureStage?: string;
     lastFailureCode?: string;
@@ -727,7 +742,9 @@ export interface SettlementResultSummaryLine {
     feeCategory?: string;
     direction: string;
     sourceCurrency: string;
+    sourceCurrencyExponent: number;
     targetCurrency: string;
+    targetCurrencyExponent: number;
     transactionCount: number;
     sourceAmount: number | string;
     targetAmount: number | string;
@@ -904,6 +921,14 @@ export async function refundTransactionOperation(transactionId: string, data: Tr
 export async function captureTransactionOperation(transactionId: string, data: TransactionActionRequest) {
     const result = await http.post<CommonResult<TransactionActionResponse>>(
         `/admin/transactions/operations/${transactionId}/capture`,
+        normalizeTransactionActionShardTimes(data),
+    );
+    return unwrapResult(result.data);
+}
+
+export async function preAuthCompletionTransactionOperation(transactionId: string, data: TransactionActionRequest) {
+    const result = await http.post<CommonResult<TransactionActionResponse>>(
+        `/admin/transactions/operations/${transactionId}/pre-auth-completion`,
         normalizeTransactionActionShardTimes(data),
     );
     return unwrapResult(result.data);
@@ -1143,16 +1168,6 @@ export async function cancelSettlementBatch(
 ) {
     const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
         `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/cancel`, data,
-    );
-    return unwrapResult(result.data);
-}
-
-export async function reverseSettlementBatch(
-    settlementBatchNo: string,
-    data: SettlementBatchCommandRequest,
-) {
-    const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
-        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/reverse`, data,
     );
     return unwrapResult(result.data);
 }

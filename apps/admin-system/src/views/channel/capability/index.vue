@@ -60,8 +60,21 @@
                     <span v-else>-</span>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.common.currency')" min-width="150" align="center" :show-overflow-tooltip="true">
-                <template #default="{ row }">{{ row.currencyCodes?.join(', ') || '-' }}</template>
+            <el-table-column :label="t('channel.capability.allowedAndDefaultCurrencies')" min-width="240" align="center">
+                <template #default="{ row }">
+                    <div v-if="orderedCurrencyCodes(row).length" class="tag-list currency-tag-list">
+                        <el-tag
+                            v-for="currency in orderedCurrencyCodes(row)"
+                            :key="currency"
+                            size="small"
+                            effect="plain"
+                            :type="currency === row.defaultTransactionCurrency ? 'success' : 'info'"
+                        >
+                            {{ currency }}<span v-if="currency === row.defaultTransactionCurrency" class="currency-default-mark">{{ t('channel.capability.defaultBadge') }}</span>
+                        </el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </template>
             </el-table-column>
             <el-table-column label="3DS" width="90" align="center">
                 <template #default="{ row }">
@@ -111,7 +124,24 @@
                     </div>
                     <span v-else>-</span>
                 </el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.currencies')">{{ detailRow.currencyCodes?.join(', ') || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.currencies')">
+                    <div v-if="orderedCurrencyCodes(detailRow).length" class="tag-list tag-list-left currency-tag-list">
+                        <el-tag
+                            v-for="currency in orderedCurrencyCodes(detailRow)"
+                            :key="currency"
+                            size="small"
+                            effect="plain"
+                            :type="currency === detailRow.defaultTransactionCurrency ? 'success' : 'info'"
+                        >
+                            {{ currency }}<span v-if="currency === detailRow.defaultTransactionCurrency" class="currency-default-mark">{{ t('channel.capability.defaultBadge') }}</span>
+                        </el-tag>
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('channel.capability.defaultTransactionCurrency')">
+                    <el-tag v-if="detailRow.defaultTransactionCurrency" size="small" type="success" effect="plain">{{ detailRow.defaultTransactionCurrency }}</el-tag>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item label="3DS">
                     <el-tag size="small" effect="plain" :type="detailRow.support3ds === 1 ? 'success' : 'info'">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
                 </el-descriptions-item>
@@ -127,7 +157,7 @@
         </CommonDetailDrawer>
 
         <el-dialog :title="formMode === 'create' ? t('channel.capability.addTitle') : t('channel.capability.editTitle')" v-model="formVisible" width="680px" append-to-body destroy-on-close>
-            <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
+            <el-form ref="formRef" :model="form" :rules="rules" label-width="150px" size="small">
                 <el-form-item :label="t('channel.common.channel')" prop="channelId">
                     <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="isEditMode" @change="handleChannelChange">
                         <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
@@ -149,8 +179,13 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.currencies')" prop="currencyCodes">
-                    <el-select v-model="form.currencyCodes" multiple filterable :reserve-keyword="false" style="width:100%" :loading="currencyLoading" :placeholder="t('channel.capability.currencyPlaceholder')">
+                    <el-select v-model="form.currencyCodes" multiple filterable :reserve-keyword="false" style="width:100%" :loading="currencyLoading" :placeholder="t('channel.capability.currencyPlaceholder')" @change="handleCurrencyCodesChange">
                         <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="t('channel.capability.defaultTransactionCurrency')" prop="defaultTransactionCurrency">
+                    <el-select v-model="form.defaultTransactionCurrency" filterable style="width:100%" :disabled="!form.currencyCodes.length" :placeholder="t('channel.capability.defaultCurrencyPlaceholder')" @change="handleDefaultCurrencyChange">
+                        <el-option v-for="item in allowedCurrencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
                     </el-select>
                 </el-form-item>
                 <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
@@ -254,6 +289,7 @@ const emptyForm = () => ({
     transactionType: 'PAYMENT',
     transactionTypes: ['PAYMENT'] as string[],
     currencyCodes: ['USD'] as string[],
+    defaultTransactionCurrency: 'USD',
     cardBrands: [] as string[],
     support3ds: 1,
     supportIncrementalAuthorization: 0,
@@ -268,6 +304,7 @@ const rules: FormRules = {
     paymentMethod: [{ required: true, message: t('channel.capability.requiredPaymentMethod'), trigger: 'change' }],
     transactionTypes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredTransactionType'), trigger: 'change' }],
     currencyCodes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredCurrencies'), trigger: 'change' }],
+    defaultTransactionCurrency: [{ required: true, message: t('channel.capability.requiredDefaultTransactionCurrency'), trigger: 'change' }],
     cardBrands: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredCardBrands'), trigger: 'change' }],
     capabilityStatus: [{ required: true, message: t('channel.capability.requiredStatus'), trigger: 'change' }],
 };
@@ -283,6 +320,10 @@ const canConfigureIncrementalAuthorization = computed(() => {
         return false;
     }
     return form.transactionTypes.some((value) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(value));
+});
+const allowedCurrencyOptions = computed(() => {
+    const allowedCodes = new Set(form.currencyCodes);
+    return currencyOptions.value.filter((item) => allowedCodes.has(item.alpha3Code));
 });
 
 onMounted(async () => {
@@ -374,6 +415,8 @@ function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
     syncBusinessTypeWithChannel();
     form.transactionTypes = normalizeTransactionTypes(form.businessType, form.transactionTypes, form.transactionType);
     form.transactionType = form.transactionTypes.join(',');
+    form.defaultTransactionCurrency = form.defaultTransactionCurrency || form.currencyCodes[0] || '';
+    moveDefaultCurrencyFirst();
     syncConditionalFields();
     formVisible.value = true;
     nextTick(() => formRef.value?.clearValidate());
@@ -406,6 +449,48 @@ function handleTransactionTypeChange() {
     syncConditionalFields();
 }
 
+async function handleCurrencyCodesChange(values: string[]) {
+    form.currencyCodes = Array.from(new Set(values.map(normalizeCurrencyCode).filter(Boolean)));
+    if (!form.currencyCodes.length) {
+        form.defaultTransactionCurrency = '';
+        return;
+    }
+    if (form.currencyCodes.includes(form.defaultTransactionCurrency)) {
+        moveDefaultCurrencyFirst();
+        return;
+    }
+    const previousDefault = form.defaultTransactionCurrency;
+    const nextDefault = form.currencyCodes[0];
+    if (previousDefault) {
+        try {
+            await ElMessageBox.confirm(
+                t('channel.capability.defaultCurrencyRemovedConfirm', { previous: previousDefault, next: nextDefault }),
+                t('common.operationConfirm'),
+                { type: 'warning' },
+            );
+        } catch {
+            form.currencyCodes = [previousDefault, ...form.currencyCodes.filter((currency) => currency !== previousDefault)];
+            return;
+        }
+    }
+    form.defaultTransactionCurrency = nextDefault;
+    moveDefaultCurrencyFirst();
+    formRef.value?.clearValidate('defaultTransactionCurrency');
+}
+
+function handleDefaultCurrencyChange() {
+    moveDefaultCurrencyFirst();
+}
+
+function moveDefaultCurrencyFirst() {
+    const defaultCurrency = normalizeCurrencyCode(form.defaultTransactionCurrency);
+    if (!defaultCurrency || !form.currencyCodes.includes(defaultCurrency)) {
+        return;
+    }
+    form.defaultTransactionCurrency = defaultCurrency;
+    form.currencyCodes = [defaultCurrency, ...form.currencyCodes.filter((currency) => currency !== defaultCurrency)];
+}
+
 function syncConditionalFields() {
     if (!isBankCardPayment.value) {
         form.cardBrands = [];
@@ -420,6 +505,7 @@ function syncConditionalFields() {
 
 async function submitForm() {
     syncConditionalFields();
+    moveDefaultCurrencyFirst();
     const valid = await formRef.value?.validate().catch(() => false);
     if (!valid) {
         return;
@@ -564,6 +650,19 @@ function transactionTypeItems(row: Pick<ChannelCapability, 'businessType' | 'tra
     }));
 }
 
+function normalizeCurrencyCode(value?: string) {
+    return (value || '').trim().toUpperCase();
+}
+
+function orderedCurrencyCodes(row: Pick<ChannelCapability, 'currencyCodes' | 'defaultTransactionCurrency'>) {
+    const defaultCurrency = normalizeCurrencyCode(row.defaultTransactionCurrency);
+    const currencies = Array.from(new Set((row.currencyCodes || []).map(normalizeCurrencyCode).filter(Boolean)));
+    if (!defaultCurrency || !currencies.includes(defaultCurrency)) {
+        return currencies;
+    }
+    return [defaultCurrency, ...currencies.filter((currency) => currency !== defaultCurrency)];
+}
+
 function canRowConfigureIncrementalAuthorization(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
     return row.businessType === 'ACQUIRING'
         && normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType).some((value) => INCREMENTAL_AUTH_TRANSACTION_TYPES.has(value));
@@ -585,6 +684,15 @@ function canRowConfigure3ds(row: Pick<ChannelCapability, 'channelId' | 'business
 
 .tag-list-left {
     justify-content: flex-start;
+}
+
+.currency-tag-list {
+    min-height: 24px;
+}
+
+.currency-default-mark {
+    margin-left: 4px;
+    font-size: 11px;
 }
 
 </style>

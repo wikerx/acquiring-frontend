@@ -8,9 +8,7 @@
             <div class="amount-flow__change">
                 <span>{{ $t('feeAccount.occurredAmount') }}</span>
                 <strong><BaseAmount :value="ledger.amount" :currency="ledger.currency" currency-display="code" /></strong>
-                <el-tag :type="ledger.direction === 'CREDIT' ? 'success' : 'danger'" effect="light">
-                    {{ ledger.direction === 'CREDIT' ? $t('feeAccount.credit') : $t('feeAccount.debit') }}
-                </el-tag>
+                <DirectionTag :direction="ledger.direction" :label="ledger.direction === 'CREDIT' ? $t('feeAccount.credit') : $t('feeAccount.debit')" />
             </div>
             <div>
                 <span>{{ $t('feeAccount.balanceAfter') }}</span>
@@ -26,8 +24,7 @@
             <el-descriptions :column="2" size="small">
                 <el-descriptions-item :label="$t('feeAccount.deductionNo')">{{ deduction.deductionNo }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.requestId')">{{ deduction.requestId || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ deduction.merchantId }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ deduction.merchantName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="deduction.merchantId" :merchant-name="deduction.merchantName" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ deduction.accountNo || ledger.accountNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.deductionCategory')">{{ $t(`feeAccount.deductionCategoryValue.${deduction.deductionCategory}`) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.deductionReason')" :span="2">{{ deduction.reason }}</el-descriptions-item>
@@ -46,8 +43,7 @@
             <el-descriptions :column="2" size="small">
                 <el-descriptions-item :label="$t('feeAccount.rechargeNo')">{{ recharge.rechargeNo }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.requestId')">{{ recharge.requestId || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ recharge.merchantId }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ recharge.merchantName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="recharge.merchantId" :merchant-name="recharge.merchantName" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ recharge.accountNo || ledger.accountNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')">{{ recharge.currency }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')" :span="2">{{ recharge.remark || '-' }}</el-descriptions-item>
@@ -86,8 +82,7 @@
         <section v-if="!recharge && !deduction" class="detail-band is-business">
             <h4>{{ $t('feeAccount.ledgerBusinessInfo') }}</h4>
             <el-descriptions :column="2" size="small">
-                <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ ledger.merchantId }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ ledger.merchantName || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="ledger.merchantId" :merchant-name="ledger.merchantName" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ ledger.accountNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.businessType')">{{ businessTypeLabel || ledger.businessType }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.summary')" :span="2">{{ ledger.summary || '-' }}</el-descriptions-item>
@@ -131,6 +126,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { DirectionTag, MerchantIdentityDisplay } from '@acquiring/shared';
 import type { FundLedger } from '@/api/fund';
 import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';

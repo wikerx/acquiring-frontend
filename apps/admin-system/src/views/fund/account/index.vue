@@ -31,8 +31,11 @@
 
         <StandardTable v-loading="loading" table-key="admin-fund-account-list" :data="rows" row-key="id" size="small">
             <el-table-column prop="accountNo" :label="$t('feeAccount.accountNo')" min-width="190" fixed="left" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantId" :label="$t('feeAccount.merchantId')" min-width="145" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantName" :label="$t('feeAccount.merchantName')" min-width="170" align="center" show-overflow-tooltip />
+            <el-table-column :label="$t('feeAccount.merchant')" min-width="240" align="center">
+                <template #default="{ row }">
+                    <MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" />
+                </template>
+            </el-table-column>
             <el-table-column prop="settlementCurrency" :label="$t('feeAccount.settlementCurrency')" width="105" align="center" />
             <el-table-column :label="$t('feeAccount.availableBalance')" min-width="155" align="right">
                 <template #default="{ row }"><BaseAmount :value="row.availableBalance" :currency="row.settlementCurrency" currency-display="code" /></template>
@@ -70,12 +73,13 @@
             <el-pagination v-model:current-page="query.pageNo" v-model:page-size="query.pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @current-change="loadAccounts" @size-change="handleSearch" />
         </div>
 
-        <CommonDetailDrawer v-model:visible="detailVisible" :title="`${detail?.merchantName || detail?.merchantId || ''} ${$t('feeAccount.accountDetail')}`" size="full">
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="`${merchantDisplayText(detail)} ${$t('feeAccount.accountDetail')}`" size="full">
             <div v-if="detail" class="account-detail">
                 <el-descriptions :column="3" border size="small">
                     <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ detail.accountNo }}</el-descriptions-item>
-                    <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ detail.merchantId }}</el-descriptions-item>
-                    <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ detail.merchantName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2">
+                        <MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" />
+                    </el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.settlementCurrency')">{{ detail.settlementCurrency }}</el-descriptions-item>
                     <el-descriptions-item :label="$t('common.status')"><el-tag :type="accountStatusType(detail.accountStatus)">{{ accountStatusText(detail.accountStatus) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.negativeReverseRestriction')"><el-tag :type="detail.reverseRestricted ? 'danger' : 'success'">{{ detail.reverseRestricted ? $t('feeAccount.restricted') : $t('feeAccount.normal') }}</el-tag></el-descriptions-item>
@@ -92,20 +96,35 @@
                 <section class="account-balance-band">
                     <article class="balance-primary">
                         <span>{{ $t('feeAccount.availableBalance') }}</span>
-                        <strong :class="{ negative: Number(detail.availableBalance) < 0 }"><BaseAmount :value="detail.availableBalance" :currency="detail.settlementCurrency" currency-display="code" /></strong>
+                        <CurrencyAmountPills
+                            class="balance-pills"
+                            :items="[{ currency: detail.settlementCurrency, amount: detail.availableBalance }]"
+                            :fallback-currency="detail.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="green"
+                        />
                         <small>{{ $t('feeAccount.availableBalanceHint') }}</small>
                     </article>
                     <article class="balance-pending">
                         <span>{{ $t('feeAccount.pendingBalance') }}</span>
-                        <div v-if="detail.pendingBalances?.length" class="balance-values">
-                            <strong v-for="item in detail.pendingBalances" :key="item.currency"><BaseAmount :value="item.amount" :currency="item.currency" currency-display="code" /></strong>
-                        </div>
-                        <strong v-else>-</strong>
+                        <CurrencyAmountPills
+                            class="balance-pills"
+                            :items="detail.pendingBalances"
+                            :fallback-currency="detail.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="blue"
+                        />
                         <small>{{ $t('feeAccount.pendingBalanceHint') }}</small>
                     </article>
                     <article class="balance-reserve">
                         <span>{{ $t('feeAccount.reserveBalance') }}</span>
-                        <strong><BaseAmount :value="detail.reserveBalance" :currency="detail.settlementCurrency" currency-display="code" /></strong>
+                        <CurrencyAmountPills
+                            class="balance-pills"
+                            :items="[{ currency: detail.settlementCurrency, amount: detail.reserveBalance }]"
+                            :fallback-currency="detail.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="amber"
+                        />
                         <small>{{ $t('feeAccount.reserveBalanceHint') }}</small>
                     </article>
                 </section>
@@ -144,7 +163,7 @@
                         <el-table-column prop="summary" :label="$t('feeAccount.summary')" min-width="190" align="center" show-overflow-tooltip />
                         <el-table-column :label="$t('feeAccount.businessType')" min-width="140" align="center"><template #default="{ row }">{{ dictLabel(businessTypeOptions, row.businessType) }}</template></el-table-column>
                         <el-table-column :label="$t('feeAccount.direction')" width="88" align="center">
-                            <template #default="{ row }"><el-tag :type="row.direction === 'CREDIT' ? 'success' : 'danger'">{{ dictLabel(directionOptions, row.direction) }}</el-tag></template>
+                            <template #default="{ row }"><DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
                             <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
@@ -200,7 +219,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { CurrencyAmountPills, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Remove, Search, Unlock, View } from '@element-plus/icons-vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
@@ -238,6 +257,7 @@ const { locale, t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const canViewDetail = userStore.hasPermission('fund:account:detail');
 const canViewLedgers = userStore.hasPermission('fund:ledger:list');
 const canFreeze = userStore.hasPermission('fund:account:freeze');
 const canUnfreeze = userStore.hasPermission('fund:account:unfreeze');
@@ -277,9 +297,19 @@ const statusActionRules: FormRules = {
 
 onMounted(async () => {
     const merchantId = typeof route.query.merchantId === 'string' ? route.query.merchantId.trim() : '';
-    if (merchantId) query.value.keyword = merchantId;
+    const accountNo = typeof route.query.accountNo === 'string' ? route.query.accountNo.trim() : '';
+    const settlementCurrency = typeof route.query.settlementCurrency === 'string'
+        ? route.query.settlementCurrency.trim().toUpperCase() : '';
+    if (accountNo || merchantId) query.value.keyword = accountNo || merchantId;
+    if (settlementCurrency) query.value.settlementCurrency = settlementCurrency;
     await loadDictionaries();
     await loadAccounts();
+    if (canViewDetail && (accountNo || merchantId || settlementCurrency)) {
+        const linkedRow = accountNo
+            ? rows.value.find((row) => row.accountNo === accountNo)
+            : rows.value.length === 1 ? rows.value[0] : undefined;
+        if (linkedRow) await openDetail(linkedRow);
+    }
 });
 
 /** 加载余额流水业务类型和方向字典，字典故障不阻塞账户查询。 */
@@ -347,6 +377,17 @@ function openRecharge(row: FundAccount) {
 
 function openDeduction(row: FundAccount) {
     router.push({ path: '/fund/deduction', query: { accountId: String(row.id), merchantId: row.merchantId } });
+}
+
+function openMerchant(merchantId: string) {
+    router.push({ path: '/merchant/info', query: { merchantId } });
+}
+
+function merchantDisplayText(row?: Pick<FundAccount, 'merchantId' | 'merchantName'> | null) {
+    if (!row) return '';
+    return row.merchantName && row.merchantName !== row.merchantId
+        ? `${row.merchantId}（${row.merchantName}）`
+        : row.merchantId;
 }
 
 function handleLedgerSearch() {
@@ -475,10 +516,8 @@ async function submitStatusAction() {
 .account-balance-band article.balance-reserve { border-top: 3px solid #d49b2f; background: #fffbf2; }
 .account-balance-band span,
 .account-balance-band small { display: block; color: #778196; font-size: 12px; }
-.account-balance-band strong { display: block; margin-top: 9px; color: #17243a; font-size: 20px; letter-spacing: 0; }
-.account-balance-band strong.negative { color: #c2413b; }
+.account-balance-band .balance-pills { margin-top: 10px; }
 .account-balance-band small { margin-top: 8px; color: #98a2b3; }
-.balance-values { display: grid; gap: 3px; }
 .ledger-section { min-width: 0; padding-top: 2px; }
 .ledger-query { padding-top: 14px; border-top: 1px solid #e5e7eb; }
 .ledger-heading { display: flex; align-items: center; justify-content: flex-end; color: #667085; font-size: 13px; }

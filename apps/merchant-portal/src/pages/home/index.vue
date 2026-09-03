@@ -1,6 +1,6 @@
 <template>
     <div class="page merchant-home-page">
-        <section class="merchant-home-hero">
+        <section class="merchant-home-hero" :class="{ 'has-balance-overview': canViewFundAccount }">
             <div>
                 <p class="merchant-home-hero__eyebrow">{{ t('home.eyebrow') }}</p>
                 <h1>{{ t('home.title', { name: displayName }) }}</h1>
@@ -12,6 +12,60 @@
                     </el-button>
                 </div>
             </div>
+            <section v-if="canViewFundAccount" v-loading="fundAccountLoading" class="merchant-home-balance-overview">
+                <header>
+                    <div>
+                        <span>{{ t('home.fundOverview') }}</span>
+                        <small v-if="fundAccount?.updateTime">
+                            {{ t('home.balanceUpdatedAt') }} <BaseDateTime :value="fundAccount.updateTime" />
+                        </small>
+                    </div>
+                    <el-button
+                        text
+                        circle
+                        :icon="RefreshLeft"
+                        :aria-label="t('home.refreshBalance')"
+                        :title="t('home.refreshBalance')"
+                        @click="loadFundAccount"
+                    />
+                </header>
+                <div v-if="!fundAccountError" class="merchant-home-balance-list">
+                    <div>
+                        <span>{{ t('finance.availableBalance') }}</span>
+                        <CurrencyAmountPills
+                            :items="fundAccount ? [{ currency: fundAccount.settlementCurrency, amount: fundAccount.availableBalance }] : []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="green"
+                        />
+                    </div>
+                    <div>
+                        <span>{{ t('finance.pendingBalance') }}</span>
+                        <CurrencyAmountPills
+                            :items="fundAccount?.pendingBalances || []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="blue"
+                        />
+                    </div>
+                    <div>
+                        <span>{{ t('finance.reserveBalance') }}</span>
+                        <CurrencyAmountPills
+                            :items="fundAccount ? [{ currency: fundAccount.settlementCurrency, amount: fundAccount.reserveBalance }] : []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="amber"
+                        />
+                    </div>
+                </div>
+                <div v-else class="merchant-home-balance-error">
+                    <span>{{ t('home.fundOverviewUnavailable') }}</span>
+                    <el-button link type="primary" :icon="RefreshLeft" @click="loadFundAccount">{{ t('home.retry') }}</el-button>
+                </div>
+                <el-button v-if="fundAccountEntry" class="merchant-home-balance-link" link type="primary" @click="router.push(fundAccountEntry.path)">
+                    {{ fundAccountEntry.label }} <el-icon><ArrowRight /></el-icon>
+                </el-button>
+            </section>
             <div class="merchant-home-identity">
                 <span>{{ t('home.currentMerchant') }}</span>
                 <strong>{{ merchantId }}</strong>
@@ -161,6 +215,7 @@ import { useRouter } from 'vue-router';
 import { ArrowRight, CircleClose, Link, Loading, RefreshLeft } from '@element-plus/icons-vue';
 import {
     AnalyticsChart,
+    CurrencyAmountPills,
     analyticsNumber,
     createAnalyticsTrendOption,
     createTransactionAnalyticsRange,
@@ -170,6 +225,7 @@ import {
 } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { accessConfigApi } from '@/api/accessConfigApi';
+import { financeApi, type FundAccount } from '@/api/financeApi';
 import { transactionApi } from '@/api/transactionApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { useAuthStore } from '@/stores/authStore';
@@ -188,6 +244,9 @@ const overviewError = ref('');
 const pendingRefundCount = ref<number | null>(null);
 const pendingAccessCount = ref<number | null>(null);
 const taskLoadPartialFailure = ref(false);
+const fundAccount = ref<FundAccount | null>(null);
+const fundAccountLoading = ref(false);
+const fundAccountError = ref(false);
 let overviewRequestSequence = 0;
 
 const account = computed(() => auth.session?.account);
@@ -215,10 +274,12 @@ const analyticsEntry = computed(() => menuEntryMap.value.get('/transaction/analy
 const refundEntry = computed(() => menuEntryMap.value.get('/transaction/refund'));
 const sourceUrlEntry = computed(() => menuEntryMap.value.get('/access-config/source-url'));
 const ipWhitelistEntry = computed(() => menuEntryMap.value.get('/access-config/ip-whitelist'));
+const fundAccountEntry = computed(() => menuEntryMap.value.get('/finance/account'));
 const canViewAnalytics = computed(() => Boolean(analyticsEntry.value) && auth.hasPermission('merchant:transaction:analytics:view'));
 const canViewRefunds = computed(() => Boolean(refundEntry.value) && auth.hasPermission('merchant:transaction:refund:list'));
 const canViewSourceUrls = computed(() => Boolean(sourceUrlEntry.value) && auth.hasPermission('merchant:access-config:source-url:list'));
 const canViewIpWhitelists = computed(() => Boolean(ipWhitelistEntry.value) && auth.hasPermission('merchant:access-config:ip-whitelist:list'));
+const canViewFundAccount = computed(() => auth.hasPermission('merchant:fund:account:view'));
 const rangeOptions = computed(() => [
     { days: 1, label: t('transaction.time.today') },
     { days: 7, label: t('transactionAnalytics.last7Days') },
@@ -359,8 +420,23 @@ async function loadPendingAccessCount() {
     pendingAccessCount.value = results.flat().filter((item) => item.approvalStatus === 0).length;
 }
 
+async function loadFundAccount() {
+    if (!canViewFundAccount.value) return;
+    fundAccountLoading.value = true;
+    fundAccountError.value = false;
+    try {
+        fundAccount.value = await financeApi.fundAccount();
+    } catch {
+        fundAccount.value = null;
+        fundAccountError.value = true;
+    } finally {
+        fundAccountLoading.value = false;
+    }
+}
+
 onMounted(() => {
     loadOverview();
     loadPendingItems();
+    loadFundAccount();
 });
 </script>

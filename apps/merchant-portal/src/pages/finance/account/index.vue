@@ -11,20 +11,35 @@
         <section v-loading="accountLoading" class="balance-band">
             <article class="balance-primary">
                 <span>{{ $t('finance.availableBalance') }}</span>
-                <strong :class="{ negative: Number(account?.availableBalance) < 0 }">{{ money(account?.availableBalance, account?.settlementCurrency) }}</strong>
+                <CurrencyAmountPills
+                    class="balance-pills"
+                    :items="account ? [{ currency: account.settlementCurrency, amount: account.availableBalance }] : []"
+                    :fallback-currency="account?.settlementCurrency || 'USD'"
+                    :locale="String(locale)"
+                    tone="green"
+                />
                 <small>{{ $t('finance.availableBalanceHint') }}</small>
             </article>
             <article class="pending-balance balance-pending">
                 <span>{{ $t('finance.pendingBalance') }}</span>
-                <div v-if="account?.pendingBalances?.length">
-                    <strong v-for="item in account.pendingBalances" :key="item.currency">{{ money(item.amount, item.currency) }}</strong>
-                </div>
-                <strong v-else>-</strong>
+                <CurrencyAmountPills
+                    class="balance-pills"
+                    :items="account?.pendingBalances || []"
+                    :fallback-currency="account?.settlementCurrency || 'USD'"
+                    :locale="String(locale)"
+                    tone="blue"
+                />
                 <small>{{ $t('finance.pendingHint') }}</small>
             </article>
             <article class="balance-reserve">
                 <span>{{ $t('finance.reserveBalance') }}</span>
-                <strong>{{ money(account?.reserveBalance, account?.settlementCurrency) }}</strong>
+                <CurrencyAmountPills
+                    class="balance-pills"
+                    :items="account ? [{ currency: account.settlementCurrency, amount: account.reserveBalance }] : []"
+                    :fallback-currency="account?.settlementCurrency || 'USD'"
+                    :locale="String(locale)"
+                    tone="amber"
+                />
                 <small>{{ $t('finance.reserveHint') }}</small>
             </article>
         </section>
@@ -64,7 +79,7 @@
                 <el-table-column prop="summary" :label="$t('finance.summary')" min-width="200" align="center" show-overflow-tooltip />
                 <el-table-column :label="$t('finance.businessType')" min-width="140" align="center"><template #default="{ row }">{{ dictLabel(businessTypeOptions, row.businessType) }}</template></el-table-column>
                 <el-table-column :label="$t('finance.direction')" width="90" align="center">
-                    <template #default="{ row }"><el-tag :type="row.direction === 'CREDIT' ? 'success' : 'danger'">{{ dictLabel(directionOptions, row.direction) }}</el-tag></template>
+                    <template #default="{ row }"><DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" /></template>
                 </el-table-column>
                 <el-table-column :label="$t('finance.amount')" min-width="140" align="right">
                     <template #default="{ row }">{{ money(row.amount, row.currency) }}</template>
@@ -98,14 +113,11 @@
                         <span>{{ $t('finance.ledgerNo') }}</span>
                         <strong>{{ selectedLedger.ledgerNo }}</strong>
                     </div>
-                    <el-tag
+                    <DirectionTag
                         class="ledger-direction-tag"
-                        :class="selectedLedger.direction === 'CREDIT' ? 'is-credit' : 'is-debit'"
-                        :type="selectedLedger.direction === 'CREDIT' ? 'success' : 'danger'"
-                        effect="light"
-                    >
-                        {{ selectedLedger.direction === 'CREDIT' ? $t('finance.credit') : $t('finance.debit') }}
-                    </el-tag>
+                        :direction="selectedLedger.direction"
+                        :label="selectedLedger.direction === 'CREDIT' ? $t('finance.credit') : $t('finance.debit')"
+                    />
                 </section>
                 <section class="ledger-amount-flow" :class="selectedLedger.direction === 'CREDIT' ? 'is-credit' : 'is-debit'">
                     <div class="ledger-amount-flow__item">
@@ -150,7 +162,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { formatDecimalAmount, FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { CurrencyAmountPills, DirectionTag, formatDecimalAmount, FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -297,11 +309,8 @@ function accountStatusType(value?: string) {
 .balance-band article.balance-reserve { border-top: 3px solid #d49b2f; background: #fffbf2; }
 .balance-band span,
 .balance-band small { display: block; color: var(--account-muted); font-size: 12px; }
-.balance-band strong { display: block; margin-top: 9px; color: var(--account-ink); font-size: 20px; letter-spacing: 0; }
-.balance-band strong.negative { color: #c2413b; }
+.balance-band .balance-pills { margin-top: 10px; }
 .balance-band small { margin-top: 7px; color: #98a2b3; }
-.pending-balance > div { display: grid; gap: 3px; }
-.pending-balance > div strong { font-size: 17px; }
 .finance-table-head { min-height: 52px; }
 .search-form :deep(.el-input),
 .search-form :deep(.el-select) { width: 240px; }
@@ -315,10 +324,7 @@ function accountStatusType(value?: string) {
 .ledger-summary-band > div > span,
 .ledger-amount-flow span { display: block; color: var(--account-muted); font-size: 12px; font-weight: 500; line-height: 18px; }
 .ledger-summary-band strong { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--account-ink); font-size: 17px; font-weight: 650; line-height: 24px; }
-.ledger-direction-tag { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-width: 64px; height: 28px; border-radius: 4px; font-size: 13px; font-weight: 650; letter-spacing: 0; }
-.ledger-direction-tag :deep(.el-tag__content) { display: inline-flex; align-items: center; justify-content: center; width: 100%; }
-.ledger-direction-tag.is-credit { border-color: #bbdfc6; color: var(--account-credit); background: var(--account-credit-soft); }
-.ledger-direction-tag.is-debit { border-color: #f2c3c0; color: var(--account-debit); background: var(--account-debit-soft); }
+.ledger-direction-tag { flex: 0 0 auto; min-width: 64px; min-height: 28px; font-size: 13px; }
 .ledger-amount-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid #dfe6ee; border-radius: 6px; background: #fff; }
 .ledger-amount-flow__item { min-width: 0; padding: 16px 18px; border-right: 1px solid #e5eaf1; background: #f8fafc; }
 .ledger-amount-flow__item:last-child { border-right: 0; }

@@ -244,8 +244,8 @@
                         <el-tooltip v-if="canRefund" :content="canRefundRow(row) ? t('transaction.order.refundEnabledTip') : t('transaction.order.refundDisabled')" placement="top">
                             <span><el-button link type="primary" size="small" :disabled="!canRefundRow(row)" @click="openRefund(row)">{{ t('transaction.order.refund') }}</el-button></span>
                         </el-tooltip>
-                        <el-tooltip v-if="canCapture" :content="canCaptureRow(row) ? t('transaction.order.captureEnabledTip') : t('transaction.order.captureDisabled')" placement="top">
-                            <span><el-button link type="primary" size="small" :disabled="!canCaptureRow(row)" @click="openCapture(row)">{{ t('transaction.order.capture') }}</el-button></span>
+                        <el-tooltip v-if="canCapture" :content="captureActionTip(row, canCaptureRow(row))" placement="top">
+                            <span><el-button link type="primary" size="small" :disabled="!canCaptureRow(row)" @click="openCapture(row)">{{ captureActionText(row) }}</el-button></span>
                         </el-tooltip>
                         <el-tooltip v-if="canVoid" :content="canVoidRow(row) ? t('transaction.order.voidEnabledTip') : t('transaction.order.voidDisabled')" placement="top">
                             <span><el-button link type="primary" size="small" :disabled="!canVoidRow(row)" @click="openVoid(row)">{{ t('transaction.order.void') }}</el-button></span>
@@ -455,8 +455,8 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="captureVisible" :title="t('transaction.order.captureTitle')" width="min(600px, 92vw)" class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.order.captureTip')" />
+        <el-dialog v-model="captureVisible" :title="captureDialogTitle" width="min(600px, 92vw)" class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="captureDialogTip" />
             <section v-if="activeActionRow" class="transaction-action-section">
                 <h3>{{ t('transaction.order.originalInfo') }}</h3>
                 <dl class="transaction-action-detail-grid">
@@ -479,14 +479,14 @@
                 </dl>
             </section>
             <section v-if="activeActionRow" class="transaction-action-section">
-                <h3>{{ t('transaction.order.captureInfo') }}</h3>
+                <h3>{{ captureDialogInfo }}</h3>
                 <div class="transaction-action-amount-card">
                     <span>{{ t('transaction.order.availableCapture') }}</span>
                     <strong>{{ labelMoney(activeActionRow, captureAmount) }}</strong>
-                    <em>{{ t('transaction.order.fullCaptureOnly') }}</em>
+                    <em>{{ captureFullAmountText }}</em>
                 </div>
                 <el-form :model="captureForm" label-position="top" class="transaction-action-form">
-                    <el-form-item :label="t('transaction.order.captureAmount')">
+                    <el-form-item :label="captureAmountText">
                         <el-input :model-value="amountInputText(activeActionRow, captureAmount)" disabled>
                             <template #append>{{ labelCurrency(activeActionRow) || '-' }}</template>
                         </el-input>
@@ -500,11 +500,11 @@
                         <el-input v-model.trim="captureForm.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" :placeholder="t('transaction.order.descriptionPlaceholder')" />
                     </el-form-item>
                 </el-form>
-                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.order.captureSuccessHint')" />
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="captureSuccessHint" />
             </section>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" size="small" :loading="actionSaving" @click="submitCapture">{{ t('transaction.order.capture') }}</el-button>
+                    <el-button type="primary" size="small" :loading="actionSaving" @click="submitCapture">{{ captureDialogAction }}</el-button>
                     <el-button size="small" @click="captureVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
@@ -572,6 +572,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -608,6 +609,7 @@ type MerchantTransactionOrderQuery = Omit<TransactionPageQuery, 'pageNo' | 'page
 };
 
 const { t, locale } = useI18n();
+const route = useRoute();
 const auth = useAuthStore();
 const loading = ref(false);
 const exporting = ref(false);
@@ -697,6 +699,14 @@ const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummarie
 }));
 const refundMaxAmount = computed(() => Math.max(labelAmountFor(activeActionRow.value, activeActionRow.value?.availableRefundAmount ?? activeActionRow.value?.transactionAmount), 0.01));
 const captureAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.availableCaptureAmount ?? activeActionRow.value?.transactionAmount));
+const isPreAuthCompletion = computed(() => activeActionRow.value?.transactionType === 'PRE_AUTHORIZATION');
+const captureDialogAction = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletion' : 'capture'}`));
+const captureDialogTitle = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionTitle' : 'captureTitle'}`));
+const captureDialogTip = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionTip' : 'captureTip'}`));
+const captureDialogInfo = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`));
+const captureAmountText = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionAmount' : 'captureAmount'}`));
+const captureFullAmountText = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'fullPreAuthCompletionOnly' : 'fullCaptureOnly'}`));
+const captureSuccessHint = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionSuccessHint' : 'captureSuccessHint'}`));
 const voidAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.transactionAmount));
 const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(cardBrandOptions.value.find((item) => item.value === query.paymentBrand)));
 const refundReasonOptions = computed(() => transactionActionReasonOptions('refund'));
@@ -704,8 +714,29 @@ const captureReasonOptions = computed(() => transactionActionReasonOptions('capt
 const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
 onMounted(async () => {
+    const linkedTransactionId = typeof route.query.transactionId === 'string'
+        ? route.query.transactionId.trim() : '';
+    if (linkedTransactionId) query.transactionId = linkedTransactionId;
+    const linkedTransactionDateTime = typeof route.query.transactionDateTime === 'string'
+        ? route.query.transactionDateTime.trim() : '';
+    const linkedTransactionTimeZone = typeof route.query.transactionTimeZone === 'string'
+        ? route.query.transactionTimeZone.trim() : 'Asia/Shanghai';
+    if (linkedTransactionDateTime) {
+        const displayDateTime = formatDateTimeFromSourceTimeZone(
+            linkedTransactionDateTime, linkedTransactionTimeZone, query.queryTimeZone,
+        );
+        const linkedDate = /^\d{4}-\d{2}-\d{2}/.exec(displayDateTime)?.[0];
+        if (linkedDate) {
+            quickPreset.value = '';
+            dateRange.value = [`${linkedDate}T00:00:00`, `${linkedDate}T23:59:59`];
+        }
+    }
     await loadDictionaries();
     await loadData();
+    if (linkedTransactionId && canDetail.value) {
+        const linkedRow = rows.value.find((row) => row.transactionId === linkedTransactionId);
+        if (linkedRow) await openDetail(linkedRow);
+    }
 });
 
 async function loadDictionaries() {
@@ -860,18 +891,25 @@ async function submitCapture() {
     if (!activeActionRow.value?.transactionId) return;
     actionSaving.value = true;
     try {
-        await transactionApi.capture(activeActionRow.value.transactionId, {
+        const action = activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
+            ? transactionApi.preAuthCompletion
+            : transactionApi.capture;
+        await action(activeActionRow.value.transactionId, {
             amount: captureAmount.value,
             currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
             transactionDateTime: activeActionRow.value.transactionDateTime!,
             rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
-        ElMessage.success(t('transaction.order.captureSuccess'));
+        ElMessage.success(t(`transaction.order.${activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
+            ? 'preAuthCompletionSuccess'
+            : 'captureSuccess'}`));
         captureVisible.value = false;
         await loadData();
     } catch (error: any) {
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.captureFailed'));
+        ElMessage.error(error?.friendlyMessage || error?.message || t(`transaction.order.${activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
+            ? 'preAuthCompletionFailed'
+            : 'captureFailed'}`));
     } finally {
         actionSaving.value = false;
     }
@@ -977,6 +1015,15 @@ function canCaptureRow(row: TransactionOperation) {
     }
     const availableCaptureAmount = toNullableAmount(row.availableCaptureAmount);
     return availableCaptureAmount === null ? true : availableCaptureAmount > 0;
+}
+
+function captureActionText(row: TransactionOperation) {
+    return t(`transaction.order.${row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture'}`);
+}
+
+function captureActionTip(row: TransactionOperation, enabled: boolean) {
+    const prefix = row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture';
+    return t(`transaction.order.${prefix}${enabled ? 'EnabledTip' : 'Disabled'}`);
 }
 
 function canVoidRow(row: TransactionOperation) {

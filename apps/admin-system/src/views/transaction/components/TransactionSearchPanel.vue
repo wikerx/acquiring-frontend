@@ -1,5 +1,9 @@
 <template>
-    <section v-show="visible" class="transaction-search-panel">
+    <section
+        v-show="visible"
+        class="transaction-search-panel"
+        :class="{ 'is-advanced-visible': advancedVisible }"
+    >
         <div class="transaction-search-panel__head">
             <div>
                 <strong>{{ title }}</strong>
@@ -11,6 +15,7 @@
                 link
                 size="small"
                 :icon="advancedVisible ? ArrowUp : ArrowDown"
+                :aria-expanded="advancedVisible"
                 @click="advancedVisible = !advancedVisible"
             >
                 {{ advancedVisible ? collapseText : expandText }}
@@ -114,6 +119,13 @@ const advancedVisible = ref(false);
 
 .transaction-search {
     display: block;
+    min-height: 0;
+    margin-bottom: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .transaction-search__grid {

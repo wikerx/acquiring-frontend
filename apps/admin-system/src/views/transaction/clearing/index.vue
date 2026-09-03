@@ -1,3 +1,4 @@
+<!-- Admin 交易清分运营主页面：本地查询交易逻辑数据，重试、复核和重算命令由后端注入可信操作人。 -->
 <template>
     <div class="app-container transaction-page clearing-page">
         <TransactionSearchPanel
@@ -218,7 +219,7 @@
                                 <template #default="{ row }">{{ feeCategoryText(row) }}</template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.direction')" width="94" align="center">
-                                <template #default="{ row }">{{ directionText(row.direction) }}</template>
+                                <template #default="{ row }"><DirectionTag :direction="row.direction" :label="directionText(row.direction)" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.calculationBasis')" min-width="154" align="right">
                                 <template #default="{ row }">{{ exactMoney(row.basisAmount, row.basisCurrency) }}</template>
@@ -266,7 +267,7 @@
                                 <template #default="{ row }">{{ reserveItemName(row.reserveActionType, row.itemName) }}</template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.direction')" width="94" align="center">
-                                <template #default="{ row }">{{ directionText(row.direction) }}</template>
+                                <template #default="{ row }"><DirectionTag :direction="row.direction" :label="directionText(row.direction)" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.calculationBasis')" min-width="154" align="right">
                                 <template #default="{ row }">{{ exactMoney(row.basisAmount, row.reserveCurrency) }}</template>
@@ -405,6 +406,7 @@
 import { Refresh } from '@element-plus/icons-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { DirectionTag } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';

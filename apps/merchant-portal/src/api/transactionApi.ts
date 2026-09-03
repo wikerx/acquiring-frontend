@@ -301,6 +301,10 @@ export const transactionApi = {
         const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/capture`, data);
         return unwrapResult(result.data);
     },
+    async preAuthCompletion(transactionId: string, data: TransactionActionRequest) {
+        const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/pre-auth-completion`, data);
+        return unwrapResult(result.data);
+    },
     async voidPayment(transactionId: string, data: TransactionActionRequest) {
         const result = await http.post<CommonResult<TransactionActionResponse>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/void`, data);
         return unwrapResult(result.data);

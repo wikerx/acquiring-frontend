@@ -58,6 +58,7 @@ export interface ChannelCapability {
     transactionType?: string;
     transactionTypes?: string[];
     currencyCodes: string[];
+    defaultTransactionCurrency: string;
     cardBrands: string[];
     support3ds: number;
     supportIncrementalAuthorization: number;

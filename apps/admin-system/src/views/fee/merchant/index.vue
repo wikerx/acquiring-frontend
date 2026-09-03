@@ -207,7 +207,7 @@ function configureActionText(row: FeePlanSummary) {
     if (row.pendingVersionStatus) return t('feeAccount.processingVersion');
     if (!row.id) return t('feeAccount.configure');
     if (!row.currentVersionId && row.status === 'DISABLED') return t('feeAccount.reconfigure');
-    return t('feeAccount.newVersion');
+    return t('feeAccount.modifyMerchantFee');
 }
 
 async function openDetail(row: FeePlanSummary) {
