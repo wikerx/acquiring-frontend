@@ -790,7 +790,8 @@ export interface SettlementBatchCommandResponse {
     settlementBatchNo: string;
     resultBatchNo: string;
     resultStatus: string;
-    releasedCandidateCount: number;
+    releasedCandidateCount?: number;
+    restoredCandidateCount?: number;
 }
 
 /**
@@ -1168,6 +1169,16 @@ export async function cancelSettlementBatch(
 ) {
     const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
         `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/cancel`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function retrySettlementBatch(
+    settlementBatchNo: string,
+    data: SettlementBatchCommandRequest,
+) {
+    const result = await http.post<CommonResult<SettlementBatchCommandResponse>>(
+        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/retry`, data,
     );
     return unwrapResult(result.data);
 }

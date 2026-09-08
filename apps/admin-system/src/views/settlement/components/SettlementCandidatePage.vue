@@ -1,6 +1,13 @@
 <!-- Admin 结算候选复用主组件：按 kind 隔离真实交易与保证金来源，查询始终由后端权限和商户数据范围裁决。 -->
 <template>
-    <div class="app-container settlement-list-page">
+    <div
+        class="settlement-list-page"
+        :class="{
+            'app-container': !props.embedded,
+            'settlement-list-page--embedded': props.embedded,
+            'settlement-list-page--read-only': props.readOnly,
+        }"
+    >
         <TransactionSearchPanel
             class="candidate-search-panel"
             :visible="showSearch"
@@ -22,10 +29,13 @@
             <el-form-item :label="t('transaction.fields.merchantId')">
                 <MerchantRemoteSelect v-model="query.merchantId" @change="handleSearch" />
             </el-form-item>
-            <el-form-item :label="t('common.status')">
+            <el-form-item v-if="!props.pendingOnly" :label="t('common.status')">
                 <el-select v-model="query.candidateStatus" clearable filterable :placeholder="t('common.pleaseSelect')">
                     <el-option v-for="status in candidateStatuses" :key="status" :label="statusText(status)" :value="status" />
                 </el-select>
+            </el-form-item>
+            <el-form-item v-else :label="t('common.status')" class="fixed-status-field">
+                <el-tag type="warning" effect="plain">{{ statusText('READY') }}</el-tag>
             </el-form-item>
             <template #advanced>
                 <el-form-item :label="t('transaction.fields.transactionId')">
@@ -102,8 +112,8 @@
             </template>
         </TransactionSearchPanel>
 
-        <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5">
+        <el-row :gutter="10" class="mb8 candidate-toolbar">
+            <el-col v-if="!props.readOnly" :span="1.5">
                 <el-button v-hasPermi="createPermission" type="primary" plain :icon="Plus"
                     :disabled="selection.length === 0" @click="openSubmit">
                     {{ t('transaction.settlement.submitReview') }}
@@ -116,7 +126,7 @@
 
         <StandardTable ref="tableRef" v-loading="loading" :table-key="tableKey" :data="rows" row-key="id" size="small"
             @selection-change="handleSelectionChange">
-            <el-table-column type="selection" width="46" fixed="left" :selectable="candidateSelectable" />
+            <el-table-column v-if="!props.readOnly" type="selection" width="46" fixed="left" :selectable="candidateSelectable" />
             <el-table-column prop="candidateNo" :label="t('transaction.settlement.candidateNo')" min-width="210" fixed="left" align="center" show-overflow-tooltip />
             <el-table-column :label="t('transaction.settlement.merchant')" min-width="200">
                 <template #default="{ row }"><MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" /></template>
@@ -205,7 +215,7 @@
             </el-descriptions>
         </el-drawer>
 
-        <el-dialog v-model="submitVisible" :title="t('transaction.settlement.submitReview')" width="620px" destroy-on-close>
+        <el-dialog v-if="!props.readOnly" v-model="submitVisible" :title="t('transaction.settlement.submitReview')" width="620px" destroy-on-close>
             <el-alert :title="t('transaction.settlement.reviewGroupNotice')" type="warning" show-icon :closable="false" />
             <el-form :model="submitForm" label-width="112px" class="settlement-dialog-form">
                 <el-form-item :label="t('transaction.settlement.selectedCandidates')">{{ selection.length }}</el-form-item>
@@ -252,7 +262,16 @@ import TransactionSearchPanel from '@/views/transaction/components/TransactionSe
 import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/views/transaction/shared';
 import { defaultDateRange, moneyTextByExponent, requestKey, statusTagType } from '@/views/settlement/shared';
 
-const props = defineProps<{ kind: 'transaction' | 'reserve' }>();
+const props = withDefaults(defineProps<{
+    kind: 'transaction' | 'reserve';
+    readOnly?: boolean;
+    pendingOnly?: boolean;
+    embedded?: boolean;
+}>(), {
+    readOnly: false,
+    pendingOnly: false,
+    embedded: false,
+});
 const { t, te, locale } = useI18n();
 const router = useRouter();
 const showSearch = ref(true);
@@ -270,15 +289,27 @@ const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOption
 const detailVisible = ref(false);
 const detail = ref<SettlementCandidate | null>(null);
 const submitVisible = ref(false);
-const query = reactive<SettlementCandidateQuery>({ beginEligibleDate: '', endEligibleDate: '', pageNo: 1, pageSize: 10 });
+const query = reactive<SettlementCandidateQuery>({
+    beginEligibleDate: '',
+    endEligibleDate: '',
+    candidateStatus: props.pendingOnly ? 'READY' : undefined,
+    pageNo: 1,
+    pageSize: 10,
+});
 const submitForm = reactive({ businessDate: defaultDateRange(0)[1], cutoffRange: [] as string[], reason: '' });
 const candidateStatuses = ['READY', 'REPLAY_HOLD', 'REVIEW_LOCKED', 'SUPERSEDED', 'CLAIMED', 'POSTED', 'MANUAL_REVIEW', 'CANCELLED'];
 const reserveStatuses = ['HELD', 'PARTIALLY_RETURNED', 'RELEASABLE', 'FROZEN', 'RETURNED', 'RELEASED', 'ADJUSTED', 'REVERSED'];
-const tableKey = computed(() => `admin-settlement-${props.kind}-candidates`);
+const tableKey = computed(() => `admin-settlement-${props.kind}-${props.pendingOnly ? 'pending-' : ''}candidates`);
 const createPermission = computed(() => `settlement:${props.kind}-review:create`);
 const detailPermission = computed(() => `settlement:${props.kind}-candidate:detail`);
-const candidateSearchTitle = computed(() => t(`transaction.settlement.${props.kind}CandidateSearchTitle`));
-const candidateSearchDescription = computed(() => t(`transaction.settlement.${props.kind}CandidateSearchDescription`));
+const candidateSearchTitle = computed(() => props.pendingOnly
+    ? t(`transaction.settlement.${props.kind === 'reserve'
+        ? 'pendingReserveSearchTitle' : 'pendingTransactionSearchTitle'}`)
+    : t(`transaction.settlement.${props.kind}CandidateSearchTitle`));
+const candidateSearchDescription = computed(() => props.pendingOnly
+    ? t(`transaction.settlement.${props.kind === 'reserve'
+        ? 'pendingReserveSearchDescription' : 'pendingTransactionSearchDescription'}`)
+    : t(`transaction.settlement.${props.kind}CandidateSearchDescription`));
 
 onMounted(async () => {
     await loadDictionaries();
@@ -338,7 +369,7 @@ function requestQuery(): SettlementCandidateQuery {
         frozen: props.kind === 'reserve' ? query.frozen : undefined,
         minRemainingAmount: props.kind === 'reserve' ? query.minRemainingAmount || undefined : undefined,
         maxRemainingAmount: props.kind === 'reserve' ? query.maxRemainingAmount || undefined : undefined,
-        candidateStatus: query.candidateStatus || undefined,
+        candidateStatus: props.pendingOnly ? 'READY' : query.candidateStatus || undefined,
         beginEligibleDate: eligibleRange.value[0], endEligibleDate: eligibleRange.value[1],
     };
 }
@@ -351,7 +382,7 @@ function handleReset() {
         transactionType: undefined, labelCurrency: undefined, targetCurrency: undefined,
         sourceRevision: undefined, reserveNo: undefined, reserveStatus: undefined,
         due: undefined, frozen: undefined, minRemainingAmount: undefined,
-        maxRemainingAmount: undefined, candidateStatus: undefined, pageNo: 1,
+        maxRemainingAmount: undefined, candidateStatus: props.pendingOnly ? 'READY' : undefined, pageNo: 1,
     });
     eligibleRange.value = defaultDateRange();
     transactionRange.value = [];
@@ -471,6 +502,7 @@ function reserveStatusText(value?: string) {
 }
 
 function candidateSelectable(row: SettlementCandidate) {
+    if (props.readOnly) return false;
     if (row.candidateStatus !== 'READY' || row.reserveStatus === 'FROZEN') return false;
     const first = selection.value[0];
     if (!first) return true;
@@ -516,6 +548,9 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .candidate-search-panel :deep(.candidate-eligible-filter) { width: 100%; max-width: 100%; }
 .candidate-search-panel :deep(.candidate-eligible-filter .el-form-item__content) { flex: 1 1 auto; width: auto; max-width: 320px; }
 .candidate-search-panel :deep(.candidate-eligible-filter .el-date-editor) { width: 100%; }
+.settlement-list-page--embedded { min-height: 0; padding: 14px 0 0; background: transparent; }
+.settlement-list-page--read-only .candidate-toolbar { justify-content: flex-end; }
+.fixed-status-field :deep(.el-form-item__content) { min-height: 32px; align-items: center; }
 .settlement-dialog-form { margin-top: 20px; }
 .settlement-dialog-form :deep(.el-date-editor) { width: 100%; }
 .candidate-action span, .candidate-composition span, small { color: var(--el-text-color-secondary); font-size: 12px; }

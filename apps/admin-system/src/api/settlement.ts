@@ -24,6 +24,12 @@ export interface SettlementProfile {
     targetCurrencyExponent: number;
     businessTimeZone: string;
     dailyCutoffTime: string;
+    initialDelayUnit?: string;
+    initialDelayDays?: number;
+    regularDelayDays?: number;
+    settlementFrequency?: string;
+    frequencyDay?: number;
+    manualSettlementAvailable?: boolean;
     processingMode: string;
     profileStatus: string;
     effectiveDate: string;
@@ -202,6 +208,8 @@ export interface SettlementReviewDetail {
     summaries: SettlementSummaryLine[];
 }
 
+export interface SettlementReviewCandidateQuery extends PageQuery {}
+
 export interface SettlementReviewSubmitRequest {
     requestKey: string;
     reviewType: string;
@@ -216,6 +224,89 @@ export interface SettlementDecisionRequest {
     requestKey: string;
     expectedVersion: number;
     comment: string;
+}
+
+export interface ManualSettlementPreviewRequest {
+    requestKey: string;
+    merchantId: string;
+    settlementProfileId: number;
+    paymentType?: string;
+    paymentMethod?: string;
+    reason: string;
+}
+
+export interface ManualSettlementStartRequest {
+    requestKey: string;
+    expectedVersion: number;
+}
+
+export interface ManualSettlementPreviewLine {
+    sourceCurrency: string;
+    sourceCurrencyExponent: number;
+    transactionCount: number;
+    grossAmount: number | string;
+    platformFeeAmount: number | string;
+    reserveAmount: number | string;
+    releasedReserveAmount: number | string;
+    netSettlementAmount: number | string;
+    pendingFeeCount: number;
+    reserveDelayUnit?: string;
+    minimumReserveDelayDays?: number;
+    maximumReserveDelayDays?: number;
+    earliestExpectedReleaseDate?: string;
+    latestExpectedReleaseDate?: string;
+}
+
+export interface ManualSettlementTask {
+    taskNo: string;
+    reviewOrderNo?: string;
+    taskStatus: string;
+    reviewType: 'REGULAR' | 'RESERVE_RELEASE';
+    merchantId: string;
+    settlementProfileId: number;
+    settlementAccountId: number;
+    targetCurrency: string;
+    targetCurrencyExponent: number;
+    paymentType?: string;
+    paymentMethod?: string;
+    submitReason?: string;
+    businessDate: string;
+    cutoffEndTime: string;
+    snapshotMaxCandidateId: number;
+    expectedCandidateCount: number;
+    processedCandidateCount: number;
+    lockedCandidateCount: number;
+    progressPercent: number;
+    initialDelayUnit: string;
+    initialDelayDays: number;
+    regularDelayDays: number;
+    settlementFrequency: string;
+    frequencyDay?: number;
+    preview: ManualSettlementPreviewLine[];
+    retryCount: number;
+    failureCode?: string;
+    failureMessage?: string;
+    startedTime?: string;
+    completedTime?: string;
+    version: number;
+}
+
+export interface SettlementReviewDecisionTask {
+    taskNo: string;
+    reviewOrderNo: string;
+    decisionAction: string;
+    taskStatus: string;
+    totalSegmentCount: number;
+    processedSegmentCount: number;
+    resultBatchCount: number;
+    progressPercent: number;
+    firstSettlementBatchNo?: string;
+    retryCount: number;
+    failureCode?: string;
+    failureMessage?: string;
+    startedTime?: string;
+    completedTime?: string;
+    version: number;
 }
 
 export interface SettlementReviewCommandResponse {
@@ -458,6 +549,48 @@ export async function submitSettlementReview(kind: 'transaction' | 'reserve', da
     return unwrapResult(result.data);
 }
 
+export async function previewManualTransactionReview(data: ManualSettlementPreviewRequest) {
+    const result = await http.post<CommonResult<ManualSettlementTask>>(
+        '/admin/settlement/transaction-review-tasks/preview', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function startManualTransactionReview(taskNo: string, data: ManualSettlementStartRequest) {
+    const result = await http.post<CommonResult<ManualSettlementTask>>(
+        `/admin/settlement/transaction-review-tasks/${encodeURIComponent(taskNo)}/start`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getManualTransactionReviewTask(taskNo: string) {
+    const result = await http.get<CommonResult<ManualSettlementTask>>(
+        `/admin/settlement/transaction-review-tasks/${encodeURIComponent(taskNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function previewManualReserveReview(data: ManualSettlementPreviewRequest) {
+    const result = await http.post<CommonResult<ManualSettlementTask>>(
+        '/admin/settlement/reserve-review-tasks/preview', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function startManualReserveReview(taskNo: string, data: ManualSettlementStartRequest) {
+    const result = await http.post<CommonResult<ManualSettlementTask>>(
+        `/admin/settlement/reserve-review-tasks/${encodeURIComponent(taskNo)}/start`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getManualReserveReviewTask(taskNo: string) {
+    const result = await http.get<CommonResult<ManualSettlementTask>>(
+        `/admin/settlement/reserve-review-tasks/${encodeURIComponent(taskNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReviews(data: SettlementReviewQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReview>>>(
         '/admin/settlement/review-orders/search', data,
@@ -472,6 +605,16 @@ export async function getSettlementReview(reviewOrderNo: string) {
     return unwrapResult(result.data);
 }
 
+export async function searchSettlementReviewCandidates(
+    reviewOrderNo: string,
+    data: SettlementReviewCandidateQuery,
+) {
+    const result = await http.post<CommonResult<PageResult<SettlementReviewCandidate>>>(
+        `/admin/settlement/review-orders/${encodeURIComponent(reviewOrderNo)}/candidates/search`, data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function decideSettlementReview(
     reviewOrderNo: string,
     action: 'approve' | 'reject' | 'cancel',
@@ -479,6 +622,24 @@ export async function decideSettlementReview(
 ) {
     const result = await http.post<CommonResult<SettlementReviewCommandResponse>>(
         `/admin/settlement/review-orders/${encodeURIComponent(reviewOrderNo)}/${action}`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function submitSettlementReviewDecisionTask(
+    reviewOrderNo: string,
+    action: 'approve' | 'reject' | 'cancel',
+    data: SettlementDecisionRequest,
+) {
+    const result = await http.post<CommonResult<SettlementReviewDecisionTask>>(
+        `/admin/settlement/review-orders/${encodeURIComponent(reviewOrderNo)}/${action}-task`, data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getSettlementReviewDecisionTask(taskNo: string) {
+    const result = await http.get<CommonResult<SettlementReviewDecisionTask>>(
+        `/admin/settlement/review-decision-tasks/${encodeURIComponent(taskNo)}`,
     );
     return unwrapResult(result.data);
 }

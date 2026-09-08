@@ -3890,7 +3890,7 @@ body {
 
 .merchant-home-balance-list {
     display: grid;
-    grid-template-columns: minmax(220px, 0.95fr) minmax(360px, 1.7fr) minmax(220px, 0.95fr);
+    grid-template-columns: minmax(220px, 0.72fr) repeat(2, minmax(0, 1fr));
     gap: 0;
     padding: 13px 18px 15px;
 }

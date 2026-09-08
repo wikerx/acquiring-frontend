@@ -99,11 +99,22 @@
             <el-table-column :label="t('common.createTime')" min-width="172" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.createTime" :source-time-zone="row.businessTimeZone" /></template>
             </el-table-column>
-            <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="224" fixed="right" align="center">
+            <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="292" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button v-hasPermi="'settlement:batch:detail'" link type="primary" @click="openDetail(row)">
                         {{ t('common.detail') }}
                     </el-button>
+                    <el-tooltip
+                        v-if="row.batchStatus === 'MANUAL_REVIEW'"
+                        :disabled="canRetry(row)"
+                        :content="t('transaction.settlement.retryDisabled')"
+                    >
+                        <span v-hasPermi="'settlement:batch:retry'">
+                            <el-button link type="primary" :disabled="!canRetry(row)" @click="openCommand('retry', row)">
+                                {{ t('transaction.settlement.retry') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
                     <el-tooltip :disabled="canCancel(row)" :content="t('transaction.settlement.cancelDisabled')">
                         <span v-hasPermi="'settlement:batch:cancel'">
                             <el-button link type="warning" :disabled="!canCancel(row)" @click="openCommand('cancel', row)">
@@ -172,6 +183,28 @@
                         <template #title>{{ detail.batch.lastFailureStage || '-' }} / {{ detail.batch.lastFailureCode }}</template>
                         {{ detail.batch.lastFailureMessage || '-' }}
                     </el-alert>
+
+                    <div
+                        v-if="detail.batch.batchStatus === 'MANUAL_REVIEW' && (canRetryBatch || canCancelBatch)"
+                        class="settlement-detail__recovery"
+                    >
+                        <div>
+                            <strong>{{ t('transaction.settlement.recoveryTitle') }}</strong>
+                            <p>{{ t('transaction.settlement.recoveryDescription', { count: detail.batch.candidateCount }) }}</p>
+                        </div>
+                        <div class="settlement-detail__recovery-actions">
+                            <el-tooltip v-if="canRetryBatch" :disabled="canRetry(detail.batch)" :content="t('transaction.settlement.retryDisabled')">
+                                <span>
+                                    <el-button type="primary" :disabled="!canRetry(detail.batch)" @click="openCommand('retry', detail.batch)">
+                                        {{ t('transaction.settlement.retry') }}
+                                    </el-button>
+                                </span>
+                            </el-tooltip>
+                            <el-button v-if="canCancelBatch" type="warning" plain @click="openCommand('cancel', detail.batch)">
+                                {{ t('transaction.settlement.cancelAndRelease') }}
+                            </el-button>
+                        </div>
+                    </div>
 
                     <section class="settlement-detail__section">
                         <h3>{{ t('transaction.settlement.operationalState') }}</h3>
@@ -279,10 +312,16 @@
         </el-drawer>
 
         <el-dialog v-model="commandVisible" :title="commandTitle" width="560px" destroy-on-close @closed="resetCommand">
-            <el-alert :title="commandNotice" :type="commandType === 'reversalRequest' ? 'error' : 'warning'" :closable="false" show-icon />
+            <el-alert :title="commandNotice" :type="commandAlertType" :closable="false" show-icon />
             <div class="settlement-command__context">
-                <span>{{ t('transaction.settlement.batchNo') }}</span>
-                <strong>{{ selectedRow?.settlementBatchNo }}</strong>
+                <div>
+                    <span>{{ t('transaction.settlement.batchNo') }}</span>
+                    <strong>{{ selectedRow?.settlementBatchNo }}</strong>
+                </div>
+                <div>
+                    <span>{{ t('transaction.settlement.candidateCount') }}</span>
+                    <strong>{{ selectedRow?.candidateCount ?? '-' }}</strong>
+                </div>
                 <el-tag v-if="selectedRow" size="small" effect="plain" :type="batchStatusTagType(selectedRow.batchStatus)">{{ batchStatusText(selectedRow.batchStatus) }}</el-tag>
             </div>
             <el-form :model="commandForm" label-width="92px">
@@ -292,7 +331,7 @@
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" :loading="commandLoading" @click="submitCommand">{{ t('common.confirm') }}</el-button>
+                    <el-button type="primary" :loading="commandLoading" @click="submitCommand">{{ commandConfirmText }}</el-button>
                     <el-button @click="commandVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
@@ -310,6 +349,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
     cancelSettlementBatch,
     getSettlementBatchDetail,
+    retrySettlementBatch,
     searchSettlementBatches,
     type SettlementBatchDetail,
     type SettlementBatchSummary,
@@ -334,7 +374,7 @@ import TransactionSearchPanel from '@/views/transaction/components/TransactionSe
 import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/views/transaction/shared';
 import { businessDateFromBusinessNo, moneyTextByExponent, settlementFormulaText } from '@/views/settlement/shared';
 
-type CommandType = 'cancel' | 'reversalRequest';
+type CommandType = 'retry' | 'cancel' | 'reversalRequest';
 
 const BATCH_TYPES = ['REGULAR', 'RESERVE_RELEASE', 'REVERSAL', 'ADJUSTMENT'] as const;
 const BATCH_STATUSES = [
@@ -343,6 +383,7 @@ const BATCH_STATUSES = [
 ] as const;
 const CANCELLABLE_STATUSES = new Set<string>([
     'CREATED', 'CLAIMING', 'CLAIMED', 'RATE_LOCKED', 'CALCULATING', 'CALCULATED', 'FAILED_RETRYABLE',
+    'MANUAL_REVIEW',
 ]);
 const { t, te, locale } = useI18n();
 const route = useRoute();
@@ -390,9 +431,12 @@ const canExportTransactionItems = userStore.hasPermission('settlement:result-ite
 const canViewReserveItems = userStore.hasPermission('settlement:reserve-item:list');
 const canExportReserveItems = userStore.hasPermission('settlement:reserve-item:export');
 const canViewBatchDetail = userStore.hasPermission('settlement:batch:detail');
+const canRetryBatch = userStore.hasPermission('settlement:batch:retry');
+const canCancelBatch = userStore.hasPermission('settlement:batch:cancel');
 
 const showOperationColumn = computed(() => [
-    'settlement:batch:detail', 'settlement:batch:cancel', 'settlement:reversal-order:create',
+    'settlement:batch:detail', 'settlement:batch:retry', 'settlement:batch:cancel',
+    'settlement:reversal-order:create',
 ].some((permission) => userStore.hasPermission(permission)));
 
 const summaryItems = computed(() => {
@@ -408,7 +452,14 @@ const summaryItems = computed(() => {
 });
 
 const commandTitle = computed(() => t(`transaction.settlement.${commandType.value}Title`));
-const commandNotice = computed(() => t(`transaction.settlement.${commandType.value}Notice`));
+const commandNotice = computed(() => {
+    const key = commandType.value === 'cancel' && selectedRow.value?.batchStatus === 'MANUAL_REVIEW'
+        ? 'cancelManualReviewNotice' : `${commandType.value}Notice`;
+    return t(`transaction.settlement.${key}`, { count: selectedRow.value?.candidateCount ?? 0 });
+});
+const commandConfirmText = computed(() => t(`transaction.settlement.${commandType.value}Confirm`));
+const commandAlertType = computed(() => commandType.value === 'reversalRequest'
+    ? 'error' : commandType.value === 'retry' ? 'info' : 'warning');
 
 async function loadData() {
     if (!validDateRange(dateRange.value)) {
@@ -680,11 +731,20 @@ async function submitCommand() {
     commandLoading.value = true;
     try {
         const requestKey = `SET-${commandType.value.toUpperCase()}-${globalThis.crypto.randomUUID()}`;
-        if (commandType.value === 'cancel') {
+        if (commandType.value === 'retry') {
+            const result = await retrySettlementBatch(row.settlementBatchNo, {
+                requestKey, expectedVersion: row.version, reason,
+            });
+            ElMessage.success(t('transaction.settlement.retryAccepted', {
+                count: result.restoredCandidateCount ?? row.candidateCount,
+            }));
+        } else if (commandType.value === 'cancel') {
             const result = await cancelSettlementBatch(row.settlementBatchNo, {
                 requestKey, expectedVersion: row.version, reason,
             });
-            ElMessage.success(t('transaction.settlement.commandAccepted', { batchNo: result.resultBatchNo }));
+            ElMessage.success(t('transaction.settlement.cancelAccepted', {
+                count: result.releasedCandidateCount ?? row.candidateCount,
+            }));
         } else {
             const result = await submitSettlementReversal({
                 requestKey, originalBatchNo: row.settlementBatchNo,
@@ -708,6 +768,12 @@ function resetCommand() {
 
 function canCancel(row: SettlementBatchSummary) {
     return CANCELLABLE_STATUSES.has(row.batchStatus);
+}
+
+function canRetry(row: SettlementBatchSummary) {
+    return row.batchStatus === 'MANUAL_REVIEW'
+        && row.lastFailureStage === 'RATE_LOCKING'
+        && row.lastFailureCode === 'SETTLEMENT_RETRY_EXHAUSTED';
 }
 
 function canRequestReversal(row: SettlementBatchSummary) {
@@ -828,6 +894,30 @@ onMounted(async () => {
     margin-top: 12px;
 }
 
+.settlement-detail__recovery {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 12px;
+    border-top: 1px solid var(--el-border-color-lighter);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 14px 0;
+}
+
+.settlement-detail__recovery p {
+    margin: 4px 0 0;
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.settlement-detail__recovery-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
 .settlement-detail__section {
     margin-top: 20px;
 }
@@ -918,6 +1008,11 @@ onMounted(async () => {
     font-size: 12px;
 }
 
+.settlement-command__context > div {
+    display: grid;
+    gap: 2px;
+}
+
 @media (max-width: 900px) {
     .settlement-detail__counters {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -929,6 +1024,15 @@ onMounted(async () => {
 }
 
 @media (max-width: 640px) {
+    .settlement-detail__recovery {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settlement-detail__recovery-actions {
+        justify-content: flex-end;
+    }
+
     .settlement-detail__toolbar {
         align-items: stretch;
         flex-direction: column;

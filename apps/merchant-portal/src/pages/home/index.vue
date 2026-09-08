@@ -84,7 +84,7 @@
                             <small>{{ t('home.reserveBalanceHint') }}</small>
                         </div>
                         <CurrencyAmountPills
-                            :items="fundAccount ? [{ currency: fundAccount.settlementCurrency, amount: fundAccount.reserveBalance }] : []"
+                            :items="fundAccount?.reserveBalances || []"
                             :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
                             :locale="String(locale)"
                             tone="amber"

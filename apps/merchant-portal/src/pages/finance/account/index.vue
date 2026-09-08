@@ -35,7 +35,7 @@
                 <span>{{ $t('finance.reserveBalance') }}</span>
                 <CurrencyAmountPills
                     class="balance-pills"
-                    :items="account ? [{ currency: account.settlementCurrency, amount: account.reserveBalance }] : []"
+                    :items="account?.reserveBalances || []"
                     :fallback-currency="account?.settlementCurrency || 'USD'"
                     :locale="String(locale)"
                     tone="amber"
