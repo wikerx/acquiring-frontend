@@ -307,6 +307,13 @@ export interface SettlementReviewDecisionTask {
     startedTime?: string;
     completedTime?: string;
     version: number;
+    recoverable: boolean;
+}
+
+export interface SettlementReviewDecisionTaskResumeRequest {
+    requestKey: string;
+    expectedVersion: number;
+    reason: string;
 }
 
 export interface SettlementReviewCommandResponse {
@@ -640,6 +647,16 @@ export async function submitSettlementReviewDecisionTask(
 export async function getSettlementReviewDecisionTask(taskNo: string) {
     const result = await http.get<CommonResult<SettlementReviewDecisionTask>>(
         `/admin/settlement/review-decision-tasks/${encodeURIComponent(taskNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function resumeSettlementReviewDecisionTask(
+    taskNo: string,
+    data: SettlementReviewDecisionTaskResumeRequest,
+) {
+    const result = await http.post<CommonResult<SettlementReviewDecisionTask>>(
+        `/admin/settlement/review-decision-tasks/${encodeURIComponent(taskNo)}/resume`, data,
     );
     return unwrapResult(result.data);
 }

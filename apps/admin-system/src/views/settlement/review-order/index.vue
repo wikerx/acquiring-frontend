@@ -234,8 +234,45 @@
             </div>
             <template #footer>
                 <div class="dialog-footer">
+                    <el-button
+                        v-if="canResumeDecisionTask"
+                        type="warning"
+                        :icon="Refresh"
+                        @click="openDecisionTaskResume"
+                    >
+                        {{ t('transaction.settlement.resumeDecisionTask') }}
+                    </el-button>
                     <el-button :icon="Refresh" :loading="decisionTaskLoading" @click="refreshDecisionTask">{{ t('transaction.settlement.refreshProgress') }}</el-button>
                     <el-button @click="decisionTaskVisible = false">{{ t('common.close') }}</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <el-dialog
+            v-model="decisionTaskResumeVisible"
+            :title="t('transaction.settlement.resumeDecisionTaskTitle')"
+            width="min(560px, calc(100vw - 32px))"
+            destroy-on-close
+            @closed="decisionTaskVisible = true"
+        >
+            <el-form :model="decisionTaskResumeForm" label-width="96px">
+                <el-form-item :label="t('transaction.settlement.resumeReason')" required>
+                    <el-input
+                        v-model="decisionTaskResumeForm.reason"
+                        type="textarea"
+                        :rows="4"
+                        maxlength="400"
+                        show-word-limit
+                        :placeholder="t('transaction.settlement.resumeReasonPlaceholder')"
+                    />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" :loading="decisionTaskResuming" @click="submitDecisionTaskResume">
+                        {{ t('transaction.settlement.confirmResumeDecisionTask') }}
+                    </el-button>
+                    <el-button @click="decisionTaskResumeVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
         </el-dialog>
@@ -254,6 +291,7 @@ import {
     exportSettlementReviews,
     getSettlementReview,
     getSettlementReviewDecisionTask,
+    resumeSettlementReviewDecisionTask,
     searchSettlementReviewCandidates,
     searchSettlementReviews,
     submitSettlementReviewDecisionTask,
@@ -297,6 +335,8 @@ const decisionVisible = ref(false);
 const deciding = ref(false);
 const decisionTaskVisible = ref(false);
 const decisionTaskLoading = ref(false);
+const decisionTaskResumeVisible = ref(false);
+const decisionTaskResuming = ref(false);
 const rows = ref<SettlementReview[]>([]);
 const total = ref(0);
 const detail = ref<SettlementReviewDetail | null>(null);
@@ -309,6 +349,7 @@ const query = reactive<SettlementReviewQuery>({ beginBusinessDate: '', endBusine
 const candidateQuery = reactive({ pageNo: 1, pageSize: 20 });
 const decisionAction = ref<DecisionAction>('approve');
 const decisionForm = reactive({ comment: '' });
+const decisionTaskResumeForm = reactive({ reason: '' });
 const paymentTypeOptions = ref<SelectOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
 const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
@@ -318,6 +359,9 @@ const decisionTaskFailureText = computed(() => {
     return [decisionTask.value.failureCode, decisionTask.value.failureMessage].filter(Boolean).join(' · ');
 });
 const canViewDetail = userStore.hasPermission('settlement:review-order:detail');
+const canResumeDecisionTask = computed(() => decisionTask.value?.taskStatus === 'FAILED'
+    && decisionTask.value.recoverable === true
+    && userStore.hasPermission('settlement:review-order:recover'));
 let decisionPollTimer: ReturnType<typeof setTimeout> | undefined;
 
 onMounted(async () => {
@@ -501,6 +545,37 @@ async function submitDecision() {
 
 async function refreshDecisionTask() {
     if (decisionTask.value) await loadDecisionTask(decisionTask.value.taskNo);
+}
+
+function openDecisionTaskResume() {
+    if (!canResumeDecisionTask.value) return;
+    decisionTaskResumeForm.reason = '';
+    decisionTaskVisible.value = false;
+    decisionTaskResumeVisible.value = true;
+}
+
+async function submitDecisionTaskResume() {
+    const task = decisionTask.value;
+    const reason = decisionTaskResumeForm.reason.trim();
+    if (!task || !canResumeDecisionTask.value || !reason || reason.length > 400) {
+        ElMessage.warning(t('transaction.settlement.resumeReasonRequired'));
+        return;
+    }
+    decisionTaskResuming.value = true;
+    try {
+        const result = await resumeSettlementReviewDecisionTask(task.taskNo, {
+            requestKey: requestKey('SET-REVIEW-RECOVER'),
+            expectedVersion: task.version,
+            reason,
+        });
+        applyDecisionTask(result);
+        decisionTaskResumeVisible.value = false;
+        ElMessage.success(t('transaction.settlement.decisionTaskResumed', { taskNo: result.taskNo }));
+    } catch (error) {
+        ElMessage.error(errorText(error, 'common.operationFailed'));
+    } finally {
+        decisionTaskResuming.value = false;
+    }
 }
 
 async function loadDecisionTask(taskNo: string, silent = false) {
