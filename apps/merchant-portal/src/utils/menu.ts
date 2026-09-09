@@ -36,6 +36,8 @@ const MENU_ROUTE_TITLE_KEYS: Record<string, string> = {
     '/finance': 'route.financeManage',
     '/finance/fee': 'route.currentFee',
     '/finance/account': 'route.fundAccount',
+    '/finance/settlements': 'route.settlementBills',
+    '/finance/reserves': 'route.reserveDetails',
 };
 
 const MENU_CODE_TITLE_KEYS: Record<string, string> = {
@@ -71,6 +73,8 @@ const MENU_CODE_TITLE_KEYS: Record<string, string> = {
     merchant_finance_catalog_v1: 'route.financeManage',
     merchant_current_fee_v1: 'route.currentFee',
     merchant_fund_account_v1: 'route.fundAccount',
+    merchant_settlement_batch_v1: 'route.settlementBills',
+    merchant_settlement_reserve_v1: 'route.reserveDetails',
 };
 
 export function createMerchantHomeMenu(): AuthMenu {

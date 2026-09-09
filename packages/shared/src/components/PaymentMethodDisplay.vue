@@ -54,11 +54,13 @@ const props = withDefaults(defineProps<{
     paymentTypes?: PaymentDimensionItem[];
     paymentMethods?: PaymentDimensionItem[];
     allCardBrandsLabel?: string;
+    showPaymentTypeLabel?: boolean;
     align?: 'start' | 'center' | 'end';
 }>(), {
     paymentTypes: () => [],
     paymentMethods: () => [],
     allCardBrandsLabel: '',
+    showPaymentTypeLabel: false,
     align: 'center',
 });
 
@@ -73,7 +75,7 @@ const displayGroups = computed<PaymentMethodGroup[]>(() => normalizedPaymentType
     const logoKeys = assetLogoKeys(resolvePaymentLogoKeys(paymentType.value));
     return {
         key: paymentType.value,
-        label: logoKeys.length ? '' : paymentType.label,
+        label: props.showPaymentTypeLabel || !logoKeys.length ? paymentType.label : '',
         title: paymentType.label,
         logoKeys,
         fallbackLabels: [],
@@ -90,7 +92,7 @@ function bankCardGroup(paymentType: PaymentDimensionItem, paymentMethods: Paymen
             || [paymentType.label, allMethodLabel].filter(Boolean).join(' · ');
         return {
             key: `${paymentType.value}:ALL`,
-            label: '',
+            label: props.showPaymentTypeLabel ? paymentType.label : '',
             title,
             logoKeys: assetLogoKeys(DEFAULT_CARD_BRAND_LOGOS),
             fallbackLabels: [],
@@ -103,7 +105,7 @@ function bankCardGroup(paymentType: PaymentDimensionItem, paymentMethods: Paymen
         .map((item) => item.label);
     return {
         key: `${paymentType.value}:${paymentMethods.map((item) => item.value).join(',')}`,
-        label: '',
+        label: props.showPaymentTypeLabel ? paymentType.label : '',
         title: `${paymentType.label} · ${paymentMethods.map((item) => item.label).join(' / ')}`,
         logoKeys,
         fallbackLabels,

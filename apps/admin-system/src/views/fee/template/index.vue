@@ -45,7 +45,7 @@
                         <span><el-button link type="success" :disabled="isOwnSubmission(scope.row)" @click="openInlineReview(scope.row)">{{ $t('feeAccount.review') }}</el-button></span>
                     </el-tooltip>
                     <el-button v-if="canWithdraw(scope.row)" v-hasPermi="'fee:template:withdraw'" link type="warning" @click="withdrawReview(scope.row)">{{ $t('feeAccount.withdrawReview') }}</el-button>
-                    <el-button v-if="scope.row.status !== 'ARCHIVED' && !scope.row.pendingVersionStatus" v-hasPermi="'fee:template:edit'" link type="primary" @click="openVersion(scope.row)">{{ $t('feeAccount.newVersion') }}</el-button>
+                    <el-button v-if="scope.row.status !== 'ARCHIVED' && !scope.row.pendingVersionStatus" v-hasPermi="'fee:template:edit'" link type="primary" @click="openVersion(scope.row)">{{ $t('feeAccount.modifyTemplate') }}</el-button>
                     <el-button v-if="scope.row.status !== 'ARCHIVED' && scope.row.currentVersionId" v-hasPermi="'fee:template:status'" link :type="scope.row.status === 'ENABLED' ? 'warning' : 'success'" :disabled="Boolean(scope.row.pendingVersionStatus)" @click="toggleStatus(scope.row)">{{ scope.row.status === 'ENABLED' ? $t('common.disable') : $t('common.enable') }}</el-button>
                     <el-button v-if="scope.row.status !== 'ARCHIVED'" v-hasPermi="'fee:template:archive'" link type="danger" :disabled="Boolean(scope.row.pendingVersionStatus)" @click="archive(scope.row)">{{ $t('feeAccount.archive') }}</el-button>
                 </template>
@@ -262,14 +262,17 @@ async function saveDraft(submitAfterSave: boolean) {
 
 async function submitExistingDraft(row: FeePlanSummary) {
     if (!row.pendingVersionId) return;
-    await ElMessageBox.confirm(
+    if (!await confirmAction(
         t('feeAccount.submitReviewConfirm', { name: row.planName, version: row.pendingVersionNo }),
         t('feeAccount.submitReviewTitle'),
-        { type: 'warning' },
-    );
-    await submitFeeTemplateVersion(row.pendingVersionId);
-    ElMessage.success(t('feeAccount.submittedForReview'));
-    await load();
+    )) return;
+    try {
+        await submitFeeTemplateVersion(row.pendingVersionId);
+        ElMessage.success(t('feeAccount.submittedForReview'));
+        await load();
+    } catch (error) {
+        ElMessage.error(feeRequestErrorMessage(error, t('common.operationFailed')));
+    }
 }
 
 function canWithdraw(row: FeePlanSummary) {
@@ -293,14 +296,17 @@ function isOwnSubmission(row: FeePlanSummary) {
 
 async function withdrawReview(row: FeePlanSummary) {
     if (!row.pendingVersionId) return;
-    await ElMessageBox.confirm(
+    if (!await confirmAction(
         t('feeAccount.withdrawReviewConfirm', { name: row.planName, version: row.pendingVersionNo }),
         t('feeAccount.withdrawReviewTitle'),
-        { type: 'warning' },
-    );
-    await withdrawFeeTemplateVersion(row.pendingVersionId);
-    ElMessage.success(t('feeAccount.reviewWithdrawn'));
-    await load();
+    )) return;
+    try {
+        await withdrawFeeTemplateVersion(row.pendingVersionId);
+        ElMessage.success(t('feeAccount.reviewWithdrawn'));
+        await load();
+    } catch (error) {
+        ElMessage.error(feeRequestErrorMessage(error, t('common.operationFailed')));
+    }
 }
 
 async function openInlineReview(row: FeePlanSummary) {
@@ -347,10 +353,14 @@ async function submitInlineReview(action: 'APPROVE' | 'REJECT', reviewComment: s
 
 async function archive(row: FeePlanSummary) {
     if (!row.id) return;
-    await ElMessageBox.confirm(t('feeAccount.archiveConfirm', { name: row.planName }), t('feeAccount.archiveTitle'), { type: 'warning' });
-    await archiveFeeTemplate(row.id);
-    ElMessage.success(t('feeAccount.archivedSuccess'));
-    await load();
+    if (!await confirmAction(t('feeAccount.archiveConfirm', { name: row.planName }), t('feeAccount.archiveTitle'))) return;
+    try {
+        await archiveFeeTemplate(row.id);
+        ElMessage.success(t('feeAccount.archivedSuccess'));
+        await load();
+    } catch (error) {
+        ElMessage.error(feeRequestErrorMessage(error, t('common.operationFailed')));
+    }
 }
 
 async function toggleStatus(row: FeePlanSummary) {
@@ -359,10 +369,27 @@ async function toggleStatus(row: FeePlanSummary) {
     const message = enabled
         ? t('feeAccount.enableTemplateConfirm', { name: row.planName })
         : t('feeAccount.disableTemplateConfirm', { name: row.planName });
-    await ElMessageBox.confirm(message, t(enabled ? 'feeAccount.enableTemplateTitle' : 'feeAccount.disableTemplateTitle'), { type: 'warning' });
-    await updateFeeTemplateStatus(row.id, enabled);
-    ElMessage.success(t(enabled ? 'feeAccount.enabledTemplateSuccess' : 'feeAccount.disabledTemplateSuccess'));
-    await load();
+    if (!await confirmAction(message, t(enabled ? 'feeAccount.enableTemplateTitle' : 'feeAccount.disableTemplateTitle'))) return;
+    try {
+        await updateFeeTemplateStatus(row.id, enabled);
+        ElMessage.success(t(enabled ? 'feeAccount.enabledTemplateSuccess' : 'feeAccount.disabledTemplateSuccess'));
+        await load();
+    } catch (error) {
+        ElMessage.error(feeRequestErrorMessage(error, t('common.operationFailed')));
+    }
+}
+
+async function confirmAction(message: string, title: string) {
+    try {
+        await ElMessageBox.confirm(message, title, {
+            type: 'warning',
+            confirmButtonText: t('common.confirm'),
+            cancelButtonText: t('common.cancel'),
+        });
+        return true;
+    } catch {
+        return false;
+    }
 }
 </script>
 

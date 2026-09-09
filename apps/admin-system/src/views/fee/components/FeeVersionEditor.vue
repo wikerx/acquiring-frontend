@@ -216,6 +216,7 @@ const activeModes = ref<Record<FeeCategory, FeeMode>>({
     REFUND_FEE: initialMode('REFUND_FEE'),
     RISK_FEE: 'STANDARD',
     DISPUTE_FEE: initialMode('DISPUTE_FEE'),
+    SETTLEMENT_PROCESSING_FEE: initialMode('SETTLEMENT_PROCESSING_FEE'),
     SETTLEMENT_FX_FEE: initialMode('SETTLEMENT_FX_FEE'),
 });
 const feeTabs = computed(() => [

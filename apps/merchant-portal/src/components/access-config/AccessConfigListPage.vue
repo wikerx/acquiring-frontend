@@ -109,6 +109,11 @@
                 <el-descriptions-item :label="t('accessConfig.createTime')"><BaseDateTime :value="createdAt(detailRow)" /></el-descriptions-item>
                 <el-descriptions-item :label="t('accessConfig.updateTime')"><BaseDateTime :value="updatedAt(detailRow)" /></el-descriptions-item>
             </el-descriptions>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button @click="detailVisible = false">{{ t('common.close') }}</el-button>
+                </div>
+            </template>
         </el-drawer>
     </div>
 </template>

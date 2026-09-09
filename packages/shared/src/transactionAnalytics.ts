@@ -18,6 +18,31 @@ export interface TransactionAnalyticsAmountMetric {
     successCount: number;
 }
 
+export type TransactionAnalyticsComparisonDirection = 'INCREASE' | 'DECREASE' | 'FLAT' | 'NEW';
+
+export interface TransactionAnalyticsAmountComparisonMetric {
+    currency: string;
+    currencyExponent?: number;
+    currentAmount: number | string;
+    previousAmount: number | string;
+    changeAmount: number | string;
+    changeRate?: number | string | null;
+    changeDirection: TransactionAnalyticsComparisonDirection;
+    currentSuccessCount: number;
+    previousSuccessCount: number;
+}
+
+export interface TransactionAnalyticsPeriodComparison {
+    periodDays: number;
+    previousTotalCount: number;
+    previousSuccessCount: number;
+    previousFailedCount: number;
+    previousPendingCount: number;
+    previousProcessingCount: number;
+    previousSuccessRate: number | string;
+    successAmounts: TransactionAnalyticsAmountComparisonMetric[];
+}
+
 export interface TransactionAnalyticsTrendMetric {
     date: string;
     totalCount: number;
@@ -50,6 +75,7 @@ export interface TransactionAnalyticsOverview {
     processingCount: number;
     successRate: number | string;
     successAmounts: TransactionAnalyticsAmountMetric[];
+    comparison?: TransactionAnalyticsPeriodComparison;
     trend: TransactionAnalyticsTrendMetric[];
     statusDistribution: TransactionAnalyticsDimensionMetric[];
     paymentMethods: TransactionAnalyticsDimensionMetric[];

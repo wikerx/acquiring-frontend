@@ -10,11 +10,28 @@
         <div class="merchant-login-page__grid">
             <section class="merchant-login-hero">
                 <div class="merchant-login-hero__eyebrow">{{ t('login.eyebrow') }}</div>
-                <img
-                    class="merchant-login-hero__logo"
-                    :src="merchantBrand.logos.horizontal"
-                    :alt="merchantBrand.name"
-                />
+                <div
+                    class="merchant-login-hero__brand-lockup"
+                    role="img"
+                    :aria-label="merchantBrand.name"
+                    translate="no"
+                >
+                    <img
+                        class="merchant-login-hero__brand-icon"
+                        :src="merchantBrand.logos.icon"
+                        alt=""
+                        aria-hidden="true"
+                        :draggable="false"
+                    />
+                    <div class="merchant-login-hero__brand-copy">
+                        <div class="merchant-login-hero__brand-name">
+                            <span>{{ VEXRA_BRAND.brandName }}</span>
+                            <i aria-hidden="true"></i>
+                            <strong>{{ merchantProductName }}</strong>
+                        </div>
+                        <small>{{ merchantBrand.subtitleEn }}</small>
+                    </div>
+                </div>
                 <div class="merchant-login-hero__title-group">
                     <h1>{{ t('login.title') }}</h1>
                     <p>{{ t('login.description') }}</p>
@@ -181,6 +198,7 @@ import { ElMessage } from 'element-plus';
 import { ArrowLeft, Key, Lock } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import {
+    VEXRA_BRAND,
     getSystemBrand,
     resolveFriendlyRequestMessage,
     type AuthLoginResponse,
@@ -196,6 +214,12 @@ import { firstAvailableMenuPath } from '@/utils/menu';
 const router = useRouter();
 const auth = useAuthStore();
 const merchantBrand = getSystemBrand('merchant');
+const merchantProductName = computed(() => {
+    const productPrefix = `${VEXRA_BRAND.brandName} `;
+    return merchantBrand.name.startsWith(productPrefix)
+        ? merchantBrand.name.slice(productPrefix.length)
+        : merchantBrand.name;
+});
 const { t } = useI18n();
 const loading = ref(false);
 const loadingCredential = ref(false);

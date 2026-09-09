@@ -34,8 +34,8 @@ export interface FundAccount {
     merchantName?: string | null;
     settlementCurrency: string;
     availableBalance: DecimalValue;
-    reserveBalance: DecimalValue;
     pendingBalances: CurrencyBalance[];
+    reserveBalances: CurrencyBalance[];
     accountStatus: string;
     reverseRestricted: number;
     creditAllowed: boolean;

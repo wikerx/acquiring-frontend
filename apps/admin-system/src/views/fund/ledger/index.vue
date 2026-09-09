@@ -55,8 +55,9 @@
 
         <StandardTable v-loading="loading" table-key="admin-fund-ledger-all-list" :data="rows" row-key="id" size="small">
             <el-table-column prop="ledgerNo" :label="$t('feeAccount.ledgerNo')" min-width="200" fixed="left" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantId" :label="$t('feeAccount.merchantId')" min-width="145" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantName" :label="$t('feeAccount.merchantName')" min-width="170" align="center" show-overflow-tooltip />
+            <el-table-column :label="$t('feeAccount.merchant')" min-width="240" align="center">
+                <template #default="{ row }"><MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" /></template>
+            </el-table-column>
             <el-table-column prop="accountNo" :label="$t('feeAccount.accountNo')" min-width="180" align="center" show-overflow-tooltip />
             <el-table-column :label="$t('feeAccount.businessType')" min-width="150" align="center">
                 <template #default="{ row }">{{ dictLabel(businessTypeOptions, row.businessType) }}</template>
@@ -64,9 +65,7 @@
             <el-table-column prop="summary" :label="$t('feeAccount.summary')" min-width="210" align="center" show-overflow-tooltip />
             <el-table-column :label="$t('feeAccount.direction')" width="92" align="center">
                 <template #default="{ row }">
-                    <el-tag :type="row.direction === 'CREDIT' ? 'success' : 'danger'">
-                        {{ dictLabel(directionOptions, row.direction) }}
-                    </el-tag>
+                    <DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" />
                 </template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
@@ -115,7 +114,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';

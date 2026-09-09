@@ -37,8 +37,9 @@
 
         <StandardTable v-loading="loading" table-key="admin-fund-deduction-list" :data="rows" row-key="id" size="small">
             <el-table-column prop="deductionNo" :label="$t('feeAccount.deductionNo')" min-width="190" fixed="left" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantId" :label="$t('feeAccount.merchantId')" min-width="140" align="center" />
-            <el-table-column prop="merchantName" :label="$t('feeAccount.merchantName')" min-width="160" align="center" show-overflow-tooltip />
+            <el-table-column :label="$t('feeAccount.merchant')" min-width="240" align="center">
+                <template #default="{ row }"><MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" /></template>
+            </el-table-column>
             <el-table-column prop="accountNo" :label="$t('feeAccount.accountNo')" min-width="180" align="center" show-overflow-tooltip />
             <el-table-column :label="$t('feeAccount.deductionCategory')" min-width="125" align="center">
                 <template #default="{ row }"><el-tag :type="categoryType(row.deductionCategory)" effect="light">{{ categoryText(row.deductionCategory) }}</el-tag></template>
@@ -108,7 +109,7 @@
                 <section v-if="detail" class="deduction-amount-band"><span>{{ $t('feeAccount.deductionAmount') }}</span><strong><BaseAmount :value="detail.amount" :currency="detail.currency" currency-display="code" /></strong><el-tag :type="statusType(detail.deductionStatus)">{{ statusText(detail.deductionStatus) }}</el-tag></section>
                 <section v-if="detail" class="review-band is-submit"><h4>{{ $t('feeAccount.deductionInformation') }}</h4><el-descriptions :column="2" size="small">
                     <el-descriptions-item :label="$t('feeAccount.deductionNo')">{{ detail.deductionNo }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.requestId')">{{ detail.requestId }}</el-descriptions-item>
-                    <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ detail.merchantId }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.merchantName')">{{ detail.merchantName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ detail.accountNo }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.deductionCategory')"><el-tag :type="categoryType(detail.deductionCategory)">{{ categoryText(detail.deductionCategory) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.deductionReason')" :span="2">{{ detail.reason }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.submitter')">{{ detail.submitByName || '-' }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.submitTime')"><BaseDateTime :value="detail.submitTime" /></el-descriptions-item>
                 </el-descriptions></section>
@@ -126,6 +127,7 @@ import { Checked, CircleCheck, CircleClose, Download, RefreshLeft, Remove, Searc
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { MerchantIdentityDisplay } from '@acquiring/shared';
 import { auditFundDeduction, createFundDeduction, exportFundDeductions, getFundAccount, getFundDeduction, recheckFundDeduction, rejectFundDeduction, searchFundAccounts, searchFundDeductions, type FundAccount, type FundDeduction, type FundDeductionQuery } from '@/api/fund';
 import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -250,6 +252,10 @@ async function openDetail(row: FundDeduction) {
     try { detail.value = await getFundDeduction(row.id); }
     catch (error) { ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed')); }
     finally { detailLoading.value = false; }
+}
+
+function openMerchant(merchantId: string) {
+    router.push({ path: '/merchant/info', query: { merchantId } });
 }
 function validateDeductionAmount(_rule: unknown, value: string, callback: (error?: Error) => void) {
     if (!/^\d+(\.\d+)?$/.test(String(value || '')) || Number(value) <= 0 || Number(value) > 100000000) callback(new Error(t('feeAccount.deductionAmountInvalid')));

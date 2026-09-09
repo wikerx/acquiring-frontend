@@ -22,7 +22,7 @@ export interface FeeRuleTierInput {
 }
 
 export interface FeeRuleInput {
-    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE';
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_PROCESSING_FEE' | 'SETTLEMENT_FX_FEE';
     ruleName?: string;
     /** Compatibility scalar fields; batch arrays take precedence in the backend. */
     transactionType?: string;
@@ -180,10 +180,31 @@ export interface FeeSimulationInput {
     paymentType: string;
     paymentMethod: string;
     riskServiceType?: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE';
+    riskServiceTypes: Array<'INTERNAL' | 'EXTERNAL' | 'THREE_DS'>;
     labelAmount: DecimalValue;
     labelCurrency: string;
     monthlyCountBefore: number;
     monthlyAmountUsdBefore: DecimalValue;
+}
+
+export interface FeeSimulationDetail {
+    lineNo: number;
+    itemType: 'FEE' | 'RESERVE';
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_PROCESSING_FEE' | 'SETTLEMENT_FX_FEE' | 'RESERVE';
+    calculationStatus: 'CALCULATED' | 'NOT_APPLICABLE' | 'NOT_CONFIGURED';
+    includedInFeeTotal: boolean;
+    riskServiceType: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' | 'NONE';
+    chargeTrigger: 'NO_CHARGE' | 'SUCCESS' | 'SUCCESS_OR_FAILURE' | 'ON_CALL' | 'NOT_APPLICABLE';
+    ruleName?: string | null;
+    feeMode?: 'STANDARD' | 'TIER' | null;
+    matchedRuleId?: number | null;
+    matchedTierId?: number | null;
+    percentageFeeLabel?: DecimalValue | null;
+    percentageFeeCurrency?: string | null;
+    rawFeeUsd?: DecimalValue | null;
+    finalFeeUsd?: DecimalValue | null;
+    appliedLimit: string;
+    formulaSnapshot?: string | null;
 }
 
 export interface FeeSimulationResult {
@@ -197,6 +218,8 @@ export interface FeeSimulationResult {
     finalFeeUsd: DecimalValue;
     labelAmountUsd: DecimalValue;
     reserveRate: DecimalValue;
+    reserveAmountLabel: DecimalValue;
+    reserveAmountCurrency: string;
     reserveAmountUsd: DecimalValue;
     estimatedNetSettlementUsd: DecimalValue;
     feeCurrency: 'USD';
@@ -207,6 +230,9 @@ export interface FeeSimulationResult {
     rateEffectiveTime: string;
     rateValuationTime: string;
     formulaSnapshot: string;
+    feeTotalFormulaSnapshot: string;
+    netSettlementFormulaSnapshot: string;
+    feeDetails: FeeSimulationDetail[];
 }
 
 export interface FeeSimulationRecordQuery extends PageQuery {
@@ -228,12 +254,25 @@ export interface FeeSimulationRecord {
     labelAmount: DecimalValue;
     labelCurrency: string;
     labelToUsdRate: DecimalValue;
+    labelAmountUsd: DecimalValue;
+    settlementRateId?: number | null;
     settlementRateSource: string;
+    rateEffectiveTime?: string | null;
+    rateValuationTime?: string | null;
     matchedRuleId: number;
     matchedTierId?: number | null;
+    rawFeeUsd: DecimalValue;
     finalFeeUsd: DecimalValue;
+    reserveRate: DecimalValue;
+    reserveAmountLabel: DecimalValue;
+    reserveAmountCurrency: string;
     reserveAmountUsd: DecimalValue;
     estimatedNetSettlementUsd: DecimalValue;
+    formulaSnapshot: string;
+    netSettlementFormulaSnapshot: string;
+    detailSnapshotStatus: 'COMPLETE' | 'LEGACY_INCOMPLETE';
+    riskServiceTypes: Array<'INTERNAL' | 'EXTERNAL' | 'THREE_DS'>;
+    feeDetails: FeeSimulationDetail[];
     operatorName: string;
     createTime: string;
 }

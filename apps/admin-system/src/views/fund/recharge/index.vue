@@ -32,8 +32,9 @@
 
         <StandardTable v-loading="loading" table-key="admin-fund-recharge-list" :data="rows" row-key="id" size="small">
             <el-table-column prop="rechargeNo" :label="$t('feeAccount.rechargeNo')" min-width="190" fixed="left" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantId" :label="$t('feeAccount.merchantId')" min-width="140" align="center" show-overflow-tooltip />
-            <el-table-column prop="merchantName" :label="$t('feeAccount.merchantName')" min-width="160" align="center" show-overflow-tooltip />
+            <el-table-column :label="$t('feeAccount.merchant')" min-width="240" align="center">
+                <template #default="{ row }"><MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" /></template>
+            </el-table-column>
             <el-table-column prop="accountNo" :label="$t('feeAccount.accountNo')" min-width="180" align="center" show-overflow-tooltip />
             <el-table-column :label="$t('feeAccount.rechargeAmount')" min-width="150" align="right">
                 <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
@@ -126,8 +127,7 @@
                     <el-descriptions :column="2" size="small">
                         <el-descriptions-item :label="$t('feeAccount.rechargeNo')">{{ detail.rechargeNo }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.requestId')">{{ detail.requestId }}</el-descriptions-item>
-                        <el-descriptions-item :label="$t('feeAccount.merchantId')">{{ detail.merchantId }}</el-descriptions-item>
-                        <el-descriptions-item :label="$t('feeAccount.merchantName')">{{ detail.merchantName || '-' }}</el-descriptions-item>
+                        <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ detail.accountNo }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')">{{ detail.currency }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('common.remark')" :span="2">{{ detail.remark }}</el-descriptions-item>
@@ -172,6 +172,7 @@ import { Checked, CircleCheck, CircleClose, CreditCard, Download, RefreshLeft, S
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { MerchantIdentityDisplay } from '@acquiring/shared';
 import {
     auditFundRecharge,
     createFundRecharge,
@@ -381,6 +382,10 @@ async function submitAction() {
 function openDetail(row: FundRecharge) {
     detail.value = row;
     detailVisible.value = true;
+}
+
+function openMerchant(merchantId: string) {
+    router.push({ path: '/merchant/info', query: { merchantId } });
 }
 
 function validateRechargeAmount(_rule: unknown, value: string, callback: (error?: Error) => void) {

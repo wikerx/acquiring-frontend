@@ -108,6 +108,8 @@
                             <span>{{ t('checkout.email') }}</span>
                             <input
                                 v-model.trim="billingForm.email"
+                                type="email"
+                                name="email"
                                 autocomplete="email"
                                 placeholder="customer@example.com"
                                 :aria-invalid="Boolean(fieldErrors.email)"

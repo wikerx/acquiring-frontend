@@ -505,7 +505,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, VideoPause, VideoPlay, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -546,6 +546,7 @@ import { searchDictData, type SysDictData } from '@/api/system/dict';
 import { useUserStore } from '@/store/modules/user';
 
 const { t, locale } = useI18n();
+const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const showSearch = ref(true);
@@ -644,6 +645,9 @@ const statusChangingId = ref<string>();
 const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
 
 onMounted(() => {
+  const linkedMerchantId = typeof route.query.merchantId === 'string'
+    ? route.query.merchantId.trim() : '';
+  if (linkedMerchantId) query.keyword = linkedMerchantId;
   loadData();
   loadTimezones();
   loadFormOptions();

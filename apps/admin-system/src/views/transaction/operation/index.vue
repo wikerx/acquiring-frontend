@@ -243,8 +243,8 @@
                     <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
                     </el-tooltip>
-                    <el-tooltip :content="canCapture(row) ? t('transaction.actions.captureTip') : t('transaction.actions.captureDisabled')" placement="top">
-                        <span><el-button size="small" type="primary" link :disabled="!canCapture(row)" @click="openCaptureDialog(row)" v-hasPermi="'transaction:operation:capture'">{{ t('transaction.actions.capture') }}</el-button></span>
+                    <el-tooltip :content="captureActionTip(row, canCapture(row))" placement="top">
+                        <span><el-button size="small" type="primary" link :disabled="!canCapture(row)" @click="openCaptureDialog(row)" v-hasPermi="'transaction:operation:capture'">{{ captureActionText(row) }}</el-button></span>
                     </el-tooltip>
                     <el-tooltip :content="canVoid(row) ? t('transaction.actions.voidTip') : t('transaction.actions.voidDisabled')" placement="top">
                         <span><el-button size="small" type="primary" link :disabled="!canVoid(row)" @click="openVoidDialog(row)" v-hasPermi="'transaction:operation:void'">{{ t('transaction.actions.void') }}</el-button></span>
@@ -334,8 +334,8 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="captureVisible" :title="t('transaction.actions.captureTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.captureTip')" />
+        <el-dialog v-model="captureVisible" :title="captureDialogTitle" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="captureDialogTip" />
             <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('transaction.actions.originalInfo') }}</h3>
                 <dl class="transaction-action-detail-grid">
@@ -358,14 +358,14 @@
                 </dl>
             </section>
             <section v-if="selectedOperation" class="transaction-action-section">
-                <h3>{{ t('transaction.actions.captureInfo') }}</h3>
+                <h3>{{ captureDialogInfo }}</h3>
                 <div class="transaction-action-amount-card">
                     <span>{{ t('transaction.fields.availableCaptureAmount') }}</span>
                     <strong>{{ labelMoneyText(selectedOperation, availableCaptureLabelAmount(selectedOperation)) }}</strong>
-                    <em>{{ t('transaction.actions.fullCaptureOnly') }}</em>
+                    <em>{{ captureFullAmountText }}</em>
                 </div>
                 <el-form :model="captureForm" label-position="top" class="transaction-action-form">
-                    <el-form-item :label="t('transaction.actions.captureAmount')">
+                    <el-form-item :label="captureAmountText">
                         <el-input :model-value="amountInputText(selectedOperation, availableCaptureLabelAmount(selectedOperation))" disabled>
                             <template #append>{{ labelCurrency(selectedOperation) || '-' }}</template>
                         </el-input>
@@ -379,11 +379,11 @@
                         <el-input v-model.trim="captureForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
                     </el-form-item>
                 </el-form>
-                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.captureSuccessHint')" />
+                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="captureSuccessHint" />
             </section>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" :loading="actionSubmitting" @click="submitCapture">{{ t('transaction.actions.capture') }}</el-button>
+                    <el-button type="primary" :loading="actionSubmitting" @click="submitCapture">{{ captureDialogAction }}</el-button>
                     <el-button @click="captureVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
@@ -452,12 +452,15 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { useUserStore } from '@/store/modules/user';
 import {
     captureTransactionOperation,
     exportTransactionOperations,
     getTransactionOperationDetail,
+    preAuthCompletionTransactionOperation,
     refundTransactionOperation,
     requeryTransactionChannelMatch,
     retryMerchantNotification,
@@ -472,6 +475,7 @@ import {
 } from '@/api/transaction';
 import type { ChannelOption } from '@/api/channel';
 import { loadChannelOptions, loadDictOptions, type SelectOption } from '@/views/channel/shared';
+import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionDetailDrawer from '../components/TransactionDetailDrawer.vue';
@@ -503,6 +507,8 @@ import {
 } from '../shared';
 
 const { t, locale } = useI18n();
+const route = useRoute();
+const userStore = useUserStore();
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
@@ -567,6 +573,15 @@ const captureForm = reactive({
     reason: '',
     description: '',
 });
+
+const isPreAuthCompletion = computed(() => selectedOperation.value?.transactionType === 'PRE_AUTHORIZATION');
+const captureDialogAction = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletion' : 'capture'}`));
+const captureDialogTitle = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionTitle' : 'captureTitle'}`));
+const captureDialogTip = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionTip' : 'captureTip'}`));
+const captureDialogInfo = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`));
+const captureAmountText = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionAmount' : 'captureAmount'}`));
+const captureFullAmountText = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'fullPreAuthCompletionOnly' : 'fullCaptureOnly'}`));
+const captureSuccessHint = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionSuccessHint' : 'captureSuccessHint'}`));
 const voidForm = reactive({
     reason: '',
     description: '',
@@ -673,8 +688,29 @@ const summaryItems = computed(() => [
 const refundAmountError = computed(() => validateRefundAmount());
 
 onMounted(async () => {
+    const linkedTransactionId = typeof route.query.transactionId === 'string'
+        ? route.query.transactionId.trim() : '';
+    if (linkedTransactionId) query.transactionId = linkedTransactionId;
+    const linkedTransactionDateTime = typeof route.query.transactionDateTime === 'string'
+        ? route.query.transactionDateTime.trim() : '';
+    const linkedTransactionTimeZone = typeof route.query.transactionTimeZone === 'string'
+        ? route.query.transactionTimeZone.trim() : DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    if (linkedTransactionDateTime) {
+        const displayDateTime = formatDateTimeFromSourceTimeZone(
+            linkedTransactionDateTime, linkedTransactionTimeZone, query.queryTimeZone,
+        );
+        const linkedDate = /^\d{4}-\d{2}-\d{2}/.exec(displayDateTime)?.[0];
+        if (linkedDate) {
+            quickPreset.value = '';
+            dateRange.value = [`${linkedDate}T00:00:00`, `${linkedDate}T23:59:59`];
+        }
+    }
     await loadDictionaries();
     await loadData();
+    if (linkedTransactionId && userStore.hasPermission('transaction:operation:detail')) {
+        const linkedRow = rows.value.find((row) => row.transactionId === linkedTransactionId);
+        if (linkedRow) openDetail(linkedRow);
+    }
 });
 
 async function loadDictionaries() {
@@ -1002,6 +1038,15 @@ function canCapture(row: TransactionOperation) {
     return true;
 }
 
+function captureActionText(row: TransactionOperation) {
+    return t(`transaction.actions.${row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture'}`);
+}
+
+function captureActionTip(row: TransactionOperation, enabled: boolean) {
+    const prefix = row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture';
+    return t(`transaction.actions.${prefix}${enabled ? 'Tip' : 'Disabled'}`);
+}
+
 function toNullableAmount(value?: number | string | null) {
     if (value === undefined || value === null || value === '') {
         return null;
@@ -1112,14 +1157,20 @@ async function submitCapture() {
     }
     actionSubmitting.value = true;
     try {
-        const result = await captureTransactionOperation(selectedOperation.value.transactionId, {
+        const action = selectedOperation.value.transactionType === 'PRE_AUTHORIZATION'
+            ? preAuthCompletionTransactionOperation
+            : captureTransactionOperation;
+        const result = await action(selectedOperation.value.transactionId, {
             amount: availableCaptureLabelAmount(selectedOperation.value),
             currency: labelCurrency(selectedOperation.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
             transactionDateTime: selectedOperation.value.transactionDateTime!,
             rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
-        ElMessage.success(t('transaction.actions.captureSuccess', { transactionId: result.transactionId }));
+        const successKey = selectedOperation.value.transactionType === 'PRE_AUTHORIZATION'
+            ? 'preAuthCompletionSuccess'
+            : 'captureSuccess';
+        ElMessage.success(t(`transaction.actions.${successKey}`, { transactionId: result.transactionId }));
         captureVisible.value = false;
         await refreshAfterAction(selectedOperation.value);
     } finally {

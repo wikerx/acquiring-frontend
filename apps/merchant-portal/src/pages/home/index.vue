@@ -1,48 +1,104 @@
 <template>
     <div class="page merchant-home-page">
-        <section class="merchant-home-hero">
-            <div>
-                <p class="merchant-home-hero__eyebrow">{{ t('home.eyebrow') }}</p>
+        <section class="merchant-home-intro">
+            <div class="merchant-home-intro__copy">
                 <h1>{{ t('home.title', { name: displayName }) }}</h1>
-                <p class="merchant-home-hero__description">{{ t('home.description') }}</p>
-                <div class="merchant-home-hero__actions">
-                    <el-button v-for="entry in primaryEntries" :key="entry.path" type="primary" plain @click="router.push(entry.path)">
-                        <el-icon><component :is="resolveMenuIcon(entry.icon)" /></el-icon>
-                        <span>{{ entry.label }}</span>
-                    </el-button>
-                </div>
+                <p>
+                    <span>{{ t('home.merchantId') }} {{ merchantId }}</span>
+                    <i aria-hidden="true" />
+                    <span>{{ loginAccount }}</span>
+                </p>
             </div>
-            <div class="merchant-home-identity">
-                <span>{{ t('home.currentMerchant') }}</span>
-                <strong>{{ merchantId }}</strong>
-                <small>{{ loginAccount }}</small>
-                <div class="merchant-home-identity__mark">{{ merchantBrand.name }}</div>
+            <div class="merchant-home-intro__actions">
+                <el-button v-for="entry in primaryEntries" :key="entry.path" plain @click="router.push(entry.path)">
+                    <el-icon><component :is="resolveMenuIcon(entry.icon)" /></el-icon>
+                    <span>{{ entry.label }}</span>
+                </el-button>
+            </div>
+        </section>
+
+        <section v-if="canViewFundAccount" v-loading="fundAccountLoading" class="merchant-home-surface merchant-home-balance-overview">
+            <header class="merchant-home-surface__head">
+                <div class="merchant-home-surface__title">
+                    <span class="merchant-home-surface__icon is-blue"><el-icon><Wallet /></el-icon></span>
+                    <div>
+                        <h2>{{ t('home.fundOverview') }}</h2>
+                        <p>
+                            {{ t('home.fundOverviewDesc') }}
+                            <template v-if="fundAccount?.updateTime">
+                                · {{ t('home.balanceUpdatedAt') }} <BaseDateTime :value="fundAccount.updateTime" />
+                            </template>
+                        </p>
+                    </div>
+                </div>
+                <div class="merchant-home-surface__actions">
+                    <el-button v-if="fundAccountEntry" link type="primary" @click="router.push(fundAccountEntry.path)">
+                        {{ fundAccountEntry.label }} <el-icon><ArrowRight /></el-icon>
+                    </el-button>
+                    <el-button
+                        text
+                        circle
+                        :icon="RefreshLeft"
+                        :aria-label="t('home.refreshBalance')"
+                        :title="t('home.refreshBalance')"
+                        @click="loadFundAccount"
+                    />
+                </div>
+            </header>
+            <div v-if="!fundAccountError" class="merchant-home-balance-list">
+                <article class="merchant-home-balance-item is-available">
+                    <span class="merchant-home-balance-item__icon"><el-icon><Wallet /></el-icon></span>
+                    <div class="merchant-home-balance-item__body">
+                        <div class="merchant-home-balance-item__head">
+                            <strong>{{ t('finance.availableBalance') }}</strong>
+                            <small>{{ t('home.availableBalanceHint') }}</small>
+                        </div>
+                        <CurrencyAmountPills
+                            :items="fundAccount ? [{ currency: fundAccount.settlementCurrency, amount: fundAccount.availableBalance }] : []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="green"
+                        />
+                    </div>
+                </article>
+                <article class="merchant-home-balance-item is-pending">
+                    <span class="merchant-home-balance-item__icon"><el-icon><Clock /></el-icon></span>
+                    <div class="merchant-home-balance-item__body">
+                        <div class="merchant-home-balance-item__head">
+                            <strong>{{ t('finance.pendingBalance') }}</strong>
+                            <small>{{ t('home.pendingBalanceHint') }}</small>
+                        </div>
+                        <CurrencyAmountPills
+                            :items="fundAccount?.pendingBalances || []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="blue"
+                        />
+                    </div>
+                </article>
+                <article class="merchant-home-balance-item is-reserve">
+                    <span class="merchant-home-balance-item__icon"><el-icon><Lock /></el-icon></span>
+                    <div class="merchant-home-balance-item__body">
+                        <div class="merchant-home-balance-item__head">
+                            <strong>{{ t('finance.reserveBalance') }}</strong>
+                            <small>{{ t('home.reserveBalanceHint') }}</small>
+                        </div>
+                        <CurrencyAmountPills
+                            :items="fundAccount?.reserveBalances || []"
+                            :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
+                            :locale="String(locale)"
+                            tone="amber"
+                        />
+                    </div>
+                </article>
+            </div>
+            <div v-else class="merchant-home-balance-error">
+                <span>{{ t('home.fundOverviewUnavailable') }}</span>
+                <el-button link type="primary" :icon="RefreshLeft" @click="loadFundAccount">{{ t('home.retry') }}</el-button>
             </div>
         </section>
 
         <template v-if="canViewAnalytics">
-            <section class="merchant-home-section-head">
-                <div>
-                    <h2>{{ t('home.transactionOverview') }}</h2>
-                    <p>{{ t('home.transactionOverviewDesc') }}</p>
-                </div>
-                <div class="merchant-home-section-head__controls">
-                    <span v-if="overview?.generatedAt" class="merchant-home-updated-at">
-                        {{ t('transactionAnalytics.updatedAtLabel') }}
-                        <BaseDateTime
-                            :value="overview.generatedAt"
-                            :source-time-zone="DEFAULT_TRANSACTION_QUERY_TIME_ZONE"
-                            :display-time-zone="DEFAULT_TRANSACTION_QUERY_TIME_ZONE"
-                        />
-                    </span>
-                    <el-radio-group v-model="selectedRangeDays" size="small" @change="handleRangeChange">
-                        <el-radio-button v-for="option in rangeOptions" :key="option.days" :value="option.days">
-                            {{ option.label }}
-                        </el-radio-button>
-                    </el-radio-group>
-                </div>
-            </section>
-
             <el-alert
                 v-if="overviewError"
                 :title="overviewError"
@@ -52,24 +108,92 @@
                 class="merchant-home-alert"
             />
 
-            <section v-loading="overviewLoading" class="merchant-home-metric-band" :aria-label="t('home.transactionOverview')">
-                <article v-for="item in overviewMetrics" :key="item.key" class="merchant-home-metric" :class="`is-${item.tone}`">
-                    <span>{{ item.label }}</span>
-                    <strong>{{ item.value }}</strong>
-                    <small>{{ item.hint }}</small>
-                </article>
-                <article class="merchant-home-metric merchant-home-metric--amount is-cyan">
-                    <span>{{ t('transactionAnalytics.successAmount') }}</span>
-                    <div v-if="overview?.successAmounts.length" class="merchant-home-amount-list">
-                        <span v-for="item in overview.successAmounts" :key="`${item.currency}:${item.currencyExponent}`">
+            <section v-loading="overviewLoading" class="merchant-home-surface merchant-home-overview" :aria-label="t('home.transactionOverview')">
+                <header class="merchant-home-surface__head merchant-home-overview__head">
+                    <div class="merchant-home-surface__title">
+                        <span class="merchant-home-surface__icon is-teal"><el-icon><DataAnalysis /></el-icon></span>
+                        <div>
+                            <h2>{{ t('home.transactionOverview') }}</h2>
+                            <p>{{ t('home.transactionOverviewDesc') }}</p>
+                        </div>
+                    </div>
+                    <div class="merchant-home-overview__controls">
+                        <span v-if="overview?.generatedAt" class="merchant-home-updated-at">
+                            {{ t('transactionAnalytics.updatedAtLabel') }}
+                            <BaseDateTime
+                                :value="overview.generatedAt"
+                                :source-time-zone="DEFAULT_TRANSACTION_QUERY_TIME_ZONE"
+                                :display-time-zone="DEFAULT_TRANSACTION_QUERY_TIME_ZONE"
+                            />
+                        </span>
+                        <el-radio-group v-model="selectedRangeDays" size="small" @change="handleRangeChange">
+                            <el-radio-button v-for="option in rangeOptions" :key="option.days" :value="option.days">
+                                {{ option.label }}
+                            </el-radio-button>
+                        </el-radio-group>
+                    </div>
+                </header>
+
+                <div class="merchant-home-metric-band">
+                    <article v-for="item in overviewMetrics" :key="item.key" class="merchant-home-metric" :class="`is-${item.tone}`">
+                        <header class="merchant-home-metric__head">
+                            <span class="merchant-home-metric__icon"><el-icon><component :is="item.icon" /></el-icon></span>
+                            <span>{{ item.label }}</span>
+                        </header>
+                        <strong class="merchant-home-metric__value">{{ item.value }}</strong>
+                        <div v-if="item.comparison" class="merchant-home-metric__comparison">
+                            <span :class="`is-${item.comparison.sentiment}`">
+                                {{ item.comparison.arrow }} {{ item.comparison.label }}
+                            </span>
+                            <small>{{ comparisonPeriodLabel }}</small>
+                            <small>{{ item.comparison.previous }}</small>
+                        </div>
+                        <div v-else class="merchant-home-metric__comparison is-unavailable">
+                            <span>{{ t('home.comparisonUnavailable') }}</span>
+                            <small>{{ item.hint }}</small>
+                        </div>
+                    </article>
+                </div>
+
+                <section class="merchant-home-amount-section">
+                    <header>
+                        <div>
+                            <h3>{{ t('transactionAnalytics.successAmount') }}</h3>
+                            <p>{{ t('transactionAnalytics.amountHint') }}</p>
+                        </div>
+                    </header>
+                    <div v-if="amountComparisonRows.length" class="merchant-home-amount-table">
+                        <div class="merchant-home-amount-table__row is-head" aria-hidden="true">
+                            <span>{{ t('transactionAnalytics.currency') }}</span>
+                            <span>{{ t('home.currentPeriod') }}</span>
+                            <span>{{ comparisonPeriodLabel }}</span>
+                            <span>{{ t('home.previousPeriod') }}</span>
+                            <span>{{ t('transactionAnalytics.successCount') }}</span>
+                        </div>
+                        <div v-for="item in amountComparisonRows" :key="`${item.currency}:${item.currencyExponent}`" class="merchant-home-amount-table__row">
+                            <b>{{ item.currency || chartLabels.unknown }}</b>
+                            <strong>{{ formatComparisonAmount(item, 'current') }}</strong>
+                            <span class="merchant-home-amount-delta" :class="`is-${amountComparisonSentiment(item)}`">
+                                {{ amountComparisonArrow(item) }} {{ amountComparisonLabel(item) }}
+                            </span>
+                            <span>{{ formatComparisonAmount(item, 'previous') }}</span>
+                            <span>{{ formatCount(item.currentSuccessCount) }}{{ t('transactionAnalytics.countUnit') }}</span>
+                        </div>
+                    </div>
+                    <div v-else-if="overview?.successAmounts.length" class="merchant-home-amount-table is-current-only">
+                        <div class="merchant-home-amount-table__row is-head" aria-hidden="true">
+                            <span>{{ t('transactionAnalytics.currency') }}</span>
+                            <span>{{ t('home.currentPeriod') }}</span>
+                            <span>{{ t('transactionAnalytics.successCount') }}</span>
+                        </div>
+                        <div v-for="item in overview.successAmounts" :key="`${item.currency}:${item.currencyExponent}`" class="merchant-home-amount-table__row">
                             <b>{{ item.currency || chartLabels.unknown }}</b>
                             <strong>{{ formatAnalyticsAmountValue(item, locale) }}</strong>
-                            <small>{{ formatCount(item.successCount) }}{{ t('transactionAnalytics.countUnit') }}</small>
-                        </span>
+                            <span>{{ formatCount(item.successCount) }}{{ t('transactionAnalytics.countUnit') }}</span>
+                        </div>
                     </div>
-                    <strong v-else>-</strong>
-                    <small>{{ t('transactionAnalytics.amountHint') }}</small>
-                </article>
+                    <div v-else class="merchant-home-amount-empty">{{ t('transactionAnalytics.noData') }}</div>
+                </section>
             </section>
         </template>
 
@@ -91,7 +215,7 @@
                     :empty="!overview?.trend.length"
                     :empty-text="t('transactionAnalytics.noData')"
                     :aria-label="t('transactionAnalytics.trendTitle')"
-                    height="310px"
+                    height="258px"
                 />
             </article>
 
@@ -158,18 +282,33 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowRight, CircleClose, Link, Loading, RefreshLeft } from '@element-plus/icons-vue';
+import {
+    ArrowRight,
+    CircleCheck,
+    CircleClose,
+    Clock,
+    DataAnalysis,
+    Link,
+    Loading,
+    Lock,
+    RefreshLeft,
+    TrendCharts,
+    Wallet,
+} from '@element-plus/icons-vue';
 import {
     AnalyticsChart,
+    CurrencyAmountPills,
     analyticsNumber,
     createAnalyticsTrendOption,
     createTransactionAnalyticsRange,
     formatAnalyticsAmountValue,
     getSystemBrand,
+    type TransactionAnalyticsAmountComparisonMetric,
     type TransactionAnalyticsOverview,
 } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { accessConfigApi } from '@/api/accessConfigApi';
+import { financeApi, type FundAccount } from '@/api/financeApi';
 import { transactionApi } from '@/api/transactionApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { useAuthStore } from '@/stores/authStore';
@@ -188,6 +327,9 @@ const overviewError = ref('');
 const pendingRefundCount = ref<number | null>(null);
 const pendingAccessCount = ref<number | null>(null);
 const taskLoadPartialFailure = ref(false);
+const fundAccount = ref<FundAccount | null>(null);
+const fundAccountLoading = ref(false);
+const fundAccountError = ref(false);
 let overviewRequestSequence = 0;
 
 const account = computed(() => auth.session?.account);
@@ -215,15 +357,23 @@ const analyticsEntry = computed(() => menuEntryMap.value.get('/transaction/analy
 const refundEntry = computed(() => menuEntryMap.value.get('/transaction/refund'));
 const sourceUrlEntry = computed(() => menuEntryMap.value.get('/access-config/source-url'));
 const ipWhitelistEntry = computed(() => menuEntryMap.value.get('/access-config/ip-whitelist'));
+const fundAccountEntry = computed(() => menuEntryMap.value.get('/finance/account'));
 const canViewAnalytics = computed(() => Boolean(analyticsEntry.value) && auth.hasPermission('merchant:transaction:analytics:view'));
 const canViewRefunds = computed(() => Boolean(refundEntry.value) && auth.hasPermission('merchant:transaction:refund:list'));
 const canViewSourceUrls = computed(() => Boolean(sourceUrlEntry.value) && auth.hasPermission('merchant:access-config:source-url:list'));
 const canViewIpWhitelists = computed(() => Boolean(ipWhitelistEntry.value) && auth.hasPermission('merchant:access-config:ip-whitelist:list'));
+const canViewFundAccount = computed(() => auth.hasPermission('merchant:fund:account:view'));
 const rangeOptions = computed(() => [
     { days: 1, label: t('transaction.time.today') },
     { days: 7, label: t('transactionAnalytics.last7Days') },
     { days: 30, label: t('transactionAnalytics.last30Days') },
 ]);
+const comparisonPeriodLabel = computed(() => {
+    const comparisonDays = overview.value?.comparison?.periodDays ?? selectedRangeDays.value;
+    if (comparisonDays === 1) return t('home.compareYesterday');
+    if (comparisonDays === 30) return t('home.compareLastMonth');
+    return t('home.compareLastWeek');
+});
 const chartLabels = computed(() => ({
     total: t('transactionAnalytics.totalSeries'),
     success: t('transactionAnalytics.successSeries'),
@@ -236,19 +386,46 @@ const chartLabels = computed(() => ({
 }));
 const overviewMetrics = computed(() => {
     const data = overview.value;
+    const comparison = data?.comparison;
     const total = analyticsNumber(data?.totalCount);
     const success = analyticsNumber(data?.successCount);
     const failed = analyticsNumber(data?.failedCount);
     const inFlight = analyticsNumber(data?.pendingCount) + analyticsNumber(data?.processingCount);
     const terminal = success + failed;
     return [
-        { key: 'total', label: t('transactionAnalytics.totalCount'), value: formatMetricValue(data, total), hint: t('transactionAnalytics.totalHint'), tone: 'ink' },
-        { key: 'success', label: t('transactionAnalytics.successCount'), value: formatMetricValue(data, success), hint: ratioHint(success, total), tone: 'teal' },
-        { key: 'failed', label: t('transactionAnalytics.failedCount'), value: formatMetricValue(data, failed), hint: ratioHint(failed, total), tone: 'red' },
-        { key: 'flight', label: t('transactionAnalytics.inFlightCount'), value: formatMetricValue(data, inFlight), hint: ratioHint(inFlight, total), tone: 'amber' },
-        { key: 'rate', label: t('transactionAnalytics.successRate'), value: data ? `${analyticsNumber(data.successRate).toFixed(2)}%` : '-', hint: t('transactionAnalytics.terminalCountHint', { count: formatCount(terminal) }), tone: 'blue' },
+        {
+            key: 'total', label: t('transactionAnalytics.totalCount'), value: formatMetricValue(data, total),
+            hint: t('transactionAnalytics.totalHint'), tone: 'ink', icon: DataAnalysis,
+            comparison: buildCountComparison(total, comparison?.previousTotalCount, 'higher'),
+        },
+        {
+            key: 'success', label: t('transactionAnalytics.successCount'), value: formatMetricValue(data, success),
+            hint: ratioHint(success, total), tone: 'teal', icon: CircleCheck,
+            comparison: buildCountComparison(success, comparison?.previousSuccessCount, 'higher'),
+        },
+        {
+            key: 'failed', label: t('transactionAnalytics.failedCount'), value: formatMetricValue(data, failed),
+            hint: ratioHint(failed, total), tone: 'red', icon: CircleClose,
+            comparison: buildCountComparison(failed, comparison?.previousFailedCount, 'lower'),
+        },
+        {
+            key: 'flight', label: t('transactionAnalytics.inFlightCount'), value: formatMetricValue(data, inFlight),
+            hint: ratioHint(inFlight, total), tone: 'amber', icon: Loading,
+            comparison: buildCountComparison(
+                inFlight,
+                comparison ? analyticsNumber(comparison.previousPendingCount) + analyticsNumber(comparison.previousProcessingCount) : undefined,
+                'lower',
+            ),
+        },
+        {
+            key: 'rate', label: t('transactionAnalytics.successRate'),
+            value: data ? `${formatDecimal(analyticsNumber(data.successRate))}%` : '-',
+            hint: t('transactionAnalytics.terminalCountHint', { count: formatCount(terminal) }), tone: 'blue', icon: TrendCharts,
+            comparison: buildRateComparison(analyticsNumber(data?.successRate), comparison?.previousSuccessRate),
+        },
     ];
 });
+const amountComparisonRows = computed(() => overview.value?.comparison?.successAmounts ?? []);
 const trendOption = computed(() => createAnalyticsTrendOption(overview.value?.trend ?? [], chartLabels.value));
 const accessEntry = computed(() => sourceUrlEntry.value || ipWhitelistEntry.value);
 const taskItems = computed(() => {
@@ -306,6 +483,75 @@ function formatMetricValue(data: TransactionAnalyticsOverview | undefined, value
     return data ? formatCount(value) : '-';
 }
 
+type ComparisonPreference = 'higher' | 'lower';
+type ComparisonSentiment = 'positive' | 'negative' | 'neutral';
+
+function buildCountComparison(current: number, previousValue: number | string | null | undefined, preference: ComparisonPreference) {
+    if (previousValue === undefined || previousValue === null) return null;
+    const previous = analyticsNumber(previousValue);
+    const difference = current - previous;
+    const direction = difference > 0 ? 'up' : difference < 0 ? 'down' : 'flat';
+    const sentiment: ComparisonSentiment = direction === 'flat'
+        ? 'neutral'
+        : (direction === 'up') === (preference === 'higher') ? 'positive' : 'negative';
+    const label = difference === 0
+        ? t('home.comparisonFlat')
+        : previous === 0 && current > 0
+            ? t('home.comparisonNew')
+            : `${formatDecimal(Math.abs(difference) * 100 / Math.abs(previous))}%`;
+    return {
+        arrow: direction === 'up' ? '↑' : direction === 'down' ? '↓' : '—',
+        label,
+        sentiment,
+        previous: t('home.previousPeriodValue', { value: formatCount(previous) }),
+    };
+}
+
+function buildRateComparison(current: number, previousValue: number | string | null | undefined) {
+    if (previousValue === undefined || previousValue === null) return null;
+    const previous = analyticsNumber(previousValue);
+    const difference = current - previous;
+    return {
+        arrow: difference > 0 ? '↑' : difference < 0 ? '↓' : '—',
+        label: difference === 0
+            ? t('home.comparisonFlat')
+            : t('home.percentagePointChange', { value: formatDecimal(Math.abs(difference)) }),
+        sentiment: difference > 0 ? 'positive' : difference < 0 ? 'negative' : 'neutral' as ComparisonSentiment,
+        previous: t('home.previousPeriodValue', { value: `${formatDecimal(previous)}%` }),
+    };
+}
+
+function formatDecimal(value: number) {
+    return new Intl.NumberFormat(locale.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function formatComparisonAmount(item: TransactionAnalyticsAmountComparisonMetric, period: 'current' | 'previous') {
+    return formatAnalyticsAmountValue({
+        currency: item.currency,
+        currencyExponent: item.currencyExponent,
+        amount: period === 'current' ? item.currentAmount : item.previousAmount,
+        successCount: period === 'current' ? item.currentSuccessCount : item.previousSuccessCount,
+    }, String(locale.value));
+}
+
+function amountComparisonArrow(item: TransactionAnalyticsAmountComparisonMetric) {
+    if (item.changeDirection === 'INCREASE' || item.changeDirection === 'NEW') return '↑';
+    if (item.changeDirection === 'DECREASE') return '↓';
+    return '—';
+}
+
+function amountComparisonLabel(item: TransactionAnalyticsAmountComparisonMetric) {
+    if (item.changeDirection === 'NEW') return t('home.comparisonNew');
+    if (item.changeDirection === 'FLAT') return t('home.comparisonFlat');
+    return `${formatDecimal(analyticsNumber(item.changeRate))}%`;
+}
+
+function amountComparisonSentiment(item: TransactionAnalyticsAmountComparisonMetric): ComparisonSentiment {
+    if (item.changeDirection === 'INCREASE' || item.changeDirection === 'NEW') return 'positive';
+    if (item.changeDirection === 'DECREASE') return 'negative';
+    return 'neutral';
+}
+
 function ratioHint(value: number, total: number) {
     const rate = total ? (value * 100 / total).toFixed(2) : '0.00';
     return t('transactionAnalytics.totalShare', { rate });
@@ -359,8 +605,23 @@ async function loadPendingAccessCount() {
     pendingAccessCount.value = results.flat().filter((item) => item.approvalStatus === 0).length;
 }
 
+async function loadFundAccount() {
+    if (!canViewFundAccount.value) return;
+    fundAccountLoading.value = true;
+    fundAccountError.value = false;
+    try {
+        fundAccount.value = await financeApi.fundAccount();
+    } catch {
+        fundAccount.value = null;
+        fundAccountError.value = true;
+    } finally {
+        fundAccountLoading.value = false;
+    }
+}
+
 onMounted(() => {
     loadOverview();
     loadPendingItems();
+    loadFundAccount();
 });
 </script>
