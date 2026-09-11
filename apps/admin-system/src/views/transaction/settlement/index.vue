@@ -80,7 +80,7 @@
             </el-table-column>
             <el-table-column prop="transactionCount" :label="t('transaction.settlement.transactionCount')" width="104" align="center" />
             <el-table-column prop="candidateCount" :label="t('transaction.settlement.settlementItemCount')" width="112" align="center" />
-            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="162" align="right">
+            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="180" align="right">
                 <template #default="{ row }">
                     <div class="settlement-page__net-amount">
                         <DirectionTag v-if="row.netDirection" :direction="row.netDirection" :label="enumText('directionValue', row.netDirection)" />
@@ -942,10 +942,16 @@ onMounted(async () => {
 .settlement-page__net-amount {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 12px;
     width: 100%;
     white-space: nowrap;
+}
+
+.settlement-page__net-amount strong {
+    margin-left: auto;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .settlement-detail__section h3 {

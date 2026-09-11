@@ -429,6 +429,7 @@ export interface SettlementReserveItem {
     businessDate: string;
     merchantId: string;
     accountId: number;
+    accountNo?: string;
     sourceTransactionId?: string;
     sourceTransactionDateTime?: string;
     sourceBusinessNo?: string;

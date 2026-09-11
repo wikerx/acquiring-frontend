@@ -83,9 +83,39 @@
             <el-table-column :label="t('common.operation')" width="236" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button v-hasPermi="'settlement:review-order:detail'" link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button>
-                    <el-button v-if="row.reviewStatus === 'PENDING_APPROVAL'" v-hasPermi="'settlement:review-order:approve'" link type="success" @click="openDecision('approve', row)">{{ t('transaction.settlement.approve') }}</el-button>
-                    <el-button v-if="row.reviewStatus === 'PENDING_APPROVAL'" v-hasPermi="'settlement:review-order:reject'" link type="danger" @click="openDecision('reject', row)">{{ t('transaction.settlement.reject') }}</el-button>
-                    <el-button v-if="row.reviewStatus === 'PENDING_APPROVAL'" v-hasPermi="'settlement:review-order:cancel'" link type="warning" @click="openDecision('cancel', row)">{{ t('transaction.settlement.cancel') }}</el-button>
+                    <el-tooltip
+                        v-if="row.reviewStatus === 'PENDING_APPROVAL'"
+                        :disabled="!isReviewMaker(row)"
+                        :content="t('transaction.settlement.selfReviewDisabled')"
+                    >
+                        <span v-hasPermi="'settlement:review-order:approve'">
+                            <el-button link type="success" :disabled="isReviewMaker(row)" @click="openDecision('approve', row)">
+                                {{ t('transaction.settlement.approve') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
+                    <el-tooltip
+                        v-if="row.reviewStatus === 'PENDING_APPROVAL'"
+                        :disabled="!isReviewMaker(row)"
+                        :content="t('transaction.settlement.selfReviewDisabled')"
+                    >
+                        <span v-hasPermi="'settlement:review-order:reject'">
+                            <el-button link type="danger" :disabled="isReviewMaker(row)" @click="openDecision('reject', row)">
+                                {{ t('transaction.settlement.reject') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
+                    <el-tooltip
+                        v-if="row.reviewStatus === 'PENDING_APPROVAL'"
+                        :disabled="canCancelReview(row)"
+                        :content="t('transaction.settlement.cancelReviewDisabled')"
+                    >
+                        <span v-hasPermi="'settlement:review-order:cancel'">
+                            <el-button link type="warning" :disabled="!canCancelReview(row)" @click="openDecision('cancel', row)">
+                                {{ t('transaction.settlement.cancel') }}
+                            </el-button>
+                        </span>
+                    </el-tooltip>
                 </template>
             </el-table-column>
         </StandardTable>
@@ -285,7 +315,7 @@ import { Download, Refresh, RefreshLeft, Search, View } from '@element-plus/icon
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { DirectionTag, PaymentMethodDisplay } from '@acquiring/shared';
+import { BusinessResultError, DirectionTag, PaymentMethodDisplay } from '@acquiring/shared';
 import {
     decideSettlementReview,
     exportSettlementReviews,
@@ -502,10 +532,29 @@ function openBatch(settlementBatchNo?: string) {
 }
 
 function openDecision(action: DecisionAction, row: SettlementReview) {
+    if (action === 'cancel' && !canCancelReview(row)) {
+        ElMessage.warning(t('transaction.settlement.cancelReviewDisabled'));
+        return;
+    }
+    if (action !== 'cancel' && isReviewMaker(row)) {
+        ElMessage.warning(t('transaction.settlement.selfReviewDisabled'));
+        return;
+    }
     decisionAction.value = action;
     selected.value = row;
     decisionForm.comment = '';
     decisionVisible.value = true;
+}
+
+function isReviewMaker(row: SettlementReview) {
+    const currentAccountId = userStore.account?.accountId;
+    return currentAccountId != null
+        && row.submittedByAccountId != null
+        && row.submittedByAccountId === currentAccountId;
+}
+
+function canCancelReview(row: SettlementReview) {
+    return row.reviewStatus === 'PENDING_APPROVAL' && isReviewMaker(row);
 }
 
 async function submitDecision() {
@@ -669,6 +718,14 @@ function routeText(name: string) {
 }
 
 function errorText(error: unknown, fallbackKey: string) {
+    if (error instanceof BusinessResultError) {
+        if (error.resultCode === 'SETTLEMENT_REVIEW_DECISION_SELF_REVIEW_FORBIDDEN') {
+            return t('transaction.settlement.selfReviewDisabled');
+        }
+        if (error.resultCode === 'SETTLEMENT_REVIEW_DECISION_CANCEL_FORBIDDEN') {
+            return t('transaction.settlement.cancelReviewDisabled');
+        }
+    }
     return error instanceof Error ? error.message : t(fallbackKey);
 }
 </script>
