@@ -13,7 +13,31 @@
     >
         <div class="merchant-settings-body">
             <section class="merchant-settings-section">
-                <h4>{{ $t('settings.themeColor') }}</h4>
+                <h4>{{ $t('settings.appearanceScheme') }}</h4>
+                <div class="merchant-appearance-preset-list">
+                    <button
+                        v-for="option in APPEARANCE_PRESET_OPTIONS"
+                        :key="option.key"
+                        class="merchant-appearance-preset-option"
+                        :class="{ active: settings.appearancePreset === option.key }"
+                        type="button"
+                        @click="settings.applyAppearancePreset(option.key)"
+                    >
+                        <span
+                            class="merchant-appearance-preset-option__preview"
+                            :style="{ background: option.previewColors.canvas, borderColor: option.previewColors.primary }"
+                        >
+                            <i :style="{ background: option.previewColors.navigation }" />
+                            <b :style="{ background: option.previewColors.active }" />
+                            <em :style="{ background: option.previewColors.primary }" />
+                        </span>
+                        <span class="merchant-appearance-preset-option__label">{{ $t(option.labelKey) }}</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="merchant-settings-section">
+                <h4>{{ $t('settings.customThemeColor') }}</h4>
                 <div class="merchant-theme-color-list">
                     <button
                         v-for="color in PRESET_COLORS"
@@ -125,7 +149,7 @@
 import { ref } from 'vue';
 import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { NAVIGATION_THEME_OPTIONS, PRESET_COLORS } from '@/constants/app';
+import { APPEARANCE_PRESET_OPTIONS, NAVIGATION_THEME_OPTIONS, PRESET_COLORS } from '@/constants/app';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const { t } = useI18n();
@@ -170,6 +194,84 @@ defineExpose({ open });
     color: #253042;
     font-size: 15px;
     font-weight: 800;
+}
+
+.merchant-appearance-preset-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.merchant-appearance-preset-option {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 9px;
+    color: #526173;
+    background: #ffffff;
+    border: 1px solid #dfe7f1;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+    transition: border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.merchant-appearance-preset-option:hover,
+.merchant-appearance-preset-option:focus-visible,
+.merchant-appearance-preset-option.active {
+    color: var(--merchant-primary);
+    border-color: var(--merchant-primary);
+    box-shadow: 0 10px 22px rgb(var(--merchant-primary-rgb) / 12%);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.merchant-appearance-preset-option__preview {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 42px;
+    overflow: hidden;
+    border: 1px solid;
+    border-radius: 6px;
+}
+
+.merchant-appearance-preset-option__preview i,
+.merchant-appearance-preset-option__preview b,
+.merchant-appearance-preset-option__preview em {
+    position: absolute;
+    display: block;
+    content: '';
+}
+
+.merchant-appearance-preset-option__preview i {
+    inset: 0 auto 0 0;
+    width: 25%;
+    border-right: 1px solid rgb(15 23 42 / 8%);
+}
+
+.merchant-appearance-preset-option__preview b {
+    right: 9px;
+    bottom: 8px;
+    width: 56%;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.merchant-appearance-preset-option__preview em {
+    top: 8px;
+    right: 9px;
+    width: 28%;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.merchant-appearance-preset-option__label {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .merchant-theme-color-list {
@@ -228,7 +330,7 @@ defineExpose({ open });
     min-height: 58px;
     padding: 8px 10px;
     color: #526173;
-    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    background: #ffffff;
     border: 1px solid #dfe7f1;
     border-radius: 8px;
     cursor: pointer;
@@ -243,7 +345,7 @@ defineExpose({ open });
 .merchant-navigation-theme-option.active {
     color: var(--merchant-primary);
     border-color: var(--merchant-primary);
-    box-shadow: 0 12px 24px rgb(22 119 255 / 12%);
+    box-shadow: 0 12px 24px rgb(var(--merchant-primary-rgb) / 12%);
     transform: translateY(-1px);
     outline: none;
 }

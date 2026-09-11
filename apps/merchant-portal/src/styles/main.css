@@ -4636,3 +4636,108 @@ body {
         transition: none;
     }
 }
+
+/* ===== Coordinated light appearance presets ===== */
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) {
+    --merchant-border: var(--merchant-primary-soft-strong);
+    --merchant-control-border-hover: var(--merchant-primary-border);
+    --el-table-row-hover-bg-color: var(--merchant-theme-table-hover);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .app-shell,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main {
+    background: var(--merchant-theme-canvas);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .app-sidebar,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .top-mode .app-header {
+    background: var(--merchant-nav-bg);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .app-header,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-breadcrumb-bar,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-tags-view {
+    border-color: var(--merchant-primary-soft);
+    background: #ffffff;
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-tag.active {
+    border-color: var(--merchant-primary-border-strong);
+    color: var(--merchant-primary-deep);
+    background: var(--merchant-primary-soft);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-nav-popper .el-menu-item.is-active,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-nav-popper .el-sub-menu.is-active > .el-sub-menu__title {
+    color: var(--merchant-primary-deep);
+    background: var(--merchant-primary-soft) !important;
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-nav-popper .el-menu-item:hover,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-nav-popper .el-sub-menu__title:hover {
+    color: var(--merchant-primary-deep);
+    background: var(--merchant-primary-soft) !important;
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .search-form .el-input__wrapper.is-focus,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .search-form .el-select__wrapper.is-focused,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .search-form .el-date-editor.is-active {
+    box-shadow: 0 0 0 1px var(--merchant-primary) inset, 0 0 0 3px rgb(var(--merchant-primary-rgb) / 10%);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-table {
+    --el-table-border-color: var(--merchant-primary-soft);
+    --el-table-header-bg-color: var(--merchant-theme-panel-tint);
+    --el-table-row-hover-bg-color: var(--merchant-theme-table-hover);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-table .el-table__header-wrapper th,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-table .el-table__fixed-header-wrapper th {
+    background: var(--merchant-theme-panel-tint);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary:not(.is-link):not(.is-text):not(.is-plain) {
+    color: #ffffff;
+    border-color: var(--merchant-action-primary);
+    background: var(--merchant-action-primary);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text),
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--success.is-plain:not(.is-link):not(.is-text) {
+    color: var(--merchant-primary-deep);
+    border-color: var(--merchant-primary-border-strong);
+    background: var(--merchant-primary-soft);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .toolbar .el-button--primary.is-plain,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .merchant-table-head__actions .el-button--primary.is-plain {
+    color: #ffffff;
+    border-color: var(--merchant-primary);
+    background: var(--merchant-primary);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text):hover,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--success.is-plain:not(.is-link):not(.is-text):hover {
+    color: #ffffff;
+    border-color: var(--merchant-primary);
+    background: var(--merchant-primary);
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--warning.is-plain:not(.is-link):not(.is-text) {
+    color: #b45309;
+    border-color: #f3c982;
+    background: #ffffff;
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--danger.is-plain:not(.is-link):not(.is-text) {
+    color: #dc3545;
+    border-color: #f3b5bc;
+    background: #fff7f8;
+}
+
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .standard-right-toolbar .el-button.is-circle:hover,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .standard-right-toolbar .el-button.is-circle:focus-visible {
+    border-color: var(--merchant-primary-border-strong);
+    color: var(--merchant-primary-deep);
+    background: var(--merchant-primary-soft);
+}
