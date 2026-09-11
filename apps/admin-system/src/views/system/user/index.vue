@@ -77,16 +77,16 @@
                             </el-button>
                             <template #dropdown>
                                 <el-dropdown-menu>
-                                    <el-dropdown-item command="role" v-hasPermi="'system:user:assign-role'">{{ $t('system.user.assignRole') }}</el-dropdown-item>
-                                    <el-dropdown-item command="password" v-hasPermi="'system:user:resetPwd'">{{ $t('system.user.resetPassword') }}</el-dropdown-item>
-                                    <el-dropdown-item command="delete" divided v-hasPermi="'system:user:remove'">{{ $t('common.delete') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaLogs" v-hasPermi="'sys:user:mfa:log'">{{ $t('system.user.mfaLogs') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaRequire" divided v-hasPermi="'sys:user:mfa:require'">{{ $t('system.user.mfaRequire') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaReset" v-hasPermi="'sys:user:mfa:reset'">{{ $t('system.user.mfaReset') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaUnlock" v-hasPermi="'sys:user:mfa:unlock'">{{ $t('system.user.mfaUnlock') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaResend" v-hasPermi="'sys:user:mfa:resend'">{{ $t('system.user.mfaResend') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaExempt" v-hasPermi="'sys:user:mfa:exempt'">{{ $t('system.user.mfaExempt') }}</el-dropdown-item>
-                                    <el-dropdown-item command="mfaDisable" v-hasPermi="'sys:user:mfa:disable'">{{ $t('system.user.mfaDisable') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('system:user:assign-role')" command="role">{{ $t('system.user.assignRole') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('system:user:resetPwd')" command="password">{{ $t('system.user.resetPassword') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('system:user:remove')" command="delete" divided>{{ $t('common.delete') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:log')" command="mfaLogs">{{ $t('system.user.mfaLogs') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:require')" command="mfaRequire" divided>{{ $t('system.user.mfaRequire') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:reset')" command="mfaReset">{{ $t('system.user.mfaReset') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:unlock')" command="mfaUnlock">{{ $t('system.user.mfaUnlock') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:resend')" command="mfaResend">{{ $t('system.user.mfaResend') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:exempt')" command="mfaExempt">{{ $t('system.user.mfaExempt') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:disable')" command="mfaDisable">{{ $t('system.user.mfaDisable') }}</el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
                         </el-dropdown>
@@ -289,6 +289,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
+import { useUserStore } from '@/store/modules/user';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import TransactionTimeRangeFilter from '@/views/transaction/components/TransactionTimeRangeFilter.vue';
 import {
@@ -300,6 +301,7 @@ import {
 } from '@/views/transaction/shared';
 
 const { locale, t } = useI18n();
+const userStore = useUserStore();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
 interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; remark: string; }

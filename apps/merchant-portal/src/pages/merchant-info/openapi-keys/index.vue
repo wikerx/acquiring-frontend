@@ -150,7 +150,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { CopyDocument, Document, Download, Refresh } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -163,6 +163,7 @@ import {
     type OpenApiKeyType,
     type OpenApiMerchantKeyMaterial,
 } from '@/api/openapiKeysApi';
+import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
@@ -217,7 +218,8 @@ async function copyMaterial(keyType: OpenApiKeyType, format: OpenApiKeyExportFor
             return;
         }
         if (isSensitiveMaterial(keyType)) {
-            await confirmPrivateKeyAction(t('openapiKeys.copyMaterialAction'));
+            const confirmed = await confirmPrivateKeyAction(t('openapiKeys.copyMaterialAction'));
+            if (!confirmed) return;
         }
         const result = await openapiKeysApi.copy(keyType, format);
         await navigator.clipboard.writeText(result.content);
@@ -238,7 +240,8 @@ async function downloadMaterial(keyType: OpenApiKeyType, format?: OpenApiKeyExpo
             return;
         }
         if (isSensitiveMaterial(keyType)) {
-            await confirmPrivateKeyAction(t('openapiKeys.downloadMaterialAction'));
+            const confirmed = await confirmPrivateKeyAction(t('openapiKeys.downloadMaterialAction'));
+            if (!confirmed) return;
         }
         await openapiKeysApi.download(keyType, format);
     } catch (error: any) {
@@ -260,7 +263,8 @@ async function rotateKey(keyType: OpenApiKeyType) {
     const loadingKey = actionKey('rotate', keyType);
     actionLoading[loadingKey] = true;
     try {
-        await confirmPrivateKeyAction(t('openapiKeys.rotateMaterialAction'));
+        const confirmed = await confirmPrivateKeyAction(t('openapiKeys.rotateMaterialAction'));
+        if (!confirmed) return;
         material.value = await openapiKeysApi.rotate(keyType);
         ElMessage.success(t('openapiKeys.rotateSuccess'));
     } catch (error: any) {
@@ -296,7 +300,7 @@ function isSensitiveMaterial(keyType: OpenApiKeyType) {
 }
 
 async function confirmPrivateKeyAction(action: string) {
-    await ElMessageBox.confirm(
+    return confirmAction(
         t('openapiKeys.sensitiveConfirmMessage', { action }),
         t('openapiKeys.sensitiveConfirmTitle'),
         { type: 'warning' },

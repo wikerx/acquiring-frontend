@@ -46,7 +46,7 @@ const selectWidth = computed(() => (typeof props.width === 'number' ? `${props.w
 const displayOptions = computed(() => {
     const current = normalizeCode(props.modelValue);
     const allOption = props.allowAll ? [buildAllOption()] : [];
-    const mergedOptions = [...allOption, ...options.value];
+    const mergedOptions = deduplicateOptions([...allOption, ...options.value]);
     if (!current || mergedOptions.some((item) => item.sourceCode === current)) {
         return mergedOptions;
     }
@@ -100,6 +100,17 @@ function sourceLabel(item: ExchangeRateSource) {
 
 function normalizeCode(value?: string) {
     return (value || '').trim().toUpperCase();
+}
+
+function deduplicateOptions(items: ExchangeRateSource[]) {
+    const seenCodes = new Set<string>();
+    return items.filter((item) => {
+        if (seenCodes.has(item.sourceCode)) {
+            return false;
+        }
+        seenCodes.add(item.sourceCode);
+        return true;
+    });
 }
 
 function buildAllOption(): ExchangeRateSource {

@@ -47,7 +47,7 @@ const selectWidth = computed(() => (typeof props.width === 'number' ? `${props.w
 const displayOptions = computed(() => {
     const current = normalizeCode(props.modelValue);
     const allOption = props.allowAll ? [buildAllOption()] : [];
-    const mergedOptions = [...allOption, ...options.value];
+    const mergedOptions = deduplicateOptions([...allOption, ...options.value]);
     if (!current || mergedOptions.some((item) => item.alpha3Code === current)) {
         return mergedOptions;
     }
@@ -104,6 +104,17 @@ function currencyLabel(item: IsoCurrency) {
 
 function normalizeCode(value?: string) {
     return (value || '').trim().toUpperCase();
+}
+
+function deduplicateOptions(items: IsoCurrency[]) {
+    const seenCodes = new Set<string>();
+    return items.filter((item) => {
+        if (seenCodes.has(item.alpha3Code)) {
+            return false;
+        }
+        seenCodes.add(item.alpha3Code);
+        return true;
+    });
 }
 
 function buildAllOption(): IsoCurrency {

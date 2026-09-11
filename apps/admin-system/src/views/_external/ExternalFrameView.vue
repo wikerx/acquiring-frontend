@@ -17,6 +17,8 @@
             v-else
             class="external-frame"
             :src="frameUrl"
+            sandbox="allow-forms allow-scripts allow-same-origin"
+            referrerpolicy="no-referrer"
             @load="handleLoad"
             @error="handleError"
         />
@@ -30,7 +32,7 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { usePermissionStore } from '@/store';
 import type { AdminMenuItem } from '@/types/admin';
-import { isExternalFrameMenu, openExternalMenu, resolveExternalUrl } from '@/utils/external-menu';
+import { isExternalFrameMenu, openExternalMenu, resolveExternalFrameUrl } from '@/utils/external-menu';
 
 const route = useRoute();
 const permissionStore = usePermissionStore();
@@ -46,7 +48,7 @@ const frameUrl = computed(() => {
     if (!targetMenu || !isExternalFrameMenu(targetMenu)) {
         return undefined;
     }
-    return resolveExternalUrl(targetMenu.routePath);
+    return resolveExternalFrameUrl(targetMenu.routePath);
 });
 
 watch(

@@ -49,13 +49,14 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type PostItem } from '@/api/systemApi';
+import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
@@ -101,7 +102,8 @@ async function submit() {
     await loadData();
 }
 async function remove(row: PostItem) {
-    await ElMessageBox.confirm(t('system.post.deleteConfirm', { name: row.postName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.post.deleteConfirm', { name: row.postName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    if (!confirmed) return;
     await systemApi.deletePost(row.postId);
     ElMessage.success(t('common.deleteSuccess'));
     await loadData();

@@ -146,8 +146,8 @@
         </el-form-item>
         <el-form-item :label="$t('security.intercept.processStatus')" prop="processStatus">
           <el-radio-group v-model="markForm.processStatus">
-            <el-radio-button :label="1">{{ $t('security.intercept.processed') }}</el-radio-button>
-            <el-radio-button :label="2">{{ $t('security.intercept.ignored') }}</el-radio-button>
+            <el-radio-button :value="1">{{ $t('security.intercept.processed') }}</el-radio-button>
+            <el-radio-button :value="2">{{ $t('security.intercept.ignored') }}</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item :label="$t('security.intercept.processRemark')" prop="processRemark">

@@ -193,7 +193,17 @@ const layoutStyle = computed(() => ({
     ...navigationThemeCssVariables(settings.sideTheme),
 }));
 const currentTitle = computed(() => currentRouteLabel(route.path) || merchantBrand.subtitleEn);
-const breadcrumbItems = computed(() => route.path === PROFILE_PATH ? [profileMenuItem()] : findMenuTrail(menuItems.value, route.path));
+const breadcrumbItems = computed(() => {
+    if (route.path === PROFILE_PATH) {
+        return [profileMenuItem()];
+    }
+    const menuTrail = findMenuTrail(menuItems.value, route.path);
+    if (menuTrail.length) {
+        return menuTrail;
+    }
+    const label = currentRouteLabel(route.path);
+    return label ? [{ path: route.path, label, children: [] }] : [];
+});
 const visitedTags = ref<MenuTag[]>([]);
 const loginAccount = computed(() => auth.session?.account.loginAccount || '');
 const displayName = computed(() =>
@@ -327,7 +337,15 @@ function currentRouteLabel(path: string) {
     if (path === PROFILE_PATH) {
         return t('route.profile');
     }
-    return findMenuLabel(menuItems.value, path);
+    const menuLabel = findMenuLabel(menuItems.value, path);
+    if (menuLabel) {
+        return menuLabel;
+    }
+    const titleKey = route.meta.titleKey;
+    if (typeof titleKey === 'string' && te(titleKey)) {
+        return t(titleKey);
+    }
+    return typeof route.meta.title === 'string' ? route.meta.title : undefined;
 }
 
 function profileMenuItem(): MenuItem {

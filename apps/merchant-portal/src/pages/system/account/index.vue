@@ -134,13 +134,14 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { CircleCheck, Lock, MoreFilled, Plus, RefreshLeft, Search, User, Warning } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type AccountItem, type DeptItem, type PostItem, type RoleItem } from '@/api/systemApi';
+import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
@@ -319,12 +320,20 @@ async function submit() {
 }
 
 async function toggleStatus(row: AccountItem) {
-    await systemApi.changeAccountStatus(row.accountId, row.status === 1 ? 0 : 1);
+    const nextStatus = row.status === 1 ? 0 : 1;
+    const confirmed = await confirmAction(
+        t(nextStatus === 1 ? 'system.account.enableConfirm' : 'system.account.disableConfirm', { name: row.loginAccount }),
+        t('common.statusConfirmTitle'),
+        { type: nextStatus === 1 ? 'info' : 'warning' },
+    );
+    if (!confirmed) return;
+    await systemApi.changeAccountStatus(row.accountId, nextStatus);
     await loadData();
 }
 
 async function remove(row: AccountItem) {
-    await ElMessageBox.confirm(t('system.account.deleteConfirm', { name: row.loginAccount }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.account.deleteConfirm', { name: row.loginAccount }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    if (!confirmed) return;
     await systemApi.deleteAccount(row.accountId);
     ElMessage.success(t('common.deleteSuccess'));
     await loadData();

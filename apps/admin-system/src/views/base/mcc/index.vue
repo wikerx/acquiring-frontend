@@ -273,7 +273,10 @@ import {
     type MccTreeQuery,
 } from '@/api/base/mcc';
 
-const { t } = useI18n();
+const { t, te } = useI18n();
+const LEGACY_MCC_TYPE_ALIASES: Record<string, string> = {
+    '特殊用途/系统用途': 'SPECIAL',
+};
 
 const activeTab = ref('tree');
 const showTreeSearch = ref(true);
@@ -653,7 +656,9 @@ function riskTag(value: string) {
 }
 
 function mccTypeText(value: string) {
-    return t(`base.mcc.type.${value}`);
+    const normalizedValue = LEGACY_MCC_TYPE_ALIASES[value] || value;
+    const translationKey = `base.mcc.type.${normalizedValue}`;
+    return te(translationKey) ? t(translationKey) : value;
 }
 
 function deliveryText(value: string) {

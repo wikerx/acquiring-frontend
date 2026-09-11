@@ -313,6 +313,8 @@ export default {
             dept: '部门',
             post: '岗位',
             deleteConfirm: '确认删除员工 {name}？',
+            disableConfirm: '确认停用员工 {name}？该账号将立即失去访问权限，MFA 状态会同步停用；重新启用账号时不会自动恢复 MFA。',
+            enableConfirm: '确认启用员工 {name}？账号恢复访问权限后，MFA 状态不会自动恢复，请按安全策略单独处理。',
             moreActions: '更多',
             actionMenu: '操作',
             mfaManage: 'MFA管理',

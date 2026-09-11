@@ -6,15 +6,6 @@ import { i18n } from '@/i18n';
 import MerchantLayout from '@/layouts/MerchantLayout.vue';
 import Forbidden from '@/pages/Forbidden.vue';
 import Login from '@/pages/Login.vue';
-import OpenApiKeys from '@/pages/merchant-info/openapi-keys/index.vue';
-import SystemAccount from '@/pages/system/account/index.vue';
-import SystemDept from '@/pages/system/dept/index.vue';
-import SystemPost from '@/pages/system/post/index.vue';
-import SystemRole from '@/pages/system/role/index.vue';
-import SystemRoleAuth from '@/pages/system/role-auth/index.vue';
-import TransactionOrder from '@/pages/transaction/order/index.vue';
-import TransactionRefund from '@/pages/transaction/refund/index.vue';
-import TransactionAnalytics from '@/pages/transaction/analytics/index.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { firstAvailableMenuPath, flattenRouteMenus, isMerchantHomePath, normalizeMenuPath, resolveMerchantMenuI18nKey, resolveMenuComponent } from '@/utils/menu';
 
@@ -29,15 +20,15 @@ declare module 'vue-router' {
 const staticChildren: RouteRecordRaw[] = [
     { path: 'home', component: () => import('@/pages/home/index.vue'), meta: { titleKey: 'route.home' } },
     { path: 'profile', component: () => import('@/pages/profile/index.vue'), meta: { titleKey: 'route.profile' } },
-    { path: 'transaction/order', component: TransactionOrder, meta: { titleKey: 'route.transactionOrder', permission: 'merchant:transaction:order:list' } },
-    { path: 'transaction/refund', component: TransactionRefund, meta: { titleKey: 'route.transactionRefund', permission: 'merchant:transaction:refund:list' } },
-    { path: 'transaction/analytics', component: TransactionAnalytics, meta: { titleKey: 'route.transactionAnalytics', permission: 'merchant:transaction:analytics:view' } },
-    { path: 'merchant-info/openapi-keys', component: OpenApiKeys, meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
-    { path: 'system/account', component: SystemAccount, meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },
-    { path: 'system/dept', component: SystemDept, meta: { titleKey: 'route.systemDept', permission: 'merchant:system:dept:list' } },
-    { path: 'system/post', component: SystemPost, meta: { titleKey: 'route.systemPost', permission: 'merchant:system:post:list' } },
-    { path: 'system/role', component: SystemRole, meta: { titleKey: 'route.systemRole', permission: 'merchant:system:role:list' } },
-    { path: 'system/role-auth', component: SystemRoleAuth, meta: { titleKey: 'route.systemRoleAuth', permission: 'merchant:system:role:grantMenu' } },
+    { path: 'transaction/order', component: () => import('@/pages/transaction/order/index.vue'), meta: { titleKey: 'route.transactionOrder', permission: 'merchant:transaction:order:list' } },
+    { path: 'transaction/refund', component: () => import('@/pages/transaction/refund/index.vue'), meta: { titleKey: 'route.transactionRefund', permission: 'merchant:transaction:refund:list' } },
+    { path: 'transaction/analytics', component: () => import('@/pages/transaction/analytics/index.vue'), meta: { titleKey: 'route.transactionAnalytics', permission: 'merchant:transaction:analytics:view' } },
+    { path: 'merchant-info/openapi-keys', component: () => import('@/pages/merchant-info/openapi-keys/index.vue'), meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
+    { path: 'system/account', component: () => import('@/pages/system/account/index.vue'), meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },
+    { path: 'system/dept', component: () => import('@/pages/system/dept/index.vue'), meta: { titleKey: 'route.systemDept', permission: 'merchant:system:dept:list' } },
+    { path: 'system/post', component: () => import('@/pages/system/post/index.vue'), meta: { titleKey: 'route.systemPost', permission: 'merchant:system:post:list' } },
+    { path: 'system/role', component: () => import('@/pages/system/role/index.vue'), meta: { titleKey: 'route.systemRole', permission: 'merchant:system:role:list' } },
+    { path: 'system/role-auth', component: () => import('@/pages/system/role-auth/index.vue'), meta: { titleKey: 'route.systemRoleAuth', permission: 'merchant:system:role:grantMenu' } },
     { path: ':pathMatch(.*)*', name: 'MerchantRuntimeFallback', component: Forbidden, meta: { title: '403', runtimeFallback: true } },
 ];
 

@@ -313,6 +313,8 @@ export default {
             dept: 'Department',
             post: 'Post',
             deleteConfirm: 'Delete employee {name}?',
+            disableConfirm: 'Disable employee {name}? Access will be revoked immediately and MFA will also be disabled. Re-enabling the account will not restore MFA automatically.',
+            enableConfirm: 'Enable employee {name}? Access will be restored, but MFA will not be restored automatically and must be handled separately according to policy.',
             moreActions: 'More',
             actionMenu: 'Actions',
             mfaManage: 'MFA',
