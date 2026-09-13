@@ -115,7 +115,7 @@
                                 :aria-invalid="Boolean(fieldErrors.email)"
                             />
                             <small v-if="fieldErrors.email" class="checkout-field__hint checkout-field__hint--error">
-                                {{ fieldErrors.email }}
+                                {{ fieldErrorText(fieldErrors.email) }}
                             </small>
                         </label>
                         <div class="checkout-field-grid">
@@ -128,7 +128,7 @@
                                     :aria-invalid="Boolean(fieldErrors.firstName)"
                                 />
                                 <small v-if="fieldErrors.firstName" class="checkout-field__hint checkout-field__hint--error">
-                                    {{ fieldErrors.firstName }}
+                                    {{ fieldErrorText(fieldErrors.firstName) }}
                                 </small>
                             </label>
                             <label class="checkout-field">
@@ -140,7 +140,7 @@
                                     :aria-invalid="Boolean(fieldErrors.lastName)"
                                 />
                                 <small v-if="fieldErrors.lastName" class="checkout-field__hint checkout-field__hint--error">
-                                    {{ fieldErrors.lastName }}
+                                    {{ fieldErrorText(fieldErrors.lastName) }}
                                 </small>
                             </label>
                         </div>
@@ -192,7 +192,7 @@
                                     {{ t('checkout.countryFallback') }}
                                 </small>
                                 <small v-if="fieldErrors.country" class="checkout-field__hint checkout-field__hint--error">
-                                    {{ fieldErrors.country }}
+                                    {{ fieldErrorText(fieldErrors.country) }}
                                 </small>
                             </label>
                             <label class="checkout-field">
@@ -272,7 +272,7 @@
                                         :aria-invalid="Boolean(fieldErrors.cardholderName)"
                                     />
                                     <small v-if="fieldErrors.cardholderName" class="checkout-field__hint checkout-field__hint--error">
-                                        {{ fieldErrors.cardholderName }}
+                                        {{ fieldErrorText(fieldErrors.cardholderName) }}
                                     </small>
                                 </label>
                                 <label class="checkout-field checkout-field--full">
@@ -287,7 +287,7 @@
                                         @blur="handleCardNumberBlur"
                                     />
                                     <small v-if="fieldErrors.cardNumber" class="checkout-field__hint checkout-field__hint--error">
-                                        {{ fieldErrors.cardNumber }}
+                                        {{ fieldErrorText(fieldErrors.cardNumber) }}
                                     </small>
                                 </label>
                                 <div class="checkout-field-grid">
@@ -301,7 +301,7 @@
                                             @input="formatExpiry"
                                         />
                                         <small v-if="fieldErrors.expiry" class="checkout-field__hint checkout-field__hint--error">
-                                            {{ fieldErrors.expiry }}
+                                            {{ fieldErrorText(fieldErrors.expiry) }}
                                         </small>
                                     </label>
                                     <label class="checkout-field">
@@ -316,7 +316,7 @@
                                             @input="formatCvc"
                                         />
                                         <small v-if="fieldErrors.cvc" class="checkout-field__hint checkout-field__hint--error">
-                                            {{ fieldErrors.cvc }}
+                                            {{ fieldErrorText(fieldErrors.cvc) }}
                                         </small>
                                     </label>
                                 </div>
@@ -526,6 +526,7 @@ import {
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
 import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
+import { resolveMerchantPostUrl } from './utils/urlSecurity';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'processing' | 'blocked';
 type CheckoutStatusViewState = 'success' | 'failed' | 'processing' | 'blocked';
@@ -542,15 +543,20 @@ interface PaymentOption {
     threeDsMode?: string;
 }
 
+interface FieldError {
+    key: string;
+    values?: Record<string, string>;
+}
+
 interface FieldErrors {
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-    country?: string;
-    cardholderName?: string;
-    cardNumber?: string;
-    expiry?: string;
-    cvc?: string;
+    email?: FieldError;
+    firstName?: FieldError;
+    lastName?: FieldError;
+    country?: FieldError;
+    cardholderName?: FieldError;
+    cardNumber?: FieldError;
+    expiry?: FieldError;
+    cvc?: FieldError;
 }
 
 interface ThreeDsReturnMessage {
@@ -1639,33 +1645,41 @@ function localizedFailureReason(reasonCode?: string): string {
 function validateForm(): boolean {
     clearFieldErrors();
     if (!isValidEmail(billingForm.email)) {
-        fieldErrors.email = t('checkout.validation.email');
+        fieldErrors.email = validationError('email');
     }
     if (!billingForm.firstName) {
-        fieldErrors.firstName = t('checkout.validation.required');
+        fieldErrors.firstName = validationError('required');
     }
     if (!billingForm.lastName) {
-        fieldErrors.lastName = t('checkout.validation.required');
+        fieldErrors.lastName = validationError('required');
     }
     if (!selectedCountryCode.value) {
-        fieldErrors.country = t('checkout.validation.required');
+        fieldErrors.country = validationError('required');
     }
     if (!cardForm.cardholderName) {
-        fieldErrors.cardholderName = t('checkout.validation.required');
+        fieldErrors.cardholderName = validationError('required');
     }
     const cardNumber = digitsOnly(cardForm.cardNumber);
     if (cardNumber.length < 12 || cardNumber.length > 19 || !luhnValid(cardNumber)) {
-        fieldErrors.cardNumber = t('checkout.validation.cardNumber');
+        fieldErrors.cardNumber = validationError('cardNumber');
     }
     const expiry = parseExpiry(cardForm.expiry);
     if (!expiry.valid) {
-        fieldErrors.expiry = t('checkout.validation.expiry');
+        fieldErrors.expiry = validationError('expiry');
     }
     const cvc = digitsOnly(cardForm.cvc);
     if (cvc.length < 3 || cvc.length > 4) {
-        fieldErrors.cvc = t('checkout.validation.cvc');
+        fieldErrors.cvc = validationError('cvc');
     }
     return Object.keys(fieldErrors).length === 0;
+}
+
+function validationError(key: string, values?: Record<string, string>): FieldError {
+    return { key: `checkout.validation.${key}`, values };
+}
+
+function fieldErrorText(error?: FieldError): string {
+    return error ? t(error.key, error.values || {}) : '';
 }
 
 function clearFieldErrors() {
@@ -1732,7 +1746,7 @@ async function ensureCardBrandSupported(): Promise<boolean> {
             resolvedCardBin.value = cardBin;
             resolvedCardBrand.value = '';
             resolvedCardSupported.value = false;
-            fieldErrors.cardNumber = t('checkout.validation.cardBrandUnavailable');
+            fieldErrors.cardNumber = validationError('cardBrandUnavailable');
         }
         return false;
     }
@@ -1743,7 +1757,7 @@ function applyCardBrandValidation() {
         delete fieldErrors.cardNumber;
         return;
     }
-    fieldErrors.cardNumber = t('checkout.validation.cardBrandUnsupported', {
+    fieldErrors.cardNumber = validationError('cardBrandUnsupported', {
         brand: resolvedCardBrand.value || t('checkout.validation.unknownCardBrand'),
     });
 }
@@ -2153,12 +2167,7 @@ function resolveMerchantRedirectUrl(): string | null {
     if (!action || normalizeCode(action.method) !== 'POST' || !action.formFields) {
         return null;
     }
-    try {
-        const url = new URL(action.redirectUrl);
-        return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
-    } catch {
-        return null;
-    }
+    return resolveMerchantPostUrl(action.redirectUrl);
 }
 
 function submitMerchantReturnForm() {

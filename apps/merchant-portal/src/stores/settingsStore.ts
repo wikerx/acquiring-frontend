@@ -1,15 +1,27 @@
 import { defineStore } from 'pinia';
-import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeNavigationTheme, type AppSettings } from '@/constants/app';
+import {
+    APPEARANCE_PRESET_OPTIONS,
+    DEFAULT_SETTINGS,
+    SETTINGS_KEY,
+    inferAppearancePreset,
+    normalizeNavigationTheme,
+    type AppSettings,
+    type SelectableAppearancePreset,
+} from '@/constants/app';
 
 function normalizeSettings(value: unknown): AppSettings {
     const source = value && typeof value === 'object' ? value as Partial<AppSettings> : {};
     const layoutMode = source.layoutMode === 'top' ? 'top' : DEFAULT_SETTINGS.layoutMode;
     const tagsViewStyle = source.tagsViewStyle === 'google' ? 'google' : DEFAULT_SETTINGS.tagsViewStyle;
+    const themeColor = typeof source.themeColor === 'string' ? source.themeColor : DEFAULT_SETTINGS.themeColor;
+    const sideTheme = normalizeNavigationTheme(source.sideTheme);
 
     return {
         ...DEFAULT_SETTINGS,
         ...source,
-        sideTheme: normalizeNavigationTheme(source.sideTheme),
+        appearancePreset: inferAppearancePreset(themeColor, sideTheme),
+        themeColor,
+        sideTheme,
         layoutMode,
         tagsViewStyle,
         fixedHeader: typeof source.fixedHeader === 'boolean' ? source.fixedHeader : DEFAULT_SETTINGS.fixedHeader,
@@ -44,6 +56,7 @@ export const useSettingsStore = defineStore('merchantSettings', {
         settings: loadSettings(),
     }),
     getters: {
+        appearancePreset: (state) => state.settings.appearancePreset,
         themeColor: (state) => state.settings.themeColor,
         sideTheme: (state) => state.settings.sideTheme,
         layoutMode: (state) => state.settings.layoutMode,
@@ -58,6 +71,19 @@ export const useSettingsStore = defineStore('merchantSettings', {
             this.settings[key] = key === 'sideTheme'
                 ? normalizeNavigationTheme(value) as AppSettings[K]
                 : value;
+            if (key === 'themeColor' || key === 'sideTheme') {
+                this.settings.appearancePreset = inferAppearancePreset(this.settings.themeColor, this.settings.sideTheme);
+            }
+            persist(this.settings);
+        },
+        applyAppearancePreset(preset: SelectableAppearancePreset) {
+            const option = APPEARANCE_PRESET_OPTIONS.find((item) => item.key === preset);
+            if (!option) {
+                return;
+            }
+            this.settings.appearancePreset = option.key;
+            this.settings.themeColor = option.primary;
+            this.settings.sideTheme = option.navigationTheme;
             persist(this.settings);
         },
         resetSettings() {

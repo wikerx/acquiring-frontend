@@ -34,7 +34,7 @@
             <el-table-column :label="$t('exchange.fields.usageScene')" min-width="110" align="center"><template #default="{ row }">{{ optionLabel(usageSceneOptions, row.usageScene) }}</template></el-table-column>
             <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="120" align="center" />
             <el-table-column prop="businessNo" :label="$t('exchange.fields.businessNo')" min-width="180" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="$t('exchange.fields.currencyPair')" width="150" align="center"><template #default="{ row }">{{ formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency) }}</template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="175" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usedRate')" min-width="150" align="right"><template #default="{ row }"><strong>{{ formatRate(row.usedRate) }}</strong></template></el-table-column>
             <el-table-column prop="businessRateId" :label="$t('exchange.fields.businessRateId')" width="110" align="center" />
             <el-table-column :label="$t('exchange.fields.appliedTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.appliedTime" /></template></el-table-column>
@@ -53,7 +53,7 @@
                 <el-descriptions-item :label="$t('exchange.fields.usageScene')">{{ optionLabel(usageSceneOptions, detailRow.usageScene) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.businessType')">{{ detailRow.businessType }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.businessNo')">{{ detailRow.businessNo }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('exchange.fields.currencyPair')">{{ formatCurrencyPair(translate, detailRow.baseCurrency, detailRow.quoteCurrency) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.currencyPair')"><CurrencyPairDisplay :base-currency="detailRow.baseCurrency" :quote-currency="detailRow.quoteCurrency" :locale="String(locale)" size="sm" variant="soft" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.usedRate')">{{ formatRate(detailRow.usedRate) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.businessRateId')">{{ detailRow.businessRateId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.rawRateId')">{{ detailRow.rawRateId || '-' }}</el-descriptions-item>
@@ -75,11 +75,13 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import { exportExchangeUsageSnapshots, getExchangeUsageSnapshot, searchExchangeUsageSnapshots, type ExchangeRateUsageSnapshot } from '@/api/exchange';
 import CurrencySelect from '../CurrencySelect.vue';
-import { formatCurrencyPair, formatRate, normalizeCurrency, optionLabel, rateTypeOptions as buildRateTypeOptions, usageSceneOptions as buildUsageSceneOptions } from '../shared';
+import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
+import { formatRate, normalizeCurrency, optionLabel, rateTypeOptions as buildRateTypeOptions, usageSceneOptions as buildUsageSceneOptions } from '../shared';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
@@ -102,7 +104,10 @@ const query = reactive({
 const rateTypeOptions = computed(() => buildRateTypeOptions(translate));
 const usageSceneOptions = computed(() => buildUsageSceneOptions(translate));
 
-onMounted(loadData);
+onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
+    loadData();
+});
 
 async function loadData() {
     loading.value = true;

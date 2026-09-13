@@ -141,7 +141,7 @@
                     </div>
                     <div>
                         <dt>{{ t('transaction.settlement.targetCurrency') }}</dt>
-                        <dd class="currency-value">{{ selectedProfile.targetCurrency }}</dd>
+                        <dd><CurrencyDisplay :currency="selectedProfile.targetCurrency" :locale="documentLocale" size="xs" /></dd>
                     </div>
                     <div v-if="!isReserve">
                         <dt>{{ t('transaction.settlement.initialCycle') }}</dt>
@@ -243,15 +243,26 @@
                 </div>
 
                 <article class="settlement-statement">
+                    <VexraBrandLogo
+                        class="statement-watermark"
+                        system="admin"
+                        mode="icon"
+                        :locale="documentLocale"
+                        aria-hidden="true"
+                    />
                     <header class="statement-header">
-                        <div class="statement-title">
-                            <h3>{{ pageCopy.statementTitle }}</h3>
-                            <p>{{ pageCopy.statementFootnote }}</p>
+                        <div class="statement-identity">
+                            <VexraBrandLogo system="admin" mode="full" :locale="documentLocale" />
+                            <div class="statement-title">
+                                <span>{{ t('transaction.settlement.reviewVoucherSubtitle') }}</span>
+                                <h3>{{ pageCopy.statementTitle }}</h3>
+                                <p>{{ pageCopy.statementFootnote }}</p>
+                            </div>
                         </div>
                         <dl class="statement-meta">
                             <div><dt>{{ t('transaction.settlement.manualTaskNo') }}</dt><dd>{{ task.taskNo }}</dd></div>
                             <div><dt>{{ t('transaction.settlement.businessDate') }}</dt><dd>{{ task.businessDate }}</dd></div>
-                            <div><dt>{{ t('transaction.settlement.targetCurrency') }}</dt><dd>{{ task.targetCurrency }}</dd></div>
+                            <div><dt>{{ t('transaction.settlement.targetCurrency') }}</dt><dd><CurrencyDisplay :currency="task.targetCurrency" :locale="documentLocale" size="xs" /></dd></div>
                         </dl>
                     </header>
 
@@ -305,8 +316,9 @@
                         border
                         class="statement-table"
                     >
+                        <el-table-column type="index" :label="t('common.index')" width="64" align="center" />
                         <el-table-column prop="sourceCurrency" :label="t('transaction.settlement.sourceCurrency')" min-width="126" fixed="left" align="center">
-                            <template #default="{ row }"><strong class="currency-value">{{ row.sourceCurrency }}</strong></template>
+                            <template #default="{ row }"><CurrencyDisplay :currency="row.sourceCurrency" :locale="documentLocale" size="xs" /></template>
                         </el-table-column>
                         <el-table-column prop="transactionCount" :label="pageCopy.countColumn" min-width="125" align="right">
                             <template #default="{ row }">{{ integerText(row.transactionCount) }}</template>
@@ -410,7 +422,7 @@ import {
     View,
     WarningFilled,
 } from '@element-plus/icons-vue';
-import { BusinessResultError } from '@acquiring/shared';
+import { BusinessResultError, CurrencyDisplay, VexraBrandLogo } from '@acquiring/shared';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -426,6 +438,7 @@ import {
     type ManualSettlementTask,
     type SettlementProfile,
 } from '@/api/settlement';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
@@ -443,6 +456,7 @@ const props = withDefaults(defineProps<{
     kind?: 'transaction' | 'reserve';
 }>(), { embedded: false, kind: 'transaction' });
 const { t, te, locale } = useI18n();
+const documentLocale = computed(() => String(locale.value).toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US');
 const route = useRoute();
 const router = useRouter();
 const scopeForm = reactive({
@@ -608,6 +622,7 @@ async function loadDictionaries() {
     const [paymentTypes, paymentMethods] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
+        loadCurrencyPresentations().catch(() => []),
     ]);
     paymentTypeOptions.value = paymentTypes;
     paymentMethodOptions.value = paymentMethods;
@@ -767,7 +782,12 @@ function openReviewOrder() {
 }
 
 function openBatch(batchNo: string) {
-    router.push({ path: '/settlement/batches', query: { settlementBatchNo: batchNo } });
+    router.push({
+        path: props.kind === 'reserve'
+            ? '/settlement/reserve-candidates'
+            : '/settlement/transaction-candidates',
+        query: { view: 'batches', settlementBatchNo: batchNo },
+    });
 }
 
 function resetScope() {
@@ -1041,17 +1061,20 @@ function errorText(error: unknown, fallbackKey: string) {
 
 .workflow-step {
     position: relative;
+    align-items: center;
+    flex-direction: column;
     min-width: 220px;
-    min-height: 46px;
-    padding-right: 28px;
+    min-height: 58px;
+    padding: 0 12px;
     color: #98a2b3;
+    text-align: center;
 }
 
 .workflow-step:not(:last-child)::after {
     position: absolute;
     top: 14px;
-    right: 8px;
-    left: 34px;
+    right: -50%;
+    left: 50%;
     height: 1px;
     background: #d7dee7;
     content: '';
@@ -1084,9 +1107,9 @@ function errorText(error: unknown, fallbackKey: string) {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 9px;
-    padding-right: 12px;
-    background: var(--settlement-page);
+    margin-top: 6px;
+    padding: 0 8px;
+    background: transparent;
 }
 
 .step-copy strong {
@@ -1440,33 +1463,99 @@ function errorText(error: unknown, fallbackKey: string) {
 }
 
 .settlement-statement {
+    position: relative;
+    isolation: isolate;
     overflow: hidden;
-    border: 1px solid var(--settlement-rule);
-    border-radius: 6px;
+    border: 1px solid #b7c9dd;
+    border-radius: 4px;
     background: #fff;
+    box-shadow: 0 8px 24px rgb(31 65 108 / 8%);
+}
+
+.settlement-statement::before,
+.settlement-statement::after {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    height: 3px;
+    content: '';
+}
+
+.settlement-statement::before {
+    left: 0;
+    width: 34%;
+    background: var(--settlement-blue);
+}
+
+.settlement-statement::after {
+    right: 0;
+    left: 34%;
+    background: var(--settlement-blue-soft);
+}
+
+.settlement-statement > :not(.statement-watermark) {
+    position: relative;
+    z-index: 1;
+}
+
+.statement-watermark {
+    position: absolute;
+    z-index: 0;
+    top: 46%;
+    left: 50%;
+    pointer-events: none;
+    opacity: .022;
+    transform: translate(-50%, -50%) rotate(-10deg) scale(6.5);
+    filter: grayscale(1);
 }
 
 .statement-header {
     display: grid;
-    grid-template-columns: minmax(300px, 1.15fr) minmax(480px, 1.85fr);
+    grid-template-columns: minmax(390px, 1.25fr) minmax(460px, 1fr);
     align-items: center;
-    gap: 28px;
-    padding: 20px 22px;
+    gap: 24px;
+    padding: 18px 22px 14px;
     border-bottom: 2px solid var(--settlement-blue);
-    background: #f8fafc;
+    background: rgb(255 255 255 / 95%);
+}
+
+.statement-identity {
+    display: grid;
+    grid-template-columns: 155px minmax(0, 1fr);
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
+}
+
+.statement-identity :deep(.vexra-brand-logo__horizontal) {
+    height: 33px;
+}
+
+.statement-title {
+    min-width: 0;
+    padding-left: 18px;
+    border-left: 1px solid #a9c8f5;
+}
+
+.statement-title > span {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--settlement-muted);
+    font-size: 10px;
+    font-weight: 600;
 }
 
 .statement-title h3 {
     margin: 0;
     color: var(--settlement-ink);
-    font-size: 19px;
+    font-size: 20px;
     line-height: 1.4;
     letter-spacing: 0;
 }
 
 .statement-title p {
     max-width: 560px;
-    margin: 5px 0 0;
+    margin: 3px 0 0;
     color: var(--settlement-muted);
     font-size: 12px;
     line-height: 1.55;
@@ -1475,14 +1564,14 @@ function errorText(error: unknown, fallbackKey: string) {
 .statement-meta {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    gap: 0;
     margin: 0;
 }
 
 .statement-meta > div {
     min-width: 0;
-    padding-left: 14px;
-    border-left: 1px solid var(--settlement-rule);
+    padding: 0 12px;
+    border-left: 1px solid #cbd8e7;
 }
 
 .statement-meta dt {
@@ -1490,44 +1579,69 @@ function errorText(error: unknown, fallbackKey: string) {
 }
 
 .statement-meta dd {
-    font-size: 12px;
+    overflow-wrap: anywhere;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 11px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
 }
 
 .statement-facts {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-bottom: 1px solid var(--settlement-rule);
+    gap: 10px;
+    padding: 12px 22px;
+    background: #f8fbff;
 }
 
 .statement-facts > section {
     min-width: 0;
-    padding: 18px 22px;
-    border-right: 1px solid var(--settlement-rule);
+    padding: 11px 12px;
+    border: 1px solid #cbd8e7;
+    border-radius: 4px;
+    background: rgb(255 255 255 / 94%);
 }
 
 .statement-facts > section:last-child {
-    border-right: 0;
+    border-color: #a9c8f5;
+    background: var(--settlement-blue-soft);
 }
 
 .statement-facts h4,
 .table-heading h4 {
-    margin: 0 0 10px;
-    color: var(--settlement-ink);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 7px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #e7eef6;
+    color: #17439c;
     font-size: 13px;
+    font-weight: 750;
     line-height: 1.45;
     letter-spacing: 0;
 }
 
+.statement-facts h4::before {
+    width: 3px;
+    height: 13px;
+    flex: 0 0 auto;
+    background: var(--settlement-blue);
+    content: '';
+}
+
 .statement-facts dl {
     display: grid;
-    gap: 9px;
+    gap: 4px;
     margin: 0;
 }
 
 .statement-facts dl > div {
     display: grid;
     grid-template-columns: 90px minmax(0, 1fr);
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
 }
 
 .statement-facts dt {
@@ -1535,23 +1649,25 @@ function errorText(error: unknown, fallbackKey: string) {
 }
 
 .statement-facts dd {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .statement-facts .metric-value {
     color: var(--settlement-blue);
-    font-size: 17px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 800;
 }
 
 .statement-reason {
     display: grid;
     grid-template-columns: 110px minmax(0, 1fr);
     gap: 12px;
-    padding: 11px 22px;
-    border-bottom: 1px solid var(--settlement-rule);
-    background: #fcfcfd;
+    margin: 0 22px;
+    padding: 9px 11px;
+    border: 1px solid #d6e2f1;
+    border-left: 3px solid var(--settlement-blue);
+    background: #f8fbff;
 }
 
 .statement-reason span {
@@ -1562,14 +1678,19 @@ function errorText(error: unknown, fallbackKey: string) {
 .statement-reason p {
     margin: 0;
     color: #475467;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.55;
 }
 
 .table-heading {
     justify-content: space-between;
     gap: 20px;
-    padding: 16px 22px 10px;
+    margin: 10px 22px 0;
+    padding: 7px 10px;
+    border: 1px solid #c4d5e9;
+    border-bottom: 0;
+    background: var(--settlement-blue-soft);
+    box-shadow: inset 3px 0 0 var(--settlement-blue);
 }
 
 .table-heading > div {
@@ -1577,20 +1698,23 @@ function errorText(error: unknown, fallbackKey: string) {
 }
 
 .table-heading h4 {
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    padding: 0;
+    border: 0;
+    font-size: 12px;
 }
 
 .table-heading p {
     margin: 0;
     color: var(--settlement-muted);
-    font-size: 12px;
+    font-size: 10px;
     line-height: 1.45;
 }
 
 .table-heading > strong {
     flex: 0 0 auto;
-    color: var(--settlement-amber);
-    font-size: 12px;
+    color: #17439c;
+    font-size: 11px;
     white-space: nowrap;
 }
 
@@ -1600,11 +1724,16 @@ function errorText(error: unknown, fallbackKey: string) {
 }
 
 .statement-table :deep(.el-table__header th) {
-    background: #f5f7fa;
-    color: #344054;
+    background: #eaf2ff;
+    color: #17439c;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .statement-table :deep(.el-table__cell) {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -1612,7 +1741,8 @@ function errorText(error: unknown, fallbackKey: string) {
     display: flex;
     justify-content: space-between;
     gap: 20px;
-    padding: 11px 22px 15px;
+    padding: 10px 22px 14px;
+    border-top: 1px solid #e3ebf4;
     color: var(--settlement-muted);
     font-size: 12px;
     line-height: 1.45;
@@ -1737,8 +1867,8 @@ function errorText(error: unknown, fallbackKey: string) {
     }
 
     .statement-meta > div:first-child {
-        padding-left: 0;
-        border-left: 0;
+        padding-left: 12px;
+        border-left: 1px solid #cbd8e7;
     }
 }
 
@@ -1758,12 +1888,7 @@ function errorText(error: unknown, fallbackKey: string) {
     }
 
     .statement-facts > section {
-        border-right: 0;
-        border-bottom: 1px solid var(--settlement-rule);
-    }
-
-    .statement-facts > section:last-child {
-        border-bottom: 0;
+        border: 1px solid #cbd8e7;
     }
 
     .progress-facts {
@@ -1893,6 +2018,22 @@ function errorText(error: unknown, fallbackKey: string) {
         padding: 16px;
     }
 
+    .statement-facts {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .statement-identity {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .statement-title {
+        padding: 10px 0 0;
+        border-top: 1px solid #a9c8f5;
+        border-left: 0;
+    }
+
     .statement-meta > div,
     .statement-meta > div:first-child {
         padding: 8px 0 0;
@@ -1902,13 +2043,15 @@ function errorText(error: unknown, fallbackKey: string) {
 
     .statement-reason {
         grid-template-columns: 1fr;
-        padding: 11px 16px;
+        margin: 0 16px;
+        padding: 9px 11px;
     }
 
     .table-heading {
         align-items: flex-start;
         flex-direction: column;
-        padding: 15px 16px 9px;
+        margin: 10px 16px 0;
+        padding: 7px 10px;
     }
 
     .statement-table {

@@ -143,8 +143,8 @@
                         </el-form-item>
                         <el-form-item :label="t('channel.common.status')" prop="ruleStatus">
                             <el-radio-group v-model="form.ruleStatus">
-                                <el-radio :label="1">{{ t('channel.common.enabled') }}</el-radio>
-                                <el-radio :label="0">{{ t('channel.common.disabled') }}</el-radio>
+                                <el-radio :value="1">{{ t('channel.common.enabled') }}</el-radio>
+                                <el-radio :value="0">{{ t('channel.common.disabled') }}</el-radio>
                             </el-radio-group>
                         </el-form-item>
                     </div>

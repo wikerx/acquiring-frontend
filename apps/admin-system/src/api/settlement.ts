@@ -4,6 +4,16 @@ import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
 
+/** 保留数据库 DATETIME(3) 路由值，仅转换为 Spring MVC 接收的 ISO LocalDateTime。 */
+function normalizeSettlementTransactionDateTimeParam(value: string) {
+    const normalized = value.trim().replace('T', ' ');
+    const match = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?$/.exec(normalized);
+    if (!match) {
+        return value;
+    }
+    return `${match[1]}.${(match[2] || '').padEnd(3, '0').slice(0, 3)}`.replace(' ', 'T');
+}
+
 export interface SettlementProfileQuery extends PageQuery {
     settlementProfileNo?: string;
     merchantId?: string;
@@ -79,6 +89,7 @@ export interface SettlementCandidate {
     sourceBusinessId: string;
     sourceRevision: number;
     sourceTransactionId?: string;
+    reserveActionNo?: string;
     sourceTransactionDateTime?: string;
     merchantId: string;
     merchantName?: string;
@@ -131,8 +142,10 @@ export interface SettlementReview {
     reviewType: string;
     createMode: string;
     merchantId: string;
+    merchantName?: string;
     settlementProfileId: number;
     settlementAccountId: number;
+    settlementAccountNo?: string;
     targetCurrency: string;
     targetCurrencyExponent: number;
     businessDate: string;
@@ -165,6 +178,7 @@ export interface SettlementReviewCandidate {
     sourceBusinessId: string;
     sourceRevision: number;
     sourceTransactionId?: string;
+    reserveActionNo?: string;
     sourceTransactionDateTime?: string;
     relationStatus: string;
     lockedTime?: string;
@@ -400,6 +414,9 @@ export interface SettlementResultItemQuery extends PageQuery {
     settlementBatchNo?: string;
     merchantId?: string;
     sourceTransactionId?: string;
+    merchantOrderNo?: string;
+    beginTransactionTime?: string;
+    endTransactionTime?: string;
     resultItemType?: string;
     resultRole?: string;
     direction?: string;
@@ -413,9 +430,16 @@ export interface SettlementReserveItemQuery extends PageQuery {
     settlementBatchNo?: string;
     merchantId?: string;
     reserveNo?: string;
+    reserveActionNo?: string;
     sourceTransactionId?: string;
+    merchantOrderNo?: string;
+    reserveStatus?: string;
     actionType?: string;
     currency?: string;
+    beginTransactionTime?: string;
+    endTransactionTime?: string;
+    beginExpectedReleaseDate?: string;
+    endExpectedReleaseDate?: string;
     beginBusinessDate: string;
     endBusinessDate: string;
 }
@@ -429,7 +453,9 @@ export interface SettlementReserveItem {
     businessDate: string;
     merchantId: string;
     accountId: number;
+    accountNo?: string;
     sourceTransactionId?: string;
+    merchantOrderNo?: string;
     sourceTransactionDateTime?: string;
     sourceBusinessNo?: string;
     sourceReserveDetailNo?: string;
@@ -448,6 +474,44 @@ export interface SettlementReserveItem {
     reserveStatus: string;
     expectedReleaseDate?: string;
     actionTime: string;
+}
+
+/** 正式结算批次内一笔真实交易的汇总；组件明细通过独立分页接口按需读取。 */
+export interface SettlementTransactionSummary {
+    settlementBatchNo: string;
+    businessDate: string;
+    batchStatus: string;
+    candidateId?: number;
+    candidateNo?: string;
+    merchantId: string;
+    merchantOrderNo?: string;
+    sourceTransactionId: string;
+    sourceTransactionDateTime?: string;
+    paymentType?: string;
+    paymentMethod?: string;
+    transactionType?: string;
+    sourceAmount: number | string;
+    sourceCurrency: string;
+    sourceCurrencyExponent: number;
+    componentCount: number;
+    netDirection: string;
+    netTargetAmount: number | string;
+    targetCurrency: string;
+    targetCurrencyExponent: number;
+    postedTime?: string;
+    createTime: string;
+}
+
+export interface SettlementReconciliationRecord {
+    transactionId: string;
+    merchantId: string;
+    merchantOrderNo: string;
+    transactionType: string;
+    reconciliationStatus: string;
+    settlementStatus: string;
+    accountingStatus: string;
+    transactionDateTime: string;
+    operationTime: string;
 }
 
 export interface SettlementResultItem {
@@ -612,6 +676,13 @@ export async function getSettlementReview(reviewOrderNo: string) {
     return unwrapResult(result.data);
 }
 
+export async function getSettlementReviewVoucher(reviewOrderNo: string) {
+    const result = await http.get<CommonResult<SettlementReviewDetail>>(
+        `/admin/settlement/review-orders/${encodeURIComponent(reviewOrderNo)}/voucher`,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReviewCandidates(
     reviewOrderNo: string,
     data: SettlementReviewCandidateQuery,
@@ -698,8 +769,56 @@ export async function decideSettlementReversal(
 }
 
 export async function searchSettlementResultItems(data: SettlementResultItemQuery) {
-    const result = await http.post<CommonResult<PageResult<SettlementResultItem>>>(
+    const result = await http.post<CommonResult<PageResult<SettlementTransactionSummary>>>(
         '/admin/settlement/result-items/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchSettlementResultItemComponents(
+    settlementBatchNo: string,
+    transactionId: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<SettlementResultItem>>>(
+        `/admin/settlement/result-items/batches/${encodeURIComponent(settlementBatchNo)}`
+            + `/transactions/${encodeURIComponent(transactionId)}`,
+        { params: { pageNo, pageSize } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getSettlementReconciliationRecordsByTransaction(
+    transactionId: string,
+    transactionDateTime: string,
+) {
+    const result = await http.get<CommonResult<SettlementReconciliationRecord[]>>(
+        `/admin/settlement/reconciliation-records/transactions/${encodeURIComponent(transactionId)}`,
+        {
+            params: {
+                transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchSettlementResultItemsByTransaction(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 20,
+) {
+    const result = await http.get<CommonResult<PageResult<SettlementResultItem>>>(
+        `/admin/settlement/result-items/transactions/${encodeURIComponent(transactionId)}`,
+        {
+            params: {
+                transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
     );
     return unwrapResult(result.data);
 }
@@ -711,6 +830,25 @@ export async function exportSettlementResultItems(data: SettlementResultItemQuer
 export async function searchSettlementReserveItems(data: SettlementReserveItemQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReserveItem>>>(
         '/admin/settlement/reserve-items/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchSettlementReserveItemsByTransaction(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 20,
+) {
+    const result = await http.get<CommonResult<PageResult<SettlementReserveItem>>>(
+        `/admin/settlement/reserve-items/transactions/${encodeURIComponent(transactionId)}`,
+        {
+            params: {
+                transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
     );
     return unwrapResult(result.data);
 }

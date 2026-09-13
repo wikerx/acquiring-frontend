@@ -258,7 +258,7 @@
             </div>
         </section>
 
-        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(800px, 94vw)" class="transaction-detail-drawer" destroy-on-close>
+        <el-drawer v-model="detailVisible" :title="t('transaction.order.detailTitle')" size="min(1380px, 97vw)" class="transaction-detail-drawer" destroy-on-close>
             <el-skeleton v-if="detailLoading" :rows="8" animated />
             <template v-else-if="detail">
                 <div class="transaction-detail-shell">
@@ -376,6 +376,18 @@
                             </div>
                         </dl>
                     </section>
+
+                    <MerchantTransactionFinanceDetail
+                        v-if="detailOperation && (canViewClearingDetails || canViewReconciliationDetails || canViewSettlementDetails || canViewReserveDetails)"
+                        class="transaction-detail-section"
+                        :transaction-id="detailOperation.transactionId || ''"
+                        :transaction-date-time="detailOperation.transactionDateTime"
+                        :display-time-zone="query.queryTimeZone"
+                        :can-view-clearing="canViewClearingDetails"
+                        :can-view-reconciliation="canViewReconciliationDetails"
+                        :can-view-settlement="canViewSettlementDetails"
+                        :can-view-reserve="canViewReserveDetails"
+                    />
 
                     <section class="transaction-detail-section transaction-timeline-panel">
                         <h3 class="transaction-drawer-title">{{ t('transaction.order.operationTimeline') }}</h3>
@@ -582,6 +594,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { hasPermission } from '@/utils/permission';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
+import MerchantTransactionFinanceDetail from '../components/MerchantTransactionFinanceDetail.vue';
 import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     cardBrandLogoKeys,
@@ -649,6 +662,10 @@ const canExport = computed(() => hasPermission('merchant:transaction:order:expor
 const canRefund = computed(() => hasPermission('merchant:transaction:order:refund'));
 const canCapture = computed(() => hasPermission('merchant:transaction:order:capture'));
 const canVoid = computed(() => hasPermission('merchant:transaction:order:void'));
+const canViewClearingDetails = computed(() => hasPermission('merchant:clearing:record:detail'));
+const canViewReconciliationDetails = computed(() => hasPermission('merchant:reconciliation:record:detail'));
+const canViewSettlementDetails = computed(() => hasPermission('merchant:settlement:transaction-item:transaction-detail'));
+const canViewReserveDetails = computed(() => hasPermission('merchant:settlement:reserve-item:transaction-detail'));
 
 const refundRules = computed<FormRules>(() => ({
     amount: [{ required: true, message: t('transaction.order.refundAmountRequired'), trigger: 'blur' }],

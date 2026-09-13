@@ -56,7 +56,7 @@
                 </template>
             </el-table-column>
             <el-table-column :label="t('transaction.settlement.targetCurrency')" width="116" align="center">
-                <template #default="{ row }"><strong>{{ row.targetCurrency }}</strong></template>
+                <template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" size="xs" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.settlement.processingMode')" min-width="150" align="center">
                 <template #default="{ row }"><el-tag effect="plain" :type="modeTagType(row.processingMode)">{{ modeText(row.processingMode) }}</el-tag></template>
@@ -97,7 +97,7 @@
                 <el-descriptions-item :label="t('transaction.settlement.profileNo')" :span="2">{{ detail.settlementProfileNo }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.merchant')"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.settlementAccount')"><el-button link type="primary" @click="openAccount(detail)">{{ detail.settlementAccountNo || detail.settlementAccountId }}</el-button></el-descriptions-item>
-                <el-descriptions-item :label="t('transaction.settlement.targetCurrency')">{{ detail.targetCurrency }}</el-descriptions-item>
+                <el-descriptions-item :label="t('transaction.settlement.targetCurrency')"><CurrencyDisplay :currency="detail.targetCurrency" size="xs" /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.processingMode')">{{ modeText(detail.processingMode) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.businessTimeZone')">{{ detail.businessTimeZone }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.dailyCutoffTime')">{{ normalizedTime(detail.dailyCutoffTime) }}</el-descriptions-item>
@@ -115,7 +115,7 @@
             <div v-if="editing" class="profile-identity">
                 <div><span>{{ t('transaction.settlement.merchant') }}</span><MerchantIdentityDisplay :merchant-id="editing.merchantId" :merchant-name="editing.merchantName" /></div>
                 <div><span>{{ t('transaction.settlement.settlementAccount') }}</span><strong>{{ editing.settlementAccountNo || editing.settlementAccountId }}</strong></div>
-                <div><span>{{ t('transaction.settlement.targetCurrency') }}</span><strong>{{ editing.targetCurrency }}</strong></div>
+                <div><span>{{ t('transaction.settlement.targetCurrency') }}</span><CurrencyDisplay :currency="editing.targetCurrency" size="xs" /></div>
             </div>
             <el-form :model="editForm" label-width="112px" class="profile-edit-form">
                 <el-form-item :label="t('transaction.settlement.processingMode')" required>
@@ -148,7 +148,8 @@ import { Edit, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyDisplay, MerchantIdentityDisplay } from '@acquiring/shared';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import {
     getSettlementProfile, searchSettlementProfiles, updateSettlementProfile,
     type SettlementProfile, type SettlementProfileQuery,
@@ -179,6 +180,7 @@ const editForm = reactive({ processingMode: 'AUTO_POST', businessTimeZone: '', d
 const modeOptions = computed(() => processingModes.map((value) => ({ value, label: modeText(value) })));
 
 onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
     query.settlementProfileNo = routeText('settlementProfileNo');
     query.merchantId = routeText('merchantId');
     query.targetCurrency = routeText('targetCurrency');

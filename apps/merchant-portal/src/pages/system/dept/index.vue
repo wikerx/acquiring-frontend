@@ -50,13 +50,14 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type DeptItem } from '@/api/systemApi';
+import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
@@ -118,7 +119,8 @@ async function submit() {
 }
 
 async function remove(row: DeptItem) {
-    await ElMessageBox.confirm(t('system.dept.deleteConfirm', { name: row.deptName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.dept.deleteConfirm', { name: row.deptName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    if (!confirmed) return;
     await systemApi.deleteDept(row.deptId);
     ElMessage.success(t('common.deleteSuccess'));
     await loadData();

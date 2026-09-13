@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vue-tsc --noEmit && vite build",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test:security:external-frame": "node scripts/verify-external-frame-origin.mjs"
   },
   "dependencies": {
     "@acquiring/shared": "0.1.0",

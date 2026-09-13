@@ -51,10 +51,48 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.mid.currencyScope')" min-width="150" align="center" :show-overflow-tooltip="true">
-                <template #default="{ row }">{{ currencyScopeText(row.currencyScope) }}</template>
+            <el-table-column :label="t('channel.mid.currencyScope')" min-width="230" align="center">
+                <template #default="{ row }">
+                    <el-tooltip
+                        v-if="currencyScopeTooltipCodes(row.currencyScope).length"
+                        placement="top"
+                        :show-after="180"
+                        :hide-after="80"
+                        :enterable="true"
+                        popper-class="currency-scope-popper"
+                    >
+                        <template #content>
+                            <div class="currency-scope-tooltip">
+                                <div class="currency-scope-tooltip__header">
+                                    <span>{{ t('channel.mid.currencyScope') }}</span>
+                                    <span class="currency-scope-tooltip__count">{{ currencyScopeTooltipCodes(row.currencyScope).length }}</span>
+                                </div>
+                                <div class="currency-scope-tooltip__list">
+                                    <CurrencyDisplay
+                                        v-for="currency in currencyScopeTooltipCodes(row.currencyScope)"
+                                        :key="currency"
+                                        :currency="currency"
+                                        :locale="String(locale)"
+                                        size="xs"
+                                        variant="soft"
+                                    />
+                                </div>
+                            </div>
+                        </template>
+                        <div class="currency-scope-trigger" tabindex="0" :aria-label="currencyScopeAccessibleText(row.currencyScope)">
+                            <el-tag v-if="isAllCurrencyScope(row.currencyScope)" size="small" effect="plain">{{ t('channel.mid.allScope') }}</el-tag>
+                            <div v-else class="currency-scope-cell">
+                                <CurrencyDisplay v-for="currency in currencyScopePreview(row.currencyScope)" :key="currency" :currency="currency" :locale="String(locale)" size="xs" variant="soft" />
+                                <el-tag v-if="currencyScopeRemaining(row.currencyScope)" size="small" effect="plain">+{{ currencyScopeRemaining(row.currencyScope) }}</el-tag>
+                            </div>
+                        </div>
+                    </el-tooltip>
+                    <span v-else>-</span>
+                </template>
             </el-table-column>
-            <el-table-column prop="defaultSettlementCurrency" :label="t('channel.mid.defaultSettlementCurrency')" width="140" align="center" />
+            <el-table-column :label="t('channel.mid.defaultSettlementCurrency')" width="140" align="center">
+                <template #default="{ row }"><CurrencyDisplay :currency="row.defaultSettlementCurrency" :locale="String(locale)" size="xs" /></template>
+            </el-table-column>
             <el-table-column prop="settlementCycle" :label="t('channel.mid.settlementCycle')" width="100" align="center" />
             <el-table-column prop="mcc" label="MCC" width="90" align="center" />
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
@@ -97,9 +135,18 @@
                         <span v-else>-</span>
                     </div>
                 </div>
-                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.currencyScope') }}</span><div class="mid-detail__value">{{ currencyScopeText(detailRow.currencyScope) }}</div></div>
+                <div class="mid-detail__item">
+                    <span class="mid-detail__label">{{ t('channel.mid.currencyScope') }}</span>
+                    <div class="mid-detail__value">
+                        <el-tag v-if="isAllCurrencyScope(detailRow.currencyScope)" size="small" effect="plain">{{ t('channel.mid.allScope') }}</el-tag>
+                        <div v-else-if="currencyScopeCodes(detailRow.currencyScope).length" class="currency-scope-cell currency-scope-cell--detail">
+                            <CurrencyDisplay v-for="currency in currencyScopeCodes(detailRow.currencyScope)" :key="currency" :currency="currency" :locale="String(locale)" size="xs" variant="soft" />
+                        </div>
+                        <span v-else>-</span>
+                    </div>
+                </div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.allowedCountryScope') }}</span><div class="mid-detail__value">{{ countryScopeText(detailRow.allowedCountryScope) }}</div></div>
-                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultSettlementCurrency') }}</span><div class="mid-detail__value">{{ currencyLabel(detailRow.defaultSettlementCurrency) }}</div></div>
+                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultSettlementCurrency') }}</span><div class="mid-detail__value"><CurrencyDisplay :currency="detailRow.defaultSettlementCurrency" :locale="String(locale)" show-name size="sm" variant="soft" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCycle') }}</span><div class="mid-detail__value">{{ detailRow.settlementCycle }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCutoffTime') }}</span><div class="mid-detail__value">{{ detailRow.settlementCutoffTime || '-' }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementTimeZone') }}</span><div class="mid-detail__value">{{ optionLabel(timezoneOptions, detailRow.settlementTimeZone) }}</div></div>
@@ -180,7 +227,9 @@
                         </el-form-item>
                         <el-form-item :label="t('channel.mid.currencyScope')" prop="currencyCodes">
                             <el-select v-model="form.currencyCodes" multiple filterable collapse-tags collapse-tags-tooltip :placeholder="t('channel.mid.currencySelectPlaceholder')" style="width:100%">
-                                <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
+                                <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
+                                    <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
+                                </el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.mid.allowedCountryScope')" prop="countryCodes" class="country-form-item">
@@ -191,7 +240,9 @@
                         </el-form-item>
                         <el-form-item :label="t('channel.mid.defaultSettlementCurrency')" prop="defaultSettlementCurrency">
                             <el-select v-model="form.defaultSettlementCurrency" filterable :placeholder="t('channel.mid.defaultSettlementCurrencyPlaceholder')" style="width:100%">
-                                <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
+                                <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
+                                    <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
+                                </el-option>
                             </el-select>
                         </el-form-item>
                     </div>
@@ -262,7 +313,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { CurrencyDisplay, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -298,7 +349,7 @@ import {
     statusType,
     type SelectOption,
 } from '../shared';
-import type { IsoCurrency } from '@/api/base/currency';
+import { loadCurrencyPresentations, type IsoCurrency } from '@/api/base/currency';
 
 interface PaymentScopeNode {
     label: string;
@@ -439,7 +490,11 @@ const rules = computed<FormRules>(() => ({
 }));
 
 onMounted(async () => {
-    await Promise.all([loadOptions(), loadData()]);
+    await Promise.all([
+        loadCurrencyPresentations().catch(() => undefined),
+        loadOptions(),
+        loadData(),
+    ]);
 });
 
 watch(locale, () => {
@@ -958,11 +1013,31 @@ function paymentOptionsFor(businessType?: string) {
     return businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
 }
 
-function currencyScopeText(value?: string) {
-    if (value === 'ALL') {
-        return t('channel.mid.allScope');
+function isAllCurrencyScope(value?: string) {
+    return normalizeCode(value) === 'ALL';
+}
+
+function currencyScopeCodes(value?: string) {
+    return isAllCurrencyScope(value) ? [] : splitScope(value);
+}
+
+function currencyScopePreview(value?: string) {
+    return currencyScopeCodes(value).slice(0, 3);
+}
+
+function currencyScopeRemaining(value?: string) {
+    return Math.max(currencyScopeCodes(value).length - currencyScopePreview(value).length, 0);
+}
+
+function currencyScopeTooltipCodes(value?: string) {
+    if (isAllCurrencyScope(value)) {
+        return currencyOptions.value.map((item) => normalizeCode(item.alpha3Code)).filter(Boolean);
     }
-    return splitScope(value).map(currencyLabel).join(', ') || '-';
+    return currencyScopeCodes(value);
+}
+
+function currencyScopeAccessibleText(value?: string) {
+    return `${t('channel.mid.currencyScope')}: ${currencyScopeTooltipCodes(value).join(', ')}`;
 }
 
 function countryScopeText(value?: string) {
@@ -970,14 +1045,6 @@ function countryScopeText(value?: string) {
         return t('channel.mid.allCountries');
     }
     return splitScope(value).map(countryLabel).join(', ') || '-';
-}
-
-function currencyLabel(value?: string) {
-    if (!value) {
-        return '-';
-    }
-    const option = currencyOptions.value.find((item) => item.alpha3Code === value);
-    return option ? currencyOptionLabel(option) : value;
 }
 
 function countryLabel(value?: string) {
@@ -1130,6 +1197,81 @@ function midTargetName(row: ChannelMidConfig) {
 
 .payment-scope-cell--detail {
     align-items: flex-start;
+}
+
+.currency-scope-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.currency-scope-trigger {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 2px;
+    border-radius: 4px;
+    cursor: help;
+    outline: none;
+    transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.currency-scope-trigger:hover,
+.currency-scope-trigger:focus-visible {
+    background: var(--el-color-primary-light-9);
+    box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
+}
+
+.currency-scope-tooltip {
+    width: min(360px, calc(100vw - 48px));
+}
+
+.currency-scope-tooltip__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgb(255 255 255 / 18%);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.currency-scope-tooltip__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: rgb(255 255 255 / 16%);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.currency-scope-tooltip__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 220px;
+    padding: 1px;
+    overflow-y: auto;
+}
+
+:global(.currency-scope-popper) {
+    max-width: none !important;
+    padding: 10px 12px !important;
+    border-color: var(--el-color-primary-dark-2) !important;
+    box-shadow: 0 8px 24px rgb(15 51 97 / 22%) !important;
+}
+
+.currency-scope-cell--detail {
+    justify-content: flex-start;
 }
 
 .tag-list {

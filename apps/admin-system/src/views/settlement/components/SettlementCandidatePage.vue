@@ -23,11 +23,14 @@
             @search="handleSearch"
             @reset="handleReset"
         >
-            <el-form-item :label="t('transaction.settlement.candidateNo')">
-                <el-input v-model.trim="query.candidateNo" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
-            </el-form-item>
             <el-form-item :label="t('transaction.fields.merchantId')">
                 <MerchantRemoteSelect v-model="query.merchantId" @change="handleSearch" />
+            </el-form-item>
+            <el-form-item :label="sourceTransactionLabel">
+                <el-input v-model.trim="query.sourceTransactionId" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
+            </el-form-item>
+            <el-form-item :label="t('transaction.fields.merchantOrderNo')">
+                <el-input v-model.trim="query.merchantOrderNo" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
             </el-form-item>
             <el-form-item v-if="!props.pendingOnly" :label="t('common.status')">
                 <el-select v-model="query.candidateStatus" clearable filterable :placeholder="t('common.pleaseSelect')">
@@ -38,11 +41,8 @@
                 <el-tag type="warning" effect="plain">{{ statusText('READY') }}</el-tag>
             </el-form-item>
             <template #advanced>
-                <el-form-item :label="t('transaction.fields.transactionId')">
-                    <el-input v-model.trim="query.sourceTransactionId" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
-                </el-form-item>
-                <el-form-item :label="t('transaction.fields.merchantOrderNo')">
-                    <el-input v-model.trim="query.merchantOrderNo" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
+                <el-form-item :label="t('transaction.settlement.candidateNo')">
+                    <el-input v-model.trim="query.candidateNo" clearable :placeholder="t('common.pleaseInput')" @keyup.enter="handleSearch" />
                 </el-form-item>
                 <el-form-item :label="t('transaction.settlement.paymentType')">
                     <el-select v-model="query.paymentType" clearable filterable :placeholder="t('common.pleaseSelect')">
@@ -127,13 +127,14 @@
         <StandardTable ref="tableRef" v-loading="loading" :table-key="tableKey" :data="rows" row-key="id" size="small"
             @selection-change="handleSelectionChange">
             <el-table-column v-if="!props.readOnly" type="selection" width="46" fixed="left" :selectable="candidateSelectable" />
-            <el-table-column prop="candidateNo" :label="t('transaction.settlement.candidateNo')" min-width="210" fixed="left" align="center" show-overflow-tooltip />
-            <el-table-column :label="t('transaction.settlement.merchant')" min-width="200">
-                <template #default="{ row }"><MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" /></template>
-            </el-table-column>
+            <el-table-column prop="sourceTransactionId" :label="sourceTransactionLabel" min-width="210" fixed="left" align="center" show-overflow-tooltip><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
             <el-table-column prop="merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip>
                 <template #default="{ row }">{{ row.merchantOrderNo || '-' }}</template>
             </el-table-column>
+            <el-table-column :label="t('transaction.settlement.merchant')" min-width="200" align="center">
+                <template #default="{ row }"><MerchantIdentityDisplay class="candidate-merchant" :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" /></template>
+            </el-table-column>
+            <el-table-column prop="candidateNo" :label="t('transaction.settlement.candidateNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="200" align="center">
                 <template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template>
             </el-table-column>
@@ -141,9 +142,11 @@
             <el-table-column :label="t('transaction.settlement.sourceType')" min-width="156" align="center">
                 <template #default="{ row }">{{ sourceTypeText(row.sourceType) }}</template>
             </el-table-column>
-            <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="210" align="center" show-overflow-tooltip><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
+            <el-table-column v-if="props.kind === 'reserve'" prop="reserveActionNo" :label="t('transaction.settlement.reserveActionNo')" min-width="220" align="center" show-overflow-tooltip>
+                <template #default="{ row }">{{ row.reserveActionNo || '-' }}</template>
+            </el-table-column>
             <el-table-column :label="t('transaction.fields.labelAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ candidateAmount(row) }}</strong></template></el-table-column>
-            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="190">
+            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="190" align="center">
                 <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b>{{ candidateMoney(row.grossLabelAmount, row) }}</b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b>{{ candidateMoney(row.platformFeeAmount, row) }}</b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b>{{ candidateMoney(row.reserveAmount, row) }}</b></span></div></template>
             </el-table-column>
             <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="168" align="right"><template #default="{ row }"><div class="candidate-action"><span>{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><strong>{{ candidateMoney(row.reserveActionAmount, row) }}</strong></div></template></el-table-column>
@@ -153,7 +156,7 @@
             <el-table-column v-if="props.kind === 'reserve'" prop="expectedReserveReleaseDate" :label="t('transaction.settlement.expectedReleaseDate')" width="140" align="center" />
             <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.candidateNetAmount')" min-width="164" align="right"><template #default="{ row }"><strong>{{ candidateMoney(row.netSettlementAmount, row) }}</strong><small v-if="!hasAmount(row.netSettlementAmount) && row.feeEvaluationStatus">{{ feeEvaluationText(row.feeEvaluationStatus) }}</small></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.targetCurrency')" width="116" align="center">
-                <template #default="{ row }"><strong>{{ row.targetCurrency }}</strong></template>
+                <template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="String(locale)" size="xs" /></template>
             </el-table-column>
             <el-table-column :label="t('common.status')" min-width="134" align="center">
                 <template #default="{ row }"><el-tag size="small" effect="plain" :type="statusTagType(row.candidateStatus)">{{ statusText(row.candidateStatus) }}</el-tag></template>
@@ -196,6 +199,7 @@
                     <el-descriptions-item :label="t('transaction.settlement.feeEvaluationStatus')">{{ feeEvaluationText(detail.feeEvaluationStatus) }}</el-descriptions-item>
                 </template>
                 <template v-else>
+                    <el-descriptions-item :label="t('transaction.settlement.reserveActionNo')">{{ detail.reserveActionNo || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveActionType')">{{ enumText('reserveActionTypeValue', detail.reserveActionType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.direction')"><DirectionTag :direction="detail.reserveDirection" :label="enumText('directionValue', detail.reserveDirection)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveActionAmount')">{{ candidateMoney(detail.reserveActionAmount, detail) }}</el-descriptions-item>
@@ -204,8 +208,8 @@
                     <el-descriptions-item :label="t('transaction.settlement.remainingAmount')">{{ candidateMoney(detail.remainingAmount, detail) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.expectedReleaseDate')">{{ detail.expectedReserveReleaseDate || '-' }}</el-descriptions-item>
                 </template>
-                <el-descriptions-item :label="t('transaction.fields.transactionId')">{{ detail.sourceTransactionId || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('transaction.settlement.targetCurrency')">{{ detail.targetCurrency }}</el-descriptions-item>
+                <el-descriptions-item :label="sourceTransactionLabel">{{ detail.sourceTransactionId || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('transaction.settlement.targetCurrency')"><CurrencyDisplay :currency="detail.targetCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.profileId')">{{ detail.settlementProfileId }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.eligibleDate')">{{ detail.settlementEligibleDate }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.reviewOrderNo')"><el-button v-if="detail.reviewOrderNo" link type="primary" @click="openReview(detail.reviewOrderNo)">{{ detail.reviewOrderNo }}</el-button><span v-else>-</span></el-descriptions-item>
@@ -247,7 +251,7 @@ import { Plus, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { DirectionTag, MerchantIdentityDisplay, PaymentMethodDisplay } from '@acquiring/shared';
+import { CurrencyDisplay, DirectionTag, MerchantIdentityDisplay, PaymentMethodDisplay } from '@acquiring/shared';
 import {
     getSettlementCandidate, searchSettlementCandidates, submitSettlementReview,
     type SettlementCandidate, type SettlementCandidateQuery,
@@ -302,6 +306,9 @@ const reserveStatuses = ['HELD', 'PARTIALLY_RETURNED', 'RELEASABLE', 'FROZEN', '
 const tableKey = computed(() => `admin-settlement-${props.kind}-${props.pendingOnly ? 'pending-' : ''}candidates`);
 const createPermission = computed(() => `settlement:${props.kind}-review:create`);
 const detailPermission = computed(() => `settlement:${props.kind}-candidate:detail`);
+const sourceTransactionLabel = computed(() => props.kind === 'reserve'
+    ? t('transaction.settlement.originalPaymentTransactionNo')
+    : t('transaction.fields.transactionId'));
 const candidateSearchTitle = computed(() => props.pendingOnly
     ? t(`transaction.settlement.${props.kind === 'reserve'
         ? 'pendingReserveSearchTitle' : 'pendingTransactionSearchTitle'}`)
@@ -413,7 +420,14 @@ function openTransaction(row: SettlementCandidate) {
 
 function openMerchant(merchantId: string) { router.push({ path: '/merchant/info', query: { merchantId } }); }
 function openReview(reviewOrderNo: string) { router.push({ path: '/settlement/review-orders', query: { reviewOrderNo } }); }
-function openBatch(settlementBatchNo: string) { router.push({ path: '/settlement/batches', query: { settlementBatchNo } }); }
+function openBatch(settlementBatchNo: string) {
+    router.push({
+        path: props.kind === 'reserve'
+            ? '/settlement/reserve-candidates'
+            : '/settlement/transaction-candidates',
+        query: { view: 'batches', settlementBatchNo },
+    });
+}
 
 function openSubmit() {
     const first = selection.value[0];
@@ -558,6 +572,7 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .candidate-composition span { display: flex; justify-content: space-between; gap: 8px; }
 .candidate-composition b { color: var(--el-text-color-regular); font-weight: 600; font-variant-numeric: tabular-nums; }
 .candidate-action { display: grid; gap: 2px; }
+.candidate-merchant { display: block; text-align: center; }
 @media (max-width: 1360px) {
     .candidate-search-panel :deep(.transaction-search__grid),
     .candidate-search-panel:not(.is-advanced-visible) :deep(.transaction-search > .transaction-search__grid) {

@@ -231,7 +231,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElTag, type ElTree, type FormInstance, type FormRules } from 'element-plus';
 import { ArrowRight, CircleCheck, Key, Lock, MoreFilled, Plus, RefreshLeft, Search, Sort, User, Warning } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -239,6 +239,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
+import { confirmAction } from '@/utils/confirm';
 import { resolveMerchantMenuLabel } from '@/utils/menu';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
 
@@ -484,11 +485,12 @@ async function submitGrant() {
 
 async function changeStatus(row: RoleItem) {
     const nextStatus = row.status === 1 ? 0 : 1;
-    await ElMessageBox.confirm(
+    const confirmed = await confirmAction(
         t('system.role.changeStatusConfirm', { status: nextStatus === 1 ? t('common.enabled') : t('common.disabled'), name: row.roleName }),
         t('common.statusConfirmTitle'),
         { type: nextStatus === 1 ? 'success' : 'warning' },
     );
+    if (!confirmed) return;
     await systemApi.changeRoleStatus(row.roleId, nextStatus);
     ElMessage.success(t('common.operationSuccess'));
     await loadData();
@@ -496,7 +498,8 @@ async function changeStatus(row: RoleItem) {
 
 async function remove(row: RoleItem) {
     if (isSystemRole(row)) return;
-    await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.roleName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.role.deleteConfirm', { name: row.roleName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    if (!confirmed) return;
     await systemApi.deleteRole(row.roleId);
     ElMessage.success(t('common.deleteSuccess'));
     await loadData();

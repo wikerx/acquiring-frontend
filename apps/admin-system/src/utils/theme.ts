@@ -1,3 +1,11 @@
+import {
+    navigationThemeCssVariables,
+    normalizeNavigationTheme,
+    type AppearancePreset,
+    type AppSettings,
+    type NavigationTheme,
+} from '@/constants/app';
+
 /** Parse a hex color string into { r, g, b } */
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
     const h = hex.replace('#', '');
@@ -27,10 +35,21 @@ function mix(color1: string, color2: string, weight: number): string {
 
 /** Compute the full set of Element Plus primary color CSS variables for a given theme color */
 function computePrimaryPalette(primary: string): Record<string, string> {
+    const rgb = hexToRgb(primary);
     return {
         '--app-primary': primary,
         '--app-primary-light': mix(primary, '#ffffff', 0.82),
         '--app-primary-dark': mix(primary, '#000000', 0.18),
+        '--app-primary-rgb': `${rgb.r} ${rgb.g} ${rgb.b}`,
+        '--app-primary-soft': mix(primary, '#ffffff', 0.92),
+        '--app-primary-soft-strong': mix(primary, '#ffffff', 0.84),
+        '--app-primary-border': mix(primary, '#ffffff', 0.72),
+        '--app-primary-border-strong': mix(primary, '#ffffff', 0.52),
+        '--app-theme-canvas': mix(primary, '#ffffff', 0.965),
+        '--app-theme-panel-tint': mix(primary, '#ffffff', 0.95),
+        '--app-theme-table-hover': mix(primary, '#ffffff', 0.94),
+        '--app-action-primary': primary,
+        '--app-action-primary-hover': mix(primary, '#000000', 0.14),
         '--el-color-primary': primary,
         '--el-color-primary-light-3': mix(primary, '#ffffff', 0.3),
         '--el-color-primary-light-5': mix(primary, '#ffffff', 0.5),
@@ -62,4 +81,8 @@ export function applyNavigationTheme(theme: NavigationTheme) {
 export function applyNavigationMode(mode: AppSettings['layoutMode']) {
     document.documentElement.dataset.navMode = mode === 'top' ? 'top' : 'side';
 }
-import { navigationThemeCssVariables, normalizeNavigationTheme, type AppSettings, type NavigationTheme } from '@/constants/app';
+
+/** Mark the active coordinated appearance preset for scoped visual overrides. */
+export function applyAppearancePreset(preset: AppearancePreset) {
+    document.documentElement.dataset.appearancePreset = preset;
+}

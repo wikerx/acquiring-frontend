@@ -42,7 +42,7 @@
         <StandardTable table-key="exchange-business-rate" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="120" align="center"><template #default="{ row }">{{ optionLabel(rateTypeOptions, row.rateType) }}</template></el-table-column>
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.source')" width="90" align="center" />
-            <el-table-column :label="$t('exchange.fields.currencyPair')" width="150" align="center"><template #default="{ row }">{{ formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency) }}</template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="175" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.originalRate')" width="120" align="right"><template #default="{ row }"><span class="rate-value">{{ formatRate(row.originalRate) }}</span></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.finalRate')" min-width="180" align="right"><template #default="{ row }"><strong class="final-rate-value">{{ formatRate(row.finalRate) }}</strong></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.effectiveTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.effectiveTime" /></template></el-table-column>
@@ -72,7 +72,7 @@
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.rateType')">{{ optionLabel(rateTypeOptions, detailRow.rateType) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.sourceCode')">{{ detailRow.sourceCode }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('exchange.fields.currencyPair')">{{ formatCurrencyPair(translate, detailRow.baseCurrency, detailRow.quoteCurrency) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.currencyPair')"><CurrencyPairDisplay :base-currency="detailRow.baseCurrency" :quote-currency="detailRow.quoteCurrency" :locale="String(locale)" size="sm" variant="soft" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.generateMethod')">{{ optionLabel(generateMethodOptions, detailRow.generateMethod) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.originalRate')">{{ formatRate(detailRow.originalRate) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.finalRate')">{{ formatRate(detailRow.finalRate) }}</el-descriptions-item>
@@ -162,7 +162,9 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import { batchCreateExchangeBusinessRates, createExchangeBusinessRate, exportExchangeBusinessRates, getExchangeBusinessRate, searchExchangeBusinessRates, updateExchangeBusinessRateStatus, type BusinessRateSaveRequest, type ExchangeBusinessRate } from '@/api/exchange';
+import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
 import RateNumberInput from '../RateNumberInput.vue';
@@ -177,7 +179,7 @@ import {
     todayDateTimeRange,
 } from '../shared';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
@@ -233,7 +235,10 @@ const rules = computed<FormRules>(() => ({
     rateStatus: [{ required: true, message: t('exchange.validation.statusRequired'), trigger: 'change' }],
 }));
 
-onMounted(loadData);
+onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
+    loadData();
+});
 
 async function loadData() {
     loading.value = true;

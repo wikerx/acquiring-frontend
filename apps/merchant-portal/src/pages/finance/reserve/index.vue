@@ -3,11 +3,16 @@
     <div class="page system-page merchant-redesigned-page reserve-page">
         <section class="merchant-list-card merchant-search-card">
             <el-form v-show="showSearch" :model="query" inline size="small" class="search-form" @submit.prevent>
+                <el-form-item :label="t('settlement.reserveActionNo')"><el-input v-model.trim="query.reserveActionNo" clearable @keyup.enter="handleSearch" /></el-form-item>
                 <el-form-item :label="t('settlement.reserveNo')"><el-input v-model.trim="query.reserveNo" clearable @keyup.enter="handleSearch" /></el-form-item>
                 <el-form-item :label="t('settlement.batchNo')"><el-input v-model.trim="query.settlementBatchNo" clearable @keyup.enter="handleSearch" /></el-form-item>
+                <el-form-item :label="t('settlement.merchantOrderNo')"><el-input v-model.trim="query.merchantOrderNo" clearable @keyup.enter="handleSearch" /></el-form-item>
                 <el-form-item :label="t('settlement.transactionId')"><el-input v-model.trim="query.sourceTransactionId" clearable @keyup.enter="handleSearch" /></el-form-item>
+                <el-form-item :label="t('settlement.reserveStatusLabel')"><el-select v-model="query.reserveStatus" clearable><el-option v-for="value in reserveStatuses" :key="value" :label="enumText('reserveStatus', value)" :value="value" /></el-select></el-form-item>
                 <el-form-item :label="t('settlement.actionTypeLabel')"><el-select v-model="query.actionType" clearable><el-option v-for="value in actionTypes" :key="value" :label="enumText('actionType', value)" :value="value" /></el-select></el-form-item>
                 <el-form-item :label="t('settlement.currency')"><el-input v-model.trim="query.currency" maxlength="3" clearable /></el-form-item>
+                <el-form-item :label="t('settlement.transactionTime')"><el-date-picker v-model="transactionTimeRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" /></el-form-item>
+                <el-form-item :label="t('settlement.expectedReleaseDate')"><el-date-picker v-model="expectedReleaseDateRange" type="daterange" value-format="YYYY-MM-DD" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" /></el-form-item>
                 <el-form-item :label="t('settlement.businessDate')"><el-date-picker v-model="businessDateRange" type="daterange" value-format="YYYY-MM-DD" :clearable="false" :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" /></el-form-item>
                 <el-form-item class="merchant-search-actions"><el-button type="primary" :icon="Search" @click="handleSearch">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="handleReset">{{ t('common.reset') }}</el-button></el-form-item>
             </el-form>
@@ -21,6 +26,7 @@
             <StandardTable v-loading="loading" table-key="merchant-settlement-reserve-list" :data="rows" row-key="reserveActionNo" size="small">
                 <el-table-column prop="reserveActionNo" :label="t('settlement.reserveActionNo')" min-width="220" fixed="left" align="center"><template #default="{ row }"><el-button class="identifier-link" link type="primary" :title="row.reserveActionNo" @click="openDetail(row)">{{ row.reserveActionNo }}</el-button></template></el-table-column>
                 <el-table-column prop="reserveNo" :label="t('settlement.reserveNo')" min-width="190" align="center"><template #default="{ row }"><span class="identifier-text" :title="row.reserveNo">{{ row.reserveNo }}</span></template></el-table-column>
+                <el-table-column prop="merchantOrderNo" :label="t('settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                 <el-table-column :label="t('settlement.actionTypeLabel')" min-width="140" align="center"><template #default="{ row }"><el-tag effect="plain">{{ enumText('actionType', row.actionType) }}</el-tag></template></el-table-column>
                 <el-table-column :label="t('settlement.amount')" min-width="140" align="right"><template #default="{ row }">{{ money(row.amount, row.currency, row.currencyExponent) }}</template></el-table-column>
                 <el-table-column :label="t('settlement.remainingAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ money(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template></el-table-column>
@@ -38,16 +44,18 @@
         <el-drawer v-model="detailVisible" :title="t('settlement.reserveDetail')" size="min(760px, 96vw)" append-to-body destroy-on-close>
             <template v-if="detail">
                 <div class="reserve-detail__identity"><strong>{{ detail.reserveActionNo }}</strong><el-tag :type="reserveStatusType(detail.reserveStatus)" effect="plain">{{ enumText('reserveStatus', detail.reserveStatus) }}</el-tag></div>
+                <el-alert class="reserve-detail__status-help" type="info" :closable="false" show-icon :title="enumText('reserveStatusDescription', detail.reserveStatus)" />
                 <section class="reserve-flow">
                     <div><span>{{ t('settlement.retainedAmount') }}</span><strong>{{ money(detail.retainedAmount, detail.currency, detail.currencyExponent) }}</strong></div>
                     <div><span>{{ t('settlement.releasedAmount') }}</span><strong>{{ money(detail.releasedAmount, detail.currency, detail.currencyExponent) }}</strong></div>
                     <div class="is-current"><span>{{ t('settlement.remainingAmount') }}</span><strong>{{ money(detail.remainingAmount, detail.currency, detail.currencyExponent) }}</strong></div>
                 </section>
-                <el-descriptions :column="2" border size="small">
+                <el-descriptions :column="detailDescriptionColumns" border size="small" class="reserve-detail__descriptions">
                     <el-descriptions-item :label="t('settlement.reserveNo')">{{ detail.reserveNo }}</el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.actionTypeLabel')">{{ enumText('actionType', detail.actionType) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.merchantOrderNo')">{{ detail.merchantOrderNo || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.transactionId')"><el-button v-if="detail.sourceTransactionId" link type="primary" @click="openTransaction(detail)">{{ detail.sourceTransactionId }}</el-button><span v-else>-</span></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.batchNo')" :span="2"><el-button v-if="detail.settlementBatchNo" link type="primary" @click="openBatch(detail.settlementBatchNo)">{{ detail.settlementBatchNo }}</el-button><span v-else>-</span></el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.transactionId')" :span="2"><el-button v-if="detail.sourceTransactionId" link type="primary" @click="openTransaction(detail)">{{ detail.sourceTransactionId }}</el-button><span v-else>-</span></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.direction')"><DirectionTag :direction="detail.direction" :label="enumText('direction', detail.direction)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.amount')">{{ money(detail.amount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.returnedAmount')">{{ money(detail.returnedAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
@@ -64,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { DirectionTag, formatDecimalAmount } from '@acquiring/shared';
@@ -83,14 +91,20 @@ const { locale, t, te } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const actionTypes = ['HOLD','RETURN','RELEASE','ADJUSTMENT','REVERSAL_HOLD','REVERSAL_RETURN','REVERSAL_RELEASE','REVERSAL_ADJUSTMENT'];
+const reserveStatuses = ['HELD','PARTIALLY_RETURNED','RELEASABLE','FROZEN','RETURNED','RELEASED','DEDUCTED','ADJUSTED','REVERSED'];
 const canExport = hasPermission('merchant:settlement:reserve-item:export');
 const showSearch = ref(true), loading = ref(false), exporting = ref(false);
 const rows = ref<MerchantSettlementReserveItem[]>([]), total = ref(0);
 const query = reactive<MerchantSettlementReserveQuery>({ pageNo: 1, pageSize: 10 });
 const businessDateRange = ref<[string,string]>(defaultDateRange());
+const transactionTimeRange = ref<[string,string] | []>([]);
+const expectedReleaseDateRange = ref<[string,string] | []>([]);
 const detailVisible = ref(false), detail = ref<MerchantSettlementReserveItem | null>(null);
+const detailDescriptionColumns = ref(2);
 
 onMounted(async () => {
+    syncDetailDescriptionColumns();
+    window.addEventListener('resize', syncDetailDescriptionColumns);
     query.settlementBatchNo = routeText('settlementBatchNo');
     query.reserveNo = routeText('reserveNo');
     query.sourceTransactionId = routeText('sourceTransactionId');
@@ -102,10 +116,11 @@ onMounted(async () => {
         if (linkedRow) openDetail(linkedRow);
     }
 });
-function requestQuery(): MerchantSettlementReserveQuery { return { ...query, currency: query.currency?.toUpperCase() || undefined, beginBusinessDate: businessDateRange.value[0], endBusinessDate: businessDateRange.value[1] }; }
+onBeforeUnmount(() => window.removeEventListener('resize', syncDetailDescriptionColumns));
+function requestQuery(): MerchantSettlementReserveQuery { return { ...query, currency: query.currency?.toUpperCase() || undefined, beginTransactionTime: transactionTimeRange.value[0] || undefined, endTransactionTime: transactionTimeRange.value[1] || undefined, beginExpectedReleaseDate: expectedReleaseDateRange.value[0] || undefined, endExpectedReleaseDate: expectedReleaseDateRange.value[1] || undefined, beginBusinessDate: businessDateRange.value[0], endBusinessDate: businessDateRange.value[1] }; }
 async function loadData() { loading.value = true; try { const result = await searchMerchantSettlementReserves(requestQuery()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; loadData(); }
-function handleReset() { Object.assign(query, { settlementBatchNo: undefined, reserveNo: undefined, sourceTransactionId: undefined, actionType: undefined, currency: undefined, pageNo: 1 }); businessDateRange.value = defaultDateRange(); loadData(); }
+function handleReset() { Object.assign(query, { settlementBatchNo: undefined, reserveNo: undefined, reserveActionNo: undefined, sourceTransactionId: undefined, merchantOrderNo: undefined, reserveStatus: undefined, actionType: undefined, currency: undefined, pageNo: 1 }); businessDateRange.value = defaultDateRange(); transactionTimeRange.value = []; expectedReleaseDateRange.value = []; loadData(); }
 async function handleExport() { exporting.value = true; try { await exportMerchantSettlementReserves(requestQuery()); } catch (error) { showError(error); } finally { exporting.value = false; } }
 function openDetail(row: MerchantSettlementReserveItem) { detail.value = row; detailVisible.value = true; }
 function openTransaction(row: MerchantSettlementReserveItem) {
@@ -123,6 +138,7 @@ function enumText(group: string, value?: string) { if (!value) return '-'; const
 function money(value?: string | number | null, currency?: string, exponent?: number | null) { if (value === undefined || value === null || value === '') return '-'; const digits = typeof exponent === 'number' ? Math.min(Math.max(exponent, 0), 8) : 2; return `${currency || ''} ${formatDecimalAmount(value, String(locale.value), digits, digits)}`.trim(); }
 function routeText(key: string) { const value = route.query[key]; return typeof value === 'string' && value.trim() ? value.trim() : undefined; }
 function reserveStatusType(value?: string) { if (value === 'RELEASED' || value === 'RETURNED') return 'success'; if (value === 'HELD' || value === 'PARTIALLY_RETURNED' || value === 'RELEASABLE') return 'warning'; if (value === 'FROZEN') return 'danger'; if (value === 'REVERSED') return 'info'; return 'primary'; }
+function syncDetailDescriptionColumns() { detailDescriptionColumns.value = window.innerWidth <= 640 ? 1 : 2; }
 function businessDateFromBusinessNo(value?: string) { const match = /^[A-Z]{2}(\d{4})(\d{2})(\d{2})-/.exec(value || ''); return match ? `${match[1]}-${match[2]}-${match[3]}` : undefined; }
 function defaultDateRange(): [string,string] { const end = new Date(), begin = new Date(); begin.setDate(begin.getDate() - 30); const text = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; return [text(begin), text(end)]; }
 function showError(error: unknown) { ElMessage.error((error as { friendlyMessage?: string })?.friendlyMessage || (error instanceof Error ? error.message : t('common.loadFailed'))); }
@@ -130,11 +146,13 @@ function showError(error: unknown) { ElMessage.error((error as { friendlyMessage
 
 <style scoped>
 .search-form :deep(.el-input), .search-form :deep(.el-select) { width: 205px; }
-.search-form :deep(.el-date-editor) { width: 292px; }
+    .search-form :deep(.el-date-editor) { width: 330px; }
 .identifier-link, .identifier-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .identifier-link { width: 100%; }
 .reserve-detail__identity { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 0 14px; border-left: 3px solid #287d8e; background: #f6f9fb; }
-.reserve-detail__identity strong { overflow-wrap: anywhere; }
+    .reserve-detail__identity strong { overflow-wrap: anywhere; }
+    .reserve-detail__status-help { margin: 12px 0 16px; }
+.reserve-detail__descriptions :deep(.el-descriptions__content) { overflow-wrap: anywhere; text-align: center; }
 .reserve-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 18px 0; border: 1px solid #e1e8ef; }
 .reserve-flow div { min-width: 0; padding: 14px; border-right: 1px solid #e1e8ef; }
 .reserve-flow div:last-child { border-right: 0; }

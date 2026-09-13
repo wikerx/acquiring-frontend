@@ -12,9 +12,34 @@
         class="settings-drawer"
     >
         <div class="settings-body">
+            <!-- Coordinated Color Scheme -->
+            <div class="settings-section">
+                <h4>{{ $t('settings.appearanceScheme') }}</h4>
+                <div class="appearance-preset-list">
+                    <button
+                        v-for="option in APPEARANCE_PRESET_OPTIONS"
+                        :key="option.key"
+                        class="appearance-preset-option"
+                        :class="{ active: settings.appearancePreset === option.key }"
+                        type="button"
+                        @click="settings.applyAppearancePreset(option.key)"
+                    >
+                        <span
+                            class="appearance-preset-option__preview"
+                            :style="{ background: option.previewColors.canvas, borderColor: option.previewColors.primary }"
+                        >
+                            <i :style="{ background: option.previewColors.navigation }" />
+                            <b :style="{ background: option.previewColors.active }" />
+                            <em :style="{ background: option.previewColors.primary }" />
+                        </span>
+                        <span class="appearance-preset-option__label">{{ $t(option.labelKey) }}</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Theme Color -->
             <div class="settings-section">
-                <h4>{{ $t('settings.themeColor') }}</h4>
+                <h4>{{ $t('settings.customThemeColor') }}</h4>
                 <div class="theme-color-list">
                     <span
                         v-for="color in PRESET_COLORS"
@@ -114,7 +139,7 @@ import { ref } from 'vue';
 import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useSettingsStore } from '@/store';
-import { NAVIGATION_THEME_OPTIONS, PRESET_COLORS } from '@/constants/app';
+import { APPEARANCE_PRESET_OPTIONS, NAVIGATION_THEME_OPTIONS, PRESET_COLORS } from '@/constants/app';
 
 const { t } = useI18n();
 const settings = useSettingsStore();
@@ -159,6 +184,84 @@ defineExpose({ open });
     font-size: 14px;
     font-weight: 600;
     color: #303133;
+}
+
+.appearance-preset-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.appearance-preset-option {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    padding: 8px;
+    color: #526173;
+    background: #ffffff;
+    border: 1px solid #e1e7ef;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+    transition: border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.appearance-preset-option:hover,
+.appearance-preset-option:focus-visible,
+.appearance-preset-option.active {
+    color: var(--app-primary);
+    border-color: var(--app-primary);
+    box-shadow: 0 8px 18px rgb(var(--app-primary-rgb) / 12%);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.appearance-preset-option__preview {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 38px;
+    overflow: hidden;
+    border: 1px solid;
+    border-radius: 4px;
+}
+
+.appearance-preset-option__preview i,
+.appearance-preset-option__preview b,
+.appearance-preset-option__preview em {
+    position: absolute;
+    display: block;
+    content: '';
+}
+
+.appearance-preset-option__preview i {
+    inset: 0 auto 0 0;
+    width: 25%;
+    border-right: 1px solid rgb(15 23 42 / 8%);
+}
+
+.appearance-preset-option__preview b {
+    right: 8px;
+    bottom: 7px;
+    width: 56%;
+    height: 9px;
+    border-radius: 2px;
+}
+
+.appearance-preset-option__preview em {
+    top: 7px;
+    right: 8px;
+    width: 28%;
+    height: 7px;
+    border-radius: 2px;
+}
+
+.appearance-preset-option__label {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .theme-color-list {
@@ -217,7 +320,7 @@ defineExpose({ open });
     min-height: 46px;
     padding: 6px 8px;
     color: #475467;
-    background: linear-gradient(180deg, #fff, #f8fafc);
+    background: #ffffff;
     border: 1px solid #e1e7ef;
     border-radius: 6px;
     cursor: pointer;
@@ -231,7 +334,7 @@ defineExpose({ open });
 .navigation-theme-option.active {
     color: var(--app-primary);
     border-color: var(--app-primary);
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+    box-shadow: 0 10px 22px rgb(var(--app-primary-rgb) / 14%);
     transform: translateY(-1px);
     outline: none;
 }

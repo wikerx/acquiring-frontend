@@ -6,6 +6,13 @@ export const DEFAULT_THEME = '#1677FF';
 
 export const PRESET_COLORS = [
     '#1677FF',
+    '#2F6BFF',
+    '#17845F',
+    '#5B56B3',
+    '#0F7480',
+    '#C7354F',
+    '#B85C24',
+    '#7A294B',
     '#10B981',
     '#0891B2',
     '#0F766E',
@@ -24,6 +31,14 @@ export const PRESET_COLORS = [
 export type NavigationTheme =
     | 'light'
     | 'mist'
+    | 'air'
+    | 'jade'
+    | 'indigo'
+    | 'bay'
+    | 'camellia'
+    | 'orange'
+    | 'wine'
+    | 'slate'
     | 'dark'
     | 'blue'
     | 'navy'
@@ -111,6 +126,198 @@ export const NAVIGATION_THEME_OPTIONS: NavigationThemeTokens[] = [
         dropdownActiveBg: '#dce8ff',
         dropdownActiveText: '#1d4ed8',
         shadow: '8px 0 28px rgb(29 78 216 / 8%)',
+    },
+    {
+        key: 'air',
+        labelKey: 'settings.sideThemeAir',
+        previewColors: { shell: '#f7faff', bar: '#f7faff', active: '#e7eeff', accent: '#2f6bff' },
+        navBg: '#f7faff',
+        navBgElevated: '#f7faff',
+        navText: '#2f405d',
+        navTextMuted: '#71809a',
+        navIcon: '#60718e',
+        navHoverBg: '#eef4ff',
+        navHoverText: '#2458d8',
+        navActiveBg: '#e7eeff',
+        navActiveText: '#2458d8',
+        navActiveIcon: '#2f6bff',
+        navActiveIndicator: '#2f6bff',
+        navBorder: '#dce6f6',
+        dropdownBg: '#ffffff',
+        dropdownText: '#2f405d',
+        dropdownHoverBg: '#eef4ff',
+        dropdownHoverText: '#2458d8',
+        dropdownActiveBg: '#e7eeff',
+        dropdownActiveText: '#2458d8',
+        shadow: '8px 0 24px rgb(47 107 255 / 6%)',
+    },
+    {
+        key: 'jade',
+        labelKey: 'settings.sideThemeJade',
+        previewColors: { shell: '#f6faf8', bar: '#f6faf8', active: '#e4f1eb', accent: '#17845f' },
+        navBg: '#f6faf8',
+        navBgElevated: '#f6faf8',
+        navText: '#2d433b',
+        navTextMuted: '#72847d',
+        navIcon: '#62776f',
+        navHoverBg: '#ecf5f1',
+        navHoverText: '#116b4c',
+        navActiveBg: '#e4f1eb',
+        navActiveText: '#116b4c',
+        navActiveIcon: '#17845f',
+        navActiveIndicator: '#17845f',
+        navBorder: '#d9e8e1',
+        dropdownBg: '#ffffff',
+        dropdownText: '#2d433b',
+        dropdownHoverBg: '#ecf5f1',
+        dropdownHoverText: '#116b4c',
+        dropdownActiveBg: '#e4f1eb',
+        dropdownActiveText: '#116b4c',
+        shadow: '8px 0 24px rgb(23 132 95 / 6%)',
+    },
+    {
+        key: 'indigo',
+        labelKey: 'settings.sideThemeIndigo',
+        previewColors: { shell: '#f8f8fc', bar: '#f8f8fc', active: '#e9e8f7', accent: '#5b56b3' },
+        navBg: '#f8f8fc',
+        navBgElevated: '#f8f8fc',
+        navText: '#37364f',
+        navTextMuted: '#77758e',
+        navIcon: '#686680',
+        navHoverBg: '#f0eff9',
+        navHoverText: '#4b4798',
+        navActiveBg: '#e9e8f7',
+        navActiveText: '#4b4798',
+        navActiveIcon: '#5b56b3',
+        navActiveIndicator: '#5b56b3',
+        navBorder: '#e0dfec',
+        dropdownBg: '#ffffff',
+        dropdownText: '#37364f',
+        dropdownHoverBg: '#f0eff9',
+        dropdownHoverText: '#4b4798',
+        dropdownActiveBg: '#e9e8f7',
+        dropdownActiveText: '#4b4798',
+        shadow: '8px 0 24px rgb(91 86 179 / 6%)',
+    },
+    {
+        key: 'bay',
+        labelKey: 'settings.sideThemeBay',
+        previewColors: { shell: '#f4fafa', bar: '#f4fafa', active: '#ddeef0', accent: '#0f7480' },
+        navBg: '#f4fafa',
+        navBgElevated: '#f4fafa',
+        navText: '#284449',
+        navTextMuted: '#708286',
+        navIcon: '#60777a',
+        navHoverBg: '#e8f3f4',
+        navHoverText: '#0c5e68',
+        navActiveBg: '#ddeef0',
+        navActiveText: '#0c5e68',
+        navActiveIcon: '#0f7480',
+        navActiveIndicator: '#0f7480',
+        navBorder: '#d3e5e7',
+        dropdownBg: '#ffffff',
+        dropdownText: '#284449',
+        dropdownHoverBg: '#e8f3f4',
+        dropdownHoverText: '#0c5e68',
+        dropdownActiveBg: '#ddeef0',
+        dropdownActiveText: '#0c5e68',
+        shadow: '8px 0 24px rgb(15 116 128 / 6%)',
+    },
+    {
+        key: 'camellia',
+        labelKey: 'settings.sideThemeCamellia',
+        previewColors: { shell: '#fdf7f8', bar: '#fdf7f8', active: '#f8e1e5', accent: '#c7354f' },
+        navBg: '#fdf7f8',
+        navBgElevated: '#fdf7f8',
+        navText: '#4c3036',
+        navTextMuted: '#846f74',
+        navIcon: '#79656a',
+        navHoverBg: '#fcedf0',
+        navHoverText: '#9e2a40',
+        navActiveBg: '#f8e1e5',
+        navActiveText: '#9e2a40',
+        navActiveIcon: '#c7354f',
+        navActiveIndicator: '#c7354f',
+        navBorder: '#f0dadd',
+        dropdownBg: '#ffffff',
+        dropdownText: '#4c3036',
+        dropdownHoverBg: '#fcedf0',
+        dropdownHoverText: '#9e2a40',
+        dropdownActiveBg: '#f8e1e5',
+        dropdownActiveText: '#9e2a40',
+        shadow: '8px 0 24px rgb(199 53 79 / 6%)',
+    },
+    {
+        key: 'orange',
+        labelKey: 'settings.sideThemeOrange',
+        previewColors: { shell: '#fef8f4', bar: '#fef8f4', active: '#f7e3d5', accent: '#b85c24' },
+        navBg: '#fef8f4',
+        navBgElevated: '#fef8f4',
+        navText: '#4f382a',
+        navTextMuted: '#88766b',
+        navIcon: '#7c695e',
+        navHoverBg: '#fcefe6',
+        navHoverText: '#91491d',
+        navActiveBg: '#f7e3d5',
+        navActiveText: '#91491d',
+        navActiveIcon: '#b85c24',
+        navActiveIndicator: '#b85c24',
+        navBorder: '#efddcf',
+        dropdownBg: '#ffffff',
+        dropdownText: '#4f382a',
+        dropdownHoverBg: '#fcefe6',
+        dropdownHoverText: '#91491d',
+        dropdownActiveBg: '#f7e3d5',
+        dropdownActiveText: '#91491d',
+        shadow: '8px 0 24px rgb(184 92 36 / 6%)',
+    },
+    {
+        key: 'wine',
+        labelKey: 'settings.sideThemeWine',
+        previewColors: { shell: '#fbf7f9', bar: '#fbf7f9', active: '#ecdce3', accent: '#7a294b' },
+        navBg: '#fbf7f9',
+        navBgElevated: '#fbf7f9',
+        navText: '#46323b',
+        navTextMuted: '#806f77',
+        navIcon: '#725f68',
+        navHoverBg: '#f6eaef',
+        navHoverText: '#62213c',
+        navActiveBg: '#ecdce3',
+        navActiveText: '#62213c',
+        navActiveIcon: '#7a294b',
+        navActiveIndicator: '#7a294b',
+        navBorder: '#e7d8df',
+        dropdownBg: '#ffffff',
+        dropdownText: '#46323b',
+        dropdownHoverBg: '#f6eaef',
+        dropdownHoverText: '#62213c',
+        dropdownActiveBg: '#ecdce3',
+        dropdownActiveText: '#62213c',
+        shadow: '8px 0 24px rgb(122 41 75 / 6%)',
+    },
+    {
+        key: 'slate',
+        labelKey: 'settings.sideThemeSlate',
+        previewColors: { shell: '#f7f8fa', bar: '#f7f8fa', active: '#e3e8ef', accent: '#475569' },
+        navBg: '#f7f8fa',
+        navBgElevated: '#f7f8fa',
+        navText: '#334155',
+        navTextMuted: '#748094',
+        navIcon: '#64748b',
+        navHoverBg: '#eef1f5',
+        navHoverText: '#374151',
+        navActiveBg: '#e3e8ef',
+        navActiveText: '#374151',
+        navActiveIcon: '#475569',
+        navActiveIndicator: '#475569',
+        navBorder: '#dde3ea',
+        dropdownBg: '#ffffff',
+        dropdownText: '#334155',
+        dropdownHoverBg: '#eef1f5',
+        dropdownHoverText: '#374151',
+        dropdownActiveBg: '#e3e8ef',
+        dropdownActiveText: '#374151',
+        shadow: '8px 0 24px rgb(71 85 105 / 6%)',
     },
     {
         key: 'dark',
@@ -307,6 +514,7 @@ export const NAVIGATION_THEME_OPTIONS: NavigationThemeTokens[] = [
 ];
 
 export interface AppSettings {
+    appearancePreset: AppearancePreset;
     themeColor: string;
     sideTheme: NavigationTheme;
     layoutMode: 'side' | 'top';
@@ -318,6 +526,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+    appearancePreset: 'classic',
     themeColor: DEFAULT_THEME,
     sideTheme: 'light',
     layoutMode: 'side',
@@ -330,9 +539,109 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export const SETTINGS_KEY = 'acquiring_merchant_settings';
 
+export type AppearancePreset =
+    | 'classic'
+    | 'air'
+    | 'jade'
+    | 'indigo'
+    | 'bay'
+    | 'camellia'
+    | 'orange'
+    | 'wine'
+    | 'graphite'
+    | 'custom';
+export type SelectableAppearancePreset = Exclude<AppearancePreset, 'custom'>;
+
+export interface AppearancePresetOption {
+    key: SelectableAppearancePreset;
+    labelKey: string;
+    primary: string;
+    navigationTheme: NavigationTheme;
+    previewColors: {
+        canvas: string;
+        navigation: string;
+        active: string;
+        primary: string;
+    };
+}
+
+export const APPEARANCE_PRESET_OPTIONS: AppearancePresetOption[] = [
+    {
+        key: 'classic',
+        labelKey: 'settings.appearanceClassic',
+        primary: DEFAULT_THEME,
+        navigationTheme: 'light',
+        previewColors: { canvas: '#f5f7fb', navigation: '#ffffff', active: '#e8f0ff', primary: DEFAULT_THEME },
+    },
+    {
+        key: 'air',
+        labelKey: 'settings.appearanceAir',
+        primary: '#2F6BFF',
+        navigationTheme: 'air',
+        previewColors: { canvas: '#f7f9fd', navigation: '#f7faff', active: '#e7eeff', primary: '#2F6BFF' },
+    },
+    {
+        key: 'jade',
+        labelKey: 'settings.appearanceJade',
+        primary: '#17845F',
+        navigationTheme: 'jade',
+        previewColors: { canvas: '#f7faf9', navigation: '#f6faf8', active: '#e4f1eb', primary: '#17845F' },
+    },
+    {
+        key: 'indigo',
+        labelKey: 'settings.appearanceIndigo',
+        primary: '#5B56B3',
+        navigationTheme: 'indigo',
+        previewColors: { canvas: '#f8f8fb', navigation: '#f8f8fc', active: '#e9e8f7', primary: '#5B56B3' },
+    },
+    {
+        key: 'bay',
+        labelKey: 'settings.appearanceBay',
+        primary: '#0F7480',
+        navigationTheme: 'bay',
+        previewColors: { canvas: '#f6fafb', navigation: '#f4fafa', active: '#ddeef0', primary: '#0F7480' },
+    },
+    {
+        key: 'camellia',
+        labelKey: 'settings.appearanceCamellia',
+        primary: '#C7354F',
+        navigationTheme: 'camellia',
+        previewColors: { canvas: '#fdf9fa', navigation: '#fdf7f8', active: '#f8e1e5', primary: '#C7354F' },
+    },
+    {
+        key: 'orange',
+        labelKey: 'settings.appearanceOrange',
+        primary: '#B85C24',
+        navigationTheme: 'orange',
+        previewColors: { canvas: '#fefaf7', navigation: '#fef8f4', active: '#f7e3d5', primary: '#B85C24' },
+    },
+    {
+        key: 'wine',
+        labelKey: 'settings.appearanceWine',
+        primary: '#7A294B',
+        navigationTheme: 'wine',
+        previewColors: { canvas: '#fbf8f9', navigation: '#fbf7f9', active: '#ecdce3', primary: '#7A294B' },
+    },
+    {
+        key: 'graphite',
+        labelKey: 'settings.appearanceGraphite',
+        primary: '#475569',
+        navigationTheme: 'slate',
+        previewColors: { canvas: '#f7f8fa', navigation: '#f7f8fa', active: '#e3e8ef', primary: '#475569' },
+    },
+];
+
 export function normalizeNavigationTheme(value: unknown): NavigationTheme {
     const matched = NAVIGATION_THEME_OPTIONS.find((item) => item.key === value);
     return matched?.key || DEFAULT_SETTINGS.sideTheme;
+}
+
+export function inferAppearancePreset(themeColor: unknown, sideTheme: unknown): AppearancePreset {
+    const normalizedColor = typeof themeColor === 'string' ? themeColor.toLowerCase() : '';
+    const normalizedNavigationTheme = normalizeNavigationTheme(sideTheme);
+    return APPEARANCE_PRESET_OPTIONS.find((item) =>
+        item.primary.toLowerCase() === normalizedColor && item.navigationTheme === normalizedNavigationTheme,
+    )?.key || 'custom';
 }
 
 export function navigationThemeCssVariables(theme: NavigationTheme): Record<string, string> {

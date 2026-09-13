@@ -1,5 +1,5 @@
-import type { AuthMenu, CommonResult, PageResult } from '@acquiring/shared';
-import { unwrapResult } from '@acquiring/shared';
+import type { AuthMenu, CommonResult, CurrencyPresentation, PageResult } from '@acquiring/shared';
+import { setCurrencyPresentations, unwrapResult } from '@acquiring/shared';
 import { http } from './http';
 
 export interface IdsRequest {
@@ -194,6 +194,12 @@ export interface RoleGrantTree {
 }
 
 export const systemApi = {
+    async loadCurrencyPresentations() {
+        const result = await http.get<CommonResult<CurrencyPresentation[]>>('/merchant/system/dicts/currency-presentations');
+        const presentations = unwrapResult(result.data);
+        setCurrencyPresentations(presentations);
+        return presentations;
+    },
     async searchDictData(data: DictDataQuery) {
         const result = await http.post<CommonResult<PageResult<DictDataItem>>>('/merchant/system/dicts/data/search', data);
         return unwrapResult(result.data);

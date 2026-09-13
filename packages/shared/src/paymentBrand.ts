@@ -294,6 +294,15 @@ const PAYMENT_BRAND_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
     DINERS_CLUB: ['dinersClub'],
     DISCOVER: ['discover'],
     UNIONPAY: ['unionPay'],
+    PAYPAL: ['paypal'],
+    APPLE_PAY: ['applePay'],
+    GOOGLE_PAY: ['googlePay'],
+    ALIPAY_PLUS: ['alipayPlus'],
+    CASH_APP_PAY: ['cashAppPay'],
+    ACH_DEBIT: ['achDebit'],
+    BANK_TRANSFER: ['bankTransfer'],
+    SPEI: ['spei'],
+    PIX: ['pix'],
 };
 
 /** 按支付品牌优先、支付方式兜底解析统一 Logo，供筛选项和统计维度复用。 */

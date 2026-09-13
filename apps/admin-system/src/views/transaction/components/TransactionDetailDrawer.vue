@@ -176,6 +176,15 @@
                     <el-empty v-if="!amountChangeRows.length" :description="t('transaction.detail.empty')" />
                 </el-tab-pane>
 
+                <el-tab-pane v-if="canViewFinance" :label="t('transaction.detail.finance.title')" name="finance" lazy>
+                    <TransactionFinanceDetail
+                        :active="activeTab === 'finance'"
+                        :detail="detail"
+                        :focus-transaction-id="focusTransactionId"
+                        :display-time-zone="displayTimeZone"
+                    />
+                </el-tab-pane>
+
                 <el-tab-pane :label="t('transaction.detail.timeline')" name="timeline">
                     <el-timeline v-if="timelineRows.length" class="transaction-detail__timeline">
                         <el-timeline-item
@@ -222,11 +231,13 @@ import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { useUserStore } from '@/store/modules/user';
 import type { TransactionContactInfo, TransactionDetail, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 import RecordList from './TransactionRecordList.vue';
+import TransactionFinanceDetail from './TransactionFinanceDetail.vue';
 
 const props = defineProps<{
     visible: boolean;
@@ -242,10 +253,17 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const userStore = useUserStore();
 const activeTab = ref('base');
 const typeOptions = ref<TransactionDictOption[]>([]);
 const statusOptions = ref<TransactionDictOption[]>([]);
 const channelMatchStatusOptions = ref<TransactionDictOption[]>([]);
+const canViewFinance = computed(() => [
+    'clearing:record:detail',
+    'reconciliation:record:detail',
+    'settlement:result-item:transaction-detail',
+    'settlement:reserve-item:transaction-detail',
+].some((permission) => userStore.hasPermission(permission)));
 
 const displayTimeZone = computed(() => props.displayTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
 

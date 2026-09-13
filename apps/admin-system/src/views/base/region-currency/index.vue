@@ -18,7 +18,11 @@
       <el-table-column prop="continentName" :label="$t('base.country.continent')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="currencyAlpha3Code" :label="$t('base.regionCurrency.currentCurrency')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="currencyName" :label="$t('base.regionCurrency.currencyName')" min-width="180" align="center" :show-overflow-tooltip="true" />
-      <el-table-column prop="currencySymbol" :label="$t('base.currency.symbol')" width="70" align="center" :show-overflow-tooltip="true" />
+      <el-table-column :label="$t('base.currency.symbol')" width="82" align="center">
+        <template #default="{ row }">
+          <CurrencyDisplay :currency="row.currencyAlpha3Code" :currency-symbol="row.currencySymbol" :locale="String(locale)" icon-only size="sm" />
+        </template>
+      </el-table-column>
       <el-table-column :label="$t('common.status')" width="80" align="center">
         <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'base:countryCurrency:changeStatus'" /></template>
       </el-table-column>
@@ -55,10 +59,11 @@ import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchRegionCurrencies, createRegionCurrency, updateRegionCurrency, deleteRegionCurrency, changeRegionCurrencyStatus, exportRegionCurrencies, type RegionCurrencyRow } from '@/api/base/regionCurrency';
-import { searchCurrencies, type IsoCurrency } from '@/api/base/currency';
+import { CurrencyDisplay } from '@acquiring/shared';
+import { loadCurrencyPresentations, searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 import { searchCountries, type IsoCountry } from '@/api/base/country';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const showSearch = ref(true); const loading = ref(false);
 const rows = ref<RegionCurrencyRow[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
@@ -74,7 +79,12 @@ const continents = [
 const open = ref(false); const editRow = ref<RegionCurrencyRow | null>(null); const selectedCurrency = ref('');
 const dialogMode = ref<'add' | 'edit'>('edit'); const selectedCountryId = ref<number | null>(null);
 
-onMounted(() => { loadData(); loadCurrencies(); loadCountries(); });
+onMounted(() => {
+  void loadCurrencyPresentations().catch(() => undefined);
+  loadData();
+  loadCurrencies();
+  loadCountries();
+});
 
 async function loadData() {
   loading.value = true;
