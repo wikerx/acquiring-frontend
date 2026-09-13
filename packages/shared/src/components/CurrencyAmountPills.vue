@@ -10,7 +10,7 @@
             :class="{ 'is-negative': isNegative(item.amount) }"
             :title="displayText(item)"
         >
-            <b>{{ item.currency }}</b>
+            <b><CurrencyDisplay :currency="item.currency" :locale="locale" size="xs" /></b>
             <strong>{{ formattedAmount(item.amount) }}</strong>
         </span>
     </div>
@@ -19,6 +19,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { formatDecimalAmount } from '../amount';
+import CurrencyDisplay from './CurrencyDisplay.vue';
 
 export interface CurrencyAmountPillItem {
     currency?: string | null;
@@ -100,12 +101,15 @@ function isNegative(amount: string | number) {
 }
 
 .currency-amount-pill b {
-    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 7px;
     border-right: 1px solid var(--pill-border);
     background: var(--pill-currency-bg);
     color: var(--pill-currency-color);
     font-size: 12px;
     font-weight: 700;
+    line-height: 1;
 }
 
 .currency-amount-pill strong {
@@ -178,8 +182,8 @@ function isNegative(amount: string | number) {
 }
 
 .currency-amount-pills--balance .currency-amount-pill b {
-    min-width: 42px;
-    padding: 0 9px;
+    min-width: 58px;
+    padding: 0 8px;
     border-color: var(--balance-pill-border);
     background: var(--balance-pill-currency-bg);
     color: var(--balance-pill-accent);
@@ -187,6 +191,11 @@ function isNegative(amount: string | number) {
     font-weight: 750;
     letter-spacing: 0.02em;
     text-align: center;
+}
+
+.currency-amount-pill b :deep(.currency-display__mark) {
+    border-color: transparent;
+    box-shadow: none;
 }
 
 .currency-amount-pills--balance .currency-amount-pill strong {

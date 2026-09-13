@@ -1,11 +1,18 @@
 <!-- Admin 正式结算批次主页面：展示批次、交易明细、保证金、汇率、结果和资金事实，不在前端推导财务状态。 -->
 <template>
-    <div class="app-container transaction-page settlement-page">
+    <div
+        :class="{
+            'app-container': !props.embedded,
+            'transaction-page': true,
+            'settlement-page': true,
+            'settlement-page--embedded': props.embedded,
+        }"
+    >
         <TransactionSearchPanel
             :visible="showSearch"
             :model="query"
-            :title="t('transaction.settlement.searchTitle')"
-            :description="t('transaction.settlement.searchDescription')"
+            :title="searchTitle"
+            :description="searchDescription"
             :expand-text="t('transaction.search.expand')"
             :collapse-text="t('transaction.search.collapse')"
             :search-text="t('common.search')"
@@ -21,7 +28,7 @@
             <el-form-item :label="t('transaction.fields.merchantId')">
                 <MerchantRemoteSelect v-model="query.merchantId" @change="handleSearch" />
             </el-form-item>
-            <el-form-item :label="t('transaction.settlement.batchType')">
+            <el-form-item v-if="batchTypeOptions.length > 1" :label="t('transaction.settlement.batchType')">
                 <el-select v-model="query.batchType" :placeholder="t('common.pleaseSelect')" clearable>
                     <el-option v-for="item in batchTypeOptions" :key="item" :label="batchTypeText(item)" :value="item" />
                 </el-select>
@@ -50,7 +57,7 @@
         <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
 
         <StandardTable
-            table-key="admin-transaction-settlement-batches"
+            :table-key="tableKey"
             v-loading="loading"
             :data="rows"
             row-key="id"
@@ -76,7 +83,7 @@
                 </template>
             </el-table-column>
             <el-table-column :label="t('transaction.settlement.targetCurrency')" width="112" align="center">
-                <template #default="{ row }"><strong class="settlement-page__currency">{{ row.targetCurrency }}</strong></template>
+                <template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="documentLocale" size="xs" /></template>
             </el-table-column>
             <el-table-column prop="transactionCount" :label="t('transaction.settlement.transactionCount')" width="104" align="center" />
             <el-table-column prop="candidateCount" :label="t('transaction.settlement.settlementItemCount')" width="112" align="center" />
@@ -99,10 +106,22 @@
             <el-table-column :label="t('common.createTime')" min-width="172" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.createTime" :source-time-zone="row.businessTimeZone" /></template>
             </el-table-column>
-            <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="292" fixed="right" align="center">
+            <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="520" fixed="right" align="center">
                 <template #default="{ row }">
                     <el-button v-hasPermi="'settlement:batch:detail'" link type="primary" @click="openDetail(row)">
                         {{ t('common.detail') }}
+                    </el-button>
+                    <el-button v-hasPermi="'settlement:batch:summary:list'" link type="primary" @click="openSummary(row)">
+                        {{ t('transaction.settlement.resultSummary') }}
+                    </el-button>
+                    <el-button v-hasPermi="'settlement:batch:voucher-download'" link type="primary" @click="openVoucher(row)">
+                        {{ t('transaction.settlement.voucher') }}
+                    </el-button>
+                    <el-button v-if="canViewTransactionItems" link type="primary" @click="openTransactionItems(row)">
+                        {{ t('transaction.settlement.transactionItems') }}
+                    </el-button>
+                    <el-button v-if="canViewReserveItems" link type="primary" @click="openReserveItems(row)">
+                        {{ t('transaction.settlement.reserveItems') }}
                     </el-button>
                     <el-tooltip
                         v-if="row.batchStatus === 'MANUAL_REVIEW'"
@@ -147,21 +166,23 @@
         </div>
 
         <el-drawer v-model="detailVisible" :title="t('transaction.settlement.detailTitle')" size="92%" destroy-on-close>
-            <div v-loading="detailLoading" class="settlement-detail">
-                <template v-if="detail">
+            <div v-loading="detailLoading || batchSummaryLoading || voucherLoading" class="settlement-detail">
+                <template v-if="activeDetailBatch">
                     <div class="settlement-detail__identity">
-                        <CopyableText :value="detail.batch.settlementBatchNo" :label="t('transaction.settlement.batchNo')" />
-                        <el-tag size="small" effect="plain" :type="batchStatusTagType(detail.batch.batchStatus)">
-                            {{ batchStatusText(detail.batch.batchStatus) }}
+                        <CopyableText :value="activeDetailBatch.settlementBatchNo" :label="t('transaction.settlement.batchNo')" />
+                        <el-tag size="small" effect="plain" :type="batchStatusTagType(activeDetailBatch.batchStatus)">
+                            {{ batchStatusText(activeDetailBatch.batchStatus) }}
                         </el-tag>
                     </div>
 
-                    <el-tabs v-model="detailTab" @tab-change="handleDetailTabChange">
-                    <el-tab-pane :label="t('transaction.settlement.batchOverview')" name="overview">
+                    <el-tabs v-model="detailTab" class="settlement-detail__tabs settlement-navigation-tabs" @tab-change="handleDetailTabChange">
+                    <el-tab-pane v-if="canViewBatchDetail" name="overview" lazy>
+                    <template #label><span class="settlement-tab-label"><el-icon><Document /></el-icon>{{ t('transaction.settlement.batchOverview') }}</span></template>
+                    <template v-if="detail">
                     <el-descriptions :column="3" border size="small" class="settlement-detail__descriptions">
                         <el-descriptions-item :label="t('transaction.fields.merchantId')"><el-button link type="primary" @click="openMerchant(detail.batch.merchantId)">{{ detail.batch.merchantId }}</el-button></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.settlement.batchType')">{{ batchTypeText(detail.batch.batchType) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.settlement.targetCurrency')">{{ detail.batch.targetCurrency }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.settlement.targetCurrency')"><CurrencyDisplay :currency="detail.batch.targetCurrency" :locale="documentLocale" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.settlement.businessDate')">{{ detail.batch.businessDate }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.settlement.businessTimeZone')">{{ detail.batch.businessTimeZone }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.settlement.transactionCount')">{{ detail.batch.transactionCount }}</el-descriptions-item>
@@ -218,29 +239,16 @@
 
                     <section class="settlement-detail__section">
                         <h3>{{ t('transaction.settlement.rateMatrix') }}</h3>
-                        <el-table :data="detail.rates || []" size="small" border>
-                            <el-table-column prop="sourceCurrency" :label="t('transaction.settlement.sourceCurrency')" width="110" align="center" />
-                            <el-table-column prop="targetCurrency" :label="t('transaction.settlement.targetCurrency')" width="110" align="center" />
+                        <el-table v-if="detail.rates?.length" :data="detail.rates" size="small" border max-height="320">
+                            <el-table-column :label="t('transaction.settlement.sourceCurrency')" width="110" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.sourceCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.targetCurrency')" width="110" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.rateType')" width="120" align="center"><template #default="{ row }">{{ enumText('rateTypeValue', row.rateType) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.directRate')" min-width="160" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.rateSource')" min-width="140" align="center" show-overflow-tooltip><template #default="{ row }">{{ enumText('rateSourceValue', row.rateSource) }}</template></el-table-column>
                             <el-table-column prop="quoteId" :label="t('transaction.settlement.quoteId')" min-width="160" align="center" show-overflow-tooltip />
                             <el-table-column :label="t('transaction.settlement.lockedTime')" min-width="172" align="center"><template #default="{ row }"><BaseDateTime :value="row.lockedTime" :source-time-zone="detail.batch.businessTimeZone" /></template></el-table-column>
                         </el-table>
-                    </section>
-
-                    <section class="settlement-detail__section">
-                        <h3>{{ t('transaction.settlement.resultSummary') }}</h3>
-                        <el-table :data="detail.resultSummaries || []" size="small" border>
-                            <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="120" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="130" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
-                            <el-table-column prop="transactionCount" :label="t('transaction.settlement.transactionCount')" width="96" align="center" />
-                        </el-table>
+                        <el-empty v-else :description="t('transaction.settlement.batchRateMatrixEmpty')" :image-size="64" />
                     </section>
 
                     <section class="settlement-detail__section">
@@ -259,35 +267,87 @@
                             <pre v-if="detail.netPosting.formulaSnapshot" class="settlement-detail__formula">{{ settlementFormulaText(detail.netPosting.formulaSnapshot, translateSettlementFormula) }}</pre>
                         </template>
                     </section>
+                    </template>
+                    <el-empty v-else-if="!detailLoading" :description="t('transaction.settlement.detailEmpty')" />
                     </el-tab-pane>
 
-                    <el-tab-pane v-if="canViewTransactionItems" :label="t('transaction.settlement.transactionItems')" name="transactions">
-                        <div class="settlement-detail__toolbar">
+                    <el-tab-pane v-if="canViewBatchSummaries" name="summaries" lazy>
+                        <template #label><span class="settlement-tab-label"><el-icon><DataAnalysis /></el-icon>{{ t('transaction.settlement.resultSummary') }}</span></template>
+                        <div class="settlement-detail__tab-head">
+                            <div>
+                                <strong>{{ t('transaction.settlement.resultSummary') }}</strong>
+                                <span>{{ t('transaction.settlement.batchSummaryHint') }}</span>
+                            </div>
+                            <el-button v-if="canExportBatchSummaries" type="warning" plain :icon="Download" :loading="batchSummaryExporting" @click="exportBatchSummaries">
+                                {{ t('common.export') }}
+                            </el-button>
+                        </div>
+                        <el-table v-if="batchSummaryRows.length || batchSummaryLoading" v-loading="batchSummaryLoading" :data="batchSummaryRows" size="small" border>
+                            <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="210" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="130" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="160" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="160" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                            <el-table-column prop="transactionCount" :label="t('transaction.settlement.transactionCount')" width="104" align="center" />
+                        </el-table>
+                        <el-empty v-else-if="batchSummaryLoaded" :description="t('transaction.settlement.batchSummaryEmpty')" :image-size="72" />
+                        <div v-show="batchSummaryTotal > 0" class="pagination-container">
+                            <el-pagination v-model:current-page="batchSummaryPage" v-model:page-size="batchSummaryPageSize" :total="batchSummaryTotal" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next, jumper" background @current-change="loadBatchSummaries" @size-change="resetBatchSummaryPage" />
+                        </div>
+                    </el-tab-pane>
+
+                    <el-tab-pane v-if="canDownloadVoucher" name="voucher" lazy>
+                        <template #label><span class="settlement-tab-label"><el-icon><Tickets /></el-icon>{{ t('transaction.settlement.voucher') }}</span></template>
+                        <div v-if="voucherDocument" class="settlement-voucher-panel">
+                            <div class="settlement-voucher-toolbar">
+                                <span>{{ t('transaction.settlement.formalVoucherSnapshotNotice') }}</span>
+                                <el-button type="primary" :icon="Download" :loading="voucherDownloading" @click="downloadVoucher">
+                                    {{ t('transaction.settlement.downloadVoucher') }}
+                                </el-button>
+                            </div>
+                            <SettlementVoucher :document="voucherDocument" />
+                        </div>
+                        <el-empty v-else-if="!voucherLoading" :description="t('transaction.settlement.formalVoucherEmpty')" />
+                    </el-tab-pane>
+
+                    <el-tab-pane v-if="canViewTransactionItems" name="transactions" lazy>
+                        <template #label><span class="settlement-tab-label"><el-icon><Memo /></el-icon>{{ t('transaction.settlement.transactionItems') }}</span></template>
+                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap">
+                            <el-input v-model.trim="transactionMerchantOrderNoFilter" clearable :placeholder="t('transaction.settlement.merchantOrderNo')" @keyup.enter="searchTransactionItems" />
                             <el-input v-model.trim="transactionIdFilter" clearable :placeholder="t('transaction.fields.transactionId')" @keyup.enter="searchTransactionItems" />
+                            <el-date-picker v-model="transactionTimeRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
                             <el-button type="primary" :icon="Search" @click="searchTransactionItems">{{ t('common.search') }}</el-button>
                             <el-button :icon="RefreshLeft" @click="resetTransactionItemsFilter">{{ t('common.reset') }}</el-button>
                             <el-button v-if="canExportTransactionItems" type="warning" plain :icon="Download" :loading="transactionExporting" @click="exportTransactionItems">{{ t('common.export') }}</el-button>
                         </div>
                         <el-table v-loading="transactionItemsLoading" :data="transactionItems" size="small" border>
-                            <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" fixed="left" align="center"><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row, detail.batch.businessTimeZone)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
+                            <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" fixed="left" align="center"><template #default="{ row }"><el-button link type="primary" @click="openTransaction(row, activeDetailBatch?.businessTimeZone || 'Asia/Shanghai')">{{ row.sourceTransactionId }}</el-button></template></el-table-column>
+                            <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
                             <el-table-column :label="t('transaction.fields.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="140" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.directRate')" min-width="160" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.appliedLimit')" min-width="120" align="center"><template #default="{ row }">{{ enumText('appliedLimitValue', row.appliedLimit) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.fields.transactionDateTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.sourceTransactionDateTime" :source-time-zone="detail.batch.businessTimeZone" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="160" align="right"><template #default="{ row }"><div class="settlement-page__net-amount"><DirectionTag :direction="row.netDirection" :label="enumText('directionValue', row.netDirection)" /><strong>{{ exactMoney(row.netTargetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></div></template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.componentCount')" width="112" align="center"><template #default="{ row }"><el-button link type="primary" @click="openTransactionComponents(row)">{{ row.componentCount }}</el-button></template></el-table-column>
+                            <el-table-column :label="t('transaction.fields.transactionDateTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.sourceTransactionDateTime" :source-time-zone="activeDetailBatch?.businessTimeZone" /></template></el-table-column>
                         </el-table>
+                        <el-empty v-if="!transactionItemsLoading && !transactionItems.length" :description="t('transaction.settlement.transactionItemsEmpty')" :image-size="64" />
                         <div v-show="transactionItemsTotal > 0" class="pagination-container"><el-pagination v-model:current-page="transactionItemsPage" v-model:page-size="transactionItemsPageSize" :total="transactionItemsTotal" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next" background @current-change="loadTransactionItems" @size-change="resetTransactionItemsPage" /></div>
                     </el-tab-pane>
 
-                    <el-tab-pane v-if="canViewReserveItems" :label="t('transaction.settlement.reserveItems')" name="reserves">
-                        <div class="settlement-detail__toolbar">
+                    <el-tab-pane v-if="canViewReserveItems" name="reserves" lazy>
+                        <template #label><span class="settlement-tab-label"><el-icon><Lock /></el-icon>{{ t('transaction.settlement.reserveItems') }}</span></template>
+                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap">
+                            <el-input v-model.trim="reserveActionNoFilter" clearable :placeholder="t('transaction.settlement.reserveActionNo')" @keyup.enter="searchReserveItems" />
                             <el-input v-model.trim="reserveNoFilter" clearable :placeholder="t('transaction.settlement.reserveNo')" @keyup.enter="searchReserveItems" />
+                            <el-input v-model.trim="reserveMerchantOrderNoFilter" clearable :placeholder="t('transaction.settlement.merchantOrderNo')" @keyup.enter="searchReserveItems" />
                             <el-input v-model.trim="reserveTransactionIdFilter" clearable :placeholder="t('transaction.fields.transactionId')" @keyup.enter="searchReserveItems" />
+                            <el-select v-model="reserveStatusFilter" clearable filterable :placeholder="t('transaction.settlement.reserveStatus')"><el-option v-for="value in reserveStatuses" :key="value" :label="enumText('reserveStatusValue', value)" :value="value" /></el-select>
+                            <el-select v-model="reserveActionTypeFilter" clearable filterable :placeholder="t('transaction.settlement.reserveActionType')"><el-option v-for="value in reserveActionTypes" :key="value" :label="enumText('reserveActionTypeValue', value)" :value="value" /></el-select>
+                            <el-input v-model.trim="reserveCurrencyFilter" clearable maxlength="3" :placeholder="t('transaction.settlement.currency')" />
+                            <el-date-picker v-model="reserveTransactionTimeRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
+                            <el-date-picker v-model="reserveExpectedReleaseDateRange" type="daterange" value-format="YYYY-MM-DD" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
                             <el-button type="primary" :icon="Search" @click="searchReserveItems">{{ t('common.search') }}</el-button>
                             <el-button :icon="RefreshLeft" @click="resetReserveItemsFilter">{{ t('common.reset') }}</el-button>
                             <el-button v-if="canExportReserveItems" type="warning" plain :icon="Download" :loading="reserveExporting" @click="exportReserveItems">{{ t('common.export') }}</el-button>
@@ -296,19 +356,40 @@
                             <el-table-column prop="reserveActionNo" :label="t('transaction.settlement.reserveActionNo')" min-width="220" fixed="left" align="center" show-overflow-tooltip />
                             <el-table-column prop="reserveNo" :label="t('transaction.settlement.reserveNo')" min-width="190" align="center" show-overflow-tooltip />
                             <el-table-column :label="t('transaction.settlement.reserveActionType')" min-width="140" align="center"><template #default="{ row }">{{ enumText('reserveActionTypeValue', row.actionType) }}</template></el-table-column>
-                            <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" align="center"><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row, detail.batch.businessTimeZone)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
+                            <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
+                            <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" align="center"><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row, activeDetailBatch?.businessTimeZone || 'Asia/Shanghai')">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.postingAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.amount, row.currency, row.currencyExponent) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.remainingAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ exactMoney(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.reserveStatus')" min-width="130" align="center"><template #default="{ row }">{{ enumText('reserveStatusValue', row.reserveStatus) }}</template></el-table-column>
                             <el-table-column prop="expectedReleaseDate" :label="t('transaction.settlement.expectedReleaseDate')" width="140" align="center" />
-                            <el-table-column :label="t('transaction.settlement.actionTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.actionTime" :source-time-zone="detail.batch.businessTimeZone" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.actionTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.actionTime" :source-time-zone="activeDetailBatch?.businessTimeZone" /></template></el-table-column>
                         </el-table>
+                        <el-empty v-if="!reserveItemsLoading && !reserveItems.length" :description="t('transaction.settlement.reserveItemsEmpty')" :image-size="64" />
                         <div v-show="reserveItemsTotal > 0" class="pagination-container"><el-pagination v-model:current-page="reserveItemsPage" v-model:page-size="reserveItemsPageSize" :total="reserveItemsTotal" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next" background @current-change="loadReserveItems" @size-change="resetReserveItemsPage" /></div>
                     </el-tab-pane>
                     </el-tabs>
                 </template>
-                <el-empty v-else-if="!detailLoading" :description="t('transaction.settlement.detailEmpty')" />
+                <el-empty v-else-if="!detailLoading && !batchSummaryLoading" :description="t('transaction.settlement.detailEmpty')" />
             </div>
+        </el-drawer>
+
+        <el-drawer v-model="componentVisible" :title="t('transaction.settlement.financialComponents')" size="min(1080px, 96vw)" append-to-body destroy-on-close>
+            <div class="settlement-component__identity">
+                <div><span>{{ t('transaction.fields.transactionId') }}</span><strong>{{ selectedTransaction?.sourceTransactionId || '-' }}</strong></div>
+                <div><span>{{ t('transaction.settlement.merchantOrderNo') }}</span><strong>{{ selectedTransaction?.merchantOrderNo || '-' }}</strong></div>
+            </div>
+            <el-table v-loading="componentLoading" :data="componentRows" border size="small">
+                <el-table-column prop="settlementResultItemNo" :label="t('transaction.settlement.resultItemNo')" min-width="210" fixed="left" align="center" show-overflow-tooltip />
+                <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.appliedLimit')" width="120" align="center"><template #default="{ row }">{{ enumText('appliedLimitValue', row.appliedLimit) }}</template></el-table-column>
+            </el-table>
+            <el-empty v-if="!componentLoading && !componentRows.length" :description="t('transaction.settlement.componentEmpty')" />
+            <div v-show="componentTotal > 0" class="pagination-container"><el-pagination v-model:current-page="componentPage" v-model:page-size="componentPageSize" :total="componentTotal" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" background @current-change="loadTransactionComponents" @size-change="resetComponentPage" /></div>
         </el-drawer>
 
         <el-dialog v-model="commandVisible" :title="commandTitle" width="560px" destroy-on-close @closed="resetCommand">
@@ -342,30 +423,50 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
-import { DirectionTag, PaymentMethodDisplay } from '@acquiring/shared';
+import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
+import {
+    CurrencyDisplay,
+    DirectionTag,
+    downloadSettlementVoucherPdf,
+    formatSettlementVoucherAmount,
+    formatSettlementVoucherRate,
+    PaymentMethodDisplay,
+    SettlementVoucher,
+    type SettlementVoucherDocument,
+    type SettlementVoucherStatusTone,
+} from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import {
     cancelSettlementBatch,
+    exportSettlementBatchSummaries,
     getSettlementBatchDetail,
+    getSettlementBatchVoucher,
     retrySettlementBatch,
+    searchSettlementBatchSummaries,
     searchSettlementBatches,
+    searchReserveSettlementBatches,
+    searchTransactionSettlementBatches,
     type SettlementBatchDetail,
     type SettlementBatchSummary,
+    type SettlementResultSummaryLine,
 } from '@/api/transaction';
 import {
     exportSettlementReserveItems,
     exportSettlementResultItems,
+    searchSettlementResultItemComponents,
     searchSettlementReserveItems,
     searchSettlementResultItems,
     submitSettlementReversal,
     type SettlementReserveItem,
     type SettlementResultItem,
+    type SettlementTransactionSummary,
 } from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
+import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import CopyableText from '@/views/transaction/components/CopyableText.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
@@ -375,17 +476,32 @@ import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/vi
 import { businessDateFromBusinessNo, moneyTextByExponent, settlementFormulaText } from '@/views/settlement/shared';
 
 type CommandType = 'retry' | 'cancel' | 'reversalRequest';
+type SettlementBatchDomain = 'all' | 'transaction' | 'reserve';
+
+const props = withDefaults(defineProps<{
+    embedded?: boolean;
+    domain?: SettlementBatchDomain;
+}>(), {
+    embedded: false,
+    domain: 'all',
+});
 
 const BATCH_TYPES = ['REGULAR', 'RESERVE_RELEASE', 'REVERSAL', 'ADJUSTMENT'] as const;
+const RESERVE_BATCH_TYPES = ['RESERVE_RELEASE', 'ADJUSTMENT'] as const;
 const BATCH_STATUSES = [
     'CREATED', 'CLAIMING', 'CLAIMED', 'RATE_LOCKED', 'CALCULATING', 'CALCULATED',
     'POSTING', 'POSTED', 'FAILED_RETRYABLE', 'MANUAL_REVIEW', 'CANCELLED', 'REVERSING', 'REVERSED',
 ] as const;
+const RESERVE_ACTION_TYPES = ['HOLD', 'RETURN', 'RELEASE', 'ADJUSTMENT', 'REVERSAL_HOLD', 'REVERSAL_RETURN', 'REVERSAL_RELEASE', 'REVERSAL_ADJUSTMENT'] as const;
+const RESERVE_STATUSES = ['HELD', 'PARTIALLY_RETURNED', 'RELEASABLE', 'FROZEN', 'RETURNED', 'RELEASED', 'DEDUCTED', 'ADJUSTED', 'REVERSED'] as const;
 const CANCELLABLE_STATUSES = new Set<string>([
     'CREATED', 'CLAIMING', 'CLAIMED', 'RATE_LOCKED', 'CALCULATING', 'CALCULATED', 'FAILED_RETRYABLE',
     'MANUAL_REVIEW',
 ]);
 const { t, te, locale } = useI18n();
+const documentLocale = computed<'zh-CN' | 'en-US'>(() => (
+    String(locale.value).toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US'
+));
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
@@ -399,22 +515,50 @@ const dateRange = ref<[string, string]>(defaultDateRange());
 const detailVisible = ref(false);
 const detailLoading = ref(false);
 const detail = ref<SettlementBatchDetail | null>(null);
+const voucherDetail = ref<SettlementBatchDetail | null>(null);
+const voucherDocument = ref<SettlementVoucherDocument | null>(null);
+const voucherLoading = ref(false);
+const voucherDownloading = ref(false);
 const detailTab = ref('overview');
+const selectedDetailBatch = ref<SettlementBatchSummary | null>(null);
+const batchSummaryLoading = ref(false);
+const batchSummaryExporting = ref(false);
+const batchSummaryLoaded = ref(false);
+const batchSummaryRows = ref<SettlementResultSummaryLine[]>([]);
+const batchSummaryTotal = ref(0);
+const batchSummaryPage = ref(1);
+const batchSummaryPageSize = ref(10);
 const transactionItemsLoading = ref(false);
 const transactionExporting = ref(false);
-const transactionItems = ref<SettlementResultItem[]>([]);
+const transactionItems = ref<SettlementTransactionSummary[]>([]);
 const transactionItemsTotal = ref(0);
 const transactionItemsPage = ref(1);
 const transactionItemsPageSize = ref(10);
 const transactionIdFilter = ref('');
+const transactionMerchantOrderNoFilter = ref('');
+const transactionTimeRange = ref<[string, string] | []>([]);
 const reserveItemsLoading = ref(false);
 const reserveExporting = ref(false);
 const reserveItems = ref<SettlementReserveItem[]>([]);
 const reserveItemsTotal = ref(0);
 const reserveItemsPage = ref(1);
 const reserveItemsPageSize = ref(10);
+const reserveActionNoFilter = ref('');
 const reserveNoFilter = ref('');
+const reserveMerchantOrderNoFilter = ref('');
 const reserveTransactionIdFilter = ref('');
+const reserveStatusFilter = ref('');
+const reserveActionTypeFilter = ref('');
+const reserveCurrencyFilter = ref('');
+const reserveTransactionTimeRange = ref<[string, string] | []>([]);
+const reserveExpectedReleaseDateRange = ref<[string, string] | []>([]);
+const componentVisible = ref(false);
+const componentLoading = ref(false);
+const componentRows = ref<SettlementResultItem[]>([]);
+const componentTotal = ref(0);
+const componentPage = ref(1);
+const componentPageSize = ref(10);
+const selectedTransaction = ref<SettlementTransactionSummary | null>(null);
 const paymentTypeOptions = ref<SelectOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
 const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
@@ -424,20 +568,40 @@ const commandType = ref<CommandType>('cancel');
 const selectedRow = ref<SettlementBatchSummary | null>(null);
 const query = reactive({ settlementBatchNo: '', merchantId: '', batchType: '', batchStatus: '' });
 const commandForm = reactive({ reason: '' });
-const batchTypeOptions = BATCH_TYPES;
+const batchTypeOptions = computed(() => {
+    if (props.domain === 'transaction') return ['REGULAR'] as const;
+    if (props.domain === 'reserve') return RESERVE_BATCH_TYPES;
+    return BATCH_TYPES;
+});
 const batchStatusOptions = BATCH_STATUSES;
-const canViewTransactionItems = userStore.hasPermission('settlement:result-item:list');
+const canViewTransactionItems = computed(() => props.domain !== 'reserve'
+    && userStore.hasPermission('settlement:result-item:list'));
 const canExportTransactionItems = userStore.hasPermission('settlement:result-item:export');
-const canViewReserveItems = userStore.hasPermission('settlement:reserve-item:list');
+const canViewReserveItems = computed(() => props.domain !== 'transaction'
+    && userStore.hasPermission('settlement:reserve-item:list'));
 const canExportReserveItems = userStore.hasPermission('settlement:reserve-item:export');
 const canViewBatchDetail = userStore.hasPermission('settlement:batch:detail');
+const canViewBatchSummaries = userStore.hasPermission('settlement:batch:summary:list');
+const canExportBatchSummaries = userStore.hasPermission('settlement:batch:summary:export');
+const canDownloadVoucher = userStore.hasPermission('settlement:batch:voucher-download');
 const canRetryBatch = userStore.hasPermission('settlement:batch:retry');
 const canCancelBatch = userStore.hasPermission('settlement:batch:cancel');
+const reserveActionTypes = RESERVE_ACTION_TYPES;
+const reserveStatuses = RESERVE_STATUSES;
+const activeDetailBatch = computed(() => voucherDetail.value?.batch || detail.value?.batch || selectedDetailBatch.value);
+const tableKey = computed(() => `admin-${props.domain}-settlement-batches`);
+const searchTitle = computed(() => t(`transaction.settlement.${props.domain === 'reserve'
+    ? 'reserveBatchSearchTitle' : props.domain === 'transaction'
+        ? 'transactionBatchSearchTitle' : 'searchTitle'}`));
+const searchDescription = computed(() => t(`transaction.settlement.${props.domain === 'reserve'
+    ? 'reserveBatchSearchDescription' : props.domain === 'transaction'
+        ? 'transactionBatchSearchDescription' : 'searchDescription'}`));
 
 const showOperationColumn = computed(() => [
-    'settlement:batch:detail', 'settlement:batch:retry', 'settlement:batch:cancel',
-    'settlement:reversal-order:create',
-].some((permission) => userStore.hasPermission(permission)));
+    'settlement:batch:detail', 'settlement:batch:summary:list', 'settlement:batch:voucher-download',
+    'settlement:batch:retry', 'settlement:batch:cancel', 'settlement:reversal-order:create',
+].some((permission) => userStore.hasPermission(permission))
+    || canViewTransactionItems.value || canViewReserveItems.value);
 
 const summaryItems = computed(() => {
     const posted = rows.value.filter((row) => row.batchStatus === 'POSTED').length;
@@ -468,7 +632,12 @@ async function loadData() {
     }
     loading.value = true;
     try {
-        const result = await searchSettlementBatches({
+        const searchBatches = props.domain === 'transaction'
+            ? searchTransactionSettlementBatches
+            : props.domain === 'reserve'
+                ? searchReserveSettlementBatches
+                : searchSettlementBatches;
+        const result = await searchBatches({
             settlementBatchNo: query.settlementBatchNo || undefined,
             merchantId: query.merchantId || undefined,
             batchType: query.batchType || undefined,
@@ -503,20 +672,78 @@ function handleReset() {
 
 async function openDetail(row: SettlementBatchSummary) {
     detailVisible.value = true;
-    detailLoading.value = true;
     detailTab.value = 'overview';
+    resetDetailState(row);
+    await loadSelectedBatchDetail();
+}
+
+async function openSummary(row: SettlementBatchSummary) {
+    detailVisible.value = true;
+    detailTab.value = 'summaries';
+    resetDetailState(row);
+    await loadBatchSummaries();
+}
+
+async function openVoucher(row: SettlementBatchSummary) {
+    detailVisible.value = true;
+    detailTab.value = 'voucher';
+    resetDetailState(row);
+    await loadVoucher(row.settlementBatchNo);
+}
+
+async function openTransactionItems(row: SettlementBatchSummary) {
+    detailVisible.value = true;
+    detailTab.value = 'transactions';
+    resetDetailState(row);
+    await loadTransactionItems();
+}
+
+async function openReserveItems(row: SettlementBatchSummary) {
+    detailVisible.value = true;
+    detailTab.value = 'reserves';
+    resetDetailState(row);
+    await loadReserveItems();
+}
+
+function resetDetailState(row: SettlementBatchSummary) {
+    selectedDetailBatch.value = row;
     detail.value = null;
+    voucherDetail.value = null;
+    voucherDocument.value = null;
+    batchSummaryRows.value = [];
+    batchSummaryTotal.value = 0;
+    batchSummaryPage.value = 1;
+    batchSummaryLoaded.value = false;
     transactionItems.value = [];
     transactionItemsTotal.value = 0;
     transactionItemsPage.value = 1;
     transactionIdFilter.value = '';
+    transactionMerchantOrderNoFilter.value = '';
+    transactionTimeRange.value = [];
     reserveItems.value = [];
     reserveItemsTotal.value = 0;
     reserveItemsPage.value = 1;
+    reserveActionNoFilter.value = '';
     reserveNoFilter.value = '';
+    reserveMerchantOrderNoFilter.value = '';
     reserveTransactionIdFilter.value = '';
+    reserveStatusFilter.value = '';
+    reserveActionTypeFilter.value = '';
+    reserveCurrencyFilter.value = '';
+    reserveTransactionTimeRange.value = [];
+    reserveExpectedReleaseDateRange.value = [];
+    componentVisible.value = false;
+    componentRows.value = [];
+    componentTotal.value = 0;
+    selectedTransaction.value = null;
+}
+
+async function loadSelectedBatchDetail() {
+    const batchNo = activeDetailBatch.value?.settlementBatchNo;
+    if (!batchNo || detailLoading.value) return;
+    detailLoading.value = true;
     try {
-        detail.value = await getSettlementBatchDetail(row.settlementBatchNo);
+        detail.value = await getSettlementBatchDetail(batchNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.settlement.detailLoadFailed'));
     } finally {
@@ -525,17 +752,92 @@ async function openDetail(row: SettlementBatchSummary) {
 }
 
 function handleDetailTabChange(name: string | number) {
+    if (name === 'overview' && !detail.value) loadSelectedBatchDetail();
+    if (name === 'summaries' && !batchSummaryLoaded.value) loadBatchSummaries();
+    if (name === 'voucher' && !voucherDocument.value && activeDetailBatch.value?.settlementBatchNo) {
+        loadVoucher(activeDetailBatch.value.settlementBatchNo);
+    }
     if (name === 'transactions' && !transactionItems.value.length) loadTransactionItems();
     if (name === 'reserves' && !reserveItems.value.length) loadReserveItems();
 }
 
+async function loadVoucher(settlementBatchNo: string) {
+    if (!canDownloadVoucher || voucherLoading.value) return;
+    voucherLoading.value = true;
+    try {
+        const result = await getSettlementBatchVoucher(settlementBatchNo);
+        voucherDetail.value = result;
+        voucherDocument.value = buildBatchVoucher(result);
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.settlement.voucherLoadFailed'));
+    } finally {
+        voucherLoading.value = false;
+    }
+}
+
+async function downloadVoucher() {
+    const settlementBatchNo = activeDetailBatch.value?.settlementBatchNo;
+    if (!settlementBatchNo || voucherDownloading.value) return;
+    voucherDownloading.value = true;
+    try {
+        const result = await getSettlementBatchVoucher(settlementBatchNo);
+        voucherDetail.value = result;
+        const document = buildBatchVoucher(result);
+        voucherDocument.value = document;
+        await downloadSettlementVoucherPdf(document);
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.settlement.voucherDownloadFailed'));
+    } finally {
+        voucherDownloading.value = false;
+    }
+}
+
+async function loadBatchSummaries() {
+    const batchNo = activeDetailBatch.value?.settlementBatchNo;
+    if (!batchNo || batchSummaryLoading.value) return;
+    batchSummaryLoading.value = true;
+    try {
+        const result = await searchSettlementBatchSummaries(
+            batchNo, batchSummaryPage.value, batchSummaryPageSize.value,
+        );
+        batchSummaryRows.value = result.records || [];
+        batchSummaryTotal.value = result.total || 0;
+        batchSummaryLoaded.value = true;
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('common.loadFailed'));
+    } finally {
+        batchSummaryLoading.value = false;
+    }
+}
+
+function resetBatchSummaryPage() {
+    batchSummaryPage.value = 1;
+    loadBatchSummaries();
+}
+
+async function exportBatchSummaries() {
+    const batchNo = activeDetailBatch.value?.settlementBatchNo;
+    if (!batchNo || batchSummaryExporting.value) return;
+    batchSummaryExporting.value = true;
+    try {
+        await exportSettlementBatchSummaries(batchNo);
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
+    } finally {
+        batchSummaryExporting.value = false;
+    }
+}
+
 function transactionItemQuery() {
-    const batch = detail.value?.batch;
+    const batch = activeDetailBatch.value;
     return {
         settlementBatchNo: batch?.settlementBatchNo,
         merchantId: batch?.merchantId,
         sourceDetailType: 'TRANSACTION_CLEARING' as const,
         sourceTransactionId: transactionIdFilter.value || undefined,
+        merchantOrderNo: transactionMerchantOrderNoFilter.value || undefined,
+        beginTransactionTime: transactionTimeRange.value[0] || undefined,
+        endTransactionTime: transactionTimeRange.value[1] || undefined,
         beginBusinessDate: batch?.businessDate || dateRange.value[0],
         endBusinessDate: batch?.businessDate || dateRange.value[1],
         pageNo: transactionItemsPage.value,
@@ -544,7 +846,7 @@ function transactionItemQuery() {
 }
 
 async function loadTransactionItems() {
-    if (!detail.value) return;
+    if (!activeDetailBatch.value?.settlementBatchNo) return;
     transactionItemsLoading.value = true;
     try {
         const result = await searchSettlementResultItems(transactionItemQuery());
@@ -569,6 +871,8 @@ function searchTransactionItems() {
 
 function resetTransactionItemsFilter() {
     transactionIdFilter.value = '';
+    transactionMerchantOrderNoFilter.value = '';
+    transactionTimeRange.value = [];
     searchTransactionItems();
 }
 
@@ -584,12 +888,21 @@ async function exportTransactionItems() {
 }
 
 function reserveItemQuery() {
-    const batch = detail.value?.batch;
+    const batch = activeDetailBatch.value;
     return {
         settlementBatchNo: batch?.settlementBatchNo,
         merchantId: batch?.merchantId,
+        reserveActionNo: reserveActionNoFilter.value || undefined,
         reserveNo: reserveNoFilter.value || undefined,
         sourceTransactionId: reserveTransactionIdFilter.value || undefined,
+        merchantOrderNo: reserveMerchantOrderNoFilter.value || undefined,
+        reserveStatus: reserveStatusFilter.value || undefined,
+        actionType: reserveActionTypeFilter.value || undefined,
+        currency: reserveCurrencyFilter.value.toUpperCase() || undefined,
+        beginTransactionTime: reserveTransactionTimeRange.value[0] || undefined,
+        endTransactionTime: reserveTransactionTimeRange.value[1] || undefined,
+        beginExpectedReleaseDate: reserveExpectedReleaseDateRange.value[0] || undefined,
+        endExpectedReleaseDate: reserveExpectedReleaseDateRange.value[1] || undefined,
         beginBusinessDate: batch?.businessDate || dateRange.value[0],
         endBusinessDate: batch?.businessDate || dateRange.value[1],
         pageNo: reserveItemsPage.value,
@@ -598,7 +911,7 @@ function reserveItemQuery() {
 }
 
 async function loadReserveItems() {
-    if (!detail.value) return;
+    if (!activeDetailBatch.value?.settlementBatchNo) return;
     reserveItemsLoading.value = true;
     try {
         const result = await searchSettlementReserveItems(reserveItemQuery());
@@ -622,9 +935,48 @@ function searchReserveItems() {
 }
 
 function resetReserveItemsFilter() {
+    reserveActionNoFilter.value = '';
     reserveNoFilter.value = '';
+    reserveMerchantOrderNoFilter.value = '';
     reserveTransactionIdFilter.value = '';
+    reserveStatusFilter.value = '';
+    reserveActionTypeFilter.value = '';
+    reserveCurrencyFilter.value = '';
+    reserveTransactionTimeRange.value = [];
+    reserveExpectedReleaseDateRange.value = [];
     searchReserveItems();
+}
+
+async function openTransactionComponents(row: SettlementTransactionSummary) {
+    selectedTransaction.value = row;
+    componentRows.value = [];
+    componentTotal.value = 0;
+    componentPage.value = 1;
+    componentVisible.value = true;
+    await loadTransactionComponents();
+}
+
+async function loadTransactionComponents() {
+    const batchNo = selectedTransaction.value?.settlementBatchNo;
+    const transactionId = selectedTransaction.value?.sourceTransactionId;
+    if (!batchNo || !transactionId || componentLoading.value) return;
+    componentLoading.value = true;
+    try {
+        const result = await searchSettlementResultItemComponents(
+            batchNo, transactionId, componentPage.value, componentPageSize.value,
+        );
+        componentRows.value = result.records || [];
+        componentTotal.value = result.total || 0;
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.settlement.componentLoadFailed'));
+    } finally {
+        componentLoading.value = false;
+    }
+}
+
+function resetComponentPage() {
+    componentPage.value = 1;
+    loadTransactionComponents();
 }
 
 async function exportReserveItems() {
@@ -666,15 +1018,24 @@ async function openBatch(settlementBatchNo: string) {
     if (linkedBusinessDate) dateRange.value = [linkedBusinessDate, linkedBusinessDate];
     page.value = 1;
     detailVisible.value = false;
-    await router.replace({ path: '/settlement/batches', query: { settlementBatchNo } });
+    await router.replace({
+        path: props.embedded ? route.path : '/settlement/batches',
+        query: props.embedded
+            ? { view: 'batches', settlementBatchNo }
+            : { settlementBatchNo },
+    });
     await loadData();
     await openLinkedBatchDetail(settlementBatchNo);
 }
 
 async function openLinkedBatchDetail(settlementBatchNo: string) {
-    if (!canViewBatchDetail) return;
     const linkedRow = rows.value.find((row) => row.settlementBatchNo === settlementBatchNo);
-    if (linkedRow) await openDetail(linkedRow);
+    if (!linkedRow) return;
+    if (canViewBatchDetail) await openDetail(linkedRow);
+    else if (canViewBatchSummaries) await openSummary(linkedRow);
+    else if (canDownloadVoucher) await openVoucher(linkedRow);
+    else if (canViewTransactionItems.value) await openTransactionItems(linkedRow);
+    else if (canViewReserveItems.value) await openReserveItems(linkedRow);
 }
 
 function openPosting(settlementBatchNo: string, postedTime?: string) {
@@ -684,7 +1045,7 @@ function openPosting(settlementBatchNo: string, postedTime?: string) {
     });
 }
 
-function openTransaction(row: SettlementResultItem | SettlementReserveItem, transactionTimeZone: string) {
+function openTransaction(row: SettlementTransactionSummary | SettlementResultItem | SettlementReserveItem, transactionTimeZone: string) {
     router.push({
         path: '/transaction/operation',
         query: {
@@ -780,6 +1141,152 @@ function canRequestReversal(row: SettlementBatchSummary) {
     return row.batchStatus === 'POSTED';
 }
 
+function buildBatchVoucher(value: SettlementBatchDetail): SettlementVoucherDocument {
+    const batch = value.batch;
+    const voucherLocale = documentLocale.value;
+    const reserveBatch = batch.batchType === 'RESERVE_RELEASE' || batch.batchType === 'ADJUSTMENT';
+    return {
+        system: 'admin',
+        locale: voucherLocale,
+        title: reserveBatch
+            ? t('transaction.settlement.formalReserveVoucherTitle')
+            : batch.batchType === 'REVERSAL'
+                ? t('transaction.settlement.formalReversalVoucherTitle')
+                : t('transaction.settlement.formalTransactionVoucherTitle'),
+        subtitle: t('transaction.settlement.formalVoucherSubtitle'),
+        referenceLabel: t('transaction.settlement.batchNo'),
+        referenceNo: batch.settlementBatchNo,
+        statusLabel: batchStatusText(batch.batchStatus),
+        statusTone: batchVoucherTone(batch.batchStatus),
+        netAmountLabel: t('transaction.settlement.netAmount'),
+        netCurrency: batch.targetCurrency || '',
+        netAmount: formatSettlementVoucherAmount(
+            batch.netAmount,
+            voucherLocale,
+            batch.targetCurrencyExponent,
+        ),
+        fieldGroups: [
+            {
+                title: t('transaction.settlement.voucherMerchantSection'),
+                fields: [
+                    { label: t('transaction.settlement.merchantNo'), value: batch.merchantId || '-' },
+                    { label: t('transaction.settlement.merchantName'), value: batch.merchantName || '-' },
+                    { label: t('transaction.settlement.settlementAccount'), value: batch.settlementAccountNo || t('transaction.settlement.settlementAccountUnavailable') },
+                ],
+            },
+            {
+                title: t('transaction.settlement.voucherSettlementSection'),
+                fields: [
+                    { label: t('transaction.settlement.batchType'), value: batchTypeText(batch.batchType) },
+                    { label: t('transaction.settlement.businessDate'), value: batch.businessDate || '-' },
+                    { label: t('transaction.settlement.businessTimeZone'), value: batch.businessTimeZone || '-' },
+                    {
+                        label: t('transaction.settlement.targetCurrency'),
+                        value: { cellType: 'currency', currency: batch.targetCurrency, showName: true },
+                    },
+                ],
+            },
+            {
+                title: t('transaction.settlement.voucherStatisticsSection'),
+                fields: [
+                    { label: t('transaction.settlement.transactionCount'), value: String(batch.transactionCount ?? 0) },
+                    { label: t('transaction.settlement.settlementItemCount'), value: String(batch.candidateCount ?? 0) },
+                    { label: t('transaction.settlement.postedTime'), value: voucherTime(batch.postedTime, batch.businessTimeZone) },
+                ],
+            },
+        ],
+        auditTitle: t('transaction.settlement.reviewAudit'),
+        auditFields: [
+            { label: t('transaction.settlement.submitter'), value: batch.makerAccountName || '-' },
+            { label: t('transaction.settlement.submittedTime'), value: voucherTime(batch.makerTime, batch.businessTimeZone) },
+            { label: t('transaction.settlement.reviewer'), value: batch.checkerAccountName || '-' },
+            { label: t('transaction.settlement.decisionTime'), value: voucherTime(batch.checkerTime, batch.businessTimeZone) },
+            { label: t('transaction.settlement.submitReason'), value: batch.makerReason || '-' },
+            { label: t('transaction.settlement.reviewComment'), value: batch.checkerComment || '-' },
+        ],
+        rates: {
+            title: t('transaction.settlement.rateMatrix'),
+            emptyText: t('transaction.settlement.batchRateMatrixEmpty'),
+            columns: [
+                { key: 'sourceCurrency', label: t('transaction.settlement.sourceCurrency'), width: 14, kind: 'currency' },
+                { key: 'targetCurrency', label: t('transaction.settlement.targetCurrency'), width: 14, kind: 'currency' },
+                { key: 'directRate', label: t('transaction.settlement.directRate'), align: 'right', width: 22 },
+                { key: 'rateSource', label: t('transaction.settlement.rateSource'), width: 22 },
+                { key: 'quoteId', label: t('transaction.settlement.quoteId'), width: 28 },
+            ],
+            rows: (value.rates || []).map((row) => ({
+                sourceCurrency: { cellType: 'currency', currency: row.sourceCurrency, showName: true },
+                targetCurrency: { cellType: 'currency', currency: row.targetCurrency, showName: true },
+                directRate: formatSettlementVoucherRate(row.directRate, voucherLocale),
+                rateSource: enumText('rateSourceValue', row.rateSource),
+                quoteId: row.quoteId || '-',
+            })),
+        },
+        summaries: {
+            title: t('transaction.settlement.resultSummary'),
+            emptyText: t('transaction.settlement.batchSummaryEmpty'),
+            columns: [
+                { key: 'payment', label: t('transaction.settlement.paymentTypeMethod'), width: 21, kind: 'payment' },
+                { key: 'transactionType', label: t('transaction.fields.transactionType'), width: 13 },
+                { key: 'resultItemType', label: t('transaction.settlement.resultItemType'), width: 17 },
+                { key: 'direction', label: t('transaction.clearing.direction'), width: 10, kind: 'direction' },
+                { key: 'sourceAmount', label: t('transaction.settlement.sourceAmount'), align: 'right', width: 19, kind: 'money' },
+                { key: 'targetAmount', label: t('transaction.settlement.targetAmount'), align: 'right', width: 20, kind: 'money' },
+            ],
+            rows: (value.resultSummaries || []).map((row) => ({
+                payment: {
+                    cellType: 'payment',
+                    paymentType: row.paymentType,
+                    paymentMethod: row.paymentMethod,
+                    paymentTypeLabel: enumText('paymentTypeValue', row.paymentType),
+                    paymentMethodLabel: enumText('paymentMethodValue', row.paymentMethod),
+                },
+                transactionType: enumText('transactionTypeValue', row.transactionType),
+                resultItemType: summaryItemText(row.resultItemType, row.feeCategory),
+                direction: {
+                    cellType: 'direction',
+                    direction: row.direction,
+                    label: enumText('directionValue', row.direction),
+                },
+                sourceAmount: {
+                    cellType: 'money',
+                    currency: row.sourceCurrency,
+                    amount: formatSettlementVoucherAmount(row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
+                },
+                targetAmount: {
+                    cellType: 'money',
+                    currency: row.targetCurrency,
+                    amount: formatSettlementVoucherAmount(row.targetAmount, voucherLocale, row.targetCurrencyExponent),
+                },
+            })),
+        },
+        noticeTitle: t('transaction.settlement.voucherNoticeTitle'),
+        notice: batch.batchStatus === 'REVERSED'
+            ? t('transaction.settlement.formalVoucherNoticeReversed')
+            : t('transaction.settlement.formalVoucherNoticePosted'),
+        generatedAtLabel: t('transaction.settlement.voucherGeneratedAt'),
+        generatedAt: voucherTime(new Date(), batch.businessTimeZone),
+        footer: t('transaction.settlement.formalVoucherFooter'),
+        fileName: `Vexra-${batch.settlementBatchNo}.pdf`,
+    };
+}
+
+function summaryItemText(resultItemType?: string, feeCategory?: string) {
+    if (feeCategory && feeCategory !== 'NONE') return enumText('feeCategoryValue', feeCategory);
+    return enumText('resultItemTypeValue', resultItemType);
+}
+
+function voucherTime(value?: string | number | Date, businessTimeZone?: string) {
+    return formatDateTimeFromSourceTimeZone(value, businessTimeZone, businessTimeZone);
+}
+
+function batchVoucherTone(status?: string): SettlementVoucherStatusTone {
+    if (status === 'POSTED') return 'success';
+    if (['FAILED_RETRYABLE', 'MANUAL_REVIEW'].includes(status || '')) return 'danger';
+    if (['CANCELLED', 'REVERSED'].includes(status || '')) return 'info';
+    return 'warning';
+}
+
 function batchTypeText(value?: string) {
     return enumText('type', value);
 }
@@ -854,13 +1361,22 @@ onMounted(async () => {
         const linkedBusinessDate = businessDateFromBusinessNo(linkedBatchNo);
         if (linkedBusinessDate) dateRange.value = [linkedBusinessDate, linkedBusinessDate];
     }
-    await loadDimensionDictionaries();
+    await Promise.all([
+        loadDimensionDictionaries(),
+        loadCurrencyPresentations().catch(() => []),
+    ]);
     await loadData();
     if (linkedBatchNo) await openLinkedBatchDetail(linkedBatchNo);
 });
 </script>
 
 <style scoped>
+.settlement-page--embedded {
+    min-height: 0;
+    padding: 14px 0 0;
+    background: transparent;
+}
+
 .settlement-page__currency,
 .settlement-detail strong {
     font-variant-numeric: tabular-nums;
@@ -873,6 +1389,34 @@ onMounted(async () => {
 
 .settlement-detail {
     min-height: 320px;
+}
+
+.settlement-detail__tabs {
+    margin-top: 14px;
+}
+
+.settlement-detail__tab-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.settlement-detail__tab-head > div {
+    display: grid;
+    gap: 4px;
+}
+
+.settlement-detail__tab-head strong {
+    color: #1d2939;
+    font-size: 14px;
+}
+
+.settlement-detail__tab-head span {
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .settlement-detail__identity,
@@ -933,6 +1477,72 @@ onMounted(async () => {
 
 .settlement-detail__toolbar :deep(.el-input) {
     width: min(280px, 28vw);
+}
+
+.settlement-detail__toolbar--wrap {
+    flex-wrap: wrap;
+}
+
+.settlement-detail__toolbar--wrap :deep(.el-input),
+.settlement-detail__toolbar--wrap :deep(.el-select) {
+    width: 210px;
+}
+
+.settlement-detail__toolbar--wrap :deep(.el-date-editor) {
+    width: 340px;
+}
+
+.settlement-voucher-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.settlement-voucher-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid var(--el-border-color-lighter);
+    padding: 10px 12px;
+    background: var(--el-fill-color-lighter);
+}
+
+.settlement-voucher-toolbar span {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.settlement-component__identity {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 14px;
+    border: 1px solid var(--el-border-color-lighter);
+}
+
+.settlement-component__identity > div {
+    min-width: 0;
+    padding: 12px 14px;
+    text-align: center;
+}
+
+.settlement-component__identity > div + div {
+    border-left: 1px solid var(--el-border-color-lighter);
+}
+
+.settlement-component__identity span,
+.settlement-component__identity strong {
+    display: block;
+}
+
+.settlement-component__identity span {
+    margin-bottom: 5px;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+}
+
+.settlement-component__identity strong {
+    overflow-wrap: anywhere;
 }
 
 .settlement-detail :deep(.payment-method-display) {
@@ -1044,8 +1654,32 @@ onMounted(async () => {
         flex-direction: column;
     }
 
+    .settlement-detail__tab-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
     .settlement-detail__toolbar :deep(.el-input) {
         width: 100%;
+    }
+
+    .settlement-detail__toolbar--wrap :deep(.el-select),
+    .settlement-detail__toolbar--wrap :deep(.el-date-editor) {
+        width: 100%;
+    }
+
+    .settlement-voucher-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settlement-component__identity {
+        grid-template-columns: 1fr;
+    }
+
+    .settlement-component__identity > div + div {
+        border-top: 1px solid var(--el-border-color-lighter);
+        border-left: 0;
     }
 
     .settlement-detail__counters {

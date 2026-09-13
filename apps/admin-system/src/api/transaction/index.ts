@@ -680,8 +680,10 @@ export interface SettlementBatchSummary {
     businessTimeZone: string;
     dailySequence: number;
     merchantId: string;
+    merchantName?: string;
     settlementProfileId?: number;
     settlementAccountId?: number;
+    settlementAccountNo?: string;
     targetCurrency: string;
     targetCurrencyExponent: number;
     batchType: string;
@@ -1156,11 +1158,53 @@ export async function searchSettlementBatches(data: SettlementBatchQuery) {
     return unwrapResult(result.data);
 }
 
+export async function searchTransactionSettlementBatches(data: SettlementBatchQuery) {
+    const result = await http.post<CommonResult<SettlementBatchSearchResponse>>(
+        '/admin/settlement/batches/transaction/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchReserveSettlementBatches(data: SettlementBatchQuery) {
+    const result = await http.post<CommonResult<SettlementBatchSearchResponse>>(
+        '/admin/settlement/batches/reserve/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function getSettlementBatchDetail(settlementBatchNo: string) {
     const result = await http.get<CommonResult<SettlementBatchDetail>>(
         `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}`,
     );
     return unwrapResult(result.data);
+}
+
+export async function getSettlementBatchVoucher(settlementBatchNo: string) {
+    const result = await http.get<CommonResult<SettlementBatchDetail>>(
+        `/admin/settlement/batches/${encodeURIComponent(settlementBatchNo)}/voucher`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchSettlementBatchSummaries(
+    settlementBatchNo: string,
+    pageNo = 1,
+    pageSize = 20,
+) {
+    const encodedBatchNo = encodeURIComponent(settlementBatchNo);
+    const result = await http.get<CommonResult<PageResult<SettlementResultSummaryLine>>>(
+        `/admin/settlement/batches/${encodedBatchNo}/summaries`,
+        { params: { pageNo, pageSize } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function exportSettlementBatchSummaries(settlementBatchNo: string) {
+    const encodedBatchNo = encodeURIComponent(settlementBatchNo);
+    await downloadExcel(`/admin/settlement/batches/${encodedBatchNo}/summaries/export`, {
+        method: 'post',
+        fileName: `settlement-batch-${settlementBatchNo}-summaries.xlsx`,
+    });
 }
 
 export async function cancelSettlementBatch(

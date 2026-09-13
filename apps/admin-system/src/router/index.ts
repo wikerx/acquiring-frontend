@@ -98,6 +98,12 @@ export const routes: RouteRecordRaw[] = [
                 meta: { title: '个人中心', titleKey: 'Profile', icon: 'User' },
             },
             {
+                path: 'settlement/batches',
+                name: 'SettlementBatchCompatibility',
+                component: () => import('@/views/transaction/settlement/index.vue'),
+                meta: { title: '正式结算批次', permission: 'settlement:batch:list' },
+            },
+            {
                 path: 'system/dict-data',
                 name: 'SystemDictData',
                 component: () => import('@/views/system/dict-data/index.vue'),

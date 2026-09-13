@@ -72,13 +72,22 @@ const displayGroups = computed<PaymentMethodGroup[]>(() => normalizedPaymentType
         return bankCardGroup(paymentType, normalizedPaymentMethods.value);
     }
 
-    const logoKeys = assetLogoKeys(resolvePaymentLogoKeys(paymentType.value));
+    const methodLogoKeys = assetLogoKeys(normalizedPaymentMethods.value.flatMap(
+        (paymentMethod) => resolvePaymentLogoKeys(paymentMethod.value),
+    ));
+    const logoKeys = methodLogoKeys.length
+        ? methodLogoKeys
+        : assetLogoKeys(resolvePaymentLogoKeys(paymentType.value));
+    const fallbackLabels = normalizedPaymentMethods.value
+        .filter((paymentMethod) => !assetLogoKeys(resolvePaymentLogoKeys(paymentMethod.value)).length)
+        .map((paymentMethod) => paymentMethod.label);
+    const methodTitle = normalizedPaymentMethods.value.map((paymentMethod) => paymentMethod.label).join(' / ');
     return {
         key: paymentType.value,
         label: props.showPaymentTypeLabel || !logoKeys.length ? paymentType.label : '',
-        title: paymentType.label,
+        title: [paymentType.label, methodTitle].filter(Boolean).join(' · '),
         logoKeys,
-        fallbackLabels: [],
+        fallbackLabels,
     };
 }));
 

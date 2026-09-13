@@ -16,6 +16,19 @@
 
     <StandardTable table-key="base-currency" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="sel = $event">
       <el-table-column type="selection" width="50" align="center" />
+      <el-table-column :label="$t('base.currency.logo')" width="88" align="center">
+        <template #default="{ row }">
+          <CurrencyDisplay
+            :currency="row.alpha3Code"
+            :icon-key="row.iconKey"
+            :chinese-name="row.chineseName"
+            :english-name="row.englishName"
+            :currency-symbol="row.currencySymbol"
+            icon-only
+            size="sm"
+          />
+        </template>
+      </el-table-column>
       <el-table-column prop="alpha3Code" :label="$t('base.currency.alphabeticCode')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="numericCode" :label="$t('base.currency.numericCode')" width="100" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="currencySymbol" :label="$t('base.currency.symbol')" width="70" align="center" :show-overflow-tooltip="true" />
@@ -44,6 +57,36 @@
         </el-row>
         <el-form-item :label="$t('base.currency.chineseName')" prop="chineseName"><el-input v-model="form.chineseName" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
         <el-form-item :label="$t('base.currency.englishName')" prop="englishName"><el-input v-model="form.englishName" maxlength="128" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+        <el-form-item :label="$t('base.currency.logo')" prop="iconKey">
+          <div class="currency-logo-editor">
+            <div class="currency-logo-editor__preview">
+              <CurrencyDisplay
+                :currency="form.alpha3Code"
+                :icon-key="form.iconKey"
+                :chinese-name="form.chineseName"
+                :english-name="form.englishName"
+                :currency-symbol="form.currencySymbol"
+                show-name
+                size="lg"
+                variant="soft"
+              />
+              <span>{{ $t('base.currency.logoPreview') }}</span>
+            </div>
+            <el-radio-group v-model="iconMode" size="small" @change="handleIconModeChange">
+              <el-radio-button value="auto">{{ $t('base.currency.logoAuto') }}</el-radio-button>
+              <el-radio-button value="flag">{{ $t('base.currency.logoFlag') }}</el-radio-button>
+              <el-radio-button value="currency">{{ $t('base.currency.logoCurrency') }}</el-radio-button>
+            </el-radio-group>
+            <el-input
+              v-if="iconMode === 'flag'"
+              v-model="flagRegionCode"
+              maxlength="2"
+              :placeholder="$t('base.currency.logoRegionPlaceholder')"
+              @input="syncFlagIconKey"
+            />
+            <small>{{ logoHint }}</small>
+          </div>
+        </el-form-item>
         <el-form-item :label="$t('base.currency.symbol')"><el-input v-model="form.currencySymbol" maxlength="16" placeholder="$" /></el-form-item>
         <el-row :gutter="16">
           <el-col :span="8"><el-form-item :label="$t('base.currency.minorUnit')"><el-input-number v-model="form.fractionDigits" :min="-1" :max="8" controls-position="right" /></el-form-item></el-col>
@@ -58,13 +101,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { CurrencyDisplay, suggestedCurrencyIconKey } from '@acquiring/shared';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, exportCurrencies, type IsoCurrency } from '@/api/base/currency';
+import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, exportCurrencies, loadCurrencyPresentations, type IsoCurrency } from '@/api/base/currency';
 
 const { t } = useI18n();
 const showSearch = ref(true); const loading = ref(false);
@@ -73,16 +117,35 @@ const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ keyword: '', status: undefined as number | undefined });
 
 const open = ref(false); const formMode = ref<'create' | 'edit'>('create');
+const iconMode = ref<'auto' | 'flag' | 'currency'>('auto');
+const flagRegionCode = ref('');
 const formRef = ref<FormInstance>();
 const dialogTitle = computed(() => formMode.value === 'create' ? t('common.add') : t('common.edit'));
-const emptyForm = (): IsoCurrency & Record<string, any> => ({ id: 0, alpha3Code: '', numericCode: '', currencySymbol: '', chineseName: '', englishName: '', fractionDigits: 2, minorUnitMultiplier: 100, minimumAmount: 0.01, status: 1 });
+const emptyForm = (): IsoCurrency & Record<string, any> => ({ id: 0, alpha3Code: '', numericCode: '', currencySymbol: '', iconKey: '', chineseName: '', englishName: '', fractionDigits: 2, minorUnitMultiplier: 100, minimumAmount: 0.01, status: 1 });
 const form = reactive(emptyForm());
 const rules: FormRules = {
   alpha3Code: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }],
   chineseName: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }],
+  iconKey: [{ validator: (_rule, value, callback) => {
+    if (!value || /^flag:[A-Z]{2}$/.test(value) || /^currency:[A-Z0-9]{3,12}$/.test(value)) callback();
+    else callback(new Error(t('base.currency.logoInvalid')));
+  }, trigger: 'change' }],
 };
+const logoHint = computed(() => iconMode.value === 'flag'
+  ? t('base.currency.logoFlagHint')
+  : iconMode.value === 'currency'
+    ? t('base.currency.logoCurrencyHint')
+    : t('base.currency.logoAutoHint'));
 
-onMounted(() => loadData());
+onMounted(() => {
+  void loadCurrencyPresentations().catch(() => undefined);
+  loadData();
+});
+
+watch(() => form.alpha3Code, () => {
+  form.alpha3Code = form.alpha3Code.toUpperCase();
+  if (iconMode.value === 'currency') form.iconKey = form.alpha3Code ? `currency:${form.alpha3Code}` : '';
+});
 
 async function loadData() {
   loading.value = true;
@@ -97,17 +160,20 @@ function handleReset() { query.keyword = ''; query.status = undefined; handleSea
 
 function handleAdd() {
   formMode.value = 'create'; Object.assign(form, emptyForm());
+  iconMode.value = 'auto'; flagRegionCode.value = '';
   open.value = true; nextTick(() => formRef.value?.clearValidate());
 }
 function handleUpdate(row: IsoCurrency) {
   formMode.value = 'edit'; Object.assign(form, { ...emptyForm(), ...row });
+  initializeIconEditor(row.iconKey);
   open.value = true; nextTick(() => formRef.value?.clearValidate());
 }
 async function submit() {
   const v = await formRef.value?.validate().catch(() => false); if (!v) return;
   try {
     if (formMode.value === 'create') await createCurrency(form); else await updateCurrency(form.id, form);
-    ElMessage.success(t('common.saveSuccess')); open.value = false; loadData();
+    ElMessage.success(t('common.saveSuccess')); open.value = false;
+    await loadCurrencyPresentations().catch(() => undefined); loadData();
   } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function toggleStatus(row: IsoCurrency) {
@@ -115,12 +181,12 @@ async function toggleStatus(row: IsoCurrency) {
   const action = newStatus === 1 ? t('common.enable') : t('common.disable');
   const name = row.chineseName || row.englishName || row.alpha3Code || row.id;
   try { await ElMessageBox.confirm(t('common.statusToggleConfirm', { action, name }), t('common.operationConfirm'), { type: newStatus === 1 ? 'success' : 'warning' }); } catch { return; }
-  try { await changeCurrencyStatus(row.id, newStatus); ElMessage.success(t('common.success')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
+  try { await changeCurrencyStatus(row.id, newStatus); ElMessage.success(t('common.success')); await loadCurrencyPresentations().catch(() => undefined); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleDelete(target: IsoCurrency | IsoCurrency[]) {
   const targets = Array.isArray(target) ? target : [target];
   try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: targets.map((item) => item.chineseName || item.englishName).join('、') }), t('common.delete'), { type: 'warning' }); } catch { return; }
-  try { await Promise.all(targets.map((item) => deleteCurrency(item.id))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
+  try { await Promise.all(targets.map((item) => deleteCurrency(item.id))); ElMessage.success(t('common.deleteSuccess')); await loadCurrencyPresentations().catch(() => undefined); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function handleExport() {
   try {
@@ -128,4 +194,43 @@ async function handleExport() {
     ElMessage.success(t('common.export'));
   } catch { ElMessage.error(t('common.loadFailed')); }
 }
+
+function initializeIconEditor(iconKey?: string) {
+  const flagMatch = /^flag:([A-Z]{2})$/i.exec(iconKey || '');
+  if (flagMatch) {
+    iconMode.value = 'flag'; flagRegionCode.value = flagMatch[1].toUpperCase(); form.iconKey = `flag:${flagRegionCode.value}`; return;
+  }
+  if (/^currency:/i.test(iconKey || '')) {
+    iconMode.value = 'currency'; flagRegionCode.value = ''; form.iconKey = `currency:${form.alpha3Code.toUpperCase()}`; return;
+  }
+  iconMode.value = 'auto'; flagRegionCode.value = ''; form.iconKey = '';
+}
+
+function handleIconModeChange(value: string | number | boolean | undefined) {
+  iconMode.value = value === 'flag' ? 'flag' : value === 'currency' ? 'currency' : 'auto';
+  if (iconMode.value === 'flag') {
+    const suggested = suggestedCurrencyIconKey(form.alpha3Code);
+    flagRegionCode.value = /^flag:([A-Z]{2})$/.exec(suggested)?.[1] || '';
+    syncFlagIconKey();
+  } else {
+    flagRegionCode.value = '';
+    form.iconKey = iconMode.value === 'currency' && form.alpha3Code ? `currency:${form.alpha3Code}` : '';
+  }
+  void nextTick(() => formRef.value?.validateField('iconKey'));
+}
+
+function syncFlagIconKey() {
+  flagRegionCode.value = flagRegionCode.value.replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase();
+  form.iconKey = flagRegionCode.value.length === 2 ? `flag:${flagRegionCode.value}` : '';
+}
 </script>
+
+<style scoped>
+.currency-logo-editor { display: grid; width: 100%; gap: 10px; }
+.currency-logo-editor__preview { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 58px; padding: 8px 12px; border: 1px solid #d7e5f5; border-radius: 6px; background: #f7fbff; }
+.currency-logo-editor__preview > span { color: #7a8ca3; font-size: 12px; }
+.currency-logo-editor small { color: #7a8ca3; font-size: 12px; line-height: 1.45; }
+.currency-logo-editor :deep(.el-radio-group) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.currency-logo-editor :deep(.el-radio-button__inner) { width: 100%; }
+.dialog-footer { display: flex; justify-content: center; gap: 10px; }
+</style>

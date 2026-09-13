@@ -62,6 +62,32 @@ export interface SysRoleMenuGrantRequest {
     menuIds: number[];
 }
 
+export interface SysPermission {
+    permissionId: number;
+    menuId?: number;
+    permissionCode: string;
+    permissionName: string;
+    permissionType: string;
+    resourceMethod?: string;
+    resourcePath?: string;
+}
+
+export interface SysRoleGrantTreeAuth {
+    roleId?: number;
+    roleCode?: string;
+    roleName?: string;
+    menus: SysMenu[];
+    permissions: SysPermission[];
+    checkedMenuIds: number[];
+    checkedPermissionIds: number[];
+}
+
+export interface SysRoleGrantTreeSaveRequest {
+    roleId: number;
+    menuIds: number[];
+    permissionIds: number[];
+}
+
 export async function searchRoles(requestBody: SysRoleQuery) {
     const result = await http.post<CommonResult<PageResult<SysRole>>>(
         '/admin/system/roles/search',
@@ -113,6 +139,29 @@ export async function getRoleMenus(requestBody: { roleId: number }) {
 export async function grantRoleMenus(requestBody: SysRoleMenuGrantRequest) {
     const result = await http.post<CommonResult<void>>(
         '/admin/system/roles/menus/grant',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getRoleGrantTreeTemplate() {
+    const result = await http.get<CommonResult<SysRoleGrantTreeAuth>>(
+        '/admin/system/roles/grant-tree/template',
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getRoleGrantTree(requestBody: { roleId: number }) {
+    const result = await http.post<CommonResult<SysRoleGrantTreeAuth>>(
+        '/admin/system/roles/grant-tree',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function grantRoleTree(requestBody: SysRoleGrantTreeSaveRequest) {
+    const result = await http.post<CommonResult<void>>(
+        '/admin/system/roles/grant-tree/grant',
         requestBody,
     );
     return unwrapResult(result.data);

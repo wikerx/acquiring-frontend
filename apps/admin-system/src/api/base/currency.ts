@@ -1,5 +1,5 @@
-import type { CommonResult, PageResult } from '@acquiring/shared';
-import { unwrapResult } from '@acquiring/shared';
+import type { CommonResult, CurrencyPresentation, PageResult } from '@acquiring/shared';
+import { setCurrencyPresentations, unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
 
@@ -10,6 +10,7 @@ export interface IsoCurrency {
     englishName: string;
     chineseName: string;
     currencySymbol?: string;
+    iconKey?: string;
     fractionDigits?: number;
     minorUnitMultiplier?: number;
     minimumAmount?: number;
@@ -59,4 +60,11 @@ export async function exportCurrencies() {
     await downloadExcel('/admin/base/currencies/export', {
         method: 'get',
     });
+}
+
+export async function loadCurrencyPresentations() {
+    const result = await http.get<CommonResult<CurrencyPresentation[]>>('/admin/base/currencies/presentations');
+    const presentations = unwrapResult(result.data);
+    setCurrencyPresentations(presentations);
+    return presentations;
 }

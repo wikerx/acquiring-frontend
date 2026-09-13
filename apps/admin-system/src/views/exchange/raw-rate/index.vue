@@ -40,7 +40,7 @@
         <StandardTable table-key="exchange-raw-rate" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.source')" width="90" align="center" />
-            <el-table-column :label="$t('exchange.fields.currencyPair')" width="150" align="center"><template #default="{ row }">{{ formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency) }}</template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="175" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.spotBuyRate')" min-width="130" align="right"><template #default="{ row }">{{ formatRate(row.spotBuyRate) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.spotSellRate')" min-width="130" align="right"><template #default="{ row }">{{ formatRate(row.spotSellRate) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.cashBuyRate')" min-width="130" align="right"><template #default="{ row }">{{ formatRate(row.cashBuyRate) }}</template></el-table-column>
@@ -66,7 +66,7 @@
         <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('exchange.rawRate.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.source')">{{ detailRow.sourceCode }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('exchange.fields.currencyPair')">{{ formatCurrencyPair(translate, detailRow.baseCurrency, detailRow.quoteCurrency) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.currencyPair')"><CurrencyPairDisplay :base-currency="detailRow.baseCurrency" :quote-currency="detailRow.quoteCurrency" :locale="String(locale)" size="sm" variant="soft" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.spotBuyRate')">{{ formatRate(detailRow.spotBuyRate) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.spotSellRate')">{{ formatRate(detailRow.spotSellRate) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.cashBuyRate')">{{ formatRate(detailRow.cashBuyRate) }}</el-descriptions-item>
@@ -135,13 +135,15 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import { createExchangeRawRate, exportExchangeRawRates, getExchangeRawRate, searchExchangeRawRates, voidExchangeRawRate, type ExchangeRawRate } from '@/api/exchange';
+import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
 import RateNumberInput from '../RateNumberInput.vue';
-import { createMethodOptions as buildCreateMethodOptions, formatCurrencyPair, formatRate, optionLabel, rawRateStatusOptions as buildRawRateStatusOptions, statusType, todayDateTimeRange } from '../shared';
+import { createMethodOptions as buildCreateMethodOptions, formatRate, optionLabel, rawRateStatusOptions as buildRawRateStatusOptions, statusType, todayDateTimeRange } from '../shared';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
@@ -208,7 +210,10 @@ const voidRules = computed<FormRules>(() => ({
     voidReason: [{ required: true, message: t('exchange.validation.voidReasonRequired'), trigger: 'blur' }],
 }));
 
-onMounted(loadData);
+onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
+    loadData();
+});
 
 async function loadData() {
     loading.value = true;

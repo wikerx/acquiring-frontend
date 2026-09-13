@@ -32,7 +32,7 @@
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="120" align="center"><template #default="{ row }">{{ optionLabel(rateTypeOptions, row.rateType) }}</template></el-table-column>
             <el-table-column prop="sourceCode" :label="$t('exchange.fields.source')" width="90" align="center" />
-            <el-table-column :label="$t('exchange.fields.currencyPair')" width="150" align="center"><template #default="{ row }">{{ formatCurrencyPair(translate, row.baseCurrency, row.quoteCurrency) }}</template></el-table-column>
+            <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="175" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.rateField')" min-width="130" align="center"><template #default="{ row }">{{ optionLabel(rateFieldOptions, row.rateField) }}</template></el-table-column>
             <el-table-column :label="$t('exchange.fields.adjust')" min-width="160" align="center">
                 <template #default="{ row }">{{ optionLabel(adjustDirectionOptions, row.adjustDirection) }} {{ row.adjustValue }} {{ optionLabel(adjustMethodOptions, row.adjustMethod) }}</template>
@@ -59,7 +59,7 @@
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="$t('exchange.fields.rateType')">{{ optionLabel(rateTypeOptions, detailRow.rateType) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.sourceCode')">{{ detailRow.sourceCode }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('exchange.fields.currencyPair')">{{ formatCurrencyPair(translate, detailRow.baseCurrency, detailRow.quoteCurrency) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('exchange.fields.currencyPair')"><CurrencyPairDisplay :base-currency="detailRow.baseCurrency" :quote-currency="detailRow.quoteCurrency" :locale="String(locale)" size="sm" variant="soft" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.rateField')">{{ optionLabel(rateFieldOptions, detailRow.rateField) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.adjustDirection')">{{ optionLabel(adjustDirectionOptions, detailRow.adjustDirection) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('exchange.fields.adjustMethod')">{{ optionLabel(adjustMethodOptions, detailRow.adjustMethod) }}</el-descriptions-item>
@@ -115,7 +115,9 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { loadCurrencyPresentations } from '@/api/base/currency';
 import { createExchangeRule, exportExchangeRules, getExchangeRule, searchExchangeRules, updateExchangeRule, updateExchangeRuleStatus, type ExchangeRateRule } from '@/api/exchange';
+import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
 import RateNumberInput from '../RateNumberInput.vue';
@@ -131,7 +133,7 @@ import {
     statusType,
 } from '../shared';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
@@ -201,7 +203,10 @@ const rules = computed<FormRules>(() => ({
     ruleStatus: [{ required: true, message: t('exchange.validation.statusRequired'), trigger: 'change' }],
 }));
 
-onMounted(loadData);
+onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
+    loadData();
+});
 
 async function loadData() {
     loading.value = true;

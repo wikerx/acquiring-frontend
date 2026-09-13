@@ -7,8 +7,10 @@
             </div>
             <div class="amount-flow__change">
                 <span>{{ $t('feeAccount.occurredAmount') }}</span>
-                <strong><BaseAmount :value="ledger.amount" :currency="ledger.currency" currency-display="code" /></strong>
-                <DirectionTag :direction="ledger.direction" :label="ledger.direction === 'CREDIT' ? $t('feeAccount.credit') : $t('feeAccount.debit')" />
+                <div class="amount-flow__change-value">
+                    <DirectionTag :direction="ledger.direction" :label="ledger.direction === 'CREDIT' ? $t('feeAccount.credit') : $t('feeAccount.debit')" />
+                    <strong><BaseAmount :value="ledger.amount" :currency="ledger.currency" currency-display="code" /></strong>
+                </div>
             </div>
             <div>
                 <span>{{ $t('feeAccount.balanceAfter') }}</span>
@@ -163,8 +165,9 @@ const deductionStatusType = computed(() => {
 .amount-flow > div:last-child { border-right: 0; }
 .amount-flow span { display: block; color: #778196; font-size: 12px; }
 .amount-flow strong { display: block; margin-top: 7px; overflow: hidden; color: #17243a; font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
-.amount-flow__change { padding-right: 84px !important; }
-.amount-flow__change .el-tag { position: absolute; top: 14px; right: 14px; display: inline-flex; align-items: center; justify-content: center; min-width: 56px; border-radius: 4px; }
+.amount-flow__change-value { display: flex; align-items: center; gap: 9px; min-width: 0; margin-top: 7px; }
+.amount-flow__change-value strong { min-width: 0; margin-top: 0; }
+.amount-flow__change-value .el-tag { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-width: 52px; border-radius: 4px; }
 .amount-flow.is-credit .amount-flow__change { background: #f3faf7; box-shadow: inset 0 3px 0 #1f9d78; }
 .amount-flow.is-credit .amount-flow__change strong { color: #15785d; }
 .amount-flow.is-debit .amount-flow__change { background: #fff7f6; box-shadow: inset 0 3px 0 #d45d56; }

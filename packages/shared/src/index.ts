@@ -3,16 +3,21 @@ export * from './brand';
 export * from './amount';
 export * from './dateTime';
 export * from './paymentBrand';
+export * from './currencyPresentation';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
 export { default as PaymentMethodDisplay } from './components/PaymentMethodDisplay.vue';
 export { default as CurrencyAmountPills } from './components/CurrencyAmountPills.vue';
+export { default as CurrencyDisplay } from './components/CurrencyDisplay.vue';
 export { default as DirectionTag } from './components/DirectionTag.vue';
 export { default as MerchantIdentityDisplay } from './components/MerchantIdentityDisplay.vue';
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
+export { default as SettlementVoucher } from './components/SettlementVoucher.vue';
 export { default as AnalyticsChart } from './components/AnalyticsChart.vue';
 export { default as AnalyticsPaymentPerformance } from './components/AnalyticsPaymentPerformance.vue';
 export * from './transactionAnalytics';
+export * from './settlementVoucher';
+export * from './settlementVoucherPdf';
 
 declare module 'axios' {
     export interface AxiosRequestConfig<D = any> {

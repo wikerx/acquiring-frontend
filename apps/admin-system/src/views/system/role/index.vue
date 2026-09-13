@@ -29,7 +29,7 @@
                 <template #default="{ row }">
                     <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'system:role:assign-menu'">{{ $t('common.detail') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Edit" @click="handleUpdate(row)" v-hasPermi="'system:role:edit'">{{ $t('common.edit') }}</el-button>
-                    <el-button size="small" type="primary" link :icon="Key" @click="openRoleAuth(row)" v-hasPermi="'system:role:assign-menu'">{{ $t('system.role.assignAuth') }}</el-button>
+                    <el-button size="small" type="primary" link :icon="Key" @click="openRoleAuth(row)" v-hasPermi="'system:role:assign-permission'">{{ $t('system.role.assignAuth') }}</el-button>
                     <el-button size="small" type="primary" link :icon="Delete" @click="removeRole(row)" v-hasPermi="'system:role:delete'" :disabled="row.roleType === 'SYSTEM'">{{ $t('common.delete') }}</el-button>
                 </template>
             </el-table-column>
@@ -46,7 +46,7 @@
                 <el-form-item v-if="formMode === 'edit'" :label="$t('common.status')" prop="status"><el-select v-model="roleForm.status" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="$t('system.role.desc')" prop="description"><el-input v-model="roleForm.description" type="textarea" maxlength="500" show-word-limit :placeholder="$t('common.pleaseInput')" /></el-form-item>
             </el-form>
-            <template v-if="formMode === 'create' || formMode === 'edit'">
+            <template v-if="canAssignRolePermissions && (formMode === 'create' || formMode === 'edit')">
                 <el-divider>{{ $t('system.role.assignAuth') }}</el-divider>
                 <div class="auth-tree-toolbar">
                     <div class="auth-tree-toolbar__left"><el-button size="small" :icon="Sort" @click="authToggleExpand">{{ authAllExpanded ? $t('system.role.collapseAll') : $t('system.menu.expandCollapse') }}</el-button></div>
@@ -148,20 +148,23 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, View, Key, Sort } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { createRole, deleteRole, getRoleMenus, grantRoleMenus, searchRoles, updateRole, updateRoleStatus, type SysRole } from '@/api/system/role';
-import { treeMenus, type SysMenu } from '@/api/system/menu';
+import { createRole, deleteRole, getRoleGrantTree, getRoleGrantTreeTemplate, getRoleMenus, grantRoleTree, searchRoles, updateRole, updateRoleStatus, type SysPermission, type SysRole } from '@/api/system/role';
+import type { SysMenu } from '@/api/system/menu';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
+import { useUserStore } from '@/store/modules/user';
 
 const { t } = useI18n();
 interface RoleRow extends SysRole { statusTag: CommonStatus; }
 interface RoleForm { roleId?: number; roleCode: string; roleName: string; dataScope: string; description: string; status: number; sortNo: number; }
-interface AuthTreeNode { id: string; label: string; code?: string; type?: 'DIR' | 'MENU' | 'BTN'; children?: AuthTreeNode[]; disabled?: boolean }
+interface AuthTreeNode { id: string; label: string; code?: string; type?: 'DIR' | 'MENU' | 'BTN'; menuId?: number; permissionId?: number; children?: AuthTreeNode[]; disabled?: boolean }
 
 const statusOptions = [{ label: t('common.enable'), value: 1 }, { label: t('common.disable'), value: 0 }];
+const userStore = useUserStore();
+const canAssignRolePermissions = computed(() => userStore.hasPermission('system:role:assign-permission'));
 const showSearch = ref(true);
 const query = reactive<Record<string, unknown>>({}); const queryFormRef = ref<FormInstance>();
 const loading = ref(false); const rows = ref<RoleRow[]>([]); const total = ref(0); const page = ref(1); const pageSize = ref(10);
@@ -190,10 +193,10 @@ async function loadData() { loading.value = true; try { const r = await searchRo
 function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
 function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
 function handleSelectionChange(s: RoleRow[]) { selectedRows.value = s; }
-async function handleAdd() { formMode.value = 'create'; activeRow.value = null; Object.assign(roleForm, { roleId: undefined, roleCode: '', roleName: '', dataScope: 'SELF', description: '', status: 1, sortNo: 100 }); authTreeData.value = []; authSelectAllChecked.value = false; authCheckStrictly.value = true; authAllExpanded.value = true; roleDialogVisible.value = true; nextTick(() => roleFormRef.value?.clearValidate()); try { const allMenus = await treeMenus({}); authTreeData.value = buildAuthTree(allMenus || []); await nextTick(); syncAuthSelectAll(); } catch { /* empty tree */ } }
-async function handleUpdate(row: RoleRow) { formMode.value = 'edit'; activeRow.value = row; Object.assign(roleForm, { roleId: row.roleId, roleCode: row.roleCode, roleName: row.roleName, dataScope: row.dataScope || 'SELF', description: row.description || '', status: row.status ?? 1, sortNo: row.sortNo ?? 100 }); authSelectAllChecked.value = false; authCheckStrictly.value = true; authAllExpanded.value = true; roleDialogVisible.value = true; nextTick(() => roleFormRef.value?.clearValidate()); try { const menusRes = await getRoleMenus({ roleId: row.roleId }); authTreeData.value = buildAuthTree(menusRes.menus || []); await nextTick(); authTreeRef.value?.setCheckedKeys((menusRes.checkedMenuIds || []).map((id: number) => 'm_' + id)); syncAuthSelectAll(); } catch { /* keep empty */ } }
+async function handleAdd() { formMode.value = 'create'; activeRow.value = null; Object.assign(roleForm, { roleId: undefined, roleCode: '', roleName: '', dataScope: 'SELF', description: '', status: 1, sortNo: 100 }); authTreeData.value = []; authSelectAllChecked.value = false; authCheckStrictly.value = true; authAllExpanded.value = true; roleDialogVisible.value = true; nextTick(() => roleFormRef.value?.clearValidate()); if (!canAssignRolePermissions.value) return; try { const grant = await getRoleGrantTreeTemplate(); authTreeData.value = buildAuthTree(grant.menus || [], grant.permissions || []); await nextTick(); syncAuthSelectAll(); } catch { /* empty tree */ } }
+async function handleUpdate(row: RoleRow) { formMode.value = 'edit'; activeRow.value = row; Object.assign(roleForm, { roleId: row.roleId, roleCode: row.roleCode, roleName: row.roleName, dataScope: row.dataScope || 'SELF', description: row.description || '', status: row.status ?? 1, sortNo: row.sortNo ?? 100 }); authTreeData.value = []; authSelectAllChecked.value = false; authCheckStrictly.value = true; authAllExpanded.value = true; roleDialogVisible.value = true; nextTick(() => roleFormRef.value?.clearValidate()); if (!canAssignRolePermissions.value) return; try { const grant = await getRoleGrantTree({ roleId: row.roleId }); authTreeData.value = buildAuthTree(grant.menus || [], grant.permissions || []); await nextTick(); authTreeRef.value?.setCheckedKeys(toGrantCheckedKeys(grant.checkedMenuIds, grant.checkedPermissionIds)); syncAuthSelectAll(); } catch { /* keep empty */ } }
 async function openDetail(row: RoleRow) { activeRow.value = row; detailVisible.value = true; detailTreeData.value = []; detailCheckedKeys.value = []; try { const m = await getRoleMenus({ roleId: row.roleId }); detailTreeData.value = buildAuthTree(m.menus || []); detailCheckedKeys.value = (m.checkedMenuIds || []).map((id: number) => 'm_' + id); } catch { /* keep empty */ } }
-async function submitRoleForm() { const v = await roleFormRef.value?.validate().catch(() => false); if (!v) return; authSaving.value = true; try { if (formMode.value === 'create') { const created = await createRole({ roleCode: roleForm.roleCode.trim(), roleName: roleForm.roleName.trim(), dataScope: roleForm.dataScope, description: to(roleForm.description), sortNo: roleForm.sortNo }); if (authTreeRef.value && created.roleId) { await grantRoleMenus({ roleId: created.roleId, menuIds: getSelectedMenuIds() }); } ElMessage.success(t('common.addSuccess')); } else if (roleForm.roleId) { await updateRole({ roleId: roleForm.roleId, roleName: roleForm.roleName.trim(), dataScope: roleForm.dataScope, description: to(roleForm.description), status: roleForm.status, sortNo: roleForm.sortNo }); if (authTreeRef.value) { await grantRoleMenus({ roleId: roleForm.roleId, menuIds: getSelectedMenuIds() }); } ElMessage.success(t('common.editSuccess')); } roleDialogVisible.value = false; loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } finally { authSaving.value = false; } }
+async function submitRoleForm() { const v = await roleFormRef.value?.validate().catch(() => false); if (!v) return; authSaving.value = true; try { if (formMode.value === 'create') { const created = await createRole({ roleCode: roleForm.roleCode.trim(), roleName: roleForm.roleName.trim(), dataScope: roleForm.dataScope, description: to(roleForm.description), sortNo: roleForm.sortNo }); if (canAssignRolePermissions.value && authTreeRef.value && created.roleId) { const selected = getSelectedGrantIds(); await grantRoleTree({ roleId: created.roleId, ...selected }); } ElMessage.success(t('common.addSuccess')); } else if (roleForm.roleId) { await updateRole({ roleId: roleForm.roleId, roleName: roleForm.roleName.trim(), dataScope: roleForm.dataScope, description: to(roleForm.description), status: roleForm.status, sortNo: roleForm.sortNo }); if (canAssignRolePermissions.value && authTreeRef.value) { const selected = getSelectedGrantIds(); await grantRoleTree({ roleId: roleForm.roleId, ...selected }); } ElMessage.success(t('common.editSuccess')); } roleDialogVisible.value = false; loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } finally { authSaving.value = false; } }
 async function handleStatusChange(row: RoleRow) { const ns = row.status === 1 ? 0 : 1; const at = ns === 1 ? t('common.enable') : t('common.disable'); try { await ElMessageBox.confirm(t('system.role.statusToggleConfirm', { action: at, name: row.roleName }), t('common.confirm'), { type: ns === 1 ? 'success' : 'warning' }); await updateRoleStatus({ roleId: row.roleId, status: ns }); ElMessage.success(t('common.success')); loadData(); } catch (e) { if (e instanceof Error) ElMessage.error(e.message); } }
 async function handleDelete(rp?: RoleRow[]) { const ts = rp ?? selectedRows.value; if (!ts.length) { ElMessage.warning(t('common.pleaseSelect')); return; } const sr = ts.filter(r => r.roleType === 'SYSTEM'); if (sr.length) { ElMessage.warning(t('system.role.systemRoleNoDelete')); return; } const ns = ts.map(r => r.roleName).join('、'); try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: ns }), t('common.delete'), { type: 'warning' }); for (const t of ts) { await deleteRole({ roleId: t.roleId }); } ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e) { if (e instanceof Error) ElMessage.error(e.message); } }
 async function removeRole(row: RoleRow) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.roleName }), t('common.delete'), { type: 'warning' }); await deleteRole({ roleId: row.roleId }); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e) { if (e instanceof Error) ElMessage.error(e.message); } }
@@ -201,36 +204,64 @@ async function removeRole(row: RoleRow) { try { await ElMessageBox.confirm(t('sy
 async function openRoleAuth(row: RoleRow) {
     activeRow.value = row; roleAuthVisible.value = true; authLoading.value = true; authCheckStrictly.value = true; authSelectAllChecked.value = false; authAllExpanded.value = true;
     try {
-        const menusRes = await getRoleMenus({ roleId: row.roleId });
-        authTreeData.value = buildAuthTree(menusRes.menus || []);
-        authCheckedKeys.value = (menusRes.checkedMenuIds || []).map((id: number) => 'm_' + id);
+        const grant = await getRoleGrantTree({ roleId: row.roleId });
+        authTreeData.value = buildAuthTree(grant.menus || [], grant.permissions || []);
+        authCheckedKeys.value = toGrantCheckedKeys(grant.checkedMenuIds, grant.checkedPermissionIds);
         await nextTick(); syncAuthSelectAll();
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); roleAuthVisible.value = false; }
     finally { authLoading.value = false; }
 }
-function buildAuthTree(menus: SysMenu[]): AuthTreeNode[] {
-    return menus.map(m => {
-        const children = m.children ? buildAuthTree(m.children) : [];
-        return {
-            id: 'm_' + (m.menuId || 0),
-            label: m.menuName || '',
-            code: m.permissionCode ? '(' + m.permissionCode + ')' : undefined,
-            type: (m.menuType === 'CATALOG' ? 'DIR' : m.menuType === 'BUTTON' ? 'BTN' : 'MENU') as 'DIR' | 'MENU' | 'BTN',
-            children: children.length ? children : undefined,
-        };
+function buildAuthTree(menus: SysMenu[], permissions: SysPermission[] = []): AuthTreeNode[] {
+    const hiddenGrantMenuCodes = new Set(['admin_settlement_batch_v1']);
+    const menuMap = new Map<number, SysMenu>();
+    const flatten = (items: SysMenu[]) => items.forEach((menu) => { menuMap.set(menu.menuId, menu); flatten(menu.children || []); });
+    flatten(menus);
+    const permissionMap = new Map<number, SysPermission[]>();
+    permissions.forEach((permission) => {
+        let menu = permission.menuId ? menuMap.get(permission.menuId) : undefined;
+        while (menu && (menu.menuType === 'BUTTON' || hiddenGrantMenuCodes.has(menu.menuCode || ''))) {
+            menu = menuMap.get(menu.parentId);
+        }
+        if (!menu) return;
+        permissionMap.set(menu.menuId, [...(permissionMap.get(menu.menuId) || []), permission]);
     });
+    const build = (items: SysMenu[]): AuthTreeNode[] => items
+        .filter((menu) => menu.menuType !== 'BUTTON' && !hiddenGrantMenuCodes.has(menu.menuCode || ''))
+        .map((menu) => {
+            const children = build(menu.children || []);
+            const permissionChildren = (permissionMap.get(menu.menuId) || []).map((permission) => ({
+                id: 'p_' + permission.permissionId,
+                label: permission.permissionName || permission.permissionCode,
+                code: '(' + permission.permissionCode + ')',
+                type: 'BTN' as const,
+                permissionId: permission.permissionId,
+            }));
+            const allChildren = [...children, ...permissionChildren];
+            return {
+                id: 'm_' + menu.menuId,
+                label: menu.menuName || '',
+                code: menu.permissionCode ? '(' + menu.permissionCode + ')' : undefined,
+                type: (menu.menuType === 'CATALOG' ? 'DIR' : 'MENU') as 'DIR' | 'MENU',
+                menuId: menu.menuId,
+                children: allChildren.length ? allChildren : undefined,
+            };
+        });
+    return build(menus);
 }
-function getSelectedMenuIds() {
+function getSelectedGrantIds() {
     const checked = authTreeRef.value?.getCheckedKeys() || [];
     const halfChecked = authTreeRef.value?.getHalfCheckedKeys() || [];
-    return ni([...checked, ...halfChecked].filter(k => String(k).startsWith('m_')).map(k => Number(String(k).replace('m_', ''))));
+    const allKeys = [...checked, ...halfChecked].map(String);
+    return {
+        menuIds: ni(allKeys.filter(key => key.startsWith('m_')).map(key => Number(key.slice(2)))),
+        permissionIds: ni(allKeys.filter(key => key.startsWith('p_')).map(key => Number(key.slice(2)))),
+    };
 }
 async function submitRoleAuth() {
     if (!activeRow.value || authSaving.value) return; authSaving.value = true;
     try {
-        const ck = authTreeRef.value?.getCheckedKeys() || []; const hk = authTreeRef.value?.getHalfCheckedKeys() || [];
-        const allKeys = [...ck, ...hk];
-        await grantRoleMenus({ roleId: activeRow.value.roleId, menuIds: ni(allKeys.filter(k => String(k).startsWith('m_')).map(k => Number(String(k).replace('m_', '')))) });
+        const selected = getSelectedGrantIds();
+        await grantRoleTree({ roleId: activeRow.value.roleId, ...selected });
         ElMessage.success(t('common.saveSuccess')); roleAuthVisible.value = false; loadData();
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); }
     finally { authSaving.value = false; }
@@ -248,6 +279,7 @@ function authToggleExpand() {
 }
 function onAuthSelectAllChange(val: boolean) { if (authTreeRef.value) { authTreeRef.value.setCheckedKeys(val ? authTreeData.value.flatMap(collectKeys) : []); } authSelectAllChecked.value = val; }
 function collectKeys(node: AuthTreeNode): string[] { return [node.id, ...(node.children || []).flatMap(collectKeys)]; }
+function toGrantCheckedKeys(menuIds: number[] = [], permissionIds: number[] = []) { return [...menuIds.map(id => 'm_' + id), ...permissionIds.map(id => 'p_' + id)]; }
 function syncAuthSelectAll() { const allKeys = authTreeData.value.flatMap(collectKeys); const checked = authTreeRef.value?.getCheckedKeys() || []; authSelectAllChecked.value = allKeys.length > 0 && allKeys.every(k => checked.includes(k)); }
 
 function tv(v: unknown) { return String(v || '').trim() || undefined; }

@@ -14,14 +14,24 @@
         @focus="loadDefaultOptions"
         @update:model-value="handleChange"
     >
-        <el-option v-for="item in displayOptions" :key="item.alpha3Code" :label="currencyLabel(item)" :value="item.alpha3Code" />
+        <el-option v-for="item in displayOptions" :key="item.alpha3Code" :label="currencyLabel(item)" :value="item.alpha3Code">
+            <CurrencyDisplay
+                v-if="item.alpha3Code !== 'ALL'"
+                :currency="item.alpha3Code"
+                :locale="String(locale)"
+                show-name
+                size="sm"
+            />
+            <span v-else>{{ currencyLabel(item) }}</span>
+        </el-option>
     </el-select>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { searchCurrencies, type IsoCurrency } from '@/api/base/currency';
+import { CurrencyDisplay } from '@acquiring/shared';
+import { loadCurrencyPresentations, searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 
 const props = defineProps<{
     modelValue?: string;
@@ -39,7 +49,7 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const options = ref<IsoCurrency[]>([]);
-const { t } = useI18n();
+const { locale, t } = useI18n();
 let requestSeq = 0;
 
 const selectWidth = computed(() => (typeof props.width === 'number' ? `${props.width}px` : props.width || '180px'));
@@ -54,7 +64,10 @@ const displayOptions = computed(() => {
     return [{ id: 0, alpha3Code: current, englishName: current, chineseName: '' }, ...mergedOptions];
 });
 
-onMounted(loadDefaultOptions);
+onMounted(() => {
+    void loadCurrencyPresentations().catch(() => undefined);
+    loadDefaultOptions();
+});
 
 function handleChange(value?: string) {
     const nextValue = normalizeCode(value);
