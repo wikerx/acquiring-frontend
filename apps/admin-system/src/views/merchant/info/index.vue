@@ -35,6 +35,7 @@
     <StandardTable table-key="merchant-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column prop="merchantId" :label="$t('merchant.info.merchantId')" min-width="140" align="center" :show-overflow-tooltip="true" />
+      <el-table-column prop="applicationNo" :label="$t('merchant.info.applicationNo')" min-width="160" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="merchantName" :label="$t('merchant.info.merchantName')" min-width="190" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="merchantCategoryCode" label="MCC" width="90" align="center" />
       <el-table-column prop="countryCode" :label="$t('merchant.info.countryCode')" width="100" align="center" />
@@ -45,6 +46,16 @@
       <el-table-column :label="$t('common.status')" width="110" align="center">
         <template #default="{ row }">
           <el-tag size="small" :type="statusType(row.merchantStatus)">{{ statusText(row.merchantStatus) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column :label="$t('merchant.info.onboardingStatus')" width="130" align="center">
+        <template #default="{ row }">
+          <el-tag size="small" :type="onboardingStatusType(row.onboardingStatus)">{{ lifecycleText('onboarding', row.onboardingStatus) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column :label="$t('merchant.info.reviewStatus')" width="120" align="center">
+        <template #default="{ row }">
+          <el-tag size="small" :type="reviewStatusType(row.reviewStatus)">{{ lifecycleText('review', row.reviewStatus) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column :label="$t('merchant.info.keyStatus')" min-width="210" align="center">
@@ -64,12 +75,12 @@
       <el-table-column :label="$t('common.createTime')" min-width="170" align="center" :show-overflow-tooltip="true">
         <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
       </el-table-column>
-      <el-table-column :label="$t('common.operation')" align="center" width="390" fixed="right">
+      <el-table-column :label="$t('common.operation')" align="center" width="410" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'merchant:info:detail'">{{ $t('common.detail') }}</el-button>
           <el-button size="small" type="primary" link :icon="Edit" @click="openForm('edit', row)" v-hasPermi="'merchant:info:edit'">{{ $t('common.edit') }}</el-button>
           <el-button v-if="row.merchantStatus === 1" size="small" type="danger" link :icon="VideoPause" :loading="statusChangingId === row.id" @click="changeStatus(row, 2)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.freeze') }}</el-button>
-          <el-button v-if="row.merchantStatus === 2" size="small" type="success" link :icon="VideoPlay" :loading="statusChangingId === row.id" @click="changeStatus(row, 1)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.unfreeze') }}</el-button>
+          <el-button v-if="row.merchantStatus === 2 && row.activationStatus === 'ACTIVE'" size="small" type="success" link :icon="VideoPlay" :loading="statusChangingId === row.id" @click="changeStatus(row, 1)" v-hasPermi="'merchant:info:changeStatus'">{{ $t('merchant.info.unfreeze') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openKeys(row)" v-hasPermi="'merchant:key:manage'">{{ $t('merchant.info.keyManage') }}</el-button>
           <el-button size="small" type="primary" link :icon="Key" @click="openMaterial(row)" v-hasPermi="'merchant:material:view'">{{ $t('merchant.info.material') }}</el-button>
         </template>
@@ -80,158 +91,41 @@
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
     </div>
 
-    <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('merchant.info.detailTitle')" size="xl">
-      <div v-if="detailMerchant" class="merchant-detail">
-        <section class="merchant-detail__hero">
-          <div>
-            <span>{{ detailMerchant.merchantId || '-' }}</span>
-            <h3>{{ detailMerchant.merchantName || '-' }}</h3>
-            <p>{{ detailMerchant.merchantShortName || '-' }}</p>
-          </div>
-          <div class="merchant-detail__tags">
-            <el-tag size="small" :type="statusType(detailMerchant.merchantStatus)">{{ statusText(detailMerchant.merchantStatus) }}</el-tag>
-            <el-tag size="small" :type="riskType(detailMerchant.riskLevel)">{{ riskText(detailMerchant.riskLevel) }}</el-tag>
-          </div>
-        </section>
+    <MerchantProfileDetailDrawer
+      v-model:visible="detailVisible"
+      :merchant="detailMerchant"
+      :can-edit="canEditMerchant"
+      :can-activate="canChangeMerchantStatus"
+      :can-view-fee="canViewMerchantFee"
+      :can-bind-channel="canBindMerchantChannel"
+      :can-view-fund="canViewFundAccount"
+      :action-loading="profileActionLoading"
+      :document-busy-id="documentBusyId"
+      @edit="openForm('edit', detailMerchant)"
+      @configure-fee="goToMerchantFee(detailMerchant?.merchantId)"
+      @bind-channel="goToMerchantChannel(detailMerchant?.merchantId)"
+      @fund-account="goToFundAccount(detailMerchant?.merchantId)"
+      @submit-review="submitCurrentMerchantReview"
+      @review="reviewCurrentMerchant"
+      @activate="activateCurrentMerchant"
+      @upload-document="uploadCurrentMerchantDocument"
+      @download-document="downloadCurrentMerchantDocument"
+      @delete-document="deleteCurrentMerchantDocument"
+    />
 
-        <section class="merchant-detail__section">
-          <h4>{{ $t('merchant.info.basicInfo') }}</h4>
-          <el-descriptions :column="2" border size="small">
-            <el-descriptions-item :label="$t('merchant.info.billingDescriptor')">{{ detailMerchant.billingDescriptor || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="MCC">{{ detailMerchant.merchantCategoryCode || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.countryCode')">{{ detailMerchant.countryCode || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.settlementCurrency')">{{ detailMerchant.settlementCurrency || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.timezone')">{{ detailMerchant.timezone || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detailMerchant.gmtCreate" /></el-descriptions-item>
-            <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detailMerchant.gmtModified" /></el-descriptions-item>
-          </el-descriptions>
-        </section>
-
-        <section class="merchant-detail__section">
-          <h4>{{ $t('merchant.info.contactInfo') }}</h4>
-          <el-descriptions :column="2" border size="small">
-            <el-descriptions-item :label="$t('merchant.info.contactName')">{{ detailMerchant.contactName || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.contactEmail')">{{ detailMerchant.contactEmail || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.contactPhone')">{{ detailMerchant.contactPhone || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.regionCode')">{{ detailMerchant.regionCode || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.city')">{{ detailMerchant.city || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.postalCode')">{{ detailMerchant.postalCode || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.address')" :span="2">{{ detailMerchant.addressLine || '-' }}</el-descriptions-item>
-          </el-descriptions>
-        </section>
-
-        <section class="merchant-detail__section">
-          <h4>{{ $t('merchant.info.operationalFoundation') }}</h4>
-          <el-descriptions :column="2" border size="small">
-            <el-descriptions-item :label="$t('merchant.info.loginInitialization')">
-              <el-tag :type="detailMerchant.loginInitialized ? 'success' : 'warning'">
-                {{ detailMerchant.loginInitialized ? $t('merchant.info.initialized') : $t('merchant.info.notInitialized') }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.fundAccountStatus')">
-              <el-tag :type="detailMerchant.fundAccountNo ? 'success' : 'warning'">
-                {{ detailMerchant.fundAccountStatus || $t('merchant.info.notInitialized') }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.fundAccountNo')">{{ detailMerchant.fundAccountNo || '-' }}</el-descriptions-item>
-            <el-descriptions-item :label="$t('merchant.info.currentFeeVersion')">
-              {{ detailMerchant.currentFeeVersionNo ? `v${detailMerchant.currentFeeVersionNo}` : $t('merchant.info.notConfigured') }}
-            </el-descriptions-item>
-          </el-descriptions>
-          <div class="merchant-detail__actions">
-            <el-button v-if="canViewMerchantFee" type="primary" plain @click="goToMerchantFee(detailMerchant.merchantId)">
-              {{ $t('merchant.info.viewMerchantFee') }}
-            </el-button>
-            <el-button v-if="canViewFundAccount" plain @click="goToFundAccount(detailMerchant.merchantId)">
-              {{ $t('merchant.info.viewFundAccount') }}
-            </el-button>
-          </div>
-        </section>
-      </div>
-    </CommonDetailDrawer>
-
-    <el-drawer :title="formMode === 'add' ? $t('merchant.info.addTitle') : $t('merchant.info.editTitle')" v-model="formVisible" size="min(1040px, 94vw)" append-to-body destroy-on-close class="merchant-form-drawer">
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="112px" size="small" class="merchant-form">
-        <section class="merchant-form__section">
-          <div class="merchant-form__section-title">{{ $t('merchant.info.basicInfo') }}</div>
-          <div class="merchant-form__grid">
-            <el-form-item v-if="formMode === 'edit'" :label="$t('merchant.info.merchantId')" prop="merchantId"><el-input v-model="form.merchantId" disabled maxlength="32" /></el-form-item>
-            <el-form-item v-else :label="$t('merchant.info.merchantId')"><el-input :model-value="$t('merchant.info.autoGenerateMerchantId')" disabled /></el-form-item>
-            <el-form-item :label="$t('merchant.info.merchantName')" prop="merchantName"><el-input v-model.trim="form.merchantName" maxlength="128" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.billingDescriptor')" prop="billingDescriptor"><el-input v-model.trim="form.billingDescriptor" maxlength="64" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.shortName')" prop="merchantShortName"><el-input v-model.trim="form.merchantShortName" maxlength="64" /></el-form-item>
-            <el-form-item label="MCC" prop="merchantCategoryCode">
-              <el-cascader
-                v-model="selectedMccPath"
-                :options="localizedMccOptions"
-                :props="mccCascaderProps"
-                :show-all-levels="false"
-                :placeholder="$t('common.pleaseSelect')"
-                :loading="formOptionsLoading"
-                filterable
-                clearable
-                style="width:100%"
-                @change="handleMccChange"
-              />
-            </el-form-item>
-            <el-form-item :label="$t('merchant.info.countryCode')" prop="countryCode">
-              <el-select v-model="form.countryCode" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
-                <el-option v-for="item in formOptions.countries" :key="item.value" :label="countryOptionLabel(item)" :value="item.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('merchant.info.settlementCurrency')" prop="settlementCurrency">
-              <el-select v-model="form.settlementCurrency" filterable clearable :loading="formOptionsLoading" :placeholder="$t('common.pleaseSelect')" style="width:100%">
-                <el-option v-for="item in formOptions.currencies" :key="item.value" :label="currencyOptionLabel(item)" :value="item.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('merchant.info.timezone')" prop="timezone">
-              <el-select v-model="form.timezone" filterable clearable style="width:100%" :placeholder="$t('common.pleaseSelect')">
-                <el-option v-for="item in timezoneOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('merchant.info.defaultLocale')" prop="defaultLocale">
-              <el-select v-model="form.defaultLocale" style="width:100%">
-                <el-option :label="$t('merchant.info.localeChinese')" value="zh-CN" />
-                <el-option :label="$t('merchant.info.localeEnglish')" value="en-US" />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('common.status')" prop="merchantStatus">
-              <el-select v-model="form.merchantStatus" style="width:100%" :disabled="formMode === 'edit'">
-                <el-option :label="$t('merchant.info.statusNormal')" :value="1" />
-                <el-option :label="$t('merchant.info.statusFrozen')" :value="2" />
-                <el-option :label="$t('merchant.info.statusClosed')" :value="3" />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('merchant.info.riskLevel')">
-              <el-select v-model="form.riskLevel" style="width:100%">
-                <el-option :label="$t('merchant.info.riskLow')" :value="1" />
-                <el-option :label="$t('merchant.info.riskNormal')" :value="2" />
-                <el-option :label="$t('merchant.info.riskHigh')" :value="3" />
-              </el-select>
-            </el-form-item>
-          </div>
-        </section>
-
-        <section class="merchant-form__section">
-          <div class="merchant-form__section-title">{{ $t('merchant.info.contactInfo') }}</div>
-          <div class="merchant-form__grid">
-            <el-form-item :label="$t('merchant.info.regionCode')"><el-input v-model="form.regionCode" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.city')"><el-input v-model="form.city" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.postalCode')"><el-input v-model.trim="form.postalCode" maxlength="32" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.contactName')"><el-input v-model.trim="form.contactName" maxlength="64" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.contactEmail')" prop="contactEmail"><el-input v-model.trim="form.contactEmail" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.contactPhone')"><el-input v-model="form.contactPhone" /></el-form-item>
-            <el-form-item :label="$t('merchant.info.address')" class="merchant-form__full"><el-input v-model="form.addressLine" type="textarea" :rows="3" /></el-form-item>
-          </div>
-        </section>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
-          <el-button @click="formVisible = false">{{ $t('common.cancel') }}</el-button>
-        </div>
-      </template>
-    </el-drawer>
+    <MerchantProfileFormDrawer
+      v-model:visible="formVisible"
+      :mode="formMode"
+      :merchant="formMerchant"
+      :form-options="formOptions"
+      :timezone-options="timezoneOptions"
+      :saving="profileActionLoading"
+      :document-busy-id="documentBusyId"
+      @save="saveMerchantProfile"
+      @upload-document="uploadCurrentMerchantDocument"
+      @download-document="downloadCurrentMerchantDocument"
+      @delete-document="deleteCurrentMerchantDocument"
+    />
 
     <CommonDetailDrawer v-model:visible="materialVisible" :title="$t('merchant.info.materialTitle')" size="xl">
       <template v-if="currentMerchant">
@@ -501,7 +395,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Edit, Key, Plus, Refresh, Search, VideoPause, VideoPlay, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -510,10 +403,15 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import MerchantProfileDetailDrawer from './components/MerchantProfileDetailDrawer.vue';
+import MerchantProfileFormDrawer from './components/MerchantProfileFormDrawer.vue';
 import {
+  activateMerchant,
   createMerchant,
   changeMerchantStatus,
   copyOpenApiKeyMaterial,
+  deleteMerchantDocument,
+  downloadMerchantDocument,
   downloadOpenApiKeyMaterial,
   getMerchant,
   getMerchantFormOptions,
@@ -524,15 +422,18 @@ import {
   rotateJwtKey,
   rotateMerchantResponseKey,
   rotatePlatformPayloadKey,
+  reviewMerchant,
   searchMerchants,
+  submitMerchantReview,
   updateMerchant,
   updateMerchantResponseKey,
+  uploadMerchantDocument,
+  type MerchantDocument,
   type MerchantKeyBundle,
   type MerchantKeyMaterial,
   type MerchantInfo,
   type MerchantFormOptions,
-  type MerchantOptionItem,
-  type MerchantOptionNode,
+  type MerchantReviewRequest,
   type MerchantSaveRequest,
   type MerchantSecurityMaterial,
   type MerchantKeySummary,
@@ -556,67 +457,18 @@ const selectedRows = ref<MerchantInfo[]>([]);
 const timezoneOptions = ref<SysDictData[]>([]);
 const formOptions = reactive<MerchantFormOptions>({ mccOptions: [], countries: [], currencies: [] });
 const formOptionsLoading = ref(false);
-const selectedMccPath = ref<string[]>([]);
-const mccCascaderProps = { emitPath: true };
 const page = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 const query = reactive<{ keyword: string; merchantStatus?: number; countryCode: string }>({ keyword: '', merchantStatus: undefined, countryCode: '' });
 
-const emptyForm = (): MerchantSaveRequest => ({
-  merchantId: '',
-  merchantName: '',
-  billingDescriptor: '',
-  merchantShortName: '',
-  merchantStatus: 1,
-  defaultLocale: 'zh-CN',
-  merchantCategoryCode: '',
-  countryCode: '',
-  regionCode: '',
-  city: '',
-  addressLine: '',
-  postalCode: '',
-  contactName: '',
-  contactEmail: '',
-  contactPhone: '',
-  settlementCurrency: 'USD',
-  timezone: 'Asia/Shanghai',
-  riskLevel: 2,
-});
-const form = reactive<MerchantSaveRequest>(emptyForm());
-const formRef = ref<FormInstance>();
-const requiredRule = (messageKey: string) => [{ required: true, message: () => t(messageKey), trigger: 'blur' }];
-const printableEnglishRule = (messageKey: string) => ({
-  pattern: /^[\x20-\x7E]+$/,
-  message: () => t(messageKey),
-  trigger: 'blur',
-});
-const formRules = computed<FormRules>(() => ({
-  merchantName: [
-    ...requiredRule('merchant.info.requiredMerchantName'),
-    printableEnglishRule('merchant.info.invalidMerchantName'),
-  ],
-  billingDescriptor: [
-    ...requiredRule('merchant.info.requiredBillingDescriptor'),
-    printableEnglishRule('merchant.info.invalidBillingDescriptor'),
-  ],
-  merchantShortName: requiredRule('merchant.info.requiredShortName'),
-  merchantCategoryCode: requiredRule('merchant.info.requiredMcc'),
-  countryCode: [{ required: true, message: () => t('merchant.info.requiredCountryCode'), trigger: 'change' }],
-  settlementCurrency: [{ required: true, message: () => t('merchant.info.requiredSettlementCurrency'), trigger: 'change' }],
-  timezone: [{ required: true, message: () => t('merchant.info.requiredTimezone'), trigger: 'change' }],
-  merchantStatus: [{ required: true, message: () => t('merchant.info.requiredStatus'), trigger: 'change' }],
-  defaultLocale: [{ required: true, message: () => t('merchant.info.requiredDefaultLocale'), trigger: 'change' }],
-  contactEmail: [
-    { required: true, message: () => t('merchant.info.requiredContactEmail'), trigger: 'blur' },
-    { type: 'email', message: () => t('merchant.info.invalidContactEmail'), trigger: 'blur' },
-  ],
-}));
 const formVisible = ref(false);
 const formMode = ref<'add' | 'edit'>('add');
-const editingId = ref<string>();
+const formMerchant = ref<MerchantInfo>();
 const detailVisible = ref(false);
 const detailMerchant = ref<MerchantInfo>();
+const profileActionLoading = ref(false);
+const documentBusyId = ref<string>();
 const materialVisible = ref(false);
 const currentMerchant = ref<MerchantInfo>();
 const material = ref<MerchantSecurityMaterial>();
@@ -638,11 +490,13 @@ const canDownloadMaterial = userStore.hasPermission('merchant:material:download'
 const canDownloadPrivateMaterial = userStore.hasPermission('merchant:material:download') && userStore.hasPermission('merchant:material:private');
 const canCopyPrivateMaterial = userStore.hasPermission('merchant:material:copy') && userStore.hasPermission('merchant:material:private');
 const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
+const canEditMerchant = userStore.hasPermission('merchant:info:edit');
+const canChangeMerchantStatus = userStore.hasPermission('merchant:info:changeStatus');
 const canViewMerchantFee = userStore.hasPermission('fee:merchant:list');
 const canViewFundAccount = userStore.hasPermission('fund:account:list');
+const canBindMerchantChannel = userStore.hasPermission('channel:mid-binding:list');
 const responsePrivateKeyAvailable = computed(() => materialSummary.value?.merchantResponsePrivateKeyAvailable === true);
 const statusChangingId = ref<string>();
-const localizedMccOptions = computed(() => formOptions.mccOptions.map(localizeMccNode));
 
 onMounted(() => {
   const linkedMerchantId = typeof route.query.merchantId === 'string'
@@ -672,22 +526,18 @@ function resetQuery() { query.keyword = ''; query.merchantStatus = undefined; qu
 async function openForm(mode: 'add' | 'edit', row?: MerchantInfo) {
   await loadFormOptions();
   formMode.value = mode;
-  const formData = await loadFormData(mode, row);
-  if (!formData) return;
-  editingId.value = mode === 'edit' ? formData.id : undefined;
-  Object.assign(form, emptyForm(), formData);
-  if (!form.billingDescriptor && form.merchantName) {
-    form.billingDescriptor = form.merchantName;
+  if (mode === 'add') {
+    formMerchant.value = undefined;
+  } else {
+    const merchant = await loadFormData(row);
+    if (!merchant) return;
+    formMerchant.value = merchant;
   }
-  selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
+  detailVisible.value = false;
   formVisible.value = true;
-  formRef.value?.clearValidate();
 }
 
-async function loadFormData(mode: 'add' | 'edit', row?: MerchantInfo): Promise<Partial<MerchantInfo> | undefined> {
-  if (mode === 'add') {
-    return {};
-  }
+async function loadFormData(row?: MerchantInfo): Promise<MerchantInfo | undefined> {
   if (!row?.id) {
     ElMessage.error(t('merchant.info.missingMerchantId'));
     return undefined;
@@ -709,15 +559,176 @@ async function openDetail(row: MerchantInfo) {
   }
 }
 
-function goToMerchantFee(merchantId: string) {
+function goToMerchantFee(merchantId?: string) {
+  if (!merchantId) return;
   detailVisible.value = false;
   void router.push({ path: '/fee/merchant', query: { merchantId } });
 }
 
-function goToFundAccount(merchantId: string) {
+function goToFundAccount(merchantId?: string) {
+  if (!merchantId) return;
   detailVisible.value = false;
   void router.push({ path: '/fund/account', query: { merchantId } });
 }
+
+function goToMerchantChannel(merchantId?: string) {
+  if (!merchantId) return;
+  detailVisible.value = false;
+  void router.push({ path: '/channel/merchant-mid-binding', query: { merchantId } });
+}
+
+async function saveMerchantProfile(payload: { request: MerchantSaveRequest; submitAfterSave: boolean }) {
+  profileActionLoading.value = true;
+  try {
+    let merchant: MerchantInfo;
+    if (formMode.value === 'add') {
+      merchant = await createMerchant(payload.request);
+      formMode.value = 'edit';
+    } else if (formMerchant.value?.id) {
+      merchant = await updateMerchant(formMerchant.value.id, payload.request);
+    } else {
+      ElMessage.error(t('merchant.info.missingMerchantId'));
+      return;
+    }
+
+    updateOpenedMerchant(merchant);
+    if (payload.submitAfterSave) {
+      if (!merchant.reviewSubmittable) {
+        ElMessage.warning(t('merchant.info.notReadyToSubmit'));
+      } else {
+        merchant = await submitMerchantReview(merchant.id);
+        updateOpenedMerchant(merchant);
+        ElMessage.success(t('merchant.info.submitReviewSuccess'));
+      }
+    } else {
+      ElMessage.success(t('merchant.info.saveDraftSuccess'));
+    }
+    await loadData();
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.saveFailed'));
+  } finally {
+    profileActionLoading.value = false;
+  }
+}
+
+async function submitCurrentMerchantReview() {
+  const merchant = detailMerchant.value || formMerchant.value;
+  if (!merchant?.id) return;
+  profileActionLoading.value = true;
+  try {
+    updateOpenedMerchant(await submitMerchantReview(merchant.id));
+    ElMessage.success(t('merchant.info.submitReviewSuccess'));
+    await loadData();
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.operationFailed'));
+  } finally {
+    profileActionLoading.value = false;
+  }
+}
+
+async function reviewCurrentMerchant(request: MerchantReviewRequest) {
+  const merchant = detailMerchant.value;
+  if (!merchant?.id) return;
+  profileActionLoading.value = true;
+  try {
+    updateOpenedMerchant(await reviewMerchant(merchant.id, request));
+    ElMessage.success(t('merchant.info.reviewSuccess'));
+    await loadData();
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('common.operationFailed'));
+  } finally {
+    profileActionLoading.value = false;
+  }
+}
+
+async function activateCurrentMerchant() {
+  const merchant = detailMerchant.value;
+  if (!merchant?.id) return;
+  try {
+    await ElMessageBox.confirm(
+      t('merchant.info.activationConfirm', { merchant: merchant.merchantName }),
+      t('common.operationConfirm'),
+      { type: 'warning' },
+    );
+    profileActionLoading.value = true;
+    updateOpenedMerchant(await activateMerchant(merchant.id));
+    ElMessage.success(t('merchant.info.activationSuccess'));
+    await loadData();
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || t('common.operationFailed'));
+    }
+  } finally {
+    profileActionLoading.value = false;
+  }
+}
+
+async function uploadCurrentMerchantDocument(payload: { documentType: string; file: File }) {
+  const merchant = currentProfileMerchant();
+  if (!merchant?.merchantId) return;
+  documentBusyId.value = 'upload';
+  try {
+    await uploadMerchantDocument(merchant.merchantId, payload.documentType, payload.file);
+    await refreshOpenedMerchant(merchant.id);
+    ElMessage.success(t('merchant.info.documentUploadSuccess'));
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('merchant.info.documentUploadFailed'));
+  } finally {
+    documentBusyId.value = undefined;
+  }
+}
+
+async function downloadCurrentMerchantDocument(document: MerchantDocument) {
+  const merchant = currentProfileMerchant();
+  if (!merchant?.merchantId) return;
+  try {
+    await downloadMerchantDocument(merchant.merchantId, document);
+  } catch (error: any) {
+    ElMessage.error(error?.message || t('merchant.info.documentDownloadFailed'));
+  }
+}
+
+async function deleteCurrentMerchantDocument(document: MerchantDocument) {
+  const merchant = currentProfileMerchant();
+  if (!merchant?.merchantId) return;
+  try {
+    await ElMessageBox.confirm(
+      t('merchant.info.documentDeleteConfirm', { filename: document.originalFilename }),
+      t('common.operationConfirm'),
+      { type: 'warning' },
+    );
+    documentBusyId.value = document.id;
+    await deleteMerchantDocument(merchant.merchantId, document.id);
+    await refreshOpenedMerchant(merchant.id);
+    ElMessage.success(t('common.deleteSuccess'));
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || t('common.deleteFailed'));
+    }
+  } finally {
+    documentBusyId.value = undefined;
+  }
+}
+
+function currentProfileMerchant() {
+  return formVisible.value ? formMerchant.value : detailMerchant.value;
+}
+
+async function refreshOpenedMerchant(id: string) {
+  const merchant = await getMerchant(id);
+  updateOpenedMerchant(merchant);
+  await loadData();
+}
+
+function updateOpenedMerchant(merchant: MerchantInfo) {
+  if (!formMerchant.value || formMerchant.value.id === merchant.id) {
+    formMerchant.value = merchant;
+  }
+  if (detailMerchant.value?.id === merchant.id) {
+    detailMerchant.value = merchant;
+  }
+}
+
 function openMaterial(row: MerchantInfo) {
   currentMerchant.value = row;
   material.value = undefined;
@@ -761,92 +772,10 @@ async function loadFormOptions() {
     formOptions.mccOptions = result.mccOptions || [];
     formOptions.countries = result.countries || [];
     formOptions.currencies = result.currencies || [];
-    selectedMccPath.value = resolveMccPath(form.merchantCategoryCode);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.loadFailed'));
   } finally {
     formOptionsLoading.value = false;
-  }
-}
-
-function handleMccChange(value: unknown) {
-  if (Array.isArray(value) && value.length > 0) {
-    form.merchantCategoryCode = String(value[value.length - 1] || '');
-    return;
-  }
-  form.merchantCategoryCode = '';
-}
-
-function resolveMccPath(mccCode?: string) {
-  if (!mccCode) return [];
-  for (const level1 of formOptions.mccOptions) {
-    for (const level2 of level1.children || []) {
-      const leaf = (level2.children || []).find(item => item.value === mccCode);
-      if (leaf) {
-        return [level1.value, level2.value, leaf.value];
-      }
-    }
-  }
-  return [];
-}
-
-function localizeMccNode(node: MerchantOptionNode): MerchantOptionNode {
-  const children = (node.children || []).map(localizeMccNode);
-  return {
-    ...node,
-    label: children.length > 0 ? optionName(node) || node.label : codeNameLabel(node.value, node),
-    children,
-  };
-}
-
-function countryOptionLabel(item: MerchantOptionItem) {
-  return codeNameLabel(item.value, item);
-}
-
-function currencyOptionLabel(item: MerchantOptionItem) {
-  const separator = isEnglishLocale() ? ', ' : '，';
-  const colon = isEnglishLocale() ? ': ' : '：';
-  return [
-    codeNameLabel(item.value, item),
-    `${t('base.currency.minorUnit')}${colon}${item.fractionDigits ?? '-'}`,
-    `${t('base.currency.minAmount')}${colon}${formatMinimumAmount(item.minimumAmount)}`,
-  ].join(separator);
-}
-
-function codeNameLabel(code: string, item: Pick<MerchantOptionItem, 'label' | 'nameCn' | 'nameEn'>) {
-  const name = optionName(item);
-  return name ? `${code}（${name}）` : item.label || code;
-}
-
-function optionName(item: Pick<MerchantOptionItem, 'nameCn' | 'nameEn'>) {
-  const preferred = isEnglishLocale() ? item.nameEn : item.nameCn;
-  return preferred || item.nameCn || item.nameEn || '';
-}
-
-function isEnglishLocale() {
-  return String(locale.value).toLowerCase().startsWith('en');
-}
-
-function formatMinimumAmount(value?: number | string) {
-  if (value === undefined || value === null || value === '') return '-';
-  return String(value);
-}
-
-async function submitForm() {
-  try {
-    const valid = await formRef.value?.validate().catch(() => false);
-    if (!valid) return;
-    if (formMode.value === 'add') await createMerchant(form);
-    else if (editingId.value) await updateMerchant(editingId.value, form);
-    else {
-      ElMessage.error(t('merchant.info.missingMerchantId'));
-      return;
-    }
-    ElMessage.success(t('common.saveSuccess'));
-    formVisible.value = false;
-    loadData();
-  } catch (error: any) {
-    ElMessage.error(error?.message || t('common.saveFailed'));
   }
 }
 
@@ -1024,6 +953,27 @@ function isMaterialActionLoading(action: 'view' | 'copy' | 'download', keyType?:
   return keyType ? materialActionLoading[materialActionKey(action, keyType)] === true : false;
 }
 
+function lifecycleText(group: 'onboarding' | 'review', status?: string) {
+  if (!status) return '-';
+  const key = `merchant.info.lifecycle.${group}.${status}`;
+  const translated = t(key);
+  return translated === key ? status : translated;
+}
+
+function onboardingStatusType(status?: string) {
+  if (status === 'ACTIVE') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PENDING_REVIEW' || status === 'SUPPLEMENT_REQUIRED') return 'warning';
+  return 'primary';
+}
+
+function reviewStatusType(status?: string) {
+  if (status === 'PASSED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PENDING' || status === 'SUPPLEMENT') return 'warning';
+  return 'info';
+}
+
 function statusText(status: number) {
   return status === 1 ? t('merchant.info.statusNormal') : status === 2 ? t('merchant.info.statusFrozen') : t('merchant.info.statusClosed');
 }
@@ -1153,110 +1103,6 @@ function businessTypeText(type?: number) {
   text-overflow: ellipsis;
 }
 
-.merchant-detail {
-  display: grid;
-  gap: 16px;
-}
-
-.merchant-detail__hero {
-  display: flex;
-  gap: 18px;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 18px 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f8fafc, #eef6ff);
-}
-
-.merchant-detail__hero span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.merchant-detail__hero h3 {
-  margin: 6px 0 4px;
-  color: #111827;
-  font-size: 20px;
-  line-height: 1.35;
-}
-
-.merchant-detail__hero p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.merchant-detail__tags {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.merchant-detail__section {
-  display: grid;
-  gap: 10px;
-}
-
-.merchant-detail__section h4 {
-  margin: 0;
-  color: #303133;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.merchant-detail__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.merchant-form-drawer :deep(.el-drawer__body) {
-  overflow: auto;
-  padding: 20px 28px 12px;
-}
-
-.merchant-form-drawer :deep(.el-drawer__footer) {
-  padding: 12px 28px 20px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.merchant-form {
-  display: grid;
-  gap: 18px;
-}
-
-.merchant-form__section {
-  padding: 16px 18px 4px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.merchant-form__section-title {
-  margin-bottom: 14px;
-  color: #303133;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.merchant-form__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  column-gap: 18px;
-}
-
-.merchant-form__full {
-  grid-column: 1 / -1;
-}
-
-.merchant-form :deep(.el-form-item) {
-  min-width: 0;
-}
-
 .material-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1270,10 +1116,6 @@ function businessTypeText(type?: number) {
 }
 
 @media (max-width: 720px) {
-  .merchant-form__grid {
-    grid-template-columns: 1fr;
-  }
-
   .material-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

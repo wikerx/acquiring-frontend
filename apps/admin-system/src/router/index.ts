@@ -2,133 +2,135 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 import type { AuthMenu } from '@acquiring/shared';
-import { VEXRA_BRAND } from '@acquiring/shared';
 import Layout from '@/layout/index.vue';
 import { useUserStore } from '@/store';
+import { updateAdminDocumentTitle } from '@/utils/document-title';
 import {
-    EXTERNAL_FRAME_ROUTE_PREFIX,
-    isDeprecatedRiskRuleMenu,
-    isExternalFrameMenu,
-    isExternalWindowMenu,
-    normalizeMenuPath,
-    resolveRuntimeMenuPath,
+  EXTERNAL_FRAME_ROUTE_PREFIX,
+  isDeprecatedRiskRuleMenu,
+  isExternalFrameMenu,
+  isExternalWindowMenu,
+  normalizeMenuPath,
+  resolveRuntimeMenuPath,
 } from '@/utils/external-menu';
 
 declare module 'vue-router' {
-    interface RouteMeta {
-        title?: string;
-        titleKey?: string;
-        icon?: string;
-        permission?: string;
-        configuredComponent?: string;
-        expectedView?: string;
-    }
+  interface RouteMeta {
+    title?: string;
+    titleKey?: string;
+    icon?: string;
+    permission?: string;
+    configuredComponent?: string;
+    expectedView?: string;
+  }
 }
 
 const viewModules = import.meta.glob('../views/**/index.vue');
 const missingView = () => import('@/views/_fallback/MissingView.vue');
 
 const legacyRedirects: Record<string, string> = {
-    '/system/department': '/system/org',
-    '/system/departments': '/system/org',
-    '/system/dicts': '/system/dict',
-    '/system/configs': '/system/config',
-    '/system/config-center': '/system/dict',
-    '/system/login-log': '/system/log',
-    '/system/login-logs': '/system/log',
-    '/system/oper-log': '/system/log',
-    '/system/oper-logs': '/system/log',
-    '/system/users': '/system/user',
-    '/system/roles': '/system/role',
-    '/system/menus': '/system/menu',
-    '/audit/login-log': '/system/log',
-    '/audit/oper-log': '/system/log',
-    '/merchant/account': '/merchant/info',
-    '/merchant/user': '/merchant/info',
-    '/merchant/role': '/merchant/info',
-    '/merchant/key': '/merchant/info',
-    '/merchant/jwt-key': '/merchant/info',
-    '/merchant/response-key': '/merchant/info',
-    '/merchant/platform-payload-key': '/merchant/info',
-    '/merchants/list': '/merchant/info',
-    '/merchants/users': '/merchant/info',
-    '/merchants/audit': '/merchant/info',
-    '/merchants/api-keys': '/merchant/info',
-    '/base/countries': '/base/country',
-    '/base/currencies': '/base/currency',
-    '/monitor/sharding': '/monitor/sharding/rules',
-    '/risk/rule/three-ds': '/risk/rule/3ds',
+  '/system/department': '/system/org',
+  '/system/departments': '/system/org',
+  '/system/dicts': '/system/dict',
+  '/system/configs': '/system/config',
+  '/system/config-center': '/system/dict',
+  '/system/login-log': '/system/log',
+  '/system/login-logs': '/system/log',
+  '/system/oper-log': '/system/log',
+  '/system/oper-logs': '/system/log',
+  '/system/users': '/system/user',
+  '/system/roles': '/system/role',
+  '/system/menus': '/system/menu',
+  '/audit/login-log': '/system/log',
+  '/audit/oper-log': '/system/log',
+  '/merchant/account': '/merchant/info',
+  '/merchant/user': '/merchant/info',
+  '/merchant/role': '/merchant/info',
+  '/merchant/key': '/merchant/info',
+  '/merchant/jwt-key': '/merchant/info',
+  '/merchant/response-key': '/merchant/info',
+  '/merchant/platform-payload-key': '/merchant/info',
+  '/merchants/list': '/merchant/info',
+  '/merchants/users': '/merchant/info',
+  '/merchants/audit': '/merchant/info',
+  '/merchants/api-keys': '/merchant/info',
+  '/base/countries': '/base/country',
+  '/base/currencies': '/base/currency',
+  '/monitor/sharding': '/monitor/sharding/rules',
+  '/risk/rule/three-ds': '/risk/rule/3ds',
 };
 
-const redirectRoutes: RouteRecordRaw[] = Object.entries(legacyRedirects).map(([path, redirect]) => ({
+const redirectRoutes: RouteRecordRaw[] = Object.entries(legacyRedirects).map(
+  ([path, redirect]) => ({
     path,
     redirect,
-}));
+  }),
+);
 
 export const routes: RouteRecordRaw[] = [
-    {
-        path: '/login',
-        name: 'Login',
-        component: () => import('@/views/login/index.vue'),
-        meta: { title: '登录', titleKey: 'Login' },
-    },
-    {
-        path: '/403',
-        name: 'Forbidden',
-        component: () => import('@/views/error/Forbidden.vue'),
-        meta: { title: '403', titleKey: 'Forbidden' },
-    },
-    ...redirectRoutes,
-    {
-        path: '/',
-        name: 'AdminRoot',
-        component: Layout,
-        redirect: '/dashboard',
-        children: [
-            {
-                path: 'dashboard',
-                name: 'Dashboard',
-                component: () => import('@/views/dashboard/index.vue'),
-                meta: { title: '工作台', titleKey: 'Dashboard', icon: 'House' },
-            },
-            {
-                path: 'profile',
-                name: 'Profile',
-                component: () => import('@/views/profile/index.vue'),
-                meta: { title: '个人中心', titleKey: 'Profile', icon: 'User' },
-            },
-            {
-                path: 'settlement/batches',
-                name: 'SettlementBatchCompatibility',
-                component: () => import('@/views/transaction/settlement/index.vue'),
-                meta: { title: '正式结算批次', permission: 'settlement:batch:list' },
-            },
-            {
-                path: 'system/dict-data',
-                name: 'SystemDictData',
-                component: () => import('@/views/system/dict-data/index.vue'),
-                meta: { title: '字典项', titleKey: 'SystemDictData', permission: 'system:dictData:list' },
-            },
-        ],
-    },
-    {
-        path: '/:pathMatch(.*)*',
-        name: 'RouteMissingShell',
-        component: Layout,
-        children: [
-            {
-                path: '',
-                name: 'RouteMissing',
-                component: missingView,
-                meta: { title: '页面未实现', titleKey: 'RouteMissing' },
-            },
-        ],
-    },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/login/index.vue'),
+    meta: { title: '登录', titleKey: 'Login' },
+  },
+  {
+    path: '/403',
+    name: 'Forbidden',
+    component: () => import('@/views/error/Forbidden.vue'),
+    meta: { title: '403', titleKey: 'Forbidden' },
+  },
+  ...redirectRoutes,
+  {
+    path: '/',
+    name: 'AdminRoot',
+    component: Layout,
+    redirect: '/dashboard',
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/dashboard/index.vue'),
+        meta: { title: '工作台', titleKey: 'Dashboard', icon: 'House' },
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('@/views/profile/index.vue'),
+        meta: { title: '个人中心', titleKey: 'Profile', icon: 'User' },
+      },
+      {
+        path: 'settlement/batches',
+        name: 'SettlementBatchCompatibility',
+        component: () => import('@/views/transaction/settlement/index.vue'),
+        meta: { title: '正式结算批次', permission: 'settlement:batch:list' },
+      },
+      {
+        path: 'system/dict-data',
+        name: 'SystemDictData',
+        component: () => import('@/views/system/dict-data/index.vue'),
+        meta: { title: '字典项', titleKey: 'SystemDictData', permission: 'system:dictData:list' },
+      },
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'RouteMissingShell',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'RouteMissing',
+        component: missingView,
+        meta: { title: '页面未实现', titleKey: 'RouteMissing' },
+      },
+    ],
+  },
 ];
 
 export const router = createRouter({
-    history: createWebHistory(),
-    routes,
+  history: createWebHistory(),
+  routes,
 });
 
 let dynamicRouteSignature = '';
@@ -136,157 +138,160 @@ const dynamicRouteRemovers: Array<() => void> = [];
 const dynamicRouteNames = new Set<string>();
 
 router.beforeEach(async (to) => {
-    const user = useUserStore();
-    const defaultTitle = VEXRA_BRAND.systems.admin.title;
-    const titleSuffix = VEXRA_BRAND.systems.admin.name;
-    const rawTitle = typeof to.meta.title === 'string' ? to.meta.title : '';
-    document.title = rawTitle ? `${rawTitle} - ${titleSuffix}` : defaultTitle;
-    if (to.path !== '/login') {
-        try {
-            await user.hydrateSession();
-        } catch {
-            user.reset();
-            return { path: '/login', query: { redirect: to.fullPath } };
-        }
-        syncDynamicRoutes(user.menus);
+  const user = useUserStore();
+  updateAdminDocumentTitle(to.meta);
+  if (to.path !== '/login') {
+    try {
+      await user.hydrateSession();
+    } catch {
+      user.reset();
+      return { path: '/login', query: { redirect: to.fullPath } };
     }
-    if (to.path !== '/login' && !user.token) {
-        return { path: '/login', query: { redirect: to.fullPath } };
-    }
-    if (to.path === '/login' && user.token) {
-        return '/dashboard';
-    }
-    if (isMissingRoute(to.name) && hasResolvedRoute(to.fullPath)) {
-        return { path: to.path, query: to.query, hash: to.hash, replace: true };
-    }
-    if (to.meta.permission && !user.hasPermission(to.meta.permission)) {
-        return '/403';
-    }
-    return true;
+    syncDynamicRoutes(user.menus);
+  }
+  if (to.path !== '/login' && !user.token) {
+    return { path: '/login', query: { redirect: to.fullPath } };
+  }
+  if (to.path === '/login' && user.token) {
+    return '/dashboard';
+  }
+  if (isMissingRoute(to.name) && hasResolvedRoute(to.fullPath)) {
+    return { path: to.path, query: to.query, hash: to.hash, replace: true };
+  }
+  if (to.meta.permission && !user.hasPermission(to.meta.permission)) {
+    return '/403';
+  }
+  return true;
 });
 
 export function syncDynamicRoutes(menus: AuthMenu[]) {
-    const signature = JSON.stringify(flattenRouteMenus(menus).map((menu) => [
-        resolveRuntimeMenuPath(menu),
-        menu.componentPath,
-        menu.permissionCode,
-        menu.icon || 'House',
-        menu.menuType,
-        menu.externalLink,
-    ]));
-    if (signature === dynamicRouteSignature && hasRegisteredDynamicRoutes()) {
-        return;
+  const signature = JSON.stringify(
+    flattenRouteMenus(menus).map((menu) => [
+      resolveRuntimeMenuPath(menu),
+      menu.componentPath,
+      menu.permissionCode,
+      menu.icon || 'House',
+      menu.menuType,
+      menu.externalLink,
+    ]),
+  );
+  if (signature === dynamicRouteSignature && hasRegisteredDynamicRoutes()) {
+    return;
+  }
+  resetDynamicRoutes();
+  flattenRouteMenus(menus).forEach((menu) => {
+    const runtimePath = resolveRuntimeMenuPath(menu);
+    if (!runtimePath || runtimePath === '/dashboard' || isExternalWindowMenu(menu)) {
+      return;
     }
-    resetDynamicRoutes();
-    flattenRouteMenus(menus).forEach((menu) => {
-        const runtimePath = resolveRuntimeMenuPath(menu);
-        if (!runtimePath || runtimePath === '/dashboard' || isExternalWindowMenu(menu)) {
-            return;
-        }
-        if (legacyRedirects[runtimePath]) {
-            return;
-        }
-        dynamicRouteRemovers.push(
-            router.addRoute('AdminRoot', {
-                path: runtimePath.replace(/^\//, ''),
-                name: menu.menuCode,
-                component: resolveMenuComponent(menu),
-                meta: {
-                    title: menu.menuName,
-                    titleKey: menu.menuCode,
-                    icon: menu.icon || 'House',
-                    permission: menu.permissionCode,
-                    configuredComponent: menu.componentPath,
-                    expectedView: isExternalFrameMenu(menu)
-                        ? 'src/views/_external/ExternalFrameView.vue'
-                        : toExpectedViewPath(normalizeMenuPath(menu.routePath) || '', menu.componentPath),
-                },
-            }),
-        );
-        dynamicRouteNames.add(menu.menuCode);
-    });
-    dynamicRouteSignature = signature;
+    if (legacyRedirects[runtimePath]) {
+      return;
+    }
+    dynamicRouteRemovers.push(
+      router.addRoute('AdminRoot', {
+        path: runtimePath.replace(/^\//, ''),
+        name: menu.menuCode,
+        component: resolveMenuComponent(menu),
+        meta: {
+          title: menu.menuName,
+          titleKey: menu.menuCode,
+          icon: menu.icon || 'House',
+          permission: menu.permissionCode,
+          configuredComponent: menu.componentPath,
+          expectedView: isExternalFrameMenu(menu)
+            ? 'src/views/_external/ExternalFrameView.vue'
+            : toExpectedViewPath(normalizeMenuPath(menu.routePath) || '', menu.componentPath),
+        },
+      }),
+    );
+    dynamicRouteNames.add(menu.menuCode);
+  });
+  dynamicRouteSignature = signature;
 }
 
 export function resetDynamicRoutes() {
-    dynamicRouteRemovers.splice(0).forEach((removeRoute) => removeRoute());
-    dynamicRouteNames.clear();
-    dynamicRouteSignature = '';
+  dynamicRouteRemovers.splice(0).forEach((removeRoute) => removeRoute());
+  dynamicRouteNames.clear();
+  dynamicRouteSignature = '';
 }
 
 function flattenRouteMenus(menus: AuthMenu[]) {
-    const result: AuthMenu[] = [];
-    const visit = (items: AuthMenu[]) => {
-        items.forEach((item) => {
-            if (item.visible === 0 || isDeprecatedRiskRuleMenu(item)) {
-                return;
-            }
-            if ((item.menuType === 'MENU' || item.menuType === 'LINK') && resolveRuntimeMenuPath(item)) {
-                result.push(item);
-            }
-            visit(item.children || []);
-        });
-    };
-    visit(menus);
-    return result;
+  const result: AuthMenu[] = [];
+  const visit = (items: AuthMenu[]) => {
+    items.forEach((item) => {
+      if (item.visible === 0 || isDeprecatedRiskRuleMenu(item)) {
+        return;
+      }
+      if ((item.menuType === 'MENU' || item.menuType === 'LINK') && resolveRuntimeMenuPath(item)) {
+        result.push(item);
+      }
+      visit(item.children || []);
+    });
+  };
+  visit(menus);
+  return result;
 }
 
 function resolveMenuComponent(menu: AuthMenu): Component {
-    if (isExternalFrameMenu(menu)) {
-        return () => import('@/views/_external/ExternalFrameView.vue');
-    }
-    return resolveViewComponent(normalizeMenuPath(menu.routePath) || '', menu.componentPath);
+  if (isExternalFrameMenu(menu)) {
+    return () => import('@/views/_external/ExternalFrameView.vue');
+  }
+  return resolveViewComponent(normalizeMenuPath(menu.routePath) || '', menu.componentPath);
 }
 
 function resolveViewComponent(routePath: string, componentConfig?: string): Component {
-    const candidates = createViewCandidates(routePath, componentConfig);
-    const viewPath = candidates.find((candidate) => viewModules[candidate]);
-    if (viewPath) {
-        return viewModules[viewPath] as Component;
-    }
+  const candidates = createViewCandidates(routePath, componentConfig);
+  const viewPath = candidates.find((candidate) => viewModules[candidate]);
+  if (viewPath) {
+    return viewModules[viewPath] as Component;
+  }
 
-    console.warn('[admin-system] Missing view for route', {
-        routePath,
-        componentConfig,
-        expectedView: toExpectedViewPath(routePath, componentConfig),
-    });
-    return missingView;
+  console.warn('[admin-system] Missing view for route', {
+    routePath,
+    componentConfig,
+    expectedView: toExpectedViewPath(routePath, componentConfig),
+  });
+  return missingView;
 }
 
 function createViewCandidates(routePath: string, componentConfig?: string) {
-    const normalizedRoute = normalizeComponentPath(routePath);
-    const normalizedComponent = normalizeComponentPath(componentConfig || routePath);
-    const values = [
-        normalizedComponent,
-        normalizedComponent.replace(/\/index$/, ''),
-        normalizedRoute,
-        normalizedRoute.replace(/\/index$/, ''),
-    ].filter(Boolean);
+  const normalizedRoute = normalizeComponentPath(routePath);
+  const normalizedComponent = normalizeComponentPath(componentConfig || routePath);
+  const values = [
+    normalizedComponent,
+    normalizedComponent.replace(/\/index$/, ''),
+    normalizedRoute,
+    normalizedRoute.replace(/\/index$/, ''),
+  ].filter(Boolean);
 
-    return Array.from(new Set(values)).map((value) => `../views/${value}/index.vue`);
+  return Array.from(new Set(values)).map((value) => `../views/${value}/index.vue`);
 }
 
 function normalizeComponentPath(value: string) {
-    return value.replace(/^\/+/, '').replace(/^views\//, '').replace(/\.vue$/, '').replace(/\/index$/, '');
+  return value
+    .replace(/^\/+/, '')
+    .replace(/^views\//, '')
+    .replace(/\.vue$/, '')
+    .replace(/\/index$/, '');
 }
 
 function toExpectedViewPath(routePath: string, componentConfig?: string) {
-    const normalized = normalizeComponentPath(componentConfig || routePath);
-    return `src/views/${normalized}/index.vue`;
+  const normalized = normalizeComponentPath(componentConfig || routePath);
+  return `src/views/${normalized}/index.vue`;
 }
 
 function isMissingRoute(routeName: unknown) {
-    return routeName === 'RouteMissing' || routeName === 'RouteMissingShell';
+  return routeName === 'RouteMissing' || routeName === 'RouteMissingShell';
 }
 
 function hasResolvedRoute(fullPath: string) {
-    return !isMissingRoute(router.resolve(fullPath).name);
+  return !isMissingRoute(router.resolve(fullPath).name);
 }
 
 function hasRegisteredDynamicRoutes() {
-    return Array.from(dynamicRouteNames).some((routeName) => router.hasRoute(routeName));
+  return Array.from(dynamicRouteNames).some((routeName) => router.hasRoute(routeName));
 }
 
 export function isExternalFrameRoute(path?: string) {
-    return !!path && path.startsWith(EXTERNAL_FRAME_ROUTE_PREFIX);
+  return !!path && path.startsWith(EXTERNAL_FRAME_ROUTE_PREFIX);
 }

@@ -66,25 +66,25 @@ const drawerSize = computed(() => {
 </script>
 
 <style scoped>
-.common-detail-drawer :deep(.el-drawer__header) {
+:global(.common-detail-drawer.el-drawer .el-drawer__header) {
     min-height: 56px;
     margin-bottom: 0;
     padding: 18px 24px;
     border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-.common-detail-drawer :deep(.el-drawer__title) {
+:global(.common-detail-drawer.el-drawer .el-drawer__title) {
     color: var(--el-text-color-primary);
     font-size: 16px;
     font-weight: 600;
 }
 
-.common-detail-drawer :deep(.el-drawer__body) {
+:global(.common-detail-drawer.el-drawer .el-drawer__body) {
     overflow: auto;
     padding: 20px 24px;
 }
 
-.common-detail-drawer :deep(.el-drawer__footer) {
+:global(.common-detail-drawer.el-drawer .el-drawer__footer) {
     padding: 12px 24px 18px;
     border-top: 1px solid var(--el-border-color-lighter);
 }
@@ -94,8 +94,20 @@ const drawerSize = computed(() => {
 }
 
 @media (max-width: 768px) {
-    .common-detail-drawer :deep(.el-drawer) {
+    :global(.common-detail-drawer.el-drawer) {
         width: 100vw !important;
+    }
+
+    :global(.common-detail-drawer.el-drawer .el-drawer__header) {
+        padding: 16px;
+    }
+
+    :global(.common-detail-drawer.el-drawer .el-drawer__body) {
+        padding: 16px;
+    }
+
+    :global(.common-detail-drawer.el-drawer .el-drawer__footer) {
+        padding: 10px 16px 14px;
     }
 }
 </style>

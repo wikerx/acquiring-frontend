@@ -6,20 +6,85 @@ import { downloadBlob } from '@/utils/download';
 export interface MerchantInfo {
     id: string;
     merchantId: string;
+    applicationNo?: string;
+    onboardingSource?: string;
+    onboardingStatus?: string;
+    reviewStatus?: string;
+    activationStatus?: string;
     merchantName: string;
     billingDescriptor?: string;
     merchantShortName?: string;
+    merchantType?: string;
     merchantStatus: number;
     defaultLocale: 'zh-CN' | 'en-US';
     merchantCategoryCode: string;
     countryCode: string;
+    operatingCountry?: string;
+    businessType?: string;
+    industryCategory?: string;
+    merchantDescription?: string;
+    registrationNumber?: string;
+    legalEntityType?: string;
+    incorporationDate?: string;
+    incorporationCountry?: string;
+    registeredState?: string;
+    registeredCity?: string;
+    registeredPostcode?: string;
+    registeredAddress?: string;
+    operatingSameAsRegistered?: boolean;
+    taxId?: string;
+    companySize?: string;
+    employeeCount?: number;
     regionCode?: string;
     city?: string;
     addressLine?: string;
     postalCode?: string;
     contactName?: string;
+    contactTitle?: string;
+    phoneCountryCode?: string;
     contactEmail?: string;
     contactPhone?: string;
+    alternateEmail?: string;
+    financeContactName?: string;
+    financeContactEmail?: string;
+    technicalContactName?: string;
+    technicalContactEmail?: string;
+    businessModel?: string;
+    salesChannels?: string[];
+    productsServices?: string;
+    targetMarkets?: string[];
+    customerType?: string;
+    transactionCurrencies?: string[];
+    expectedMonthlyVolume?: number;
+    expectedVolumeCurrency?: string;
+    averageTicket?: number;
+    maxTicket?: number;
+    expectedMonthlyCount?: number;
+    expectedRefundRate?: number;
+    expectedChargebackRate?: number;
+    recurringPaymentFlag?: boolean;
+    presaleFlag?: boolean;
+    fulfillmentDays?: number;
+    digitalGoodsFlag?: boolean;
+    restrictedBusinessFlag?: boolean;
+    expectedGoLiveDate?: string;
+    websiteUrl?: string;
+    appStoreUrl?: string;
+    googlePlayUrl?: string;
+    otherSalesUrl?: string;
+    websiteLanguages?: string[];
+    websiteLiveFlag?: boolean;
+    privacyPolicyUrl?: string;
+    refundPolicyUrl?: string;
+    termsUrl?: string;
+    shippingPolicyUrl?: string;
+    relatedPersons?: MerchantRelatedPerson[];
+    documents?: MerchantDocument[];
+    reviewRecords?: MerchantReviewRecord[];
+    reviewSubmittable?: boolean;
+    activationReady?: boolean;
+    /** Stable readiness issue codes returned by the backend for locale-specific rendering. */
+    readinessIssues?: string[];
     settlementCurrency: string;
     timezone: string;
     riskLevel: number;
@@ -32,6 +97,54 @@ export interface MerchantInfo {
     fundAccountNo?: string;
     fundAccountStatus?: string;
     currentFeeVersionNo?: number;
+}
+
+/** 商户法人、董事、UBO 与授权人资料；证件号仅在新增或换证时传明文。 */
+export interface MerchantRelatedPerson {
+    id?: string;
+    fullName: string;
+    personRoles: string[];
+    nationality?: string;
+    dateOfBirth?: string;
+    residenceCountry?: string;
+    residentialAddress?: string;
+    idType?: string;
+    idNumber?: string;
+    idNumberMasked?: string;
+    idExpiryDate?: string;
+    ownershipPercentage?: number;
+    controllerFlag?: boolean;
+    pepFlag?: boolean;
+    email?: string;
+    phone?: string;
+}
+
+/** 商户合规资料元数据；对象存储位置不会暴露给前端。 */
+export interface MerchantDocument {
+    id: string;
+    documentType: string;
+    originalFilename: string;
+    contentType: string;
+    fileSize: number;
+    sha256?: string;
+    documentStatus?: string;
+    gmtCreate?: string;
+}
+
+/** 商户开户审核轨迹。 */
+export interface MerchantReviewRecord {
+    id: string;
+    reviewAction: string;
+    fromStatus?: string;
+    toStatus?: string;
+    reviewComment?: string;
+    operatorName?: string;
+    gmtCreate?: string;
+}
+
+export interface MerchantReviewRequest {
+    decision: 'PASS' | 'SUPPLEMENT' | 'REJECT';
+    comment?: string;
 }
 
 export interface MerchantKeySummary {
@@ -150,7 +263,28 @@ export interface MerchantQuery extends PageQuery {
     settlementCurrency?: string;
 }
 
-export type MerchantSaveRequest = Omit<MerchantInfo, 'id' | 'merchantId' | 'gmtCreate' | 'gmtModified' | 'jwtKey' | 'platformPayloadKey' | 'responseKey'> & {
+export type MerchantSaveRequest = Omit<MerchantInfo,
+    | 'id'
+    | 'merchantId'
+    | 'applicationNo'
+    | 'onboardingSource'
+    | 'onboardingStatus'
+    | 'reviewStatus'
+    | 'activationStatus'
+    | 'documents'
+    | 'reviewRecords'
+    | 'reviewSubmittable'
+    | 'activationReady'
+    | 'readinessIssues'
+    | 'gmtCreate'
+    | 'gmtModified'
+    | 'jwtKey'
+    | 'platformPayloadKey'
+    | 'responseKey'
+    | 'loginInitialized'
+    | 'fundAccountNo'
+    | 'fundAccountStatus'
+    | 'currentFeeVersionNo'> & {
     merchantId?: string;
 };
 
@@ -204,6 +338,47 @@ export async function updateMerchant(id: string, requestBody: MerchantSaveReques
 
 export async function changeMerchantStatus(id: string, merchantStatus: number) {
     const result = await http.put<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/status`, { merchantStatus });
+    return unwrapResult(result.data);
+}
+
+export async function submitMerchantReview(id: string) {
+    const result = await http.post<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/submit-review`);
+    return unwrapResult(result.data);
+}
+
+export async function reviewMerchant(id: string, requestBody: MerchantReviewRequest) {
+    const result = await http.post<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/review`, requestBody);
+    return unwrapResult(result.data);
+}
+
+export async function activateMerchant(id: string) {
+    const result = await http.post<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/activate`);
+    return unwrapResult(result.data);
+}
+
+export async function uploadMerchantDocument(merchantId: string, documentType: string, file: File) {
+    const formData = new FormData();
+    formData.append('documentType', documentType);
+    formData.append('file', file);
+    const result = await http.post<CommonResult<MerchantDocument>>(
+        `/admin/merchants/${encodeURIComponent(merchantId)}/documents`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function downloadMerchantDocument(merchantId: string, document: MerchantDocument) {
+    await downloadBlob(
+        `/admin/merchants/${encodeURIComponent(merchantId)}/documents/${document.id}/download`,
+        { fileName: document.originalFilename || `${document.documentType}.bin` },
+    );
+}
+
+export async function deleteMerchantDocument(merchantId: string, documentId: string) {
+    const result = await http.delete<CommonResult<void>>(
+        `/admin/merchants/${encodeURIComponent(merchantId)}/documents/${documentId}`,
+    );
     return unwrapResult(result.data);
 }
 
