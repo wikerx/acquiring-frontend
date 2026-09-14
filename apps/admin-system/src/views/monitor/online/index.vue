@@ -1,11 +1,6 @@
 <template>
     <div class="app-container">
-        <div class="page-header">
-            <div>
-                <h1>{{ $t('monitor.online.title') }}</h1>
-                
-            </div>
-        </div>
+        <MonitorPageHeader :title="t('monitor.online.title')" :description="t('monitor.online.description')" />
 
         <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
             <el-form-item :label="$t('monitor.online.loginAddress')" align="center" prop="loginIp">
@@ -29,12 +24,10 @@
 
         <StandardTable table-key="monitor-online" v-loading="loading" :data="rows" row-key="sessionId" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
+            <el-table-column prop="sessionId" :label="$t('monitor.online.sessionId')" min-width="220" align="center" show-overflow-tooltip />
             <el-table-column prop="userName" :label="$t('monitor.online.userName')" min-width="120" align="center" />
-            <el-table-column prop="deptName" :label="$t('monitor.online.deptName')" min-width="140" align="center" />
             <el-table-column prop="loginIp" :label="$t('monitor.online.host')" min-width="140" align="center" />
-            <el-table-column prop="loginLocation" :label="$t('monitor.online.loginLocation')" min-width="140" align="center" />
-            <el-table-column prop="browser" :label="$t('monitor.online.browser')" min-width="120" align="center" />
-            <el-table-column prop="os" :label="$t('monitor.online.os')" min-width="140" align="center" />
+            <el-table-column prop="userAgent" :label="$t('monitor.online.userAgent')" min-width="280" show-overflow-tooltip />
             <el-table-column :label="$t('monitor.online.loginTime')" min-width="160" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.loginTime" /></template>
             </el-table-column>
@@ -62,8 +55,13 @@ import { Search, Refresh, Delete } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { getOnlineUsers, forceLogout, type OnlineUser } from '@/api/monitor/online';
 import { useI18n } from 'vue-i18n';
+
+/**
+ * 在线会话监控主页面：分页查询受权限保护的会话摘要，并对单个或批量强制下线执行确认。
+ */
 const { t } = useI18n();
 
 const showSearch = ref(true);
@@ -88,9 +86,10 @@ async function loadData() {
         });
         rows.value = result.records;
         total.value = result.total;
-    } catch {
+    } catch (error) {
         rows.value = [];
         total.value = 0;
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     } finally {
         loading.value = false;
     }

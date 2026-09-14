@@ -1,5 +1,7 @@
 <template>
     <div class="app-container">
+        <MonitorPageHeader :title="t('monitor.jobLog.title')" :description="t('monitor.jobLog.description')" />
+
         <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="92px">
             <el-form-item :label="$t('monitor.jobLog.jobCode')" prop="jobCode">
                 <el-input v-model="query.jobCode" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
@@ -121,8 +123,12 @@ import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { cleanJobRunLogs, deleteJobRunLog, exportJobRunLogs, searchJobRunLogs, type JobRunLogRow } from '@/api/monitor/jobLog';
 
+/**
+ * 调度日志主页面：按任务、触发方式和执行状态检索运行记录，支持从任务页钻取、查看失败上下文及受控清理。
+ */
 const { t } = useI18n();
 const route = useRoute();
 const loading = ref(false);

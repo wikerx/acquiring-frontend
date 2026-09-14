@@ -94,6 +94,10 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { deleteCacheKey, getCacheKeys, getCacheValue, type CacheKeyRow } from '@/api/monitor/cache';
 import { useI18n } from 'vue-i18n';
+
+/**
+ * Redis Key 管理主页面：通过后端有界扫描分页查看缓存摘要，并在权限和二次确认保护下读取或删除指定 Key。
+ */
 const { t } = useI18n();
 
 const showSearch = ref(true);

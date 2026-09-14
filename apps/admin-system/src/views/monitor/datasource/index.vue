@@ -1,5 +1,9 @@
 <template>
-    <div class="app-container">
+    <div class="app-container monitor-datasource-page">
+        <MonitorPageHeader :title="t('monitor.datasource.title')" :description="t('monitor.datasource.description')">
+            <el-button :icon="Refresh" size="small" :loading="loading" @click="loadData">{{ t('common.refresh') }}</el-button>
+        </MonitorPageHeader>
+
         <el-form :inline="true" :model="query" size="small" class="search-form" label-width="90px">
             <el-form-item :label="$t('monitor.datasource.keyword')">
                 <el-input
@@ -53,15 +57,50 @@
             style="margin-bottom: 12px"
         />
 
-        <el-row :gutter="16" class="mb16" v-loading="loading">
-            <el-col v-for="card in overviewCards" :key="card.key" :xs="24" :sm="12" :md="6" style="margin-bottom: 16px">
-                <el-card shadow="never" class="metric-card">
-                    <div class="metric-card__label">{{ card.label }}</div>
-                    <div class="metric-card__value">{{ card.value }}</div>
-                    <div class="metric-card__desc">{{ card.description }}</div>
-                </el-card>
-            </el-col>
-        </el-row>
+        <MonitorMetricGrid :items="overviewCards" />
+
+        <MonitorCapabilityAlert :capability="poolCapability" :title="t('monitor.workbench.datasource.poolCapabilityTitle')" />
+        <MonitorCapabilityAlert :capability="sqlCapability" :title="t('monitor.workbench.datasource.sqlCapabilityTitle')" />
+
+        <section class="datasource-console-band" aria-labelledby="datasource-console-title">
+            <div class="datasource-console-band__content">
+                <div class="datasource-console-band__heading">
+                    <span id="datasource-console-title">{{ t('monitor.datasource.druidConsoleTitle') }}</span>
+                    <el-tag size="small" :type="consoleStatusType">{{ consoleStatusLabel }}</el-tag>
+                </div>
+                <p>{{ t('monitor.datasource.druidConsoleDescription') }}</p>
+                <div class="datasource-console-band__meta">
+                    <span>{{ t('monitor.datasource.localPoolTypes') }}</span>
+                    <el-space wrap>
+                        <el-tag
+                            v-for="poolType in consoleAccess.localPoolTypes || []"
+                            :key="poolType"
+                            size="small"
+                            type="info"
+                            effect="plain"
+                        >
+                            {{ poolType }}
+                        </el-tag>
+                        <span v-if="!(consoleAccess.localPoolTypes || []).length">-</span>
+                    </el-space>
+                </div>
+                <div class="datasource-console-band__reason">{{ consoleAccess.reason || t('monitor.datasource.druidConsoleNotConfiguredHint') }}</div>
+            </div>
+            <el-button
+                type="primary"
+                :icon="LinkIcon"
+                :disabled="!consoleConfigured"
+                @click="openDruidConsole"
+            >
+                {{ t('monitor.datasource.openDruidConsole') }}
+            </el-button>
+        </section>
+
+        <MonitorChartGrid page-definition-id="datasource" class="monitor-datasource-page__charts">
+            <MonitorChartPanel definition-id="datasource.pool" :dataset="poolDataset" :state="poolState" @retry="loadData" />
+            <MonitorChartPanel definition-id="datasource.sqlLatency" :dataset="latencyDataset" :state="sqlState" @retry="loadData" />
+            <MonitorChartPanel definition-id="datasource.slowSqlTop" :dataset="slowSqlDataset" :state="sqlState" @retry="loadData" />
+        </MonitorChartGrid>
 
         <el-card shadow="never" class="mb16">
             <template #header>
@@ -118,10 +157,10 @@
                 <el-table-column prop="minimumIdle" :label="$t('monitor.datasource.minimumIdle')" width="110" align="center" />
                 <el-table-column :label="$t('monitor.datasource.relatedShardingTables')" min-width="220">
                     <template #default="{ row }">
-                        <el-space wrap>
-                            <el-tag v-for="table in row.relatedShardingTables || []" :key="table" size="small">{{ table }}</el-tag>
-                            <span v-if="!(row.relatedShardingTables || []).length">-</span>
-                        </el-space>
+                        <el-tag v-if="(row.relatedShardingTables || []).length" size="small" type="info" effect="plain">
+                            {{ t('monitor.datasource.relatedShardingTableCountSummary', { count: row.relatedShardingTables.length }) }}
+                        </el-tag>
+                        <span v-else>-</span>
                     </template>
                 </el-table-column>
                 <el-table-column :label="$t('common.operation')" width="90" align="center" fixed="right">
@@ -198,21 +237,38 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, Refresh, Download, View } from '@element-plus/icons-vue';
+import { Search, Refresh, Download, View, Link as LinkIcon } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
+import { MonitorChartGrid, MonitorChartPanel } from '@/components/MonitorChart';
+import { MonitorCapabilityAlert, MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import {
     exportDatasourceSnapshot,
+    getDatasourceMetrics,
     getDatasourceSnapshot,
     type DataSourceMonitorDataSourceItem,
+    type DataSourceMonitorConsoleAccess,
     type DataSourceMonitorGroupItem,
     type DataSourceMonitorResponse,
 } from '@/api/monitor/datasource';
+import type { DataSourceMetricsResponse, ProviderCapability } from '@/api/monitor/workbench';
+import {
+    createDatasourceLatencyDataset,
+    createDatasourcePoolDataset,
+    createDatasourceSlowSqlDataset,
+    hasDatasetValues,
+    monitorLoadState,
+} from '@/api/monitor/workbenchAdapters';
+import { openExternalMenu } from '@/utils/external-menu';
 
+/**
+ * 数据源监控主页面：展示 Admin 当前 JVM 的动态数据源、Hikari 指标和分表摘要，
+ * 并按后端配置提供目标 JVM 的 Druid 控制台入口。
+ */
 const { t } = useI18n();
 const router = useRouter();
 const loading = ref(false);
@@ -221,15 +277,62 @@ const detailVisible = ref(false);
 const activeDataSource = ref<DataSourceMonitorDataSourceItem | null>(null);
 const page = ref(1);
 const pageSize = ref(10);
+const metrics = ref<DataSourceMetricsResponse | null>(null);
+const metricsError = ref('');
 const query = reactive({
     keyword: '',
     groupName: '',
     reachable: '',
 });
+const unavailableCapability = (provider: string): ProviderCapability => ({
+    provider,
+    status: 'UNAVAILABLE',
+    reason: metricsError.value || t('monitor.workbench.datasource.metricsUnavailable'),
+});
+const poolCapability = computed<ProviderCapability>(() => metrics.value?.poolMetricsCapability || unavailableCapability('HIKARI_POOL_METRICS'));
+const sqlCapability = computed<ProviderCapability>(() => metrics.value?.sqlMetricsCapability || unavailableCapability('MYSQL_PERFORMANCE_SCHEMA'));
+const poolDataset = computed(() => createDatasourcePoolDataset(metrics.value?.poolTrend || [], t));
+const latencyDataset = computed(() => createDatasourceLatencyDataset(metrics.value?.latencyTrend || [], t));
+const slowSqlDataset = computed(() => createDatasourceSlowSqlDataset(metrics.value?.slowSqlTop || []));
+const poolState = computed(() => monitorLoadState({
+    loading: loading.value,
+    error: metricsError.value,
+    hasResponse: metrics.value !== null,
+    hasData: hasDatasetValues(poolDataset.value),
+    lastUpdatedAt: metrics.value?.generatedAt,
+    emptyDescription: poolCapability.value.reason,
+}));
+const sqlState = computed(() => monitorLoadState({
+    loading: loading.value,
+    error: metricsError.value,
+    hasResponse: metrics.value !== null,
+    hasData: hasDatasetValues(latencyDataset.value) || slowSqlDataset.value.values.length > 0,
+    lastUpdatedAt: metrics.value?.generatedAt,
+    emptyDescription: sqlCapability.value.reason,
+}));
 
 onMounted(() => loadData());
 
 const warnings = computed(() => snapshot.value.warnings || []);
+const consoleAccess = computed<DataSourceMonitorConsoleAccess>(() => snapshot.value.consoleAccess || {});
+const consoleConfigured = computed(() => consoleAccess.value.status === 'CONFIGURED' && Boolean(consoleAccess.value.url));
+const consoleStatusType = computed<'success' | 'danger' | 'info'>(() => {
+    if (consoleAccess.value.status === 'CONFIGURED') {
+        return 'success';
+    }
+    if (consoleAccess.value.status === 'MISCONFIGURED') {
+        return 'danger';
+    }
+    return 'info';
+});
+const consoleStatusLabel = computed(() => {
+    const labels: Record<string, string> = {
+        CONFIGURED: t('monitor.datasource.consoleStatusConfigured'),
+        NOT_CONFIGURED: t('monitor.datasource.consoleStatusNotConfigured'),
+        MISCONFIGURED: t('monitor.datasource.consoleStatusMisconfigured'),
+    };
+    return labels[consoleAccess.value.status || ''] || t('monitor.datasource.consoleStatusNotConfigured');
+});
 const groups = computed<DataSourceMonitorGroupItem[]>(() => snapshot.value.groups || []);
 const groupOptions = computed(() => groups.value.map((item) => ({ label: item.groupName, value: item.groupName })));
 const shardingSummaryCards = computed(() => {
@@ -303,23 +406,36 @@ const pagedDataSources = computed(() => {
     return filteredDataSources.value.slice(start, start + pageSize.value);
 });
 
+/** 同时刷新数据源快照和分钟级指标；任一请求失败时保留另一部分可用数据。 */
 async function loadData() {
     loading.value = true;
-    try {
-        snapshot.value = await getDatasourceSnapshot();
-    } catch (error) {
-        console.error(error);
+    metricsError.value = '';
+    const [snapshotResult, metricsResult] = await Promise.allSettled([
+        getDatasourceSnapshot(),
+        getDatasourceMetrics(),
+    ]);
+    if (snapshotResult.status === 'fulfilled') {
+        snapshot.value = snapshotResult.value;
+    } else {
         snapshot.value = {};
-        ElMessage.error(t('common.loadFailed'));
-    } finally {
-        loading.value = false;
+        ElMessage.error(snapshotResult.reason instanceof Error ? snapshotResult.reason.message : t('common.loadFailed'));
     }
+    if (metricsResult.status === 'fulfilled') {
+        metrics.value = metricsResult.value;
+    } else {
+        metricsError.value = metricsResult.reason instanceof Error
+            ? metricsResult.reason.message
+            : t('monitor.workbench.datasource.metricsUnavailable');
+    }
+    loading.value = false;
 }
 
+/** 应用本地筛选并回到第一页。 */
 function applyFilter() {
     page.value = 1;
 }
 
+/** 清空数据源列表筛选条件。 */
 function handleReset() {
     query.keyword = '';
     query.groupName = '';
@@ -327,6 +443,7 @@ function handleReset() {
     page.value = 1;
 }
 
+/** 导出当前运行时数据源和分表配置快照，不导出业务表数据。 */
 async function handleExport() {
     try {
         await exportDatasourceSnapshot();
@@ -339,23 +456,36 @@ async function handleExport() {
     }
 }
 
+/** 打开单个物理数据源详情。 */
 function openDetail(row: DataSourceMonitorDataSourceItem) {
     activeDataSource.value = row;
     detailVisible.value = true;
 }
 
+/** 进入独立分表治理页面。 */
 function goShardingManagement() {
     router.push('/monitor/sharding');
 }
 
+/** 在新窗口打开后端已校验的 Druid 控制台地址。 */
+function openDruidConsole() {
+    if (openExternalMenu(consoleAccess.value.url)) {
+        return;
+    }
+    ElMessage.warning(t('monitor.datasource.druidConsoleNotConfiguredHint'));
+}
+
+/** 标记连接池停机或探测失败的数据源行。 */
 function dataSourceRowClassName({ row }: { row: DataSourceMonitorDataSourceItem }) {
     return row.running === false || row.reachable === false ? 'datasource-row--warning' : '';
 }
 
+/** 使用统一国际化文案格式化布尔配置。 */
 function formatBoolean(value?: boolean) {
     return value ? t('common.yes') : t('common.no');
 }
 
+/** 将路由策略完整类名压缩为页面摘要使用的短类名。 */
 function shortClassName(value?: string) {
     if (!value) {
         return '-';
@@ -364,6 +494,7 @@ function shortClassName(value?: string) {
     return tokens[tokens.length - 1] || value;
 }
 
+/** 将后端数据源角色映射为本地化文案。 */
 function formatRole(role?: string) {
     const mapping: Record<string, string> = {
         PRIMARY: t('monitor.datasource.rolePrimary'),
@@ -373,6 +504,7 @@ function formatRole(role?: string) {
     return mapping[String(role || '')] || String(role || '-');
 }
 
+/** 根据数据源角色选择 Element Plus 语义状态。 */
 function roleTagType(role?: string) {
     if (role === 'PRIMARY') {
         return 'success';
@@ -389,28 +521,52 @@ function roleTagType(role?: string) {
     margin-bottom: 16px;
 }
 
-.metric-card {
-    min-height: 118px;
+.monitor-datasource-page__charts { margin-bottom: 16px; }
+
+.datasource-console-band {
+    align-items: center;
+    background: var(--el-fill-color-extra-light);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 8px;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 16px 18px;
 }
 
-.metric-card__label {
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    margin-bottom: 8px;
+.datasource-console-band__content {
+    min-width: 0;
 }
 
-.metric-card__value {
+.datasource-console-band__heading {
+    align-items: center;
     color: var(--el-text-color-primary);
-    font-size: 28px;
+    display: flex;
+    font-size: 15px;
     font-weight: 600;
-    line-height: 1.2;
+    gap: 10px;
 }
 
-.metric-card__desc {
+.datasource-console-band p {
+    color: var(--el-text-color-regular);
+    line-height: 20px;
+    margin: 6px 0 10px;
+}
+
+.datasource-console-band__meta {
+    align-items: center;
+    color: var(--el-text-color-secondary);
+    display: flex;
+    font-size: 13px;
+    gap: 10px;
+}
+
+.datasource-console-band__reason {
     color: var(--el-text-color-secondary);
     font-size: 12px;
-    margin-top: 10px;
-    word-break: break-all;
+    line-height: 18px;
+    margin-top: 8px;
 }
 
 .card-header {
@@ -448,5 +604,17 @@ function roleTagType(role?: string) {
 
 :deep(.datasource-row--warning) {
     --el-table-tr-bg-color: var(--el-color-warning-light-9);
+}
+
+@media (max-width: 768px) {
+    .datasource-console-band {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .datasource-console-band .el-button {
+        width: 100%;
+    }
 }
 </style>

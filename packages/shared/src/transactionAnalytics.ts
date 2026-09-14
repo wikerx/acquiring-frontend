@@ -212,6 +212,7 @@ export interface AnalyticsChartClick {
     name: string;
     seriesName: string;
     value?: unknown;
+    dataIndex?: number;
 }
 
 export interface TransactionAnalyticsChartLabels {

@@ -1,16 +1,19 @@
 <template>
   <div class="app-container security-intercept-page">
+    <MonitorPageHeader :title="t('security.intercept.title')" :description="t('security.intercept.description')">
+      <MonitorTimeRangeSelector :model-value="timeRange" @update:model-value="handleRangeChange" />
+    </MonitorPageHeader>
+
     <TransactionSearchPanel
       :visible="showSearch"
       :model="query"
-      :title="$t('security.intercept.title')"
-      :description="$t('security.intercept.description')"
+      :title="$t('security.intercept.filtersTitle')"
+      :description="$t('security.intercept.filtersDescription')"
       :expand-text="$t('transaction.search.expand')"
       :collapse-text="$t('transaction.search.collapse')"
       :search-text="$t('common.search')"
       :reset-text="$t('common.reset')"
       label-width="96px"
-      inline-time
       @search="handleSearch"
       @reset="resetQuery"
     >
@@ -47,11 +50,6 @@
       <el-form-item :label="$t('security.intercept.requestPath')" prop="requestPath">
         <el-input v-model.trim="query.requestPath" :placeholder="$t('security.intercept.requestPathPlaceholder')" clearable @keyup.enter="handleSearch" />
       </el-form-item>
-      <template #time>
-        <el-form-item :label="$t('security.intercept.eventTime')" class="transaction-time-form-item">
-          <TransactionTimeRangeFilter v-model="timeRange" v-model:preset="quickPreset" :time-zone="displayTimeZone" :timezone-options="timezoneOptions" default-preset="today" @update:time-zone="query.queryTimeZone = $event" />
-        </el-form-item>
-      </template>
     </TransactionSearchPanel>
 
     <el-row :gutter="10" class="mb8">
@@ -63,9 +61,17 @@
       </el-col>
     </el-row>
 
+    <MonitorMetricGrid :items="summaryCards" />
+
+    <MonitorChartGrid page-definition-id="security-intercept" class="security-intercept-page__charts">
+      <MonitorChartPanel definition-id="security.interceptTrend" :dataset="trendDataset" :state="trendState" @retry="loadData" />
+      <MonitorChartPanel definition-id="security.typeTop" :dataset="typeDataset" :state="typeState" @retry="loadData" @item-click="filterEventType" />
+      <MonitorChartPanel definition-id="security.merchantTop" :dataset="merchantDataset" :state="merchantState" @retry="loadData" @item-click="filterMerchant" />
+    </MonitorChartGrid>
+
     <StandardTable table-key="security-intercept-event-main" v-loading="loading" :data="rows" row-key="id" size="small" class="security-intercept-page__table">
       <el-table-column :label="$t('security.intercept.eventTime')" min-width="172" align="center" fixed>
-        <template #default="{ row }"><BaseDateTime :value="row.eventTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+        <template #default="{ row }"><BaseDateTime :value="row.eventTime" source-time-zone="Asia/Shanghai" :display-time-zone="timeRange.timezone" /></template>
       </el-table-column>
       <el-table-column :label="$t('security.intercept.riskLevel')" width="112" align="center">
         <template #default="{ row }">
@@ -111,7 +117,7 @@
     <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('security.intercept.detailTitle')" size="lg" :loading="detailLoading">
       <el-descriptions v-if="detail" :column="2" border size="small">
         <el-descriptions-item :label="$t('security.intercept.eventNo')" :span="2">{{ detail.eventNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('security.intercept.eventTime')"><BaseDateTime :value="detail.eventTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+        <el-descriptions-item :label="$t('security.intercept.eventTime')"><BaseDateTime :value="detail.eventTime" source-time-zone="Asia/Shanghai" :display-time-zone="timeRange.timezone" /></el-descriptions-item>
         <el-descriptions-item :label="$t('security.intercept.riskLevel')">
           <el-tag size="small" :type="riskTagType(detail.riskLevel)" effect="plain">{{ riskLabel(detail.riskLevel) }}</el-tag>
         </el-descriptions-item>
@@ -134,7 +140,7 @@
           <el-tag size="small" :type="processTagType(detail.processStatus)" effect="plain">{{ processLabel(detail.processStatus) }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item :label="$t('security.intercept.processedBy')">{{ detail.processedBy || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('security.intercept.processedTime')"><BaseDateTime :value="detail.processedTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></el-descriptions-item>
+        <el-descriptions-item :label="$t('security.intercept.processedTime')"><BaseDateTime :value="detail.processedTime" source-time-zone="Asia/Shanghai" :display-time-zone="timeRange.timezone" /></el-descriptions-item>
         <el-descriptions-item :label="$t('security.intercept.processRemark')" :span="2">{{ detail.processRemark || '-' }}</el-descriptions-item>
       </el-descriptions>
     </CommonDetailDrawer>
@@ -173,7 +179,29 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
+import {
+  MonitorChartGrid,
+  MonitorChartPanel,
+  MonitorTimeRangeSelector,
+  type MonitorChartClickEvent,
+  type MonitorTimeRangeValue,
+} from '@/components/MonitorChart';
+import { MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
+import {
+  getSecurityMonitorStatistics,
+  type SecurityStatisticsResponse,
+  type TimeRangeQuery,
+} from '@/api/monitor/workbench';
+import {
+  createSecurityMerchantDataset,
+  createSecurityTrendDataset,
+  createSecurityTypeDataset,
+  createMonitorTimeRange,
+  formatMetricValue,
+  hasDatasetValues,
+  monitorLoadState,
+  toMonitorTimeRangeQuery,
+} from '@/api/monitor/workbenchAdapters';
 import {
   exportSecurityInterceptEvents,
   getSecurityInterceptEvent,
@@ -184,27 +212,23 @@ import {
 } from '@/api/security/intercept-event';
 import MerchantRemoteSelect from '../../transaction/components/MerchantRemoteSelect.vue';
 import TransactionSearchPanel from '../../transaction/components/TransactionSearchPanel.vue';
-import TransactionTimeRangeFilter from '../../transaction/components/TransactionTimeRangeFilter.vue';
-import {
-  DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
-  defaultTransactionTodayRange,
-  ensureTransactionTimezoneOptions,
-  resolveTransactionQueryRange,
-  splitDateRange,
-} from '../../transaction/shared';
 
+/**
+ * 安全拦截事件主页面：复用既有事件分页与处置能力，并使用统一 MonitorChart 展示脱敏聚合统计。
+ */
 const { t, locale } = useI18n();
 const markFormRef = ref<FormInstance>();
 const showSearch = ref(true);
 const loading = ref(false);
+const statisticsLoading = ref(false);
+const statisticsError = ref('');
 const exporting = ref(false);
 const rows = ref<SecurityInterceptEventRow[]>([]);
+const statistics = ref<SecurityStatisticsResponse>();
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
-const timeRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
-const quickPreset = ref('today');
-const timezoneOptions = ref<SelectOption[]>([]);
+const timeRange = ref(createMonitorTimeRange());
 const query = reactive<SecurityInterceptEventQuery>({
   merchantId: '',
   eventType: '',
@@ -214,7 +238,6 @@ const query = reactive<SecurityInterceptEventQuery>({
   clientIp: '',
   traceId: '',
   requestPath: '',
-  queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
 const detailVisible = ref(false);
 const detailLoading = ref(false);
@@ -231,35 +254,57 @@ const riskLevelOptions = computed(() => [
   { value: 'CRITICAL', label: t('security.intercept.riskCritical') },
 ]);
 
-const displayTimeZone = computed(() => query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
+const trendDataset = computed(() => createSecurityTrendDataset(statistics.value?.trend || [], t));
+const typeDataset = computed(() => createSecurityTypeDataset(statistics.value?.typeTop || []));
+const merchantDataset = computed(() => createSecurityMerchantDataset(statistics.value?.merchantTop || []));
+const trendState = computed(() => statisticsState(hasDatasetValues(trendDataset.value)));
+const typeState = computed(() => statisticsState(typeDataset.value.values.length > 0));
+const merchantState = computed(() => statisticsState(merchantDataset.value.values.length > 0));
+const summaryCards = computed(() => (statistics.value?.summaries || []).map((item) => ({
+  key: item.key,
+  label: t(`monitor.workbench.metric.${item.key}`, item.label || item.key),
+  value: formatMetricValue(item, String(locale.value)),
+  status: item.status,
+  description: item.description,
+})));
 
 const markRules: FormRules = {
   processStatus: [{ required: true, message: t('common.pleaseSelect'), trigger: 'change' }],
 };
 
-onMounted(async () => {
-  await loadDictionaries();
-  await loadData();
-});
-
-async function loadDictionaries() {
-  try {
-    const options = await loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []);
-    timezoneOptions.value = ensureTransactionTimezoneOptions(options);
-  } catch {
-    timezoneOptions.value = ensureTransactionTimezoneOptions([]);
-  }
-}
+onMounted(() => loadData());
 
 async function loadData() {
   loading.value = true;
-  try {
-    const result = await searchSecurityInterceptEvents(buildQuery());
-    rows.value = result.records || [];
-    total.value = result.total || 0;
-  } finally {
-    loading.value = false;
+  statisticsLoading.value = true;
+  statisticsError.value = '';
+  const listQuery = buildQuery();
+  const statisticsQuery: TimeRangeQuery = {
+    beginTime: listQuery.beginTime,
+    endTime: listQuery.endTime,
+    queryTimeZone: listQuery.queryTimeZone,
+  };
+  const [listResult, statisticsResult] = await Promise.allSettled([
+    searchSecurityInterceptEvents(listQuery),
+    getSecurityMonitorStatistics(statisticsQuery),
+  ]);
+  if (listResult.status === 'fulfilled') {
+    rows.value = listResult.value.records || [];
+    total.value = listResult.value.total || 0;
+  } else {
+    rows.value = [];
+    total.value = 0;
+    ElMessage.error(listResult.reason instanceof Error ? listResult.reason.message : t('common.loadFailed'));
   }
+  if (statisticsResult.status === 'fulfilled') {
+    statistics.value = statisticsResult.value;
+  } else {
+    statisticsError.value = statisticsResult.reason instanceof Error
+      ? statisticsResult.reason.message
+      : t('common.loadFailed');
+  }
+  loading.value = false;
+  statisticsLoading.value = false;
 }
 
 function handleSearch() {
@@ -276,9 +321,12 @@ function resetQuery() {
   query.clientIp = '';
   query.traceId = '';
   query.requestPath = '';
-  query.queryTimeZone = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
-  quickPreset.value = 'today';
-  timeRange.value = defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
+  timeRange.value = createMonitorTimeRange();
+  handleSearch();
+}
+
+function handleRangeChange(value: MonitorTimeRangeValue) {
+  timeRange.value = value;
   handleSearch();
 }
 
@@ -343,15 +391,13 @@ async function submitMark() {
 }
 
 function buildQuery(withPage = true): SecurityInterceptEventQuery {
-  const range = splitDateRange(currentTimeRange());
   const result: SecurityInterceptEventQuery = {};
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && String(value).trim() !== '') {
       result[key as keyof SecurityInterceptEventQuery] = value as never;
     }
   });
-  result.queryTimeZone = query.queryTimeZone || DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
-  Object.assign(result, range);
+  Object.assign(result, toMonitorTimeRangeQuery(timeRange.value));
   if (withPage) {
     result.pageNo = page.value;
     result.pageSize = pageSize.value;
@@ -359,15 +405,33 @@ function buildQuery(withPage = true): SecurityInterceptEventQuery {
   return result;
 }
 
-function currentTimeRange() {
-  timeRange.value = resolveTransactionQueryRange(timeRange.value, quickPreset.value, displayTimeZone.value);
-  return timeRange.value;
-}
-
 function replaceRow(updated: SecurityInterceptEventRow) {
   const index = rows.value.findIndex((item) => item.id === updated.id);
   if (index >= 0) {
     rows.value.splice(index, 1, updated);
+  }
+}
+
+function statisticsState(hasData: boolean) {
+  return monitorLoadState({
+    loading: statisticsLoading.value,
+    error: statisticsError.value,
+    hasResponse: Boolean(statistics.value),
+    hasData,
+  });
+}
+
+function filterEventType(event: MonitorChartClickEvent) {
+  if (event.dimensionKey) {
+    query.eventType = event.dimensionKey;
+    handleSearch();
+  }
+}
+
+function filterMerchant(event: MonitorChartClickEvent) {
+  if (event.dimensionKey) {
+    query.merchantId = event.dimensionKey;
+    handleSearch();
   }
 }
 
@@ -468,6 +532,10 @@ function formatSummary(value?: string) {
 .security-intercept-page__table {
   border-radius: 6px;
   overflow: hidden;
+}
+
+.security-intercept-page__charts {
+  margin-bottom: 16px;
 }
 
 .security-intercept-page__table :deep(.el-table__header-wrapper th) {
