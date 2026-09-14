@@ -34,6 +34,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+
+/**
+ * 数据监控占位页面：仅声明尚未接入的数据源、SQL 和数据库指标，不生成会被误认为真实采样值的模拟数据。
+ */
 const { t } = useI18n();
 
 const cards = ref([

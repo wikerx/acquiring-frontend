@@ -99,7 +99,10 @@ export function normalizeMenuPath(path?: string): string | undefined {
 }
 
 /**
- * 提取可用于 iframe 或新窗口的监控地址。
+ * 提取可用于新窗口的监控地址。
+ *
+ * <p>外链菜单来自后台受控配置，允许开发、测试和生产环境访问 HTTP/HTTPS、私网及回环地址；
+ * 仍拒绝非 HTTP(S) 协议、URL 用户信息和反斜杠歧义写法。</p>
  *
  * @param routePath 菜单配置中的路由地址
  * @returns 可用地址，非法地址返回 undefined
@@ -116,10 +119,7 @@ export function resolveExternalUrl(routePath?: string): string | undefined {
     if (!url) {
         return undefined;
     }
-    if (url.protocol === 'https:' || isDevelopmentLoopbackHttp(url)) {
-        return url.toString();
-    }
-    return undefined;
+    return url.toString();
 }
 
 /**

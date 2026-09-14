@@ -127,6 +127,9 @@ import TransactionSearchPanel from '../components/TransactionSearchPanel.vue';
 import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter.vue';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensureTransactionTimezoneOptions, resolveTransactionQueryRange, splitDateRange } from '../shared';
 
+/**
+ * 商户通知记录主页面：按交易分片时间查询投递任务和尝试明细，并仅对仍可重试的失败任务开放人工重试。
+ */
 const { t, locale } = useI18n();
 const showSearch = ref(true);
 const loading = ref(false);
@@ -233,8 +236,8 @@ function recordText(row: TransactionRecord, field: string) {
 
 function canRetryCallback(row: TransactionRecord) {
     const status = recordText(row, 'notifyStatus').toUpperCase();
-    const retryableStatus = ['SUCCESS', 'FAILED', 'CLOSED'].includes(status)
-        || (status === 'INIT' && Boolean(recordText(row, 'nextRetryTime')));
+    const retryableStatus = ['SUCCESS', 'CLOSED'].includes(status)
+        || (status === 'FAILED' && !recordText(row, 'nextRetryTime'));
     return retryableStatus
         && Boolean(recordText(row, 'transactionId') && recordText(row, 'transactionDateTime'));
 }

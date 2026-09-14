@@ -94,6 +94,9 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getShardingCreateLog, searchShardingCreateLogs, type ShardingTableCreateLogRow } from '@/api/monitor/sharding';
 
+/**
+ * 分表建表日志页面：按批次和执行模式追踪预检或建表结果，保留失败数量、结构差异和操作人审计上下文。
+ */
 const { t } = useI18n();
 const loading = ref(false);
 const showSearch = ref(true);

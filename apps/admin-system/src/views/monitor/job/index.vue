@@ -1,5 +1,7 @@
 <template>
-    <div class="app-container">
+    <div class="app-container monitor-job-page">
+        <MonitorPageHeader :title="t('monitor.job.title')" :description="t('monitor.job.description')" />
+
         <el-form :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="82px">
             <el-form-item :label="$t('monitor.job.jobCode')" prop="jobCode">
                 <el-input v-model="query.jobCode" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
@@ -36,6 +38,11 @@
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </el-col>
         </el-row>
+
+        <MonitorCapabilityAlert :capability="trendCapability" :title="t('monitor.workbench.job.trendCapabilityTitle')" />
+        <MonitorChartGrid page-definition-id="job" class="monitor-job-page__chart">
+            <MonitorChartPanel definition-id="job.resultTrend" :dataset="trendDataset" :state="trendState" />
+        </MonitorChartGrid>
 
         <StandardTable table-key="monitor-job" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
@@ -248,6 +255,8 @@ import CronExpressionGenerator from '@/components/CronExpressionGenerator/index.
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { MonitorChartGrid, MonitorChartPanel } from '@/components/MonitorChart';
+import { MonitorCapabilityAlert, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import {
     changeJobStatus,
     createJob,
@@ -260,7 +269,12 @@ import {
     type JobTaskRow,
     type JobTaskSaveRequest,
 } from '@/api/monitor/job';
+import type { ProviderCapability } from '@/api/monitor/workbench';
+import { createEmptyJobTrendDataset, monitorLoadState } from '@/api/monitor/workbenchAdapters';
 
+/**
+ * 调度任务主页面：维护任务定义和启停状态，展示受控执行趋势，并通过确认流程触发单次运行或查看运行日志。
+ */
 const { t } = useI18n();
 const router = useRouter();
 
@@ -277,6 +291,18 @@ const query = reactive({
     jobGroup: '',
     status: '',
 });
+const trendCapability = computed<ProviderCapability>(() => ({
+    provider: 'JOB_EXECUTION_HISTORY_METRICS',
+    status: 'NOT_CONFIGURED',
+    reason: t('monitor.workbench.job.trendNotConfigured'),
+}));
+const trendDataset = computed(() => createEmptyJobTrendDataset(t));
+const trendState = computed(() => monitorLoadState({
+    loading: false,
+    hasResponse: true,
+    hasData: false,
+    emptyDescription: trendCapability.value.reason,
+}));
 
 const formRef = ref<FormInstance>();
 const dialogVisible = ref(false);
@@ -615,3 +641,7 @@ function formatSchedulerMode(mode: string) {
     return mode === 'DISTRIBUTED' ? t('monitor.job.schedulerModeDistributed') : t('monitor.job.schedulerModeStandalone');
 }
 </script>
+
+<style scoped>
+.monitor-job-page__chart { margin-bottom: 16px; }
+</style>

@@ -154,6 +154,9 @@ import {
     type ShardingTablePreCreateResult,
 } from '@/api/monitor/sharding';
 
+/**
+ * 分表物理表治理页面：核对规则、节点注册和表结构状态，并将预检、建表执行及发布阻断结果完整呈现给运维人员。
+ */
 const { t } = useI18n();
 const loading = ref(false);
 const showSearch = ref(true);

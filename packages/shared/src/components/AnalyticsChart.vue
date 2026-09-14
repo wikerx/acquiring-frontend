@@ -16,6 +16,7 @@ import {
     DataZoomComponent,
     GridComponent,
     LegendComponent,
+    MarkLineComponent,
     TitleComponent,
     TimelineComponent,
     TooltipComponent,
@@ -31,12 +32,16 @@ use([
     GridComponent,
     LegendComponent,
     LineChart,
+    MarkLineComponent,
     PieChart,
     TitleComponent,
     TimelineComponent,
     TooltipComponent,
 ]);
 
+/**
+ * 共享统计图主组件负责 ECharts 实例生命周期、响应式尺寸、加载和空状态，业务页面仅提供图表配置。
+ */
 const props = withDefaults(defineProps<{
     option: EChartsCoreOption;
     loading?: boolean;
@@ -53,7 +58,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-    chartClick: [payload: { name: string; seriesName: string; value?: unknown }];
+    chartClick: [payload: { name: string; seriesName: string; value?: unknown; dataIndex?: number }];
 }>();
 
 const chartHost = ref<HTMLDivElement>();
@@ -62,16 +67,17 @@ let chart: ECharts | undefined;
 let resizeObserver: ResizeObserver | undefined;
 
 /**
- * 共享统计图主组件负责 ECharts 实例生命周期、响应式尺寸、加载和空状态，业务页面仅提供图表配置。
+ * 创建或更新 ECharts 实例，并同步动画偏好、加载遮罩和点击事件映射。
  */
 function renderChart() {
-    if (!chartHost.value) return;
+    if (!chartHost.value || chartHost.value.clientWidth <= 0 || chartHost.value.clientHeight <= 0) return;
     if (!chart) {
         chart = init(chartHost.value, undefined, { renderer: 'canvas' });
         chart.on('click', (params) => emit('chartClick', {
             name: String(params.name ?? ''),
             seriesName: String(params.seriesName ?? ''),
             value: params.value,
+            dataIndex: typeof params.dataIndex === 'number' ? params.dataIndex : undefined,
         }));
     }
     chart.setOption({ animation: !reducedMotion.value, ...props.option }, { notMerge: true });
@@ -81,9 +87,12 @@ function renderChart() {
 
 onMounted(async () => {
     await nextTick();
-    renderChart();
-    resizeObserver = new ResizeObserver(() => chart?.resize());
+    resizeObserver = new ResizeObserver(() => {
+        if (chart) chart.resize();
+        else renderChart();
+    });
     if (chartHost.value) resizeObserver.observe(chartHost.value);
+    renderChart();
 });
 
 watch(() => props.option, renderChart, { deep: true });

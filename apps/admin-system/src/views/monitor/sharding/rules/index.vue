@@ -83,6 +83,9 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { getShardingRule, listShardingRules, type ShardingRuleRow } from '@/api/monitor/sharding';
 
+/**
+ * 分表规则只读页面：展示逻辑表到季度物理节点的配置、版本和注册状态，详情数据仍以服务端治理快照为准。
+ */
 const { t } = useI18n();
 const loading = ref(false);
 const rows = ref<ShardingRuleRow[]>([]);

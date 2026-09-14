@@ -986,6 +986,7 @@ export async function exportMerchantNotifications(data: MerchantNotificationQuer
 export async function retryMerchantNotification(data: MerchantNotificationRetryRequest) {
     const result = await http.post<CommonResult<string>>('/admin/transactions/merchant-notifications/retry', {
         ...data,
+        requestId: data.requestId || globalThis.crypto.randomUUID(),
         transactionDateTime: normalizeTransactionShardTime(data.transactionDateTime),
     });
     return unwrapResult(result.data);

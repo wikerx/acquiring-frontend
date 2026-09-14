@@ -78,6 +78,16 @@ try {
         resolveExternalUrl('https://unlisted.example.com/dashboard'),
         'https://unlisted.example.com/dashboard',
     );
+    assert.equal(
+        resolveExternalUrl('http://192.168.1.10:9090/druid/index.html'),
+        'http://192.168.1.10:9090/druid/index.html',
+    );
+    assert.equal(
+        resolveExternalUrl('http://127.0.0.1:8001/druid/index.html'),
+        'http://127.0.0.1:8001/druid/index.html',
+    );
+    assert.equal(resolveExternalUrl('javascript:alert(1)'), undefined);
+    assert.equal(resolveExternalUrl('https://user:password@monitor.example.com'), undefined);
 
     console.log('External iframe Origin policy: all assertions passed.');
 } finally {

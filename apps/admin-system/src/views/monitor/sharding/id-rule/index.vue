@@ -41,6 +41,9 @@ import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import { getShardingIdRule, type ShardingIdRule } from '@/api/monitor/sharding';
 
+/**
+ * 分表主键规则页面：只读展示当前季度的编号前缀、序列边界和安全区间，避免运维人员误改线上编号规则。
+ */
 const { t } = useI18n();
 const loading = ref(false);
 const data = ref<ShardingIdRule>({});
