@@ -180,7 +180,11 @@
                 <el-option :label="t('merchant.info.riskHigh')" :value="3" />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.merchantDescription')" class="form-grid__full">
+            <el-form-item
+              :label="t('merchant.info.merchantDescription')"
+              prop="merchantDescription"
+              class="form-grid__full"
+            >
               <el-input
                 v-model.trim="form.merchantDescription"
                 type="textarea"
@@ -204,10 +208,10 @@
             <span class="form-section__step-index">02</span>
           </header>
           <div class="form-grid">
-            <el-form-item :label="t('merchant.info.registrationNumber')"
+            <el-form-item :label="t('merchant.info.registrationNumber')" prop="registrationNumber"
               ><el-input v-model.trim="form.registrationNumber"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.legalEntityType')">
+            <el-form-item :label="t('merchant.info.legalEntityType')" prop="legalEntityType">
               <el-select v-model="form.legalEntityType" clearable style="width: 100%">
                 <el-option
                   v-for="item in legalEntityOptions"
@@ -217,7 +221,7 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.incorporationDate')">
+            <el-form-item :label="t('merchant.info.incorporationDate')" prop="incorporationDate">
               <el-date-picker
                 v-model="form.incorporationDate"
                 type="date"
@@ -225,7 +229,10 @@
                 style="width: 100%"
               />
             </el-form-item>
-            <el-form-item :label="t('merchant.info.incorporationCountry')">
+            <el-form-item
+              :label="t('merchant.info.incorporationCountry')"
+              prop="incorporationCountry"
+            >
               <el-select
                 v-model="form.incorporationCountry"
                 filterable
@@ -243,7 +250,7 @@
             <el-form-item :label="t('merchant.info.registeredState')"
               ><el-input v-model.trim="form.registeredState"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.registeredCity')"
+            <el-form-item :label="t('merchant.info.registeredCity')" prop="registeredCity"
               ><el-input v-model.trim="form.registeredCity"
             /></el-form-item>
             <el-form-item :label="t('merchant.info.registeredPostcode')"
@@ -252,7 +259,11 @@
             <el-form-item :label="t('merchant.info.taxId')"
               ><el-input v-model.trim="form.taxId" show-password
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.registeredAddress')" class="form-grid__full">
+            <el-form-item
+              :label="t('merchant.info.registeredAddress')"
+              prop="registeredAddress"
+              class="form-grid__full"
+            >
               <el-input v-model.trim="form.registeredAddress" type="textarea" :rows="2" />
             </el-form-item>
             <el-form-item
@@ -265,7 +276,7 @@
               </el-radio-group>
             </el-form-item>
             <template v-if="form.operatingSameAsRegistered !== true">
-              <el-form-item :label="t('merchant.info.operatingCountry')">
+              <el-form-item :label="t('merchant.info.operatingCountry')" prop="operatingCountry">
                 <el-select v-model="form.operatingCountry" filterable clearable style="width: 100%">
                   <el-option
                     v-for="item in formOptions.countries"
@@ -327,11 +338,11 @@
             <el-form-item :label="t('merchant.info.contactTitle')"
               ><el-input v-model.trim="form.contactTitle"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.phoneCountryCode')"
-              ><el-input v-model.trim="form.phoneCountryCode" placeholder="+86"
-            /></el-form-item>
-            <el-form-item :label="t('merchant.info.contactPhone')"
-              ><el-input v-model.trim="form.contactPhone"
+            <el-form-item :label="t('merchant.info.contactPhone')" prop="contactPhone"
+              ><el-input
+                v-model.trim="form.contactPhone"
+                placeholder="+14085550100"
+                @blur="normalizeContactPhone"
             /></el-form-item>
             <el-form-item :label="t('merchant.info.contactEmail')" prop="contactEmail"
               ><el-input v-model.trim="form.contactEmail"
@@ -376,10 +387,17 @@
                 }}</el-button>
               </div>
               <div class="form-grid">
-                <el-form-item :label="t('merchant.info.fullName')"
+                <el-form-item
+                  :label="t('merchant.info.fullName')"
+                  :prop="`relatedPersons.${index}.fullName`"
+                  :rules="[requiredFieldRule('merchant.info.fullName')]"
                   ><el-input v-model.trim="person.fullName"
                 /></el-form-item>
-                <el-form-item :label="t('merchant.info.personRoles')">
+                <el-form-item
+                  :label="t('merchant.info.personRoles')"
+                  :prop="`relatedPersons.${index}.personRoles`"
+                  :rules="[requiredArrayRule('merchant.info.personRoles')]"
+                >
                   <el-select
                     v-model="person.personRoles"
                     multiple
@@ -423,7 +441,11 @@
                     />
                   </el-select>
                 </el-form-item>
-                <el-form-item :label="t('merchant.info.idNumber')">
+                <el-form-item
+                  :label="t('merchant.info.idNumber')"
+                  :prop="`relatedPersons.${index}.idNumber`"
+                  :rules="relatedPersonIdRules(person)"
+                >
                   <el-input
                     v-model.trim="person.idNumber"
                     show-password
@@ -479,7 +501,7 @@
             <span class="form-section__step-index">04</span>
           </header>
           <div class="form-grid">
-            <el-form-item :label="t('merchant.info.businessModel')">
+            <el-form-item :label="t('merchant.info.businessModel')" prop="businessModel">
               <el-select v-model="form.businessModel" clearable style="width: 100%">
                 <el-option
                   v-for="item in businessModelOptions"
@@ -489,7 +511,7 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.customerType')">
+            <el-form-item :label="t('merchant.info.customerType')" prop="customerType">
               <el-select v-model="form.customerType" clearable style="width: 100%">
                 <el-option
                   v-for="item in customerTypeOptions"
@@ -499,14 +521,22 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.salesChannels')" class="form-grid__full">
+            <el-form-item
+              :label="t('merchant.info.salesChannels')"
+              prop="salesChannels"
+              class="form-grid__full"
+            >
               <el-checkbox-group v-model="form.salesChannels">
                 <el-checkbox v-for="item in salesChannelOptions" :key="item" :value="item">{{
                   optionText('salesChannel', item)
                 }}</el-checkbox>
               </el-checkbox-group>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.productsServices')" class="form-grid__full">
+            <el-form-item
+              :label="t('merchant.info.productsServices')"
+              prop="productsServices"
+              class="form-grid__full"
+            >
               <el-input
                 v-model.trim="form.productsServices"
                 type="textarea"
@@ -515,7 +545,7 @@
                 show-word-limit
               />
             </el-form-item>
-            <el-form-item :label="t('merchant.info.targetMarkets')">
+            <el-form-item :label="t('merchant.info.targetMarkets')" prop="targetMarkets">
               <el-select
                 v-model="form.targetMarkets"
                 multiple
@@ -531,7 +561,10 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.transactionCurrencies')">
+            <el-form-item
+              :label="t('merchant.info.transactionCurrencies')"
+              prop="transactionCurrencies"
+            >
               <el-select
                 v-model="form.transactionCurrencies"
                 multiple
@@ -547,12 +580,17 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.expectedMonthlyVolume')"
+            <el-form-item
+              :label="t('merchant.info.expectedMonthlyVolume')"
+              prop="expectedMonthlyVolume"
               ><amount-input
                 v-model="form.expectedMonthlyVolume"
                 :currency="form.expectedVolumeCurrency"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.expectedVolumeCurrency')">
+            <el-form-item
+              :label="t('merchant.info.expectedVolumeCurrency')"
+              prop="expectedVolumeCurrency"
+            >
               <el-select
                 v-model="form.expectedVolumeCurrency"
                 filterable
@@ -567,7 +605,7 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item :label="t('merchant.info.averageTicket')"
+            <el-form-item :label="t('merchant.info.averageTicket')" prop="averageTicket"
               ><amount-input v-model="form.averageTicket" :currency="form.expectedVolumeCurrency"
             /></el-form-item>
             <el-form-item :label="t('merchant.info.maxTicket')"
@@ -593,26 +631,36 @@
             <el-form-item :label="t('merchant.info.expectedChargebackRate')"
               ><percent-input v-model="form.expectedChargebackRate"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.recurringPaymentFlag')"
-              ><el-switch
-                :model-value="form.recurringPaymentFlag ?? false"
-                @update:model-value="form.recurringPaymentFlag = Boolean($event)"
-            /></el-form-item>
-            <el-form-item :label="t('merchant.info.presaleFlag')"
-              ><el-switch
-                :model-value="form.presaleFlag ?? false"
-                @update:model-value="form.presaleFlag = Boolean($event)"
-            /></el-form-item>
-            <el-form-item :label="t('merchant.info.digitalGoodsFlag')"
-              ><el-switch
-                :model-value="form.digitalGoodsFlag ?? false"
-                @update:model-value="form.digitalGoodsFlag = Boolean($event)"
-            /></el-form-item>
-            <el-form-item :label="t('merchant.info.restrictedBusinessFlag')"
-              ><el-switch
-                :model-value="form.restrictedBusinessFlag ?? false"
-                @update:model-value="form.restrictedBusinessFlag = Boolean($event)"
-            /></el-form-item>
+            <el-form-item
+              :label="t('merchant.info.recurringPaymentFlag')"
+              prop="recurringPaymentFlag"
+            >
+              <el-radio-group v-model="form.recurringPaymentFlag">
+                <el-radio :value="true">{{ t('common.yes') }}</el-radio>
+                <el-radio :value="false">{{ t('common.no') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item :label="t('merchant.info.presaleFlag')" prop="presaleFlag">
+              <el-radio-group v-model="form.presaleFlag">
+                <el-radio :value="true">{{ t('common.yes') }}</el-radio>
+                <el-radio :value="false">{{ t('common.no') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item :label="t('merchant.info.digitalGoodsFlag')" prop="digitalGoodsFlag">
+              <el-radio-group v-model="form.digitalGoodsFlag">
+                <el-radio :value="true">{{ t('common.yes') }}</el-radio>
+                <el-radio :value="false">{{ t('common.no') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item
+              :label="t('merchant.info.restrictedBusinessFlag')"
+              prop="restrictedBusinessFlag"
+            >
+              <el-radio-group v-model="form.restrictedBusinessFlag">
+                <el-radio :value="true">{{ t('common.yes') }}</el-radio>
+                <el-radio :value="false">{{ t('common.no') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
             <el-form-item :label="t('merchant.info.expectedGoLiveDate')"
               ><el-date-picker
                 v-model="form.expectedGoLiveDate"
@@ -624,7 +672,7 @@
 
           <el-divider content-position="left">{{ t('merchant.info.websiteAndSales') }}</el-divider>
           <div class="form-grid">
-            <el-form-item :label="t('merchant.info.websiteLiveFlag')">
+            <el-form-item :label="t('merchant.info.websiteLiveFlag')" prop="websiteLiveFlag">
               <el-radio-group v-model="form.websiteLiveFlag">
                 <el-radio :value="true">{{ t('common.yes') }}</el-radio>
                 <el-radio :value="false">{{ t('common.no') }}</el-radio>
@@ -639,10 +687,16 @@
                 style="width: 100%"
               />
             </el-form-item>
-            <el-form-item :label="t('merchant.info.websiteUrl')"
+            <el-form-item
+              v-if="form.websiteLiveFlag === true"
+              :label="t('merchant.info.websiteUrl')"
+              prop="websiteUrl"
               ><el-input v-model.trim="form.websiteUrl" placeholder="https://"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.otherSalesUrl')"
+            <el-form-item
+              v-if="form.websiteLiveFlag === false"
+              :label="t('merchant.info.otherSalesUrl')"
+              prop="otherSalesUrl"
               ><el-input v-model.trim="form.otherSalesUrl" placeholder="https://"
             /></el-form-item>
             <el-form-item :label="t('merchant.info.appStoreUrl')"
@@ -651,13 +705,22 @@
             <el-form-item :label="t('merchant.info.googlePlayUrl')"
               ><el-input v-model.trim="form.googlePlayUrl" placeholder="https://"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.privacyPolicyUrl')"
+            <el-form-item
+              v-if="form.websiteLiveFlag === true"
+              :label="t('merchant.info.privacyPolicyUrl')"
+              prop="privacyPolicyUrl"
               ><el-input v-model.trim="form.privacyPolicyUrl" placeholder="https://"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.refundPolicyUrl')"
+            <el-form-item
+              v-if="form.websiteLiveFlag === true"
+              :label="t('merchant.info.refundPolicyUrl')"
+              prop="refundPolicyUrl"
               ><el-input v-model.trim="form.refundPolicyUrl" placeholder="https://"
             /></el-form-item>
-            <el-form-item :label="t('merchant.info.termsUrl')"
+            <el-form-item
+              v-if="form.websiteLiveFlag === true"
+              :label="t('merchant.info.termsUrl')"
+              prop="termsUrl"
               ><el-input v-model.trim="form.termsUrl" placeholder="https://"
             /></el-form-item>
             <el-form-item :label="t('merchant.info.shippingPolicyUrl')"
@@ -824,22 +887,15 @@
             </div>
           </div>
           <el-alert
-            v-if="merchant?.reviewSubmittable"
-            type="success"
+            :type="reviewStatusAlert.type"
             :closable="false"
-            :title="t('merchant.info.readyToSubmit')"
+            :title="t(reviewStatusAlert.titleKey)"
             class="section-alert"
           />
-          <el-alert
-            v-else
-            type="warning"
-            :closable="false"
-            :title="t('merchant.info.notReadyToSubmit')"
-            class="section-alert"
-          />
-          <div v-if="merchant?.readinessIssues?.length" class="readiness-issues">
+          <div v-if="visibleReadinessIssues.length" class="readiness-issues">
+            <strong>{{ t(readinessIssuesTitleKey) }}</strong>
             <el-tag
-              v-for="item in merchant.readinessIssues"
+              v-for="item in visibleReadinessIssues"
               :key="item"
               type="warning"
               effect="plain"
@@ -865,10 +921,10 @@
             >{{ t('common.next') }}</el-button
           >
           <el-button :loading="saving" :icon="DocumentChecked" @click="saveDraft">{{
-            t('merchant.info.saveDraft')
+            t(saveActionTextKey)
           }}</el-button>
           <el-button
-            v-if="activeStep === steps.length - 1"
+            v-if="activeStep === steps.length - 1 && reviewSubmissionAllowed"
             type="primary"
             :loading="saving"
             :disabled="!merchant?.merchantId"
@@ -922,6 +978,10 @@
     MerchantRelatedPerson,
     MerchantSaveRequest,
   } from '@/api/merchant/info';
+  import {
+    isCompleteInternationalPhone,
+    normalizeInternationalPhone,
+  } from '../international-phone';
   import { readinessIssueText } from '../readiness-issue';
 
   const props = defineProps<{
@@ -1029,6 +1089,46 @@
     'defaultLocale',
     'timezone',
   ];
+  const submissionReviewStatuses = new Set(['NOT_SUBMITTED', 'SUPPLEMENT']);
+  const businessRegistrationDocumentTypes = new Set(['BUSINESS_LICENSE', 'INCORPORATION']);
+  const relatedPersonIdDocumentTypes = new Set([
+    'DIRECTOR_ID',
+    'UBO_ID',
+    'LEGAL_REPRESENTATIVE_ID',
+    'AUTHORIZED_SIGNER_ID',
+  ]);
+  const submissionFieldSteps: Record<string, number> = {
+    merchantDescription: 0,
+    registrationNumber: 1,
+    legalEntityType: 1,
+    incorporationDate: 1,
+    incorporationCountry: 1,
+    registeredCity: 1,
+    registeredAddress: 1,
+    operatingCountry: 1,
+    contactName: 2,
+    contactEmail: 2,
+    contactPhone: 2,
+    businessModel: 3,
+    customerType: 3,
+    salesChannels: 3,
+    productsServices: 3,
+    targetMarkets: 3,
+    transactionCurrencies: 3,
+    expectedMonthlyVolume: 3,
+    expectedVolumeCurrency: 3,
+    averageTicket: 3,
+    recurringPaymentFlag: 3,
+    presaleFlag: 3,
+    digitalGoodsFlag: 3,
+    restrictedBusinessFlag: 3,
+    websiteLiveFlag: 3,
+    websiteUrl: 3,
+    otherSalesUrl: 3,
+    privacyPolicyUrl: 3,
+    refundPolicyUrl: 3,
+    termsUrl: 3,
+  };
 
   const drawerVisible = computed({
     get: () => props.visible,
@@ -1037,6 +1137,49 @@
 
   const form = reactive<MerchantSaveRequest>(createEmptyForm());
   const localizedMccOptions = computed(() => props.formOptions.mccOptions.map(localizeMccNode));
+  const currentReviewStatus = computed(() => props.merchant?.reviewStatus || 'NOT_SUBMITTED');
+  const isActiveMerchant = computed(
+    () =>
+      props.merchant?.activationStatus === 'ACTIVE' ||
+      props.merchant?.onboardingStatus === 'ACTIVE',
+  );
+  const reviewSubmissionAllowed = computed(() =>
+    submissionReviewStatuses.has(currentReviewStatus.value),
+  );
+  const saveActionTextKey = computed(() =>
+    props.mode === 'edit' && !reviewSubmissionAllowed.value
+      ? 'merchant.info.saveChanges'
+      : 'merchant.info.saveDraft',
+  );
+  const visibleReadinessIssues = computed(() =>
+    isActiveMerchant.value ? [] : props.merchant?.readinessIssues || [],
+  );
+  const readinessIssuesTitleKey = computed(() =>
+    currentReviewStatus.value === 'PASSED'
+      ? 'merchant.info.activationIssuesTitle'
+      : 'merchant.info.submissionIssuesTitle',
+  );
+  const reviewStatusAlert = computed(() => {
+    if (!props.merchant?.merchantId) {
+      return { type: 'info' as const, titleKey: 'merchant.info.saveBeforeSubmit' };
+    }
+    if (isActiveMerchant.value) {
+      return { type: 'success' as const, titleKey: 'merchant.info.activeMerchantNotice' };
+    }
+    if (currentReviewStatus.value === 'PASSED') {
+      return { type: 'success' as const, titleKey: 'merchant.info.reviewPassedNotice' };
+    }
+    if (currentReviewStatus.value === 'PENDING') {
+      return { type: 'info' as const, titleKey: 'merchant.info.reviewPendingNotice' };
+    }
+    if (currentReviewStatus.value === 'REJECTED') {
+      return { type: 'warning' as const, titleKey: 'merchant.info.reviewRejectedNotice' };
+    }
+    if (props.merchant?.reviewSubmittable) {
+      return { type: 'success' as const, titleKey: 'merchant.info.readyToSubmit' };
+    }
+    return { type: 'warning' as const, titleKey: 'merchant.info.notReadyToSubmit' };
+  });
   const rules = computed<FormRules>(() => ({
     merchantName: [
       requiredRule('merchant.info.requiredMerchantName'),
@@ -1050,11 +1193,43 @@
     billingDescriptor: [printableEnglishRule('merchant.info.invalidBillingDescriptor')],
     defaultLocale: [requiredRule('merchant.info.requiredDefaultLocale', 'change')],
     timezone: [requiredRule('merchant.info.requiredTimezone', 'change')],
+    merchantDescription: [requiredFieldRule('merchant.info.merchantDescription')],
+    registrationNumber: [requiredFieldRule('merchant.info.registrationNumber')],
+    legalEntityType: [requiredFieldRule('merchant.info.legalEntityType', 'change')],
+    incorporationDate: [requiredFieldRule('merchant.info.incorporationDate', 'change')],
+    incorporationCountry: [requiredFieldRule('merchant.info.incorporationCountry', 'change')],
+    registeredCity: [requiredFieldRule('merchant.info.registeredCity')],
+    registeredAddress: [requiredFieldRule('merchant.info.registeredAddress')],
+    operatingCountry: [requiredFieldRule('merchant.info.operatingCountry', 'change')],
     contactName: [requiredRule('merchant.info.requiredContactName')],
+    contactPhone: [requiredFieldRule('merchant.info.contactPhone'), internationalPhoneRule()],
     contactEmail: [
       requiredRule('merchant.info.requiredContactEmail'),
       { type: 'email', message: () => t('merchant.info.invalidContactEmail'), trigger: 'blur' },
     ],
+    businessModel: [requiredFieldRule('merchant.info.businessModel', 'change')],
+    customerType: [requiredFieldRule('merchant.info.customerType', 'change')],
+    salesChannels: [requiredArrayRule('merchant.info.salesChannels')],
+    productsServices: [requiredFieldRule('merchant.info.productsServices')],
+    targetMarkets: [requiredArrayRule('merchant.info.targetMarkets')],
+    transactionCurrencies: [requiredArrayRule('merchant.info.transactionCurrencies')],
+    expectedMonthlyVolume: [requiredNumberRule('merchant.info.expectedMonthlyVolume')],
+    expectedVolumeCurrency: [requiredFieldRule('merchant.info.expectedVolumeCurrency', 'change')],
+    averageTicket: [requiredNumberRule('merchant.info.averageTicket')],
+    recurringPaymentFlag: [requiredBooleanRule('merchant.info.recurringPaymentFlag')],
+    presaleFlag: [requiredBooleanRule('merchant.info.presaleFlag')],
+    digitalGoodsFlag: [requiredBooleanRule('merchant.info.digitalGoodsFlag')],
+    restrictedBusinessFlag: [requiredBooleanRule('merchant.info.restrictedBusinessFlag')],
+    websiteLiveFlag: [requiredBooleanRule('merchant.info.websiteLiveFlag')],
+    websiteUrl:
+      form.websiteLiveFlag === true ? [requiredFieldRule('merchant.info.websiteUrl')] : [],
+    otherSalesUrl:
+      form.websiteLiveFlag === false ? [requiredFieldRule('merchant.info.otherSalesUrl')] : [],
+    privacyPolicyUrl:
+      form.websiteLiveFlag === true ? [requiredFieldRule('merchant.info.privacyPolicyUrl')] : [],
+    refundPolicyUrl:
+      form.websiteLiveFlag === true ? [requiredFieldRule('merchant.info.refundPolicyUrl')] : [],
+    termsUrl: form.websiteLiveFlag === true ? [requiredFieldRule('merchant.info.termsUrl')] : [],
   }));
 
   watch(
@@ -1183,11 +1358,81 @@
           : value;
       }
     }
+    target.contactPhone = normalizeInternationalPhone(source.phoneCountryCode, source.contactPhone);
+    target.phoneCountryCode = '';
     return target;
   }
 
   function requiredRule(messageKey: string, trigger = 'blur') {
     return { required: true, message: () => t(messageKey), trigger };
+  }
+
+  /** 构造通用必填规则，字段名称通过国际化键生成。 */
+  function requiredFieldRule(fieldKey: string, trigger = 'blur') {
+    return {
+      required: true,
+      message: () => t('merchant.info.requiredField', { field: t(fieldKey) }),
+      trigger,
+    };
+  }
+
+  /** 构造至少选择一项的数组字段规则。 */
+  function requiredArrayRule(fieldKey: string) {
+    return {
+      type: 'array',
+      required: true,
+      min: 1,
+      message: () => t('merchant.info.requiredSelection', { field: t(fieldKey) }),
+      trigger: 'change',
+    };
+  }
+
+  /** 构造数值必填规则，允许业务上合法的零值。 */
+  function requiredNumberRule(fieldKey: string) {
+    return {
+      type: 'number',
+      required: true,
+      message: () => t('merchant.info.requiredField', { field: t(fieldKey) }),
+      trigger: 'change',
+    };
+  }
+
+  /** 构造布尔选择规则，避免未选择时被界面默认展示为“否”。 */
+  function requiredBooleanRule(fieldKey: string) {
+    return {
+      validator: (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
+        if (typeof value === 'boolean') {
+          callback();
+          return;
+        }
+        callback(new Error(t('merchant.info.requiredSelection', { field: t(fieldKey) })));
+      },
+      trigger: 'change',
+    };
+  }
+
+  /** 校验联系电话已包含国家区号，并符合国际号码长度范围。 */
+  function internationalPhoneRule() {
+    return {
+      validator: (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
+        if (!value || isCompleteInternationalPhone(String(value))) {
+          callback();
+          return;
+        }
+        callback(new Error(t('merchant.info.invalidContactPhone')));
+      },
+      trigger: 'blur',
+    };
+  }
+
+  /** 在输入框失焦时统一移除国际电话号码中的展示分隔符。 */
+  function normalizeContactPhone() {
+    form.contactPhone = normalizeInternationalPhone(undefined, form.contactPhone);
+  }
+
+  /** 已保存的脱敏证件号可复用；新增人员或换证时才要求输入明文。 */
+  function relatedPersonIdRules(person: MerchantRelatedPerson) {
+    return person.idNumberMasked ? [] : [requiredFieldRule('merchant.info.idNumber')];
   }
 
   function printableEnglishRule(messageKey: string) {
@@ -1204,7 +1449,7 @@
     }
     if (activeStep.value === 2) {
       const valid = await formRef.value
-        ?.validateField(['contactName', 'contactEmail'])
+        ?.validateField(['contactName', 'contactEmail', 'contactPhone'])
         .then(() => true)
         .catch(() => false);
       if (!valid) return;
@@ -1223,13 +1468,88 @@
   }
 
   async function saveAndSubmit() {
-    const valid = await formRef.value
-      ?.validate()
-      .then(() => true)
-      .catch(() => false);
-    if (!valid || !props.merchant?.merchantId) return;
+    if (!reviewSubmissionAllowed.value) {
+      ElMessage.warning(t(reviewStatusAlert.value.titleKey));
+      return;
+    }
+    if (!props.merchant?.merchantId) {
+      ElMessage.warning(t('merchant.info.saveBeforeSubmit'));
+      return;
+    }
+    if (!(await validateSubmissionFields())) return;
+    const readinessIssues = collectClientReadinessIssues();
+    if (readinessIssues.length) {
+      activeStep.value = readinessIssues[0].step;
+      ElMessage.warning(
+        t('merchant.info.completeReadinessItem', {
+          item: readinessIssueText(readinessIssues[0].code, t),
+        }),
+      );
+      return;
+    }
     fillBillingDescriptor();
     emit('save', { request: editableValues(form), submitAfterSave: true });
+  }
+
+  /** 校验全部提交字段，并切换到最靠前的错误步骤。 */
+  async function validateSubmissionFields() {
+    if (!formRef.value) return false;
+    try {
+      await formRef.value.validate();
+      return true;
+    } catch (invalidFields) {
+      const fields =
+        invalidFields && typeof invalidFields === 'object' ? Object.keys(invalidFields) : [];
+      activeStep.value = fields.reduce(
+        (step, field) => Math.min(step, submissionFieldStep(field)),
+        steps.length - 1,
+      );
+      ElMessage.warning(t('merchant.info.completeRequiredFields'));
+      return false;
+    }
+  }
+
+  /** 将动态表单字段映射到可见步骤，避免错误停留在隐藏页签。 */
+  function submissionFieldStep(field: string) {
+    if (field.startsWith('relatedPersons.')) return 2;
+    return submissionFieldSteps[field] ?? 0;
+  }
+
+  /**
+   * 补充无法由单字段规则表达的人员角色和资料文件门禁。
+   * 后端返回的 readinessIssues 仍是保存后提交审核的最终依据。
+   */
+  function collectClientReadinessIssues(): Array<{ code: string; step: number }> {
+    const issues: Array<{ code: string; step: number }> = [];
+    const persons = form.relatedPersons || [];
+    if (!persons.length) {
+      issues.push({ code: 'RELATED_PERSONS', step: 2 });
+    } else {
+      const hasRole = (role: string) =>
+        persons.some((person) => (person.personRoles || []).includes(role));
+      if (!hasRole('LEGAL_REPRESENTATIVE')) {
+        issues.push({ code: 'LEGAL_REPRESENTATIVE', step: 2 });
+      }
+      if (form.merchantType !== 'SOLE_TRADER' && !hasRole('UBO')) {
+        issues.push({ code: 'UBO', step: 2 });
+      }
+      if (persons.some((person) => !person.idNumber?.trim() && !person.idNumberMasked?.trim())) {
+        issues.push({ code: 'RELATED_PERSON_ID_NUMBER', step: 2 });
+      }
+    }
+
+    const documentTypes = new Set(
+      (props.merchant?.documents || [])
+        .map((document) => document.documentType?.toUpperCase())
+        .filter((type): type is string => Boolean(type)),
+    );
+    if (![...documentTypes].some((type) => businessRegistrationDocumentTypes.has(type))) {
+      issues.push({ code: 'BUSINESS_REGISTRATION_DOCUMENT', step: 5 });
+    }
+    if (![...documentTypes].some((type) => relatedPersonIdDocumentTypes.has(type))) {
+      issues.push({ code: 'RELATED_PERSON_ID_DOCUMENT', step: 5 });
+    }
+    return issues;
   }
 
   function fillBillingDescriptor() {
@@ -1812,6 +2132,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .readiness-issues > strong {
+    flex-basis: 100%;
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+    font-weight: 600;
   }
 
   .amount-input {

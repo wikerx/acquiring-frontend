@@ -41,8 +41,10 @@ export interface MerchantInfo {
     postalCode?: string;
     contactName?: string;
     contactTitle?: string;
+    /** 历史兼容字段；新表单统一将国家区号写入 contactPhone。 */
     phoneCountryCode?: string;
     contactEmail?: string;
+    /** 包含国家区号的完整国际电话号码，例如 +14085550100。 */
     contactPhone?: string;
     alternateEmail?: string;
     financeContactName?: string;

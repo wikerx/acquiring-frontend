@@ -3249,6 +3249,11 @@ export default {
       requiredDefaultLocale: 'Select default language',
       requiredContactEmail: 'Enter contact email',
       invalidContactEmail: 'Enter a valid contact email',
+      invalidContactPhone: 'Enter a complete international phone number, for example +14085550100',
+      requiredField: 'Enter {field}',
+      requiredSelection: 'Select {field}',
+      completeRequiredFields: 'Complete the required profile fields first',
+      completeReadinessItem: 'Complete this item first: {item}',
       missingMerchantId: 'Merchant primary key is missing. Refresh the list and try again.',
       statusNormal: 'Normal',
       statusFrozen: 'Frozen',
@@ -3424,12 +3429,22 @@ export default {
         'Check profile completeness first. The backend readiness issues remain the source of truth for submission.',
       complianceDocuments: 'Compliance Documents',
       saveDraft: 'Save Draft',
+      saveChanges: 'Save Changes',
       saveDraftSuccess: 'Merchant draft saved',
+      profileUpdateSuccess: 'Merchant profile updated',
       submitReview: 'Submit for Review',
       submitReviewSuccess: 'Merchant profile submitted for review',
+      saveBeforeSubmit:
+        'Save the merchant draft and upload the required documents before submitting for review.',
       readyToSubmit: 'The profile is ready to submit for review',
       notReadyToSubmit:
         'The profile is not ready for review. Complete the listed readiness items first.',
+      activeMerchantNotice:
+        'This merchant is active and does not need another review submission. Changes will be saved to the merchant profile.',
+      reviewPassedNotice: 'The merchant review has passed. No further submission is required.',
+      reviewPendingNotice: 'The merchant profile has been submitted and is awaiting review.',
+      reviewRejectedNotice:
+        'The merchant profile was rejected and cannot be resubmitted from its current status.',
       submissionIssuesTitle: 'Complete these items before review submission',
       activationIssuesTitle: 'Complete these settings before activation',
       auditInfo: 'Audit Information',
@@ -3447,6 +3462,7 @@ export default {
         'A review comment is required when requesting a supplement or rejecting',
       reviewSuccess: 'Merchant review result saved',
       activateMerchant: 'Activate Merchant',
+      moreActions: 'More Actions',
       activationBlocked: 'Complete risk, MCC, settlement currency, fee, and channel settings first',
       activationConfirm:
         'Activate merchant "{merchant}"? Activation creates the merchant login account and fund account.',

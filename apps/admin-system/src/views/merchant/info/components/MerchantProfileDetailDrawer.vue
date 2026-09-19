@@ -277,7 +277,7 @@
                 value(merchant.contactTitle)
               }}</el-descriptions-item>
               <el-descriptions-item :label="t('merchant.info.contactPhone')">{{
-                [merchant.phoneCountryCode, merchant.contactPhone].filter(Boolean).join(' ') || '-'
+                normalizeInternationalPhone(merchant.phoneCountryCode, merchant.contactPhone) || '-'
               }}</el-descriptions-item>
               <el-descriptions-item :label="t('merchant.info.contactEmail')">{{
                 value(merchant.contactEmail)
@@ -458,32 +458,38 @@
             @click="emit('submit-review')"
             >{{ t('merchant.info.submitReview') }}</el-button
           >
-          <template v-if="canEdit && merchant.reviewStatus === 'PENDING'">
-            <el-button type="success" :icon="CircleCheck" @click="openReview('PASS')">{{
+          <div
+            v-if="canEdit && merchant.reviewStatus === 'PENDING'"
+            class="detail-footer__review-actions"
+          >
+            <el-button type="primary" :icon="CircleCheck" @click="openReview('PASS')">{{
               t('merchant.info.reviewPass')
             }}</el-button>
-            <el-button type="warning" :icon="DocumentAdd" @click="openReview('SUPPLEMENT')">{{
+            <el-button type="warning" plain :icon="DocumentAdd" @click="openReview('SUPPLEMENT')">{{
               t('merchant.info.reviewSupplement')
             }}</el-button>
-            <el-button type="danger" :icon="CircleClose" @click="openReview('REJECT')">{{
+            <el-button type="danger" plain :icon="CircleClose" @click="openReview('REJECT')">{{
               t('merchant.info.reviewReject')
             }}</el-button>
-          </template>
+          </div>
+          <el-button
+            v-if="canShowActivation && merchant.activationReady"
+            type="primary"
+            :icon="VideoPlay"
+            :loading="actionLoading"
+            @click="emit('activate')"
+            >{{ t('merchant.info.activateMerchant') }}</el-button
+          >
           <el-tooltip
-            v-if="canActivate && merchant.reviewStatus === 'PASSED'"
-            :content="merchant.activationReady ? '' : t('merchant.info.activationBlocked')"
+            v-else-if="canShowActivation"
+            :content="t('merchant.info.activationBlocked')"
             placement="top"
           >
-            <span
-              ><el-button
-                type="success"
-                :icon="VideoPlay"
-                :loading="actionLoading"
-                :disabled="!merchant.activationReady"
-                @click="emit('activate')"
-                >{{ t('merchant.info.activateMerchant') }}</el-button
-              ></span
-            >
+            <span class="detail-footer__activation-disabled">
+              <el-button type="primary" :icon="VideoPlay" disabled>{{
+                t('merchant.info.activateMerchant')
+              }}</el-button>
+            </span>
           </el-tooltip>
         </div>
       </div>
@@ -551,6 +557,7 @@
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
   import type { MerchantDocument, MerchantInfo, MerchantReviewRequest } from '@/api/merchant/info';
+  import { normalizeInternationalPhone } from '../international-phone';
   import { readinessIssueText } from '../readiness-issue';
 
   const props = defineProps<{
@@ -611,6 +618,13 @@
     () =>
       props.merchant?.reviewSubmittable === true &&
       ['NOT_SUBMITTED', 'SUPPLEMENT'].includes(props.merchant.reviewStatus || ''),
+  );
+  const canShowActivation = computed(
+    () =>
+      props.canActivate === true &&
+      props.merchant?.reviewStatus === 'PASSED' &&
+      props.merchant?.activationStatus !== 'ACTIVE' &&
+      props.merchant?.onboardingStatus !== 'ACTIVE',
   );
   const reviewDialogTitle = computed(() =>
     t(`merchant.info.reviewDecision.${reviewDecision.value}`),
@@ -912,14 +926,18 @@
   }
 
   .profile-header__actions {
+    display: grid;
     grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
     padding-top: 12px;
     border-top: 1px solid #d9e3f0;
   }
 
   .profile-header__actions :deep(.el-button) {
+    width: 100%;
     margin-left: 0;
-    min-width: 104px;
+    min-width: 0;
     border-radius: 4px;
   }
 
@@ -1068,10 +1086,36 @@
     justify-content: space-between;
   }
 
+  .detail-footer__actions {
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .detail-footer__review-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(128px, 1fr));
+    gap: 10px;
+  }
+
+  .detail-footer__review-actions :deep(.el-button) {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .detail-footer__activation-disabled {
+    display: inline-flex;
+  }
+
   .detail-footer__actions :deep(.el-button) {
     margin-left: 0;
     min-width: 104px;
     border-radius: 4px;
+  }
+
+  @media (max-width: 1100px) {
+    .profile-header__actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 820px) {
@@ -1142,9 +1186,15 @@
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     }
 
+    .detail-footer__review-actions {
+      grid-column: 1 / -1;
+      grid-template-columns: 1fr;
+    }
+
     .detail-footer__actions :deep(.el-button),
     .detail-footer__actions > span,
-    .detail-footer__actions > span :deep(.el-button) {
+    .detail-footer__actions > span :deep(.el-button),
+    .detail-footer__review-actions :deep(.el-button) {
       width: 100%;
     }
 
