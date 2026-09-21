@@ -17,6 +17,7 @@ type MenuLabelSource = {
 const MENU_ROUTE_TITLE_KEYS: Record<string, string> = {
     '/home': 'route.home',
     '/merchant-info': 'route.merchantInfo',
+    '/merchant-info/profile': 'route.merchantInfo',
     '/merchant-info/openapi-keys': 'route.openapiKeys',
     '/access-config': 'route.accessConfig',
     '/access-config/source-url': 'route.sourceUrl',
@@ -46,6 +47,7 @@ const MENU_CODE_TITLE_KEYS: Record<string, string> = {
     merchant_dashboard: 'route.home',
     merchant_info: 'route.merchantInfo',
     merchant_info_manage: 'route.merchantInfo',
+    merchant_profile_maintenance_v1: 'route.merchantInfo',
     merchant_api_key: 'route.openapiKeys',
     merchant_api_keys: 'route.openapiKeys',
     merchant_openapi_key: 'route.openapiKeys',

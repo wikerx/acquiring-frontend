@@ -149,6 +149,103 @@ export interface MerchantReviewRequest {
     comment?: string;
 }
 
+export type MerchantProfileChangeStatus =
+    | 'DRAFT'
+    | 'PENDING_REVIEW'
+    | 'SUPPLEMENT_REQUIRED'
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'WITHDRAWN';
+
+/** 进入审核流程的高风险商户资料快照。 */
+export type MerchantProfileChangeSnapshot = Pick<MerchantInfo,
+    | 'merchantName'
+    | 'billingDescriptor'
+    | 'merchantType'
+    | 'countryCode'
+    | 'operatingCountry'
+    | 'businessType'
+    | 'industryCategory'
+    | 'merchantDescription'
+    | 'registrationNumber'
+    | 'legalEntityType'
+    | 'incorporationDate'
+    | 'incorporationCountry'
+    | 'registeredState'
+    | 'registeredCity'
+    | 'registeredPostcode'
+    | 'registeredAddress'
+    | 'operatingSameAsRegistered'
+    | 'taxId'
+    | 'companySize'
+    | 'employeeCount'
+    | 'regionCode'
+    | 'city'
+    | 'addressLine'
+    | 'postalCode'
+    | 'businessModel'
+    | 'salesChannels'
+    | 'productsServices'
+    | 'targetMarkets'
+    | 'customerType'
+    | 'transactionCurrencies'
+    | 'expectedMonthlyVolume'
+    | 'expectedVolumeCurrency'
+    | 'averageTicket'
+    | 'maxTicket'
+    | 'expectedMonthlyCount'
+    | 'expectedRefundRate'
+    | 'expectedChargebackRate'
+    | 'recurringPaymentFlag'
+    | 'presaleFlag'
+    | 'fulfillmentDays'
+    | 'digitalGoodsFlag'
+    | 'restrictedBusinessFlag'
+    | 'expectedGoLiveDate'
+    | 'websiteUrl'
+    | 'appStoreUrl'
+    | 'googlePlayUrl'
+    | 'otherSalesUrl'
+    | 'websiteLanguages'
+    | 'websiteLiveFlag'
+    | 'privacyPolicyUrl'
+    | 'refundPolicyUrl'
+    | 'termsUrl'
+    | 'shippingPolicyUrl'
+    | 'relatedPersons'> & {
+    capturedAt?: string;
+};
+
+/** 管理端资料变更审核申请。列表响应不包含快照和文档，详情响应包含完整数据。 */
+export interface MerchantProfileChangeRequest {
+    requestNo: string;
+    merchantId: string;
+    merchantName?: string;
+    status: MerchantProfileChangeStatus;
+    changedFields: string[];
+    currentProfile?: MerchantProfileChangeSnapshot;
+    proposedProfile?: MerchantProfileChangeSnapshot;
+    documents: MerchantDocument[];
+    submitComment?: string;
+    reviewComment?: string;
+    submittedBy?: string;
+    reviewedBy?: string;
+    submittedAt?: string;
+    reviewedAt?: string;
+    gmtCreate?: string;
+    gmtModified?: string;
+}
+
+export interface MerchantProfileChangeQuery extends PageQuery {
+    merchantId?: string;
+    status?: MerchantProfileChangeStatus;
+}
+
+export interface MerchantProfileChangeReviewRequest {
+    decision: 'PASS' | 'SUPPLEMENT' | 'REJECT';
+    comment?: string;
+}
+
 export interface MerchantKeySummary {
     id?: number;
     keyVersion?: string;
@@ -350,6 +447,32 @@ export async function submitMerchantReview(id: string) {
 
 export async function reviewMerchant(id: string, requestBody: MerchantReviewRequest) {
     const result = await http.post<CommonResult<MerchantInfo>>(`/admin/merchants/${id}/review`, requestBody);
+    return unwrapResult(result.data);
+}
+
+export async function searchMerchantProfileChanges(requestBody: MerchantProfileChangeQuery) {
+    const result = await http.post<CommonResult<PageResult<MerchantProfileChangeRequest>>>(
+        '/admin/merchant-profile-changes/search',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getMerchantProfileChange(requestNo: string) {
+    const result = await http.get<CommonResult<MerchantProfileChangeRequest>>(
+        `/admin/merchant-profile-changes/${encodeURIComponent(requestNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function reviewMerchantProfileChange(
+    requestNo: string,
+    requestBody: MerchantProfileChangeReviewRequest,
+) {
+    const result = await http.post<CommonResult<MerchantProfileChangeRequest>>(
+        `/admin/merchant-profile-changes/${encodeURIComponent(requestNo)}/review`,
+        requestBody,
+    );
     return unwrapResult(result.data);
 }
 

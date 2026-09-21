@@ -24,19 +24,21 @@
                             <el-option v-for="item in refundScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                     </el-form-item>
-                    <el-form-item :label="t('transaction.refund.timeRange')" class="merchant-refund-time-item">
-                        <TransactionTimeRangeFilter
-                            v-model="dateRange"
-                            v-model:time-zone="query.queryTimeZone"
-                            v-model:preset="quickPreset"
-                            :timezone-options="timezoneOptions"
-                            default-preset="today"
-                        />
-                    </el-form-item>
-                    <el-form-item class="merchant-search-actions merchant-refund-search__actions">
-                        <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
-                        <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
-                    </el-form-item>
+                    <div class="merchant-refund-search__tail">
+                        <el-form-item :label="t('transaction.refund.timeRange')" class="merchant-refund-time-item">
+                            <TransactionTimeRangeFilter
+                                v-model="dateRange"
+                                v-model:time-zone="query.queryTimeZone"
+                                v-model:preset="quickPreset"
+                                :timezone-options="timezoneOptions"
+                                default-preset="today"
+                            />
+                        </el-form-item>
+                        <el-form-item class="merchant-search-actions merchant-refund-search__actions">
+                            <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
+                            <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
+                        </el-form-item>
+                    </div>
                 </div>
             </el-form>
         </section>
@@ -348,15 +350,28 @@ function emptySummary(): MerchantRefundSummary {
     width: 200px;
 }
 
+.merchant-refund-search__tail {
+    display: flex;
+    flex: 1 1 900px;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
 .merchant-refund-time-item {
-    /* 为完整时间筛选器预留一行空间，避免日期范围被挤到下一行。 */
-    flex: 1 1 780px;
-    max-width: 100%;
+    flex: 1 1 auto;
+    max-width: none;
     min-width: 0;
 }
 
 .merchant-refund-time-item :deep(.el-form-item__content) {
     min-width: 0;
+}
+
+.merchant-refund-search__actions {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    min-width: 144px;
 }
 
 .merchant-refund-summary {
@@ -477,6 +492,13 @@ function emptySummary(): MerchantRefundSummary {
 
     .merchant-refund-summary__item:nth-child(2) {
         border-right: 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .merchant-refund-search__tail {
+        flex-basis: 100%;
+        flex-wrap: wrap;
     }
 }
 

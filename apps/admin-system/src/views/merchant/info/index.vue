@@ -70,6 +70,18 @@
           >{{ $t('common.edit') }}</el-button
         >
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          :icon="DocumentChecked"
+          size="small"
+          @click="profileChangeReviewVisible = true"
+          v-hasPermi="'merchant:info:detail'"
+        >
+          {{ $t('merchant.info.profileChangeReview') }}
+        </el-button>
+      </el-col>
       <el-col class="right-toolbar">
         <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" />
       </el-col>
@@ -291,6 +303,12 @@
       @upload-document="uploadCurrentMerchantDocument"
       @download-document="downloadCurrentMerchantDocument"
       @delete-document="deleteCurrentMerchantDocument"
+    />
+
+    <MerchantProfileChangeReviewDrawer
+      v-model:visible="profileChangeReviewVisible"
+      :can-review="canEditMerchant"
+      @reviewed="handleProfileChangeReviewed"
     />
 
     <CommonDetailDrawer
@@ -968,6 +986,7 @@
   import { ElMessage, ElMessageBox } from 'element-plus';
   import {
     Connection,
+    DocumentChecked,
     Edit,
     Key,
     MoreFilled,
@@ -986,6 +1005,7 @@
   import StandardTable from '@/components/StandardTable/StandardTable.vue';
   import MerchantProfileDetailDrawer from './components/MerchantProfileDetailDrawer.vue';
   import MerchantProfileFormDrawer from './components/MerchantProfileFormDrawer.vue';
+  import MerchantProfileChangeReviewDrawer from './components/MerchantProfileChangeReviewDrawer.vue';
   import {
     activateMerchant,
     createMerchant,
@@ -1058,6 +1078,7 @@
   const formMerchant = ref<MerchantInfo>();
   const detailVisible = ref(false);
   const detailMerchant = ref<MerchantInfo>();
+  const profileChangeReviewVisible = ref(false);
   const profileActionLoading = ref(false);
   const documentBusyId = ref<string>();
   const materialVisible = ref(false);
@@ -1124,6 +1145,10 @@
     } finally {
       loading.value = false;
     }
+  }
+
+  function handleProfileChangeReviewed() {
+    void loadData();
   }
 
   function handleSearch() {

@@ -21,6 +21,7 @@ const PAYMENT_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
     BANK_TRANSFER: ['bankTransfer'],
     PIX: ['pix'],
     SPEI: ['spei'],
+    BTC_ON_CHAIN: ['bitcoin'],
 };
 
 const CARD_LOGO_MAP: Record<string, PaymentLogoKey[]> = {

@@ -129,8 +129,8 @@
                 <div class="mid-detail__item">
                     <span class="mid-detail__label">{{ t('channel.mid.transactionTypeScope') }}</span>
                     <div class="mid-detail__value">
-                        <div v-if="transactionScopeItems(detailRow.transactionTypeScope).length" class="tag-list tag-list-left">
-                            <el-tag v-for="item in transactionScopeItems(detailRow.transactionTypeScope)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
+                        <div v-if="transactionScopeItems(detailRow.businessType, detailRow.transactionTypeScope).length" class="tag-list tag-list-left">
+                            <el-tag v-for="item in transactionScopeItems(detailRow.businessType, detailRow.transactionTypeScope)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
                         </div>
                         <span v-else>-</span>
                     </div>
@@ -400,6 +400,7 @@ const acquiringPaymentOptions = ref<SelectOption[]>([]);
 const payoutPaymentOptions = ref<SelectOption[]>([]);
 const cardBrandOptions = ref<SelectOption[]>([]);
 const transactionTypeOptions = ref<SelectOption[]>([]);
+const payoutTransactionTypeOptions = ref<SelectOption[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
 const currencyOptions = ref<IsoCurrency[]>([]);
 const countryOptions = ref<IsoCountry[]>([]);
@@ -502,13 +503,14 @@ watch(locale, () => {
 });
 
 async function loadOptions() {
-    const [channels, business, acquiringMethods, payoutMethods, cardBrands, transactionTypes, timezones, currencies, countries, mcc, mids] = await Promise.all([
+    const [channels, business, acquiringMethods, payoutMethods, cardBrands, transactionTypes, payoutTransactionTypes, timezones, currencies, countries, mcc, mids] = await Promise.all([
         loadChannelOptions(),
         loadDictOptions('channel_business_type', String(locale.value)),
         loadDictOptions('acquiring_payment_method', String(locale.value)),
         loadDictOptions('payout_payment_method', String(locale.value)),
         loadDictOptions('card_brand', String(locale.value)),
         loadDictOptions('transaction_type', String(locale.value)),
+        loadDictOptions('payout_transaction_type', String(locale.value)),
         loadDictOptions('sys_timezone', String(locale.value)),
         loadCurrencyOptions(),
         loadCountryOptions(),
@@ -521,6 +523,7 @@ async function loadOptions() {
     payoutPaymentOptions.value = payoutMethods;
     cardBrandOptions.value = cardBrands;
     transactionTypeOptions.value = transactionTypes;
+    payoutTransactionTypeOptions.value = payoutTransactionTypes;
     timezoneOptions.value = timezones;
     currencyOptions.value = currencies;
     countryOptions.value = countries;
@@ -986,10 +989,10 @@ function paymentScopeText(row: Pick<ChannelMidConfig, 'businessType' | 'paymentM
     }).join('；');
 }
 
-function transactionScopeItems(scope?: string) {
+function transactionScopeItems(businessType: string | undefined, scope?: string) {
     return splitScope(scope).map((value) => ({
         value,
-        label: optionLabel(transactionTypeOptions.value, value),
+        label: optionLabel(businessType === 'PAYOUT' ? payoutTransactionTypeOptions.value : transactionTypeOptions.value, value),
     }));
 }
 

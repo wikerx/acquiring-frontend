@@ -168,14 +168,14 @@
                         <el-option v-for="item in formBusinessOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
-                <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
-                    <el-select v-model="form.paymentMethod" filterable style="width:100%" :disabled="isEditMode" @change="handlePaymentChange">
+                <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethods">
+                    <el-select v-model="form.paymentMethods" multiple collapse-tags filterable style="width:100%" :disabled="isEditMode" @change="handlePaymentChange">
                         <el-option v-for="item in paymentOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
-                <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.common.transactionType')" prop="transactionTypes">
+                <el-form-item :label="t('channel.common.transactionType')" prop="transactionTypes">
                     <el-select v-model="form.transactionTypes" multiple filterable style="width:100%" @change="handleTransactionTypeChange">
-                        <el-option v-for="item in transactionOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <el-option v-for="item in transactionOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.currencies')" prop="currencyCodes">
@@ -267,6 +267,7 @@ const businessOptions = ref<SelectOption[]>([]);
 const acquiringPaymentOptions = ref<SelectOption[]>([]);
 const payoutPaymentOptions = ref<SelectOption[]>([]);
 const transactionOptions = ref<SelectOption[]>([]);
+const payoutTransactionOptions = ref<SelectOption[]>([]);
 const cardBrandOptions = ref<SelectOption[]>([]);
 const currencyOptions = ref<IsoCurrency[]>([]);
 const INCREMENTAL_AUTH_TRANSACTION_TYPES = new Set(['AUTHORIZATION', 'PRE_AUTHORIZATION']);
@@ -286,6 +287,7 @@ const emptyForm = () => ({
     channelId: undefined as number | undefined,
     businessType: 'ACQUIRING',
     paymentMethod: 'BANK_CARD',
+    paymentMethods: ['BANK_CARD'] as string[],
     transactionType: 'PAYMENT',
     transactionTypes: ['PAYMENT'] as string[],
     currencyCodes: ['USD'] as string[],
@@ -301,7 +303,7 @@ const form = reactive(emptyForm());
 const rules: FormRules = {
     channelId: [{ required: true, message: t('channel.capability.requiredChannel'), trigger: 'change' }],
     businessType: [{ required: true, message: t('channel.capability.requiredBusinessType'), trigger: 'change' }],
-    paymentMethod: [{ required: true, message: t('channel.capability.requiredPaymentMethod'), trigger: 'change' }],
+    paymentMethods: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredPaymentMethod'), trigger: 'change' }],
     transactionTypes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredTransactionType'), trigger: 'change' }],
     currencyCodes: [{ required: true, type: 'array', min: 1, message: t('channel.capability.requiredCurrencies'), trigger: 'change' }],
     defaultTransactionCurrency: [{ required: true, message: t('channel.capability.requiredDefaultTransactionCurrency'), trigger: 'change' }],
@@ -313,7 +315,7 @@ const currentPaymentOptions = computed(() => paymentOptionsFor(query.businessTyp
 const isEditMode = computed(() => formMode.value === 'edit');
 const selectedChannel = computed(() => channelOptions.value.find((item) => item.id === form.channelId));
 const formBusinessOptions = computed(() => businessOptions.value.filter((item) => isBusinessSupportedByChannel(item.value, selectedChannel.value)));
-const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const isBankCardPayment = computed(() => form.paymentMethods.includes('BANK_CARD'));
 const canConfigure3ds = computed(() => form.businessType === 'ACQUIRING' && selectedChannel.value?.supportAcquiring === 1 && selectedChannel.value?.support3ds === 1);
 const canConfigureIncrementalAuthorization = computed(() => {
     if (form.businessType !== 'ACQUIRING') {
@@ -335,12 +337,13 @@ watch(locale, () => {
 });
 
 async function loadOptions() {
-    const [channels, business, acquiringPayments, payoutPayments, transactions, cardBrands] = await Promise.all([
+    const [channels, business, acquiringPayments, payoutPayments, transactions, payoutTransactions, cardBrands] = await Promise.all([
         loadChannelOptions(),
         loadDictOptions('channel_business_type', String(locale.value)),
         loadDictOptions('acquiring_payment_method', String(locale.value)),
         loadDictOptions('payout_payment_method', String(locale.value)),
         loadDictOptions('transaction_type', String(locale.value)),
+        loadDictOptions('payout_transaction_type', String(locale.value)),
         loadDictOptions('card_brand', String(locale.value)),
     ]);
     channelOptions.value = channels;
@@ -348,6 +351,7 @@ async function loadOptions() {
     acquiringPaymentOptions.value = acquiringPayments;
     payoutPaymentOptions.value = payoutPayments;
     transactionOptions.value = transactions;
+    payoutTransactionOptions.value = payoutTransactions;
     cardBrandOptions.value = cardBrands;
 }
 
@@ -412,6 +416,10 @@ async function openDetail(row: ChannelCapability) {
 function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
+    form.paymentMethods = row?.paymentMethods?.length
+        ? [...row.paymentMethods]
+        : (row?.paymentMethod ? [row.paymentMethod] : [...form.paymentMethods]);
+    form.paymentMethod = form.paymentMethods[0] || '';
     syncBusinessTypeWithChannel();
     form.transactionTypes = normalizeTransactionTypes(form.businessType, form.transactionTypes, form.transactionType);
     form.transactionType = form.transactionTypes.join(',');
@@ -430,18 +438,24 @@ function handleChannelChange() {
 function handleBusinessChange() {
     if (!form.businessType) {
         form.paymentMethod = '';
+        form.paymentMethods = [];
         form.transactionType = '';
         form.transactionTypes = [];
         syncConditionalFields();
         return;
     }
-    form.paymentMethod = form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : 'BANK_CARD';
-    form.transactionType = form.businessType === 'PAYOUT' ? 'NONE' : 'PAYMENT';
-    form.transactionTypes = form.businessType === 'PAYOUT' ? [] : ['PAYMENT'];
+    form.paymentMethods = [form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : 'BANK_CARD'].filter(Boolean);
+    form.paymentMethod = form.paymentMethods[0] || '';
+    form.transactionTypes = form.businessType === 'PAYOUT'
+        ? payoutTransactionOptions.value.map((item) => item.value)
+        : ['PAYMENT'];
+    form.transactionType = form.transactionTypes.join(',');
     handlePaymentChange();
 }
 
 function handlePaymentChange() {
+    form.paymentMethods = Array.from(new Set(form.paymentMethods));
+    form.paymentMethod = form.paymentMethods[0] || '';
     syncConditionalFields();
 }
 
@@ -510,9 +524,11 @@ async function submitForm() {
     if (!valid) {
         return;
     }
-    const transactionTypes = form.businessType === 'PAYOUT' ? ['NONE'] : form.transactionTypes;
+    const transactionTypes = Array.from(new Set(form.transactionTypes));
     const payload = {
         ...form,
+        paymentMethods: Array.from(new Set(form.paymentMethods)),
+        paymentMethod: form.paymentMethods[0] || '',
         transactionTypes,
         transactionType: transactionTypes.join(','),
         support3ds: canConfigure3ds.value ? form.support3ds : 0,
@@ -619,11 +635,12 @@ function paymentScopeLogo(row: Pick<ChannelCapability, 'businessType' | 'payment
 }
 
 function normalizeTransactionTypes(businessType?: string, transactionTypes?: string[], transactionType?: string) {
-    if (businessType === 'PAYOUT') {
-        return [];
-    }
     const values = [...(transactionTypes || []), ...(transactionType || '').split(',')];
     return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function transactionOptionsFor(businessType?: string) {
+    return businessType === 'PAYOUT' ? payoutTransactionOptions.value : transactionOptions.value;
 }
 
 function transactionTypeText(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
@@ -631,7 +648,7 @@ function transactionTypeText(row: Pick<ChannelCapability, 'businessType' | 'tran
     if (!values.length) {
         return '-';
     }
-    return values.map((value) => optionLabel(transactionOptions.value, value)).join(', ');
+    return values.map((value) => optionLabel(transactionOptionsFor(row.businessType), value)).join(', ');
 }
 
 function capabilityStatusTargetName(row: ChannelCapability) {
@@ -646,7 +663,7 @@ function capabilitySupportTargetName(row: ChannelCapability, field: 'support3ds'
 function transactionTypeItems(row: Pick<ChannelCapability, 'businessType' | 'transactionType' | 'transactionTypes'>) {
     return normalizeTransactionTypes(row.businessType, row.transactionTypes, row.transactionType).map((value) => ({
         value,
-        label: optionLabel(transactionOptions.value, value),
+        label: optionLabel(transactionOptionsFor(row.businessType), value),
     }));
 }
 

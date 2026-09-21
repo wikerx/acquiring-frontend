@@ -55,6 +55,7 @@ export interface ChannelCapability {
     channelName: string;
     businessType: string;
     paymentMethod: string;
+    paymentMethods?: string[];
     transactionType?: string;
     transactionTypes?: string[];
     currencyCodes: string[];
@@ -126,6 +127,7 @@ export interface MerchantChannelMidBinding {
     midConfigId: number;
     channelMid: string;
     midName: string;
+    businessType: string;
     bindingStatus: number;
     effectiveTime?: string;
     expireTime?: string;
@@ -173,6 +175,7 @@ export interface MerchantChannelMidBindingQuery extends PageQuery {
     merchantId?: string;
     channelId?: number;
     channelCode?: string;
+    businessType?: string;
     midConfigId?: number;
     bindingStatus?: number;
 }

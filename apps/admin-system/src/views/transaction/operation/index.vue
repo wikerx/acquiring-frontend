@@ -99,7 +99,7 @@
             </el-col>
         </el-row>
 
-        <StandardTable table-key="transaction-operation" v-loading="loading" :data="rows" row-key="transactionId" size="small" class="transaction-page__table">
+        <StandardTable table-key="transaction-operation-v2" v-loading="loading" :data="rows" row-key="transactionId" size="small" class="transaction-page__table">
             <el-table-column :label="t('transaction.fields.transactionId')" min-width="214" fixed="left" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">
                     <CopyableText :value="row.transactionId" :label="t('transaction.fields.transactionId')" />
