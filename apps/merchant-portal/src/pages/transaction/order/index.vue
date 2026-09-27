@@ -410,8 +410,8 @@
             </template>
         </el-drawer>
 
-        <el-dialog v-model="refundVisible" :title="t('transaction.order.refundTitle')" width="min(620px, 92vw)" class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.order.refundTip')" />
+        <el-dialog v-model="refundVisible" :close-on-click-modal="!refundSaving" :close-on-press-escape="!refundSaving" :show-close="!refundSaving" :title="t('transaction.order.refundTitle')" width="min(620px, 92vw)" class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
             <section v-if="activeActionRow" class="transaction-action-section">
                 <h3>{{ t('transaction.order.originalInfo') }}</h3>
                 <dl class="transaction-action-detail-grid">
@@ -435,34 +435,12 @@
             </section>
             <section v-if="activeActionRow" class="transaction-action-section">
                 <h3>{{ t('transaction.order.refundInfo') }}</h3>
-                <el-form ref="refundFormRef" :model="refundForm" :rules="refundRules" label-position="top" class="transaction-action-form">
-                    <el-form-item :label="t('transaction.order.refundMode')">
-                        <el-radio-group v-model="refundForm.mode" @change="handleRefundModeChange">
-                            <el-radio value="PARTIAL">{{ t('transaction.order.partialRefund') }}</el-radio>
-                            <el-radio value="FULL">{{ t('transaction.order.fullRefund') }} ({{ labelMoney(activeActionRow, refundMaxAmount) }})</el-radio>
-                        </el-radio-group>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.order.refundAmount')" prop="amount">
-                        <div class="transaction-action-amount-line">
-                            <el-input-number v-model="refundForm.amount" :disabled="refundForm.mode === 'FULL'" :min="0.01" :max="refundMaxAmount" :precision="2" controls-position="right" />
-                            <span class="transaction-action-currency">{{ refundForm.currency || labelCurrency(activeActionRow) || '-' }}</span>
-                        </div>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.order.refundReason')" prop="reason">
-                        <el-select v-model="refundForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
-                            <el-option v-for="item in refundReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.order.description')" class="transaction-action-form__reason">
-                        <el-input v-model.trim="refundForm.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 3, maxRows: 4 }" :placeholder="t('transaction.order.descriptionPlaceholder')" />
-                    </el-form-item>
-                </el-form>
-                <el-alert class="transaction-action-bottom-alert" type="warning" show-icon :closable="false" :title="t('transaction.order.refundLimitWarning', { amount: labelMoney(activeActionRow, refundMaxAmount) })" />
+                <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="refundSaving" :t="t" :locale="locale" />
             </section>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" size="small" :loading="refundSaving" @click="submitRefund">{{ t('transaction.order.refund') }}</el-button>
-                    <el-button size="small" @click="refundVisible = false">{{ t('common.cancel') }}</el-button>
+                    <el-button type="primary" size="small" :loading="refundSaving" :disabled="refundLoading || !refundContext || Number(refundContext.availableRefundAmount) <= 0" @click="submitRefund">{{ t('transaction.order.refund') }}</el-button>
+                    <el-button size="small" :disabled="refundSaving" @click="refundVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
         </el-dialog>
@@ -581,11 +559,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { RefundFields, type RefundContext, getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -629,6 +607,9 @@ const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const refundVisible = ref(false);
+const refundLoading = ref(false);
+const refundContext = ref<RefundContext | null>(null);
+const refundFieldsRef = ref<InstanceType<typeof RefundFields>>();
 const captureVisible = ref(false);
 const voidVisible = ref(false);
 const refundSaving = ref(false);
@@ -642,8 +623,7 @@ const detail = ref<TransactionDetail>();
 const detailOperation = ref<TransactionOperation | null>(null);
 const summary = ref<Awaited<ReturnType<typeof transactionApi.searchOperations>>['summary']>();
 const activeActionRow = ref<TransactionOperation | null>(null);
-const refundFormRef = ref<FormInstance>();
-const refundForm = reactive({ amount: 0, currency: '', mode: 'PARTIAL', reason: '', description: '' });
+const refundForm = reactive({ amount: null as number | null | undefined, currency: '', mode: 'PARTIAL', reason: '', description: '' });
 const captureForm = reactive({ reason: '', description: '' });
 const voidForm = reactive({ reason: '', description: '' });
 const initialQueryTimeZone = merchantDefaultTimeZone();
@@ -667,10 +647,6 @@ const canViewReconciliationDetails = computed(() => hasPermission('merchant:reco
 const canViewSettlementDetails = computed(() => hasPermission('merchant:settlement:transaction-item:transaction-detail'));
 const canViewReserveDetails = computed(() => hasPermission('merchant:settlement:reserve-item:transaction-detail'));
 
-const refundRules = computed<FormRules>(() => ({
-    amount: [{ required: true, message: t('transaction.order.refundAmountRequired'), trigger: 'blur' }],
-    reason: [{ required: true, message: t('transaction.order.refundReasonRequired'), trigger: 'blur' }],
-}));
 const resultRows = computed(() => {
     const totalCount = Number(summary.value?.totalCount || total.value || 0);
     const successCount = Number(summary.value?.successCount || 0);
@@ -714,7 +690,6 @@ const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummarie
         primaryAmount: amountPills(item.amountSummaries || [])[0],
     };
 }));
-const refundMaxAmount = computed(() => Math.max(labelAmountFor(activeActionRow.value, activeActionRow.value?.availableRefundAmount ?? activeActionRow.value?.transactionAmount), 0.01));
 const captureAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.availableCaptureAmount ?? activeActionRow.value?.transactionAmount));
 const isPreAuthCompletion = computed(() => activeActionRow.value?.transactionType === 'PRE_AUTHORIZATION');
 const captureDialogAction = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletion' : 'capture'}`));
@@ -726,7 +701,6 @@ const captureFullAmountText = computed(() => t(`transaction.order.${isPreAuthCom
 const captureSuccessHint = computed(() => t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionSuccessHint' : 'captureSuccessHint'}`));
 const voidAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.transactionAmount));
 const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(cardBrandOptions.value.find((item) => item.value === query.paymentBrand)));
-const refundReasonOptions = computed(() => transactionActionReasonOptions('refund'));
 const captureReasonOptions = computed(() => transactionActionReasonOptions('capture'));
 const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
@@ -850,14 +824,28 @@ async function openDetail(row: TransactionOperation) {
     }
 }
 
-function openRefund(row: TransactionOperation) {
+async function openRefund(row: TransactionOperation) {
+    if (refundLoading.value || refundSaving.value) return;
     activeActionRow.value = row;
-    refundForm.amount = refundMaxAmount.value;
+    refundForm.amount = null;
     refundForm.currency = labelCurrency(row);
     refundForm.mode = 'PARTIAL';
     refundForm.reason = '';
     refundForm.description = '';
+    refundContext.value = null;
+    refundLoading.value = true;
     refundVisible.value = true;
+    try {
+        refundContext.value = await transactionApi.refundContext(row.transactionId!, {
+            transactionDateTime: row.transactionDateTime!,
+            rootTransactionDateTime: row.rootTransactionDateTime!,
+        });
+        refundForm.currency = refundContext.value.currency;
+    } catch {
+        ElMessage.error(t('refundForm.contextFailed'));
+    } finally {
+        refundLoading.value = false;
+    }
 }
 
 function openCapture(row: TransactionOperation) {
@@ -874,15 +862,10 @@ function openVoid(row: TransactionOperation) {
     voidVisible.value = true;
 }
 
-function handleRefundModeChange() {
-    if (refundForm.mode === 'FULL') {
-        refundForm.amount = refundMaxAmount.value;
-    }
-}
-
 async function submitRefund() {
-    if (!activeActionRow.value) return;
-    await refundFormRef.value?.validate();
+    if (!activeActionRow.value || refundSaving.value || refundLoading.value) return;
+    if (!(await refundFieldsRef.value?.validate()) || refundSaving.value) return;
+    if (refundForm.amount == null) return;
     const transactionId = activeActionRow.value.transactionId;
     if (!transactionId) return;
     refundSaving.value = true;
@@ -890,11 +873,13 @@ async function submitRefund() {
         await transactionApi.refund(transactionId, {
             amount: refundForm.amount,
             currency: refundForm.currency || labelCurrency(activeActionRow.value),
-            reason: actionReasonText(refundForm.reason, refundForm.description),
+            reason: [t(`refundForm.reasons.${refundForm.reason}`), refundForm.description.trim()].filter(Boolean).join(' - '),
+            reasonCode: refundForm.reason,
+            refundDescription: refundForm.description.trim(),
             transactionDateTime: activeActionRow.value.transactionDateTime!,
             rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
         });
-        ElMessage.success(t('transaction.order.refundSuccess'));
+        ElMessage.success(t('refundForm.submitted'));
         refundVisible.value = false;
         await loadData();
     } catch (error: any) {
@@ -1077,10 +1062,8 @@ function labelAmountFor(row?: TransactionOperation | null, transactionAmount?: n
     return Number.isFinite(labelAmount) ? labelAmount : 0;
 }
 
-function transactionActionReasonOptions(scope: 'refund' | 'capture' | 'void') {
-    const keys = scope === 'refund'
-        ? ['CUSTOMER_CANCELLED', 'DUPLICATE_PAYMENT', 'PRODUCT_UNAVAILABLE', 'SERVICE_COMPLETED']
-        : scope === 'capture'
+function transactionActionReasonOptions(scope: 'capture' | 'void') {
+    const keys = scope === 'capture'
             ? ['GOODS_SHIPPED', 'SERVICE_COMPLETED', 'MERCHANT_CONFIRMED']
             : ['CUSTOMER_CANCELLED', 'AUTHORIZATION_EXPIRED', 'MERCHANT_CONFIRMED'];
     return keys.map((key) => ({ label: t(`transaction.order.actionReason.${key}`, key), value: key }));

@@ -1,4 +1,7 @@
+import { refundMessagesZh } from '@acquiring/shared';
+
 export default {
+    refundForm: refundMessagesZh,
   common: {
     confirm: '确定',
     cancel: '取消',
@@ -1809,6 +1812,11 @@ export default {
       operations: '交易动作',
       timeline: '流程时间轴',
       amountChanges: '金额变动',
+      amountChange: {
+        actionAmount: '本次金额',
+        paymentCombined: '一步支付：授权与请款同时完成',
+        refundBalance: '退款减少可退款金额，不恢复可请款金额',
+      },
       channel: '渠道记录',
       callback: '回调记录',
       merchantApi: '商户请求日志',

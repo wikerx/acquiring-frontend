@@ -1,4 +1,7 @@
+import { refundMessagesZh } from '@acquiring/shared';
+
 export default {
+    refundForm: refundMessagesZh,
     common: {
         logout: '退出',
         serviceUnavailable: '服务暂时不可用，可能后端服务尚未启动，请稍后再试。',

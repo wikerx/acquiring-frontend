@@ -144,33 +144,37 @@
                 </el-tab-pane>
 
                 <el-tab-pane :label="t('transaction.detail.amountChanges')" name="amountChanges">
-                    <el-timeline v-if="amountChangeRows.length">
+                    <el-timeline v-if="amountChangeRows.length" class="transaction-detail__amount-timeline">
                         <el-timeline-item
                             v-for="item in amountChangeRows"
                             :key="String(item.amountChangeId || item.id || item.changeTime)"
-                            :timestamp="displayRecordTime(item.changeTime || item.createTime)"
-                            placement="top"
+                            type="primary"
                         >
-                            <div class="transaction-detail__timeline-title">{{ optionText(typeOptions, String(item.changeType || '')) }}</div>
-                            <div class="transaction-detail__amount-grid">
-                                <div>
-                                    <span>{{ t('transaction.fields.amount') }}</span>
-                                    <strong>{{ moneyText(amountValue(item.changeAmount), String(item.amountCurrency || detail.order?.transactionCurrency || ''), detail.order?.currencyExponent) }}</strong>
+                            <article class="transaction-detail__amount-event">
+                                <header class="transaction-detail__amount-event-head">
+                                    <div>
+                                        <time>{{ displayRecordTime(item.changeTime || item.createTime) }}</time>
+                                        <h3>{{ optionText(typeOptions, String(item.changeType || '')) }}</h3>
+                                    </div>
+                                    <div class="transaction-detail__amount-event-value">
+                                        <span>{{ t('transaction.detail.amountChange.actionAmount') }}</span>
+                                        <strong>{{ amountMoneyText(item, 'changeAmount') }}</strong>
+                                    </div>
+                                </header>
+                                <div class="transaction-detail__amount-metrics" :class="{ 'is-pair': amountMetrics(item).length === 2 }">
+                                    <div v-for="metric in amountMetrics(item)" :key="metric.after" class="transaction-detail__amount-metric">
+                                        <span class="transaction-detail__amount-metric-label">{{ t(metric.label) }}</span>
+                                        <div class="transaction-detail__amount-metric-values">
+                                            <template v-if="amountHasChanged(item, metric.before, metric.after)">
+                                                <span>{{ amountMoneyText(item, metric.before) }}</span>
+                                                <span aria-hidden="true">→</span>
+                                            </template>
+                                            <strong>{{ amountMoneyText(item, metric.after) }}</strong>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span>{{ t('transaction.fields.authorizedAmount') }}</span>
-                                    <strong>{{ amountRangeText(item, 'authorizedBefore', 'authorizedAfter') }}</strong>
-                                </div>
-                                <div>
-                                    <span>{{ t('transaction.fields.availableCaptureAmount') }}</span>
-                                    <strong>{{ amountRangeText(item, 'availableCaptureBefore', 'availableCaptureAfter') }}</strong>
-                                </div>
-                                <div>
-                                    <span>{{ t('transaction.fields.availableRefundAmount') }}</span>
-                                    <strong>{{ amountRangeText(item, 'availableRefundBefore', 'availableRefundAfter') }}</strong>
-                                </div>
-                            </div>
-                            <div class="transaction-detail__timeline-text">{{ item.changeReason || '-' }}</div>
+                                <p v-if="amountEventNote(item)" class="transaction-detail__amount-event-note">{{ amountEventNote(item) }}</p>
+                            </article>
                         </el-timeline-item>
                     </el-timeline>
                     <el-empty v-if="!amountChangeRows.length" :description="t('transaction.detail.empty')" />
@@ -224,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { CircleCheckFilled, CircleCloseFilled, Loading, VideoPause } from '@element-plus/icons-vue';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
@@ -500,6 +504,7 @@ const summaryIcon = computed(() => {
 });
 
 onMounted(loadDictionaries);
+watch(locale, loadDictionaries);
 
 async function loadDictionaries() {
     typeOptions.value = fallbackTransactionTypeOptions(t);
@@ -539,10 +544,40 @@ function amountValue(value: unknown) {
     return value as number | string | null | undefined;
 }
 
-function amountRangeText(row: Record<string, unknown>, beforeKey: string, afterKey: string) {
+function amountMoneyText(row: Record<string, unknown>, key: string) {
     const currency = String(row.amountCurrency || props.detail?.order?.transactionCurrency || '');
     const exponent = props.detail?.order?.currencyExponent;
-    return `${moneyText(amountValue(row[beforeKey]), currency, exponent)} -> ${moneyText(amountValue(row[afterKey]), currency, exponent)}`;
+    return moneyText(amountValue(row[key]), currency, exponent);
+}
+
+function amountHasChanged(row: Record<string, unknown>, beforeKey: string, afterKey: string) {
+    return String(row[beforeKey] ?? '') !== String(row[afterKey] ?? '');
+}
+
+function amountMetrics(row: Record<string, unknown>) {
+    const metric = (label: string, field: string) => ({ label: `transaction.fields.${label}`, before: `${field}Before`, after: `${field}After` });
+    switch (String(row.changeType || '')) {
+        case 'PAYMENT':
+            return [metric('authorizedAmount', 'authorized'), metric('capturedAmount', 'captured'), metric('availableRefundAmount', 'availableRefund')];
+        case 'AUTHORIZATION':
+        case 'PRE_AUTHORIZATION':
+        case 'INCREMENTAL_AUTHORIZATION':
+        case 'VOID':
+            return [metric('authorizedAmount', 'authorized'), metric('availableCaptureAmount', 'availableCapture')];
+        case 'CAPTURE':
+        case 'PRE_AUTH_COMPLETION':
+            return [metric('capturedAmount', 'captured'), metric('availableCaptureAmount', 'availableCapture'), metric('availableRefundAmount', 'availableRefund')];
+        case 'REFUND':
+            return [metric('capturedAmount', 'captured'), metric('refundedAmount', 'refunded'), metric('availableRefundAmount', 'availableRefund')];
+        default:
+            return [metric('authorizedAmount', 'authorized'), metric('capturedAmount', 'captured'), metric('refundedAmount', 'refunded')];
+    }
+}
+
+function amountEventNote(row: Record<string, unknown>) {
+    if (row.changeType === 'PAYMENT') return t('transaction.detail.amountChange.paymentCombined');
+    if (row.changeType === 'REFUND') return t('transaction.detail.amountChange.refundBalance');
+    return '';
 }
 
 function displayRecordTime(value: unknown) {
@@ -1296,36 +1331,100 @@ function timelineSequence(row: Record<string, unknown>) {
     line-height: 22px;
 }
 
-.transaction-detail__amount-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    margin: 8px 0;
+.transaction-detail__amount-timeline {
+    padding: 16px 4px 0 8px;
 }
 
-.transaction-detail__amount-grid > div {
-    min-width: 0;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px;
-    padding: 8px 10px;
-    background: var(--el-fill-color-extra-light);
+.transaction-detail__amount-timeline :deep(.el-timeline-item__wrapper) {
+    padding-left: 20px;
 }
 
-.transaction-detail__amount-grid span {
-    display: block;
+.transaction-detail__amount-event {
+    padding: 0 0 24px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.transaction-detail__amount-event-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 14px;
+}
+
+.transaction-detail__amount-event-head time,
+.transaction-detail__amount-event-value > span,
+.transaction-detail__amount-metric-label {
     color: var(--el-text-color-secondary);
     font-size: 12px;
     line-height: 18px;
 }
 
-.transaction-detail__amount-grid strong {
-    display: block;
-    overflow: hidden;
+.transaction-detail__amount-event-head h3 {
+    margin: 3px 0 0;
     color: var(--el-text-color-primary);
+    font-size: 15px;
+    line-height: 22px;
+}
+
+.transaction-detail__amount-event-value {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.transaction-detail__amount-event-value strong {
+    color: var(--el-text-color-primary);
+    font-size: 17px;
+    line-height: 24px;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-detail__amount-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--el-border-color-lighter);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background: var(--el-fill-color-extra-light);
+}
+
+.transaction-detail__amount-metrics.is-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transaction-detail__amount-metric {
+    min-width: 0;
+    padding: 10px 14px;
+}
+
+.transaction-detail__amount-metric + .transaction-detail__amount-metric {
+    border-left: 1px solid var(--el-border-color-lighter);
+}
+
+.transaction-detail__amount-metric-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 4px;
+    color: var(--el-text-color-secondary);
     font-size: 13px;
     line-height: 20px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.transaction-detail__amount-metric-values strong {
+    color: var(--el-text-color-primary);
+    font-weight: 700;
+}
+
+.transaction-detail__amount-event-note {
+    margin: 9px 0 0;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 18px;
 }
 
 @media (max-width: 980px) {
@@ -1351,8 +1450,13 @@ function timelineSequence(row: Record<string, unknown>) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .transaction-detail__amount-grid {
+    .transaction-detail__amount-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .transaction-detail__amount-metric:nth-child(3) {
+        border-left: 0;
+        border-top: 1px solid var(--el-border-color-lighter);
     }
 
     .transaction-detail__party-sections {
@@ -1376,8 +1480,24 @@ function timelineSequence(row: Record<string, unknown>) {
         grid-template-columns: 1fr;
     }
 
-    .transaction-detail__amount-grid {
+    .transaction-detail__amount-metrics,
+    .transaction-detail__amount-metrics.is-pair {
         grid-template-columns: 1fr;
+    }
+
+    .transaction-detail__amount-metric + .transaction-detail__amount-metric,
+    .transaction-detail__amount-metric:nth-child(3) {
+        border-left: 0;
+        border-top: 1px solid var(--el-border-color-lighter);
+    }
+
+    .transaction-detail__amount-event-head {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .transaction-detail__amount-event-value {
+        align-items: flex-start;
     }
 
     .transaction-detail__party-grid {

@@ -1,4 +1,7 @@
+import { refundMessagesEn } from '@acquiring/shared';
+
 export default {
+    refundForm: refundMessagesEn,
   common: {
     confirm: 'Confirm',
     cancel: 'Cancel',
@@ -1915,6 +1918,11 @@ export default {
       operations: 'Operations',
       timeline: 'Timeline',
       amountChanges: 'Amount Changes',
+      amountChange: {
+        actionAmount: 'Action amount',
+        paymentCombined: 'One-step payment: authorization and capture complete together',
+        refundBalance: 'A refund reduces the refundable balance; it does not restore capturable funds',
+      },
       channel: 'Channel Records',
       callback: 'Callback Records',
       merchantApi: 'Merchant API Logs',

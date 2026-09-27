@@ -1,5 +1,6 @@
 import type {
     CommonResult,
+    RefundContext,
     PageResult,
     TransactionAnalyticsFailure,
     TransactionAnalyticsOverview,
@@ -165,6 +166,8 @@ export interface TransactionActionRequest {
     amount?: number | string;
     currency?: string;
     reason?: string;
+    reasonCode?: string;
+    refundDescription?: string;
     transactionDateTime: string;
     rootTransactionDateTime: string;
 }
@@ -291,6 +294,10 @@ export const transactionApi = {
         const result = await http.get<CommonResult<TransactionDetail>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}`, {
             params: { transactionDateTime, rootTransactionDateTime },
         });
+        return unwrapResult(result.data);
+    },
+    async refundContext(transactionId: string, data: TransactionActionRequest) {
+        const result = await http.post<CommonResult<RefundContext>>(`/merchant/transactions/orders/${encodeURIComponent(transactionId)}/refund-context`, data);
         return unwrapResult(result.data);
     },
     async refund(transactionId: string, data: TransactionActionRequest) {

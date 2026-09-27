@@ -1,4 +1,7 @@
+import { refundMessagesEn } from '@acquiring/shared';
+
 export default {
+    refundForm: refundMessagesEn,
     common: {
         logout: 'Logout',
         serviceUnavailable: 'The service is temporarily unavailable. The backend may not be running yet. Please try again later.',
