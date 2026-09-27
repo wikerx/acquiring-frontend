@@ -79,7 +79,8 @@ const displayGroups = computed<PaymentMethodGroup[]>(() => normalizedPaymentType
         ? methodLogoKeys
         : assetLogoKeys(resolvePaymentLogoKeys(paymentType.value));
     const fallbackLabels = normalizedPaymentMethods.value
-        .filter((paymentMethod) => !assetLogoKeys(resolvePaymentLogoKeys(paymentMethod.value)).length)
+        .filter((paymentMethod) => paymentMethod.value !== 'ALL'
+            && !assetLogoKeys(resolvePaymentLogoKeys(paymentMethod.value)).length)
         .map((paymentMethod) => paymentMethod.label);
     const methodTitle = normalizedPaymentMethods.value.map((paymentMethod) => paymentMethod.label).join(' / ');
     return {

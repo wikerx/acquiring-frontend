@@ -49,7 +49,12 @@
                 </template>
             </el-table-column>
             <el-table-column :label="t('channel.info.payoutMethods')" min-width="160" align="center">
-                <template #default="{ row }">{{ paymentMethodText(row.payoutPaymentMethods) }}</template>
+                <template #default="{ row }">
+                    <div class="logo-line">
+                        <PaymentLogoGroup :keys="paymentKeys(row.payoutPaymentMethods)" fallback="text" size="sm" />
+                        <span v-if="!row.payoutPaymentMethods?.length">-</span>
+                    </div>
+                </template>
             </el-table-column>
             <el-table-column label="3DS" width="80" align="center">
                 <template #default="{ row }">
@@ -109,7 +114,12 @@
                     </div>
                     <span v-else>-</span>
                 </el-descriptions-item>
-                <el-descriptions-item :label="t('channel.info.payoutMethods')">{{ paymentMethodText(detailRow.payoutPaymentMethods) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.info.payoutMethods')">
+                    <div v-if="detailRow.payoutPaymentMethods?.length" class="detail-logo-line">
+                        <PaymentLogoGroup :keys="paymentKeys(detailRow.payoutPaymentMethods)" fallback="text" size="sm" />
+                    </div>
+                    <span v-else>-</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.defaultRequestUrl')">{{ detailRow.defaultRequestUrl || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.connectTimeoutSeconds')">{{ secondsText(detailRow.connectTimeoutSeconds) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.readTimeoutSeconds')">{{ secondsText(detailRow.readTimeoutSeconds) }}</el-descriptions-item>
@@ -232,7 +242,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo, type ChannelMetadataSchema } from '@/api/channel';
-import { loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
+import { loadDictOptions, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -680,13 +690,6 @@ async function handleDelete(target?: ChannelInfo | ChannelInfo[]) {
 
 function paymentKeys(values?: string[]): PaymentLogoKey[] {
     return (values || []).flatMap((value) => paymentLogoKeys(value, paymentOptions.value.find((item) => item.value === value)));
-}
-
-function paymentMethodText(values?: string[]) {
-    if (!values?.length) {
-        return '-';
-    }
-    return values.map((value) => optionLabel(paymentOptions.value, value)).join(', ');
 }
 
 function metadataFieldTypeText(value?: string) {

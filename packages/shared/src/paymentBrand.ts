@@ -15,6 +15,7 @@ import applePayLogo from './assets/payment-icons/wallets/apple-pay.svg';
 import cashAppPayLogo from './assets/payment-icons/wallets/cash-app-pay.png';
 import googlePayLogo from './assets/payment-icons/wallets/google-pay.svg';
 import paypalLogo from './assets/payment-icons/wallets/paypal.svg';
+import bitcoinLogo from './assets/payment-icons/wallets/bitcoin.svg';
 
 export type PaymentLogoKind = 'card-brand' | 'wallet' | 'bank-transfer' | 'security';
 
@@ -37,6 +38,7 @@ export type PaymentLogoKey =
     | 'bankCard'
     | 'digitalWallet'
     | 'cashAppPay'
+    | 'bitcoin'
     | 'achDebit'
     | 'bankTransfer'
     | 'spei'
@@ -191,6 +193,14 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         asset: cashAppPayLogo,
         assetSource: 'Icons8 Cash App icon provided by user; usage is subject to the applicable Icons8 license',
     },
+    bitcoin: {
+        key: 'bitcoin',
+        kind: 'wallet',
+        label: 'Bitcoin',
+        textFallback: 'Bitcoin',
+        asset: bitcoinLogo,
+        assetSource: 'Simple Icons: Bitcoin mark (CC0)',
+    },
     achDebit: {
         key: 'achDebit',
         kind: 'bank-transfer',
@@ -278,6 +288,7 @@ const PAYMENT_METHOD_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
     GOOGLE_PAY: ['googlePay'],
     ALIPAY_PLUS: ['alipayPlus'],
     CASH_APP_PAY: ['cashAppPay'],
+    BTC_ON_CHAIN: ['bitcoin'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
     SPEI: ['spei'],
@@ -299,6 +310,7 @@ const PAYMENT_BRAND_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
     GOOGLE_PAY: ['googlePay'],
     ALIPAY_PLUS: ['alipayPlus'],
     CASH_APP_PAY: ['cashAppPay'],
+    BTC_ON_CHAIN: ['bitcoin'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
     SPEI: ['spei'],

@@ -20,6 +20,12 @@
                     <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
                 </el-select>
             </el-form-item>
+            <el-form-item :label="t('channel.common.businessType')">
+                <el-select v-model="query.businessType" :placeholder="t('channel.common.pleaseSelect')" clearable>
+                    <el-option :label="t('channel.common.acquiring')" value="ACQUIRING" />
+                    <el-option :label="t('channel.common.payout')" value="PAYOUT" />
+                </el-select>
+            </el-form-item>
             <el-form-item :label="t('channel.mid.channelMid')">
                 <el-select v-model="query.midConfigId" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
                     <el-option v-for="item in midOptions" :key="item.id" :label="midOptionLabel(item)" :value="item.id" />
@@ -50,6 +56,9 @@
             <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true">
                 <template #default="{ row }">{{ channelDisplayText(row) }}</template>
             </el-table-column>
+            <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
+                <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
+            </el-table-column>
             <el-table-column prop="channelMid" :label="t('channel.mid.channelMid')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
                 <template #default="{ row }"><el-switch :model-value="row.bindingStatus" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'channel:mid-binding:status'" /></template>
@@ -79,6 +88,7 @@
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="t('channel.binding.merchantId')">{{ detailRow.merchantId }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.businessType')">{{ businessTypeText(detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.mid.channelMid')">{{ detailRow.channelMid }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.status')"><el-tag size="small" :type="statusType(detailRow.bindingStatus)">{{ statusText(detailRow.bindingStatus, t('channel.common.enabled'), t('channel.common.disabled')) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.binding.effectiveTime')"><BaseDateTime :value="detailRow.effectiveTime" /></el-descriptions-item>
@@ -109,9 +119,23 @@
                         <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" />
                     </el-select>
                 </el-form-item>
+                <el-form-item :label="t('channel.common.channel')" prop="channelId">
+                    <el-select v-model="form.channelId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="formMode === 'edit'" @change="handleChannelChange">
+                        <el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item v-if="businessTypeOptionsForForm.length > 1" :label="t('channel.common.businessType')" prop="businessType">
+                    <el-select v-model="form.businessType" :placeholder="t('channel.binding.businessTypePlaceholder')" style="width:100%" :disabled="formMode === 'edit'" @change="handleBusinessTypeChange">
+                        <el-option :label="t('channel.common.acquiring')" value="ACQUIRING" />
+                        <el-option :label="t('channel.common.payout')" value="PAYOUT" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item v-else-if="businessTypeOptionsForForm.length === 1" :label="t('channel.common.businessType')">
+                    <el-tag effect="plain">{{ businessTypeText(businessTypeOptionsForForm[0]) }}</el-tag>
+                </el-form-item>
                 <el-form-item :label="t('channel.mid.channelMid')" prop="midConfigId">
-                    <el-select v-model="form.midConfigId" :placeholder="t('channel.common.pleaseSelect')" filterable style="width:100%" :disabled="formMode === 'edit'">
-                        <el-option v-for="item in midOptions" :key="item.id" :label="midOptionLabel(item)" :value="item.id" />
+                    <el-select v-model="form.midConfigId" :placeholder="t('channel.binding.midPlaceholder')" filterable style="width:100%" :disabled="formMode === 'edit' || !form.channelId || !form.businessType">
+                        <el-option v-for="item in filteredMidOptions" :key="item.id" :label="midOptionLabel(item)" :value="item.id" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.status')" prop="bindingStatus"><el-select v-model="form.bindingStatus" style="width:100%"><el-option :label="t('channel.common.enabled')" :value="1" /><el-option :label="t('channel.common.disabled')" :value="0" /></el-select></el-form-item>
@@ -128,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -179,6 +203,7 @@ const merchantLoading = ref(false);
 const query = reactive({
     merchantId: '',
     channelId: undefined as number | undefined,
+    businessType: '',
     midConfigId: undefined as number | undefined,
     bindingStatus: undefined as number | undefined,
 });
@@ -186,14 +211,36 @@ const query = reactive({
 const emptyForm = () => ({
     id: 0,
     merchantId: '',
+    channelId: undefined as number | undefined,
+    businessType: '',
     midConfigId: undefined as number | undefined,
     bindingStatus: 1,
     remark: '',
 });
 const form = reactive(emptyForm());
 
+const businessTypeOptionsForForm = computed(() => {
+    const channel = channelOptions.value.find((item) => item.id === form.channelId);
+    if (!channel) {
+        return [] as string[];
+    }
+    return [
+        channel.supportAcquiring === 1 ? 'ACQUIRING' : '',
+        channel.supportPayout === 1 ? 'PAYOUT' : '',
+    ].filter(Boolean);
+});
+
+const filteredMidOptions = computed(() => midOptions.value.filter((item) => {
+    if (form.channelId && item.channelId !== form.channelId) {
+        return false;
+    }
+    return !form.businessType || item.businessType === form.businessType;
+}));
+
 const rules: FormRules = {
     merchantId: [{ required: true, message: t('channel.binding.requiredMerchantId'), trigger: 'change' }],
+    channelId: [{ required: true, message: t('channel.binding.requiredChannel'), trigger: 'change' }],
+    businessType: [{ required: true, message: t('channel.binding.requiredBusinessType'), trigger: 'change' }],
     midConfigId: [{ required: true, message: t('channel.binding.requiredMidConfig'), trigger: 'change' }],
     bindingStatus: [{ required: true, message: t('channel.info.requiredStatus'), trigger: 'change' }],
 };
@@ -234,6 +281,7 @@ function handleSearch() {
 function resetQuery() {
     query.merchantId = '';
     query.channelId = undefined;
+    query.businessType = '';
     query.midConfigId = undefined;
     query.bindingStatus = undefined;
     handleSearch();
@@ -247,6 +295,11 @@ async function openDetail(row: MerchantChannelMidBinding) {
 function openForm(mode: 'create' | 'edit', row?: MerchantChannelMidBinding) {
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
+    if (!form.channelId && form.midConfigId) {
+        const mid = midOptions.value.find((item) => item.id === form.midConfigId);
+        form.channelId = mid?.channelId;
+        form.businessType = mid?.businessType || '';
+    }
     syncCurrentMerchantOption();
     formVisible.value = true;
     nextTick(() => formRef.value?.clearValidate());
@@ -317,7 +370,27 @@ async function handleDelete(target?: MerchantChannelMidBinding | MerchantChannel
 }
 
 function midOptionLabel(item: ChannelMidConfig) {
-    return `${item.channelCode} / ${item.channelMid}`;
+    return item.midName ? `${item.channelMid}（${item.midName}）` : item.channelMid;
+}
+
+function handleChannelChange() {
+    const supportedTypes = businessTypeOptionsForForm.value;
+    form.businessType = supportedTypes.length === 1 ? supportedTypes[0] : '';
+    form.midConfigId = undefined;
+}
+
+function handleBusinessTypeChange() {
+    form.midConfigId = undefined;
+}
+
+function businessTypeText(value?: string) {
+    if (value === 'ACQUIRING') {
+        return t('channel.common.acquiring');
+    }
+    if (value === 'PAYOUT') {
+        return t('channel.common.payout');
+    }
+    return value || '-';
 }
 
 async function searchMerchantOptions(keyword = '') {

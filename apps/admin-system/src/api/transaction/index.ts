@@ -1,5 +1,6 @@
 import type {
     CommonResult,
+    RefundContext,
     PageQuery,
     PageResult,
     TransactionAnalyticsChannelPerformance,
@@ -246,6 +247,8 @@ export interface TransactionActionRequest {
     amount?: number | string;
     currency?: string;
     reason?: string;
+    reasonCode?: string;
+    refundDescription?: string;
     transactionDateTime: string;
     rootTransactionDateTime: string;
 }
@@ -910,6 +913,14 @@ export async function getTransactionOperationDetail(
             rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
         },
     });
+    return unwrapResult(result.data);
+}
+
+export async function getRefundContext(transactionId: string, data: TransactionActionRequest) {
+    const result = await http.post<CommonResult<RefundContext>>(
+        `/admin/transactions/operations/${transactionId}/refund-context`,
+        normalizeTransactionActionShardTimes(data),
+    );
     return unwrapResult(result.data);
 }
 

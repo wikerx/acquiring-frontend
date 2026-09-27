@@ -97,3 +97,104 @@ final result: passed
 - 临时单据验收入口已删除，不进入生产构建。
 
 final result: blocked
+
+# 商户开户与资料存储设计验收
+
+## 验收范围
+
+- 验收日期：`2026-09-15`
+- 设计参考：用户提供的商户开户流程截图，重点检查步骤式表单、资料分区、状态信息和移动端操作区
+- 页面范围：管理端商户信息列表、新增/编辑开户抽屉、商户详情、资料上传下载删除和开户提交门禁
+- 基础设施：Docker MinIO、Nacos `common-dev.yaml` 与 `service-admin-dev.yaml`、商户开户数据库迁移
+- 自动化浏览器：Google Chrome；桌面视口 `1440 x 900`，移动视口 `390 x 844`
+
+## 截图证据
+
+- 商户详情桌面端：`/tmp/merchant-detail-desktop.png`
+- 商户详情移动端：`/tmp/merchant-detail-mobile.png`
+- 编辑商户桌面端：`/tmp/merchant-edit-desktop.png`
+- 编辑商户移动端：`/tmp/merchant-edit-mobile.png`
+- 清理测试数据后的英文列表：`/tmp/merchant-info-final-en.png`
+
+## 验收结果
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| MinIO 部署 | 通过 | 容器健康；API 映射到 `127.0.0.1:9010`，Console 映射到 `127.0.0.1:9011`，未占用 SDK 的 `9000` 端口 |
+| MinIO 凭据 | 通过 | 根账户和受限应用账户均已写入权限为 `600` 的运行时环境文件；仅验证变量非空，不在验收记录中输出明文 |
+| MinIO 应用账户权限 | 通过 | 使用应用账户完成测试对象写入、读取、SHA-256 一致性校验和删除，删除后对象不可读取 |
+| Nacos 配置 | 通过 | dev Namespace 中 `common-dev.yaml` 和 `service-admin-dev.yaml` 均可读取，并包含对象存储及商户敏感字段加密配置 |
+| 数据库迁移 | 通过 | 商户开户要求的 63 个字段、3 张扩展表和 6 个索引均已存在 |
+| 开户列表国际化 | 通过 | 英文模式下菜单、面包屑、页面标题、表格、详情状态和 28 项就绪提示无中文字符；切换中文后内容和页面标题同步更新 |
+| 桌面编辑抽屉 | 通过 | 抽屉宽度 `1382px`，七步流程、三列表单和固定操作区完整显示，无控件越界或页面级横向溢出 |
+| 移动编辑抽屉 | 通过 | 抽屉宽度 `390px`，移动进度条替代七步横排，表单可在内部纵向滚动；取消、下一步和保存草稿按钮均完整可见且无重叠 |
+| 移动详情抽屉 | 通过 | 抽屉宽度 `390px`，无页面级横向溢出或控件越界 |
+| 草稿提交门禁 | 通过 | 不完整草稿不显示提交按钮；直接调用提交接口返回业务失败码 `F402001`，数据状态保持 `DRAFT / NOT_SUBMITTED` |
+| 资料上传闭环 | 通过 | PNG 上传、数据库元数据、MinIO 对象、页面下载摘要一致；页面删除后元数据软删除且对象移除 |
+| 控制台健康 | 通过 | 修复可空布尔值直接绑定 `ElSwitch` 的告警后，重新加载和中英文切换均为 `0 errors / 0 warnings` |
+| 后端回归 | 通过 | 4 个商户测试类共 26 项通过，Failures、Errors、Skipped 均为 0 |
+| 前端构建 | 通过 | `npm run build:admin` 完成类型检查和 Vite 生产构建 |
+| 补丁格式 | 通过 | 前后端仓库 `git diff --check` 均无错误 |
+| 测试数据清理 | 通过 | QA 商户、已软删除资料元数据及关联记录剩余数量为 0，MinIO 测试对象不存在 |
+
+## 说明
+
+- MinIO 运行时凭据保存在 Docker 恢复栈目录的私有环境文件中，未写入 Git 跟踪文件。
+- 商户资料表只保存对象存储元数据和摘要，不保存文件正文；后续迁移到 AWS S3 时可继续复用现有存储抽象。
+- MinIO、Nacos、管理端前端和 `service-admin` 验收后保持运行。
+
+final result: passed
+
+# 商户开户视觉优化复验
+
+## 验收范围
+
+- 复验日期：`2026-09-14`
+- 设计参考：用户提供的 5 张 Vexra 商户开户、商户详情、审核和渠道费率工作台截图
+- 页面范围：管理端商户新增/编辑开户抽屉、商户详情、合规资料和审核轨迹
+- 自动化浏览器：Playwright CLI + Google Chrome；桌面视口 `1440 x 900`，移动视口 `390 x 844`
+
+## 参考图对照
+
+| 参考重点 | 当前实现 | 结论 |
+|---|---|---|
+| 蓝白业务工作台 | 使用浅蓝商户身份头、细边框分区和克制阴影 | 通过 |
+| 七步开户流程 | 桌面展示七步标题与说明，移动端切换为当前步骤进度条 | 通过 |
+| 紧凑多列表单 | 桌面三列、移动单列，字段与操作区不重叠 | 通过 |
+| 固定底部操作 | 取消、上一步、下一步和保存草稿保持可见，主次操作清晰 | 通过 |
+| 商户详情工作区 | 商户身份、状态、申请号、时间和业务操作集中在顶部 | 通过 |
+| 双列资料面板 | 基础、KYB、业务、联系人和结算信息使用双列细边框面板 | 通过 |
+
+## 验收结果
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| 英文步骤说明 | 通过 | 七项说明均为两行容器，`line-clamp=2`、`white-space=normal`，无省略号截断 |
+| 桌面开户布局 | 通过 | 页面宽度 `1440/1440`，七步流程、三列表单和底部操作栏无页面级横向溢出 |
+| 移动开户布局 | 通过 | 页面宽度 `390/390`，商户身份头、进度条、单列表单和底部按钮无重叠 |
+| 开户步骤交互 | 通过 | 点击 `Next` 后当前步骤由 `Basic Profile 1/7` 更新为 `Company and KYB 2/7` |
+| 合规资料标签 | 通过 | 标签切换成功，显示 3 行文件及上传、下载、删除操作 |
+| 审核轨迹标签 | 通过 | 标签切换成功，显示提交审核和要求补件 2 条记录 |
+| 英文国际化 | 通过 | 英文开户桌面、英文开户移动和英文详情的中文字符数均为 `0` |
+| 移动详情布局 | 通过 | 抽屉宽度 `390px`、身份头宽度 `358px`，无页面级横向溢出 |
+| 控制台健康 | 通过 | 最终各交互阶段均为 `0 errors / 0 warnings` |
+| 前端构建 | 通过 | `npm run build:admin` 完成治理检查、`vue-tsc --noEmit` 和 Vite 生产构建 |
+| 补丁格式 | 通过 | `acquiring-frontend` 与 `acquiring-orchestration` 的 `git diff --check` 均无错误 |
+
+## 截图证据
+
+- 英文开户桌面：`/tmp/merchant-onboarding-visual-qa/form-en-desktop-final.png`
+- 英文开户移动：`/tmp/merchant-onboarding-visual-qa/form-en-mobile-final.png`
+- 英文开户移动第二步：`/tmp/merchant-onboarding-visual-qa/form-en-mobile-step2-final.png`
+- 英文详情桌面：`/tmp/merchant-onboarding-visual-qa/detail-en-desktop-final.png`
+- 英文详情移动：`/tmp/merchant-onboarding-visual-qa/detail-en-mobile-final.png`
+- 英文合规资料：`/tmp/merchant-onboarding-visual-qa/detail-en-documents-final.png`
+- 英文审核轨迹：`/tmp/merchant-onboarding-visual-qa/detail-en-review-final.png`
+
+## 说明
+
+- 本轮使用隔离 Vite 入口加载真实商户组件和真实中英文资源，固定样本数据不访问真实接口，不写入商户、文件或资金数据。
+- 生产构建仍提示现有大分包警告，不影响本轮页面功能和构建结果。
+- Browser 插件不可用，因此按前端验收规范使用 Playwright CLI 完成截图、DOM、交互和控制台检查。
+
+final result: passed

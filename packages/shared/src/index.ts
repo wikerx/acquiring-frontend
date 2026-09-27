@@ -1,6 +1,8 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 export * from './brand';
 export * from './amount';
+export * from './refund';
+export { default as RefundFields } from './components/RefundFields.vue';
 export * from './dateTime';
 export * from './paymentBrand';
 export * from './currencyPresentation';
