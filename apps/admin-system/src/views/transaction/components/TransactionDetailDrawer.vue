@@ -190,24 +190,13 @@
                 </el-tab-pane>
 
                 <el-tab-pane :label="t('transaction.detail.timeline')" name="timeline">
-                    <el-timeline v-if="timelineRows.length" class="transaction-detail__timeline">
-                        <el-timeline-item
-                            v-for="item in timelineRows"
-                            :key="String(item.riskEventId || item.flowEventId || item.statusHistoryId || item.amountChangeId || item.id || item.eventId || item.createTime)"
-                            :timestamp="displayRecordTime(item.statusTime || item.eventTime || item.createTime)"
-                            :type="timelineTone(item)"
-                            placement="top"
-                        >
-                            <div class="transaction-detail__timeline-card" :class="`is-${timelineTone(item)}`">
-                                <div class="transaction-detail__timeline-heading">
-                                    <strong>{{ timelineTitle(item) }}</strong>
-                                    <el-tag size="small" :type="timelineTone(item)" effect="plain">{{ timelineStatusText(item) }}</el-tag>
-                                </div>
-                                <div class="transaction-detail__timeline-text">{{ timelineContent(item) }}</div>
-                            </div>
-                        </el-timeline-item>
-                    </el-timeline>
-                    <el-empty v-if="!timelineRows.length" :description="t('transaction.detail.empty')" />
+                    <TransactionFlowTimeline
+                        :detail="detail"
+                        :focus-transaction-id="focusTransactionId"
+                        :display-time-zone="displayTimeZone"
+                        :type-options="typeOptions"
+                        :status-options="statusOptions"
+                    />
                 </el-tab-pane>
 
                 <el-tab-pane :label="t('transaction.detail.channel')" name="channel">
@@ -242,6 +231,7 @@ import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransacti
 import CopyableText from './CopyableText.vue';
 import RecordList from './TransactionRecordList.vue';
 import TransactionFinanceDetail from './TransactionFinanceDetail.vue';
+import TransactionFlowTimeline from './TransactionFlowTimeline.vue';
 
 const props = defineProps<{
     visible: boolean;
@@ -274,29 +264,6 @@ const displayTimeZone = computed(() => props.displayTimeZone || DEFAULT_TRANSACT
 const drawerVisible = computed({
     get: () => props.visible,
     set: (value: boolean) => emit('update:visible', value),
-});
-
-const timelineRows = computed(() => {
-    const flowEvents = (props.detail?.flowEvents || []) as Record<string, unknown>[];
-    const statusHistory = (props.detail?.statusHistory || []) as Record<string, unknown>[];
-    const merchantApiLogs = (props.detail?.merchantApiInteractionLogs || []) as Record<string, unknown>[];
-    const merchantResponses = merchantResponseMap(merchantApiLogs);
-    const resultEvents = flowEvents.map((row) => enrichTransactionResultEvent(row, merchantResponses));
-    const representedInitialStatuses = new Set(
-        resultEvents
-            .filter(isTransactionResultEvent)
-            .map(timelineResultKey)
-            .filter(Boolean),
-    );
-    const visibleStatusHistory = statusHistory.filter(
-        (row) => !isRepresentedInitialStatus(row, representedInitialStatuses),
-    );
-    return [
-        ...resultEvents,
-        ...((props.detail?.riskEvents || []) as Record<string, unknown>[]),
-        ...visibleStatusHistory,
-        ...((props.detail?.amountChanges || []) as Record<string, unknown>[]),
-    ].sort(compareTimelineRows);
 });
 
 const amountChangeRows = computed(() => (props.detail?.amountChanges || []) as Record<string, unknown>[]);
@@ -687,234 +654,6 @@ function isPresent(value: unknown) {
     return value !== undefined && value !== null && value !== '';
 }
 
-interface MerchantResponseSummary {
-    code: string;
-    message: string;
-}
-
-function merchantResponseMap(rows: Record<string, unknown>[]) {
-    const responses = new Map<string, MerchantResponseSummary>();
-    rows.forEach((row) => {
-        const transactionId = String(row.transactionId || '');
-        const code = String(row.merchantResponseCode || '');
-        const message = String(row.merchantResponseMessage || '');
-        if (transactionId && (code || message)) {
-            responses.set(transactionId, { code, message });
-        }
-    });
-    return responses;
-}
-
-function enrichTransactionResultEvent(
-    row: Record<string, unknown>,
-    merchantResponses: Map<string, MerchantResponseSummary>,
-) {
-    if (!isTransactionResultEvent(row)) {
-        return row;
-    }
-    const transactionId = String(row.transactionId || '');
-    const response = merchantResponses.get(transactionId);
-    if (!response) {
-        return row;
-    }
-    const eventContent = [response.code, response.message].filter(Boolean).join('：');
-    const failed = isFailureStatus(row.currentStatus || row.eventStatus);
-    return {
-        ...row,
-        eventContent: eventContent || row.eventContent,
-        errorCode: failed ? response.code : row.errorCode,
-        errorMessage: failed ? response.message : row.errorMessage,
-        merchantResponseCode: response.code,
-        merchantResponseMessage: response.message,
-    };
-}
-
-function isTransactionResultEvent(row: Record<string, unknown>) {
-    return String(row.eventType || '').toUpperCase() === 'STATUS_RECORDED';
-}
-
-function timelineResultKey(row: Record<string, unknown>) {
-    const transactionId = String(row.transactionId || '');
-    const status = String(row.currentStatus || row.toStatus || row.eventStatus || '').toUpperCase();
-    return transactionId && status ? `${transactionId}:${status}` : '';
-}
-
-function isRepresentedInitialStatus(row: Record<string, unknown>, representedStatuses: Set<string>) {
-    const statusObject = String(row.statusObject || '').toUpperCase();
-    const triggerType = String(row.triggerType || '').toUpperCase();
-    const versionAfter = Number(row.versionAfter);
-    const initialApiStatus = ['ORDER', 'OPERATION'].includes(statusObject)
-        && !isPresent(row.fromStatus)
-        && triggerType === 'API'
-        && !isPresent(row.versionBefore)
-        && versionAfter === 0;
-    return initialApiStatus && representedStatuses.has(timelineResultKey(row));
-}
-
-function timelineTitle(row: Record<string, unknown>) {
-    if (isTransactionResultEvent(row)) {
-        const status = String(row.currentStatus || row.eventStatus || '').toUpperCase();
-        return t(`transaction.timelineResult.${status}`, t('transaction.timelineResult.PROCESSING'));
-    }
-    if (row.eventName) {
-        return String(row.eventName);
-    }
-    if (row.statusHistoryId || row.statusObject || row.toStatus) {
-        const objectText = timelineStatusObjectText(row.statusObject);
-        const eventText = t('transaction.timelineEvent.STATUS_CHANGED');
-        return String(locale.value || '').startsWith('zh') ? `${objectText}${eventText}` : `${objectText} ${eventText}`;
-    }
-    const eventType = String(row.eventType || row.changeType || row.processStage || row.transactionStatus || '');
-    return eventType ? t(`transaction.timelineEvent.${eventType}`, eventType) : '-';
-}
-
-function timelineStatusText(row: Record<string, unknown>) {
-    const value = timelineStatus(row);
-    return value ? t(`transaction.timelineStatus.${value}`, value) : '-';
-}
-
-function timelineContent(row: Record<string, unknown>) {
-    if (row.statusHistoryId || row.statusObject || row.toStatus) {
-        const objectText = timelineStatusObjectText(row.statusObject);
-        const fromStatus = timelineBusinessStatusText(row.fromStatus);
-        const toStatus = timelineBusinessStatusText(row.toStatus);
-        const transition = fromStatus
-            ? `${fromStatus} -> ${toStatus}`
-            : toStatus;
-        const reason = String(row.failReason || '');
-        const content = `${objectText}：${transition || '-'}`;
-        return reason ? `${content}；${reason}` : content;
-    }
-    return String(row.changeReason || row.eventContent || row.eventMessage || row.failReasonMessage || row.errorMessage || '-');
-}
-
-function timelineStatusObjectText(value: unknown) {
-    const normalized = String(value || 'STATUS').toUpperCase();
-    return t(`transaction.timelineStatusObject.${normalized}`, normalized);
-}
-
-function timelineBusinessStatusText(value: unknown) {
-    const normalized = String(value || '').toUpperCase();
-    if (!normalized) {
-        return '';
-    }
-    return t(`transaction.status.${normalized}`, optionText(statusOptions.value, normalized));
-}
-
-function timelineStatus(row: Record<string, unknown>) {
-    if (row.flowEventId || row.eventType || row.eventStage) {
-        const eventType = String(row.eventType || '').toUpperCase();
-        const status = String(row.eventStatus || '').toUpperCase();
-        const content = String(row.eventContent || '');
-        const errorText = String(row.errorCode || row.errorMessage || '');
-        const businessStatus = String(row.currentStatus || row.targetStatus || '').toUpperCase();
-        if (status === 'SUCCESS' && /SKIP|跳过|略过/i.test(content)) {
-            return 'SKIPPED';
-        }
-        if (isFailureStatus(status)) {
-            return status;
-        }
-        if (eventType === 'CHANNEL_CALLED' && isChannelFailureSignal(content, errorText, businessStatus)) {
-            return 'FAILED';
-        }
-        if (isFailureStatus(errorText)) {
-            return 'FAILED';
-        }
-        return String(row.eventStatus || row.currentStatus || '');
-    }
-    if (row.statusHistoryId || row.toStatus || row.statusObject) {
-        const targetStatus = String(row.toStatus || row.transactionStatus || '').toUpperCase();
-        const transitionResult = String(row.transitionResult || '').toUpperCase();
-        if (isFailureStatus(targetStatus)) {
-            return targetStatus;
-        }
-        if (['PENDING', 'PROCESSING', 'INIT'].includes(targetStatus)) {
-            return targetStatus;
-        }
-        if (isFailureStatus(transitionResult)) {
-            return transitionResult;
-        }
-        return transitionResult || targetStatus;
-    }
-    if (row.amountChangeId || row.changeType) {
-        return String(row.changeStatus || 'SUCCESS');
-    }
-    return String(row.eventStatus || row.transitionResult || row.transactionStatus || row.currentStatus || row.targetStatus || '');
-}
-
-function timelineTone(row: Record<string, unknown>) {
-    const status = timelineStatus(row);
-    if (isFailureStatus(status)) {
-        return 'danger';
-    }
-    if (status === 'PENDING' || status === 'PROCESSING' || status === 'INIT' || status === 'SKIPPED' || status === 'IGNORED') {
-        return 'warning';
-    }
-    if (status === 'SUCCESS') {
-        return 'success';
-    }
-    return 'primary';
-}
-
-function isFailureStatus(value: unknown) {
-    return /FAILED|ERROR|EXCEPTION|DECLINED|INVALID|REJECT(?:ED)?|TIMEOUT/.test(String(value || '').toUpperCase());
-}
-
-function isChannelFailureSignal(content: string, errorText: string, businessStatus: string) {
-    return isFailureStatus(businessStatus)
-        || isFailureStatus(errorText)
-        || /渠道交易状态：FAILED|渠道原始状态：ERROR|渠道原始状态：DECLINED|平台交易状态：FAILED|CHANNEL_REQUEST_FAILED/i.test(content);
-}
-
-function timelineTimeValue(row: Record<string, unknown>) {
-    const value = row.eventTime || row.statusTime || row.changeTime || row.createTime;
-    if (!value) {
-        return Number.MAX_SAFE_INTEGER;
-    }
-    const millis = new Date(String(value)).getTime();
-    return Number.isFinite(millis) ? millis : Number.MAX_SAFE_INTEGER;
-}
-
-function compareTimelineRows(left: Record<string, unknown>, right: Record<string, unknown>) {
-    const leftTransactionId = String(left.transactionId || '');
-    const rightTransactionId = String(right.transactionId || '');
-    if (leftTransactionId && leftTransactionId === rightTransactionId) {
-        const leftSequence = timelineSequence(left);
-        const rightSequence = timelineSequence(right);
-        const sequenceDifference = leftSequence - rightSequence;
-        if (sequenceDifference !== 0) {
-            return sequenceDifference;
-        }
-    }
-    const timeDifference = timelineTimeValue(left) - timelineTimeValue(right);
-    return timeDifference !== 0 ? timeDifference : timelineSequence(left) - timelineSequence(right);
-}
-
-function timelineSequence(row: Record<string, unknown>) {
-    const configured = Number(row.timelineSequence);
-    if (Number.isFinite(configured)) {
-        return configured;
-    }
-    const sequenceByType: Record<string, number> = {
-        API_ACCEPTED: 100,
-        RISK_CHECKED: 300,
-        ROUTE_SELECTED: 400,
-        CHANNEL_CALLED: 500,
-        STATUS_RECORDED: 600,
-    };
-    const eventSequence = sequenceByType[String(row.eventType || '')];
-    if (eventSequence) {
-        return eventSequence;
-    }
-    if (row.statusHistoryId || row.toStatus || row.statusObject) {
-        return 610;
-    }
-    if (row.amountChangeId || row.changeType) {
-        return 620;
-    }
-    return 9999;
-}
-
 </script>
 
 <style scoped>
@@ -963,7 +702,7 @@ function timelineSequence(row: Record<string, unknown>) {
 .transaction-detail__hero {
     display: grid;
     align-items: center;
-    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(140px, auto);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     min-height: 76px;
     gap: 20px;
     border: 1px solid var(--el-border-color-lighter);
@@ -1285,52 +1024,6 @@ function timelineSequence(row: Record<string, unknown>) {
     color: var(--el-text-color-secondary);
 }
 
-.transaction-detail__timeline-text {
-    margin-top: 4px;
-    color: var(--el-text-color-secondary);
-    line-height: 20px;
-}
-
-.transaction-detail__timeline-card {
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px;
-    padding: 10px 12px;
-    background: var(--el-fill-color-extra-light);
-}
-
-.transaction-detail__timeline-card.is-success {
-    border-color: rgba(103, 194, 58, 0.28);
-    background: rgba(103, 194, 58, 0.06);
-}
-
-.transaction-detail__timeline-card.is-danger {
-    border-color: rgba(245, 108, 108, 0.28);
-    background: rgba(245, 108, 108, 0.06);
-}
-
-.transaction-detail__timeline-card.is-primary {
-    border-color: rgba(64, 158, 255, 0.28);
-    background: rgba(64, 158, 255, 0.06);
-}
-
-.transaction-detail__timeline-card.is-warning {
-    border-color: rgba(230, 162, 60, 0.32);
-    background: rgba(230, 162, 60, 0.08);
-}
-
-.transaction-detail__timeline-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.transaction-detail__timeline-heading strong {
-    color: var(--el-text-color-primary);
-    font-size: 14px;
-    line-height: 22px;
-}
-
 .transaction-detail__amount-timeline {
     padding: 16px 4px 0 8px;
 }
@@ -1433,16 +1126,7 @@ function timelineSequence(row: Record<string, unknown>) {
         grid-template-columns: 1fr;
     }
 
-    .transaction-detail__hero-channel,
     .transaction-detail__hero-meta {
-        justify-content: flex-start;
-    }
-
-    .transaction-detail__hero-channel {
-        text-align: left;
-    }
-
-    .transaction-detail__hero-channel-inner {
         justify-content: flex-start;
     }
 
