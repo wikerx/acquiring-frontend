@@ -179,7 +179,7 @@
             </div>
         </CommonDetailDrawer>
 
-        <el-drawer :title="formMode === 'create' ? t('channel.mid.addTitle') : t('channel.mid.editTitle')" v-model="formVisible" size="min(1180px, 96vw)" append-to-body destroy-on-close>
+        <el-drawer :title="formMode === 'create' ? t('channel.mid.addTitle') : t('channel.mid.editTitle')" v-model="formVisible" size="min(1180px, 96vw)" append-to-body destroy-on-close class="app-form-drawer">
             <el-form ref="formRef" :model="form" :rules="rules" label-width="150px" size="small" class="mid-form">
                 <div class="form-section">
                     <div class="form-section__title">{{ t('channel.mid.basicSection') }}</div>

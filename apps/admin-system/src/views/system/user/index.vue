@@ -141,45 +141,70 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <el-dialog :title="dialogTitle" v-model="userDialogVisible" width="560px" append-to-body destroy-on-close>
-            <el-form ref="userFormRef" :model="userForm" :rules="userFormRules" label-width="90px" style="padding:0 20px">
-                <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount"><el-input v-model="userForm.loginAccount" :disabled="formMode === 'edit'" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item :label="$t('system.user.realName')" prop="realName"><el-input v-model="userForm.realName" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item :label="$t('system.user.dept')" prop="deptId">
-                    <el-tree-select v-model="userForm.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width:100%" :placeholder="$t('common.pleaseSelect')" />
-                </el-form-item>
-                <el-form-item :label="$t('system.user.post')" prop="postIds">
-                    <el-select v-model="userForm.postIds" multiple filterable clearable :placeholder="$t('common.pleaseSelect')" style="width:100%">
-                        <el-option v-for="post in postOptions" :key="post.id" :label="post.postName + ' (' + post.postCode + ')'" :value="post.id" />
-                    </el-select>
-                </el-form-item>
-                <el-form-item v-if="canAssignRoles" :label="$t('system.user.assignRole')" prop="roleIds">
-                    <el-select
-                        v-model="userForm.roleIds"
-                        multiple
-                        filterable
-                        clearable
-                        collapse-tags
-                        collapse-tags-tooltip
-                        :max-collapse-tags="2"
-                        :loading="formRolesLoading"
-                        :disabled="formRolesLoading || !formRolesReady"
-                        :placeholder="formRolesLoading ? $t('common.loading') : $t('system.user.roleSelectPlaceholder')"
-                        style="width:100%"
-                    >
-                        <el-option
-                            v-for="role in formRoleOptions"
-                            :key="role.roleId"
-                            :label="role.roleName + ' (' + role.roleCode + ')'"
-                            :value="role.roleId"
-                            :disabled="role.assignable === false"
-                        />
-                    </el-select>
-                </el-form-item>
-                <el-form-item :label="$t('system.user.mobile')" prop="mobile"><el-input v-model="userForm.mobile" maxlength="30" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item :label="$t('system.user.email')" prop="email"><el-input v-model="userForm.email" maxlength="150" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="userForm.status" :placeholder="$t('common.pleaseSelect')" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item :label="$t('system.user.remark')" prop="remark"><el-input v-model="userForm.remark" type="textarea" maxlength="500" show-word-limit :autosize="{ minRows: 2, maxRows: 4 }" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+        <el-dialog :title="dialogTitle" v-model="userDialogVisible" width="min(720px, 92vw)" class="app-form-dialog" append-to-body destroy-on-close>
+            <template #header>
+                <div class="form-dialog__heading">
+                    <h2>{{ dialogTitle }}</h2>
+                    <p>{{ $t('system.user.formSubtitle') }}</p>
+                </div>
+            </template>
+            <el-form ref="userFormRef" :model="userForm" :rules="userFormRules" label-width="128px" require-asterisk-position="right" class="app-single-column-form">
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ $t('system.user.basicInformation') }}</h3>
+                    <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount"><el-input v-model="userForm.loginAccount" :disabled="formMode === 'edit'" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                    <el-form-item :label="$t('system.user.realName')" prop="realName"><el-input v-model="userForm.realName" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                    <el-form-item :label="$t('system.user.mobile')" prop="mobile"><el-input v-model="userForm.mobile" maxlength="30" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                    <el-form-item :label="$t('system.user.email')" prop="email"><el-input v-model="userForm.email" maxlength="150" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                </section>
+
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ $t('system.user.organizationPermissions') }}</h3>
+                    <el-form-item :label="$t('system.user.dept')" prop="deptId">
+                        <el-tree-select v-model="userForm.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width:100%" :placeholder="$t('common.pleaseSelect')" />
+                    </el-form-item>
+                    <el-form-item :label="$t('system.user.post')" prop="postIds">
+                        <el-select v-model="userForm.postIds" multiple filterable clearable collapse-tags collapse-tags-tooltip :max-collapse-tags="2" :placeholder="$t('common.pleaseSelect')" style="width:100%">
+                            <el-option v-for="post in postOptions" :key="post.id" :label="post.postName + ' (' + post.postCode + ')'" :value="post.id" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item v-if="canAssignRoles" :label="$t('system.user.assignRole')" prop="roleIds">
+                        <el-select
+                            v-model="userForm.roleIds"
+                            multiple
+                            filterable
+                            clearable
+                            collapse-tags
+                            collapse-tags-tooltip
+                            :max-collapse-tags="2"
+                            :loading="formRolesLoading"
+                            :disabled="formRolesLoading || !formRolesReady"
+                            :placeholder="formRolesLoading ? $t('common.loading') : $t('system.user.roleSelectPlaceholder')"
+                            style="width:100%"
+                        >
+                            <el-option
+                                v-for="role in formRoleOptions"
+                                :key="role.roleId"
+                                :label="role.roleName + ' (' + role.roleCode + ')'"
+                                :value="role.roleId"
+                                :disabled="role.assignable === false"
+                            />
+                        </el-select>
+                    </el-form-item>
+                </section>
+
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ $t('system.user.statusAndRemark') }}</h3>
+                    <el-form-item :label="$t('common.status')" prop="status">
+                        <div class="form-dialog__status-control">
+                            <div class="form-dialog__status-line">
+                                <el-switch v-model="userForm.status" :active-value="1" :inactive-value="0" />
+                                <span>{{ $t(userForm.status === 1 ? 'common.enable' : 'common.disable') }}</span>
+                            </div>
+                            <small>{{ $t('system.user.disabledLoginHint') }}</small>
+                        </div>
+                    </el-form-item>
+                    <el-form-item :label="$t('system.user.remark')" prop="remark"><el-input v-model="userForm.remark" type="textarea" maxlength="500" show-word-limit :autosize="{ minRows: 2, maxRows: 4 }" :placeholder="$t('common.pleaseInput')" /></el-form-item>
+                </section>
             </el-form>
             <template #footer><div class="dialog-footer"><el-button type="primary" :loading="userFormSaving" :disabled="formRolesLoading" @click="submitUserForm">{{ $t('common.confirm') }}</el-button><el-button :disabled="userFormSaving" @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>

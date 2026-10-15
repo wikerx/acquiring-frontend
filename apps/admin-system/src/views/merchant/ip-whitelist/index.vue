@@ -143,7 +143,7 @@
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
     </div>
 
-    <el-drawer :title="formMode === 'add' ? $t('merchant.ipWhitelist.addTitle') : $t('merchant.ipWhitelist.editTitle')" v-model="formVisible" size="min(720px, 92vw)" append-to-body destroy-on-close class="merchant-ip-form-drawer">
+    <el-drawer :title="formMode === 'add' ? $t('merchant.ipWhitelist.addTitle') : $t('merchant.ipWhitelist.editTitle')" v-model="formVisible" size="min(720px, 92vw)" append-to-body destroy-on-close class="merchant-ip-form-drawer app-form-drawer">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="112px" size="small" class="ip-form">
         <el-form-item :label="$t('merchant.ipWhitelist.merchant')" prop="merchantId">
           <el-select

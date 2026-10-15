@@ -139,7 +139,7 @@
             </el-tab-pane>
         </el-tabs>
 
-        <el-drawer v-model="categoryDrawerVisible" :title="categoryDrawerTitle" size="640px" destroy-on-close>
+        <el-drawer v-model="categoryDrawerVisible" :title="categoryDrawerTitle" size="640px" class="app-form-drawer" destroy-on-close>
             <el-form ref="categoryFormRef" :model="categoryForm" :rules="categoryRules" label-width="120px">
                 <el-form-item :label="$t('base.mcc.tree.nodeType')" prop="nodeType"><el-input :model-value="nodeTypeText(categoryForm.nodeType)" disabled /></el-form-item>
                 <el-form-item v-if="categoryForm.nodeType !== 'LEVEL1'" :label="$t('base.mcc.parentCategory')" prop="parentId"><el-input :model-value="parentCategoryLabel" disabled /></el-form-item>
@@ -153,7 +153,7 @@
             <template #footer><el-button type="primary" @click="submitCategory">{{ $t('common.confirm') }}</el-button><el-button @click="categoryDrawerVisible = false">{{ $t('common.cancel') }}</el-button></template>
         </el-drawer>
 
-        <el-drawer v-model="codeDrawerVisible" :title="codeDrawerTitle" size="720px" destroy-on-close>
+        <el-drawer v-model="codeDrawerVisible" :title="codeDrawerTitle" size="720px" class="app-form-drawer" destroy-on-close>
             <el-form ref="codeFormRef" :model="codeForm" :rules="codeRules" label-width="130px">
                 <el-form-item :label="$t('base.mcc.code.mccCode')" prop="mccCode"><el-input v-model="codeForm.mccCode" maxlength="4" :disabled="codeMode === 'edit'" /></el-form-item>
                 <el-form-item :label="$t('base.mcc.code.nameCn')" prop="nameCn"><el-input v-model="codeForm.nameCn" maxlength="160" /></el-form-item>
@@ -182,7 +182,7 @@
             <template #footer><el-button type="primary" @click="submitCode">{{ $t('common.confirm') }}</el-button><el-button @click="codeDrawerVisible = false">{{ $t('common.cancel') }}</el-button></template>
         </el-drawer>
 
-        <el-drawer v-model="policyDrawerVisible" :title="policyDrawerTitle" size="680px" destroy-on-close>
+        <el-drawer v-model="policyDrawerVisible" :title="policyDrawerTitle" size="680px" class="app-form-drawer" destroy-on-close>
             <el-form ref="policyFormRef" :model="policyForm" :rules="policyRules" label-width="150px">
                 <el-form-item :label="$t('base.mcc.code.mccCode')" prop="mccCode"><el-select v-model="policyForm.mccCode" filterable style="width: 100%"><el-option v-for="item in options.mccCodes" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item>
                 <el-form-item :label="$t('base.mcc.policy.allCardSchemes')"><el-checkbox v-model="policyForm.selectAllCardSchemes" :disabled="policyMode === 'edit'" @change="syncAllCardSchemes">{{ $t('base.mcc.policy.allCardSchemes') }}</el-checkbox></el-form-item>
