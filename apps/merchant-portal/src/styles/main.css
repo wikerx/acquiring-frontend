@@ -64,7 +64,50 @@ body {
     --merchant-nav-shadow: 8px 0 24px rgb(15 23 42 / 4%);
 }
 
+.el-dialog:not(.is-fullscreen) {
+    display: flex;
+    max-width: calc(100vw - 32px);
+    max-height: 88vh;
+    margin-top: 4vh !important;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgb(15 23 42 / 18%);
+}
+
+.el-dialog__header {
+    flex: 0 0 auto;
+    margin-right: 0;
+    padding: 16px 20px 13px;
+    border-bottom: 1px solid #edf1f5;
+}
+
+.el-dialog__headerbtn {
+    top: 9px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+}
+
+.el-dialog__title {
+    color: var(--merchant-ink);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+    letter-spacing: 0;
+}
+
+.el-dialog__body {
+    min-height: 0;
+    padding: 16px 20px !important;
+    overflow-y: auto;
+}
+
 .el-dialog__footer {
+    flex: 0 0 auto;
+    padding: 10px 20px 14px;
+    border-top: 1px solid #edf1f5;
+    background: #fff;
     text-align: center;
 }
 
@@ -80,6 +123,213 @@ body {
 .el-dialog__footer .el-button + .el-button,
 .el-dialog .dialog-footer .el-button + .el-button {
     margin-left: 0;
+}
+
+/* 普通业务弹窗统一为单列信息流；交易操作弹窗保留专用布局。 */
+.el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form {
+    max-width: 760px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .form-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .el-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+}
+
+.el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .el-row > .el-col {
+    width: 100%;
+    max-width: none;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    flex: none;
+}
+
+.el-dialog .el-form-item {
+    margin-bottom: 18px;
+}
+
+.el-dialog .el-form-item__label {
+    justify-content: flex-start;
+    color: #475569;
+    text-align: left;
+}
+
+.el-dialog .el-form-item__content {
+    min-width: 0;
+}
+
+/* 校验文字进入正常布局，避免绝对定位覆盖下一行控件。 */
+.el-dialog .el-form-item__error {
+    position: relative;
+    top: auto;
+    width: 100%;
+    padding-top: 4px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+}
+
+.el-dialog .el-input,
+.el-dialog .el-select,
+.el-dialog .el-cascader,
+.el-dialog .el-date-editor,
+.el-dialog .el-input-number {
+    max-width: 100%;
+}
+
+.app-form-dialog .el-dialog__header {
+    padding: 18px 24px 14px;
+}
+
+.app-form-dialog .el-dialog__body {
+    padding: 16px 24px 8px !important;
+}
+
+.app-form-dialog .el-dialog__footer {
+    padding: 10px 24px 14px;
+}
+
+.app-form-dialog .dialog-footer .el-button {
+    min-width: 88px;
+    height: 32px;
+}
+
+.form-dialog__heading {
+    min-width: 0;
+    padding-right: 44px;
+}
+
+.form-dialog__heading h2,
+.form-dialog__heading p,
+.form-dialog__section-title {
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.form-dialog__heading h2 {
+    color: var(--merchant-ink);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+}
+
+.form-dialog__heading p {
+    margin-top: 2px;
+    color: var(--merchant-muted);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.form-dialog__section + .form-dialog__section {
+    margin-top: 16px;
+}
+
+.form-dialog__section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 10px;
+    color: #253247;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 22px;
+}
+
+.form-dialog__section-title::before {
+    width: 3px;
+    height: 14px;
+    flex: 0 0 3px;
+    border-radius: 2px;
+    background: var(--merchant-primary);
+    content: '';
+}
+
+.app-single-column-form .el-form-item {
+    margin-bottom: 18px;
+}
+
+.app-single-column-form .el-form-item:last-child {
+    margin-bottom: 0;
+}
+
+.app-single-column-form .el-form-item__label {
+    min-height: 34px;
+    padding-right: 16px;
+    justify-content: flex-start;
+    color: #475569;
+    line-height: 34px;
+    text-align: left;
+}
+
+.app-single-column-form .el-form-item__content {
+    min-width: 0;
+}
+
+.app-form-dialog .el-input__wrapper,
+.app-form-dialog .el-select__wrapper {
+    min-height: 34px;
+    border-radius: 6px;
+}
+
+.form-dialog__status-control {
+    display: grid;
+    gap: 3px;
+    min-height: 34px;
+    padding-top: 2px;
+}
+
+.form-dialog__status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #334155;
+    line-height: 24px;
+}
+
+.form-dialog__status-control small {
+    color: #8290a3;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+@media (max-width: 720px) {
+    .el-dialog:not(.is-fullscreen) {
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        margin-top: 12px !important;
+    }
+
+    .app-form-dialog .el-dialog__header,
+    .app-form-dialog .el-dialog__body,
+    .app-form-dialog .el-dialog__footer {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .el-form-item,
+    .app-single-column-form .el-form-item {
+        display: block;
+    }
+
+    .el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .el-form-item__label,
+    .app-single-column-form .el-form-item__label {
+        width: 100% !important;
+        min-height: 0;
+        margin-bottom: 5px;
+        padding-right: 0;
+        line-height: 22px;
+    }
+
+    .el-dialog:not(.transaction-action-dialog):not(.dialog-layout-preserve) .el-form .el-form-item__content,
+    .app-single-column-form .el-form-item__content {
+        margin-left: 0 !important;
+    }
 }
 
 .app-shell {

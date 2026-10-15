@@ -417,6 +417,11 @@ export default {
       userId: 'User ID',
       addUser: 'Add User',
       editUser: 'Edit User',
+      formSubtitle: 'Manage the account profile, organization, and permissions',
+      basicInformation: 'Basic Information',
+      organizationPermissions: 'Organization & Permissions',
+      statusAndRemark: 'Status & Remark',
+      disabledLoginHint: 'A disabled account cannot sign in',
       resetPassword: 'Reset Password',
       resetPasswordEmailHint:
         'The system never generates or emails plaintext passwords. A one-time reset link and code will be sent to the verified email address.',

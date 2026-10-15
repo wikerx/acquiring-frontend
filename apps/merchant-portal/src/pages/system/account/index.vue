@@ -105,16 +105,41 @@
                 <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
             </div>
         </section>
-        <el-dialog v-model="visible" :title="form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee')" width="560px">
-            <el-form ref="formRef" :model="form" :rules="rules" label-width="92px">
-                <el-form-item :label="t('system.account.loginAccount')" prop="loginAccount"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.realName')" prop="realName"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.mobile')"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.email')" prop="email"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.role')"><el-select v-model="form.roleIds" multiple style="width:100%" :disabled="!canAssignRole"><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
-                <el-form-item :label="t('system.account.dept')"><el-tree-select v-model="form.deptIds" multiple :data="deptTree" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item :label="t('system.account.post')"><el-select v-model="form.postIds" multiple style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
-                <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" /></el-form-item>
+        <el-dialog v-model="visible" :title="formDialogTitle" width="min(720px, 92vw)" class="app-form-dialog" destroy-on-close>
+            <template #header>
+                <div class="form-dialog__heading">
+                    <h2>{{ formDialogTitle }}</h2>
+                    <p>{{ t('system.account.formSubtitle') }}</p>
+                </div>
+            </template>
+            <el-form ref="formRef" :model="form" :rules="rules" label-width="128px" require-asterisk-position="right" class="app-single-column-form">
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ t('system.account.basicInformation') }}</h3>
+                    <el-form-item :label="t('system.account.loginAccount')" prop="loginAccount"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
+                    <el-form-item :label="t('system.account.realName')" prop="realName"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
+                    <el-form-item :label="t('system.account.mobile')"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
+                    <el-form-item :label="t('system.account.email')" prop="email"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
+                </section>
+
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ t('system.account.organizationPermissions') }}</h3>
+                    <el-form-item :label="t('system.account.dept')"><el-tree-select v-model="form.deptIds" multiple :data="deptTree" node-key="deptId" :props="{ label: 'deptName', value: 'deptId', children: 'children' }" style="width:100%" :disabled="!canSaveAccountBase" /></el-form-item>
+                    <el-form-item :label="t('system.account.post')"><el-select v-model="form.postIds" multiple collapse-tags collapse-tags-tooltip :max-collapse-tags="2" style="width:100%" :disabled="!canSaveAccountBase"><el-option v-for="post in posts" :key="post.postId" :label="post.postName" :value="post.postId" /></el-select></el-form-item>
+                    <el-form-item :label="t('system.account.role')"><el-select v-model="form.roleIds" multiple collapse-tags collapse-tags-tooltip :max-collapse-tags="2" style="width:100%" :disabled="!canAssignRole"><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
+                </section>
+
+                <section class="form-dialog__section">
+                    <h3 class="form-dialog__section-title">{{ t('system.account.statusSettings') }}</h3>
+                    <el-form-item :label="t('common.status')">
+                        <div class="form-dialog__status-control">
+                            <div class="form-dialog__status-line">
+                                <el-switch v-model="form.status" :active-value="1" :inactive-value="0" :disabled="!canSaveAccountBase && !canChangeStatus" />
+                                <span>{{ t(form.status === 1 ? 'common.enabled' : 'common.disabled') }}</span>
+                            </div>
+                            <small>{{ t('system.account.disabledLoginHint') }}</small>
+                        </div>
+                    </el-form-item>
+                </section>
             </el-form>
             <template #footer><div class="dialog-footer"><el-button v-if="canSaveAccountBase || canAssignRole" type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
         </el-dialog>
@@ -212,6 +237,7 @@ const canMfaDisable = hasPermission('merchant:system:account:mfa:disable');
 const canMfaUnlock = hasPermission('merchant:system:account:mfa:unlock');
 const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
+const formDialogTitle = computed(() => form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee'));
 const hasPasswordActions = computed(() => canResetPassword);
 const hasAccountMoreActions = computed(() => canChangeStatus || canDelete || canEmailVerify || hasPasswordActions.value);
 const hasMfaActions = computed(() => canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend);

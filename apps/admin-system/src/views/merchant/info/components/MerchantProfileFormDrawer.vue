@@ -1775,23 +1775,29 @@
   .form-section__icon {
     display: grid;
     place-items: center;
+    line-height: 0;
     color: #1769e0;
     background: #eaf2ff;
   }
 
   .merchant-profile-form__mark {
-    width: 58px;
-    height: 58px;
-    border-radius: 6px;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
     border: 1px solid #d7e5ff;
+    border-radius: 6px;
   }
 
   .merchant-profile-form__mark svg {
-    width: 29px;
+    width: 26px;
+    height: 26px;
   }
 
   .merchant-profile-form__context-copy {
+    display: grid;
     min-width: 0;
+    min-height: 52px;
+    align-content: center;
   }
 
   .merchant-profile-form__context-copy > span,
@@ -1806,7 +1812,7 @@
     min-width: 0;
     align-items: center;
     gap: 10px;
-    margin-top: 3px;
+    margin-top: 1px;
   }
 
   .merchant-profile-form__heading strong {
@@ -1826,7 +1832,7 @@
   }
 
   .merchant-profile-form__context-copy p {
-    margin: 2px 0 0;
+    margin: 1px 0 0;
     overflow: hidden;
     color: #52627a;
     font-size: 12px;
@@ -1980,10 +1986,18 @@
     gap: 10px;
   }
 
+  .form-section__title > div {
+    display: grid;
+    min-width: 0;
+    align-content: center;
+    gap: 2px;
+  }
+
   .form-section__icon {
     width: 28px;
     height: 28px;
     flex: 0 0 28px;
+    margin-top: 0;
     border: 1px solid #2563eb;
     border-radius: 4px;
     color: #fff;
@@ -2001,11 +2015,12 @@
     font-weight: 700;
   }
 
-  .form-section__header span {
+  .form-section__title > div > span {
     display: block;
-    margin-top: 2px;
+    margin-top: 0;
     color: var(--el-text-color-secondary);
     font-size: 12px;
+    line-height: 18px;
   }
 
   .form-section__step-index {
