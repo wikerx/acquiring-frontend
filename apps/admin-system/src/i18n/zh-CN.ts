@@ -404,6 +404,8 @@ export default {
       resetPasswordEmailHint: '系统不会生成或发送明文密码。确认后将向该账号已验证邮箱发送一次性重置链接和验证码。',
       resetPasswordEmailSent: '安全重置邮件已提交发送',
       assignRole: '分配角色',
+      roleSelectPlaceholder: '请选择授权角色',
+      roleLoadFailed: '角色选项加载失败，基础资料仍可保存',
       userDetail: '用户详情',
       roleCode: '角色编码',
       roleName: '角色名称',
