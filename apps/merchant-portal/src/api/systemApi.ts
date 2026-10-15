@@ -113,6 +113,11 @@ export interface AccountItem {
     realName: string;
     mobile?: string;
     email?: string;
+    pendingEmail?: string;
+    activationStatus?: 'PENDING_ACTIVATION' | 'ACTIVE' | string;
+    activatedAt?: string;
+    emailVerifiedAt?: string;
+    emailVerificationStatus?: 'PENDING' | 'VERIFIED' | string;
     status: number;
     locked?: number;
     roleIds: number[];
@@ -134,7 +139,7 @@ export interface AccountMfaActionPayload {
 }
 
 export interface AccountResetPasswordPayload {
-    password: string;
+    locale?: 'zh-CN' | 'en-US';
 }
 
 export interface AccountMfaExemptPayload extends AccountMfaActionPayload {
@@ -306,7 +311,7 @@ export const systemApi = {
         const result = await http.get<CommonResult<PageResult<AccountItem>>>('/merchant/system/accounts/page', { params });
         return unwrapResult(result.data);
     },
-    async saveAccount(payload: Partial<AccountItem> & { password?: string }, id?: number) {
+    async saveAccount(payload: Partial<AccountItem> & { locale?: 'zh-CN' | 'en-US' }, id?: number) {
         const result = id
             ? await http.put<CommonResult<AccountItem>>(`/merchant/system/accounts/${id}`, payload)
             : await http.post<CommonResult<AccountItem>>('/merchant/system/accounts', payload);
@@ -318,6 +323,14 @@ export const systemApi = {
     },
     async resetAccountPassword(id: number, payload: AccountResetPasswordPayload) {
         const result = await http.post<CommonResult<void>>(`/merchant/system/accounts/${id}/reset-password`, payload);
+        return unwrapResult(result.data);
+    },
+    async sendAccountEmailVerification(id: number, locale?: 'zh-CN' | 'en-US') {
+        const result = await http.post<CommonResult<void>>(
+            `/merchant/system/accounts/${id}/email-verification/send`,
+            undefined,
+            { params: { locale } },
+        );
         return unwrapResult(result.data);
     },
     async changeAccountStatus(id: number, status: number) {

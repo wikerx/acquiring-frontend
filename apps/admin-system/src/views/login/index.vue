@@ -114,8 +114,8 @@
                         <el-form-item>
                             <div class="login-form__meta">
                                 <el-checkbox v-model="form.rememberMe">{{ $t('login.rememberMe') }}</el-checkbox>
-                                <button class="login-form__captcha-refresh" type="button" :disabled="sendingCode" @click="handleSendVerifyCode()">
-                                    {{ $t('login.refreshCaptcha') }}
+                                <button class="login-form__captcha-refresh" type="button" @click="router.push('/forgot-password')">
+                                    {{ $t('login.forgotPassword') }}
                                 </button>
                             </div>
                         </el-form-item>
@@ -235,6 +235,7 @@ import { useUserStore } from '@/store/modules/user';
 import { useI18n } from 'vue-i18n';
 import LanguageSwitch from '@/components/LanguageSwitch/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import { sanitizeLoginRedirect } from '@/utils/auth-navigation';
 
 const { t, locale } = useI18n();
 const adminBrand = getSystemBrand('admin');
@@ -445,7 +446,7 @@ async function handleMfaSubmit() {
 
 async function finishLogin() {
     ElMessage.success(t('login.loginSuccess'));
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard';
+    const redirect = sanitizeLoginRedirect(route.query.redirect);
     await router.push(redirect);
 }
 

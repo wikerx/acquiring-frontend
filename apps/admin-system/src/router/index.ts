@@ -22,6 +22,7 @@ declare module 'vue-router' {
     permission?: string;
     configuredComponent?: string;
     expectedView?: string;
+    public?: boolean;
   }
 }
 
@@ -72,7 +73,19 @@ export const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
-    meta: { title: '登录', titleKey: 'Login' },
+    meta: { title: '登录', titleKey: 'Login', public: true },
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/forgot-password/index.vue'),
+    meta: { title: '忘记密码', titleKey: 'ForgotPassword', public: true },
+  },
+  {
+    path: '/account-verification',
+    name: 'AccountVerification',
+    component: () => import('@/views/account-verification/index.vue'),
+    meta: { title: '账号验证', titleKey: 'AccountVerification', public: true },
   },
   {
     path: '/403',
@@ -140,7 +153,7 @@ const dynamicRouteNames = new Set<string>();
 router.beforeEach(async (to) => {
   const user = useUserStore();
   updateAdminDocumentTitle(to.meta);
-  if (to.path !== '/login') {
+  if (!to.meta.public) {
     try {
       await user.hydrateSession();
     } catch {
@@ -149,10 +162,10 @@ router.beforeEach(async (to) => {
     }
     syncDynamicRoutes(user.menus);
   }
-  if (to.path !== '/login' && !user.token) {
+  if (!to.meta.public && !user.token) {
     return { path: '/login', query: { redirect: to.fullPath } };
   }
-  if (to.path === '/login' && user.token) {
+  if (to.meta.public && user.token) {
     return '/dashboard';
   }
   if (isMissingRoute(to.name) && hasResolvedRoute(to.fullPath)) {

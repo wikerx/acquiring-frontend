@@ -1,4 +1,6 @@
 import type {
+    AccountActivationCompleteRequest,
+    AccountActivationCompleteResponse,
     AuthLoginResponse,
     AuthMfaBindConfirmRequest,
     AuthMfaBindInfoResponse,
@@ -7,7 +9,16 @@ import type {
     AuthProfileUpdateRequest,
     AuthVerifyCodeSendResponse,
     CommonResult,
+    EmailVerificationVerifyRequest,
+    EmailVerificationVerifyResponse,
     LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetConfirmResponse,
+    PasswordResetEmailVerifyRequest,
+    PasswordResetMfaVerifyRequest,
+    PasswordResetRequest,
+    PasswordResetRequestResponse,
+    PasswordResetVerifyResponse,
 } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from './http';
@@ -76,5 +87,59 @@ export async function changePassword(request: AuthPasswordChangeRequest): Promis
 
 export async function logout(): Promise<void> {
     const result = await http.post<CommonResult<void>>('/merchant/auth/logout');
+    return unwrapResult(result.data);
+}
+
+export async function requestPasswordReset(
+    request: PasswordResetRequest & { merchantId: string },
+): Promise<PasswordResetRequestResponse> {
+    const result = await http.post<CommonResult<PasswordResetRequestResponse>>(
+        '/merchant/auth/password-reset/request', request, SKIP_AUTH_CONFIG,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function verifyPasswordResetEmail(
+    request: PasswordResetEmailVerifyRequest,
+): Promise<PasswordResetVerifyResponse> {
+    const result = await http.post<CommonResult<PasswordResetVerifyResponse>>(
+        '/merchant/auth/password-reset/email/verify', request, SKIP_AUTH_CONFIG,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function verifyPasswordResetMfa(
+    request: PasswordResetMfaVerifyRequest,
+): Promise<PasswordResetVerifyResponse> {
+    const result = await http.post<CommonResult<PasswordResetVerifyResponse>>(
+        '/merchant/auth/password-reset/mfa/verify', request, SKIP_AUTH_CONFIG,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function confirmPasswordReset(
+    request: PasswordResetConfirmRequest,
+): Promise<PasswordResetConfirmResponse> {
+    const result = await http.post<CommonResult<PasswordResetConfirmResponse>>(
+        '/merchant/auth/password-reset/confirm', request, SKIP_AUTH_CONFIG,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function verifyAccountEmail(
+    request: EmailVerificationVerifyRequest,
+): Promise<EmailVerificationVerifyResponse> {
+    const result = await http.post<CommonResult<EmailVerificationVerifyResponse>>(
+        '/merchant/auth/email-verification/verify', request, SKIP_AUTH_CONFIG,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function completeAccountActivation(
+    request: AccountActivationCompleteRequest,
+): Promise<AccountActivationCompleteResponse> {
+    const result = await http.post<CommonResult<AccountActivationCompleteResponse>>(
+        '/merchant/auth/account-activation/complete', request, SKIP_AUTH_CONFIG,
+    );
     return unwrapResult(result.data);
 }

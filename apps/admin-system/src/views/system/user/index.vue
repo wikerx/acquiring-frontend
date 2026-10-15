@@ -1,6 +1,6 @@
 <template>
     <div class="app-container">
-        <el-form ref="queryFormRef" :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="68px">
+        <el-form ref="queryFormRef" :model="query" :inline="true" size="small" v-show="showSearch" class="search-form" label-width="auto">
             <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount">
                 <el-input v-model="query.loginAccount" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -10,6 +10,16 @@
             <el-form-item :label="$t('common.status')" prop="status">
                 <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
                     <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('system.user.activationStatus')" prop="activationStatus">
+                <el-select v-model="query.activationStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 170px">
+                    <el-option v-for="item in activationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('system.user.emailVerificationStatus')" prop="emailVerificationStatus">
+                <el-select v-model="query.emailVerificationStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 150px">
+                    <el-option v-for="item in emailVerificationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
             <el-form-item>
@@ -48,7 +58,38 @@
                 </template>
             </el-table-column>
             <el-table-column prop="mobile" :label="$t('system.user.mobile')" min-width="130" align="center" :show-overflow-tooltip="true" />
-            <el-table-column prop="email" :label="$t('system.user.email')" min-width="160" align="center" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('system.user.email')" min-width="190" align="center">
+                <template #default="{ row }">
+                    <div class="email-cell">
+                        <span class="email-cell__current">{{ row.email || '-' }}</span>
+                        <el-tooltip v-if="row.pendingEmail" :content="$t('system.user.pendingEmailHelp')" placement="top">
+                            <span class="email-cell__pending">{{ $t('system.user.pendingEmail') }}: {{ row.pendingEmail }}</span>
+                        </el-tooltip>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column min-width="130" align="center">
+                <template #header>
+                    <span class="status-header-label">
+                        {{ $t('system.user.activationStatus') }}
+                        <el-tooltip :content="$t('system.user.activationStatusHelp')" placement="top">
+                            <el-icon class="status-help-icon" tabindex="0"><QuestionFilled /></el-icon>
+                        </el-tooltip>
+                    </span>
+                </template>
+                <template #default="{ row }"><el-tag size="small" :type="activationStatusTag(row.activationStatus)" effect="plain">{{ activationStatusText(row.activationStatus) }}</el-tag></template>
+            </el-table-column>
+            <el-table-column min-width="150" align="center">
+                <template #header>
+                    <span class="status-header-label">
+                        {{ $t('system.user.emailVerificationStatus') }}
+                        <el-tooltip :content="$t('system.user.emailVerificationStatusHelp')" placement="top">
+                            <el-icon class="status-help-icon" tabindex="0"><QuestionFilled /></el-icon>
+                        </el-tooltip>
+                    </span>
+                </template>
+                <template #default="{ row }"><el-tag size="small" :type="emailVerificationStatusTag(row.emailVerificationStatus)" effect="plain">{{ emailVerificationStatusText(row.emailVerificationStatus) }}</el-tag></template>
+            </el-table-column>
             <el-table-column :label="$t('system.user.mfaPolicy')" min-width="120" align="center">
                 <template #default="{ row }">
                     <el-tag size="small" :type="mfaPolicyTag(row.mfaPolicy)" effect="plain">{{ mfaPolicyText(row.mfaPolicy) }}</el-tag>
@@ -79,6 +120,7 @@
                                 <el-dropdown-menu>
                                     <el-dropdown-item v-if="userStore.hasPermission('system:user:assign-role')" command="role">{{ $t('system.user.assignRole') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="userStore.hasPermission('system:user:resetPwd')" command="password">{{ $t('system.user.resetPassword') }}</el-dropdown-item>
+                                    <el-dropdown-item v-if="userStore.hasPermission('system:user:emailVerify') && row.emailVerificationStatus !== 'VERIFIED'" command="emailVerification">{{ row.activationStatus === 'PENDING_ACTIVATION' ? $t('system.user.resendActivationEmail') : $t('system.user.sendVerificationEmail') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="userStore.hasPermission('system:user:remove')" command="delete" divided>{{ $t('common.delete') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:log')" command="mfaLogs">{{ $t('system.user.mfaLogs') }}</el-dropdown-item>
                                     <el-dropdown-item v-if="userStore.hasPermission('sys:user:mfa:require')" command="mfaRequire" divided>{{ $t('system.user.mfaRequire') }}</el-dropdown-item>
@@ -102,7 +144,6 @@
         <el-dialog :title="dialogTitle" v-model="userDialogVisible" width="560px" append-to-body destroy-on-close>
             <el-form ref="userFormRef" :model="userForm" :rules="userFormRules" label-width="90px" style="padding:0 20px">
                 <el-form-item :label="$t('system.user.loginAccount')" prop="loginAccount"><el-input v-model="userForm.loginAccount" :disabled="formMode === 'edit'" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
-                <el-form-item v-if="formMode === 'create'" :label="$t('system.user.initPassword')" prop="password"><el-input v-model="userForm.password" type="password" show-password maxlength="64" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.realName')" prop="realName"><el-input v-model="userForm.realName" maxlength="100" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.dept')" prop="deptId">
                     <el-tree-select v-model="userForm.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width:100%" :placeholder="$t('common.pleaseSelect')" />
@@ -121,10 +162,10 @@
         </el-dialog>
 
         <el-dialog v-model="resetDialogVisible" :title="$t('system.user.resetPassword')" width="480px" append-to-body destroy-on-close>
-            <el-form ref="resetFormRef" :model="resetForm" :rules="resetFormRules" label-width="80px">
+            <el-form label-width="96px">
                 <el-form-item :label="$t('system.user.loginAccount')"><el-input :model-value="activeRow?.loginAccount || '-'" disabled /></el-form-item>
-                <el-form-item :label="$t('login.password')" prop="password"><el-input v-model="resetForm.password" type="password" show-password maxlength="64" :placeholder="$t('common.pleaseInput')" /></el-form-item>
             </el-form>
+            <el-alert :title="$t('system.user.resetPasswordEmailHint')" type="warning" show-icon :closable="false" />
             <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitResetPassword">{{ $t('common.confirm') }}</el-button><el-button @click="resetDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
 
@@ -171,6 +212,16 @@
                 </el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.mobile')">{{ activeRow?.mobile ?? '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.email')">{{ activeRow?.email ?? '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.pendingEmail')">
+                    <el-tooltip v-if="activeRow?.pendingEmail" :content="$t('system.user.pendingEmailHelp')" placement="top">
+                        <span>{{ activeRow.pendingEmail }}</span>
+                    </el-tooltip>
+                    <span v-else>-</span>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.activationStatus')"><el-tag size="small" :type="activationStatusTag(activeRow?.activationStatus)" effect="plain">{{ activationStatusText(activeRow?.activationStatus) }}</el-tag></el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.activatedAt')"><BaseDateTime :value="activeRow?.activatedAt" /></el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.emailVerificationStatus')"><el-tag size="small" :type="emailVerificationStatusTag(activeRow?.emailVerificationStatus)" effect="plain">{{ emailVerificationStatusText(activeRow?.emailVerificationStatus) }}</el-tag></el-descriptions-item>
+                <el-descriptions-item :label="$t('system.user.emailVerifiedAt')"><BaseDateTime :value="activeRow?.emailVerifiedAt" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')"><el-tag :type="activeRow?.status === 1 ? 'success' : 'danger'" size="small">{{ activeRow?.status === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="$t('system.user.locked')">
                     <el-tag v-if="activeRow" :type="activeRow.locked === 1 ? 'danger' : 'success'" size="small" effect="plain">{{ activeRow.lockedText }}</el-tag>
@@ -258,7 +309,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableInstance } from 'element-plus';
-import { Search, Refresh, Plus, Edit, Delete, Download, View, MoreFilled } from '@element-plus/icons-vue';
+import { Search, Refresh, Plus, Edit, Delete, Download, View, MoreFilled, QuestionFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import {
     createUser,
@@ -274,6 +325,7 @@ import {
     resetUserPassword,
     searchUserMfaLogs,
     searchUsers,
+    sendUserEmailVerification,
     unlockUserMfa,
     updateUser,
     updateUserStatus,
@@ -304,11 +356,19 @@ const { locale, t } = useI18n();
 const userStore = useUserStore();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
-interface UserForm { accountId?: number; loginAccount: string; password: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; remark: string; }
+interface UserForm { accountId?: number; loginAccount: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; remark: string; }
 type PostOption = SysPost & { id: number };
 type MfaActionType = 'require' | 'reset' | 'exempt' | 'disable' | 'unlock' | 'resend';
 
 const statusOptions = [{ label: t('common.enable'), value: 1 }, { label: t('common.disable'), value: 0 }];
+const activationStatusOptions = computed(() => [
+    { label: t('system.user.activationStatus_PENDING_ACTIVATION'), value: 'PENDING_ACTIVATION' },
+    { label: t('system.user.activationStatus_ACTIVE'), value: 'ACTIVE' },
+]);
+const emailVerificationStatusOptions = computed(() => [
+    { label: t('system.user.emailVerificationStatus_PENDING'), value: 'PENDING' },
+    { label: t('system.user.emailVerificationStatus_VERIFIED'), value: 'VERIFIED' },
+]);
 const showSearch = ref(true);
 const query = reactive<Record<string, unknown>>({});
 const queryFormRef = ref<FormInstance>();
@@ -327,15 +387,13 @@ const roleAuthSaving = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<UserRow | null>(null);
 const userFormRef = ref<FormInstance>();
-const resetFormRef = ref<FormInstance>();
 const roleTableRef = ref<TableInstance>();
 const roleRows = ref<SysRole[]>([]);
 const selectedRoleIds = ref<number[]>([]);
 const deptOptions = ref<SysDept[]>([]);
 const postOptions = ref<PostOption[]>([]);
 const dialogTitle = computed(() => formMode.value === 'create' ? t('system.user.addUser') : t('system.user.editUser'));
-const userForm = reactive<UserForm>({ loginAccount: '', password: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
-const resetForm = reactive({ password: '' });
+const userForm = reactive<UserForm>({ loginAccount: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
 const mfaActionDialogVisible = ref(false);
 const mfaActionSaving = ref(false);
 const mfaActionType = ref<MfaActionType>('require');
@@ -353,7 +411,6 @@ const timezoneOptions = ref<SelectOption[]>([]);
 const mfaLogQuery = reactive<SysUserMfaLogQuery>({
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
-const devDefaultUserPassword = import.meta.env.DEV ? 'Admin@123456' : '';
 const mfaLogActionValues = ['LOGIN_CHALLENGE', 'LOGIN_LOCKED', 'BIND_CONFIRM', 'LOGIN_VERIFY', 'REQUIRE', 'RESET', 'EXEMPT', 'DISABLE', 'UNLOCK', 'RESEND_BIND_MAIL', 'SEND_NOTICE'];
 const mfaLogResultValues = ['SUCCESS', 'FAILED'];
 const mfaLogActionOptions = computed(() => mfaLogActionValues.map((value) => ({ value, label: mfaActionText(value) })));
@@ -361,7 +418,6 @@ const mfaLogResultOptions = computed(() => mfaLogResultValues.map((value) => ({ 
 
 const userFormRules = computed<FormRules>(() => ({
     loginAccount: [{ required: true, message: t('login.accountRequired'), trigger: 'blur' }],
-    password: formMode.value === 'create' ? [{ required: true, min: 8, max: 64, message: t('system.user.passwordRequired'), trigger: 'blur' }] : [],
     realName: [{ required: true, message: t('system.user.realNameRequired'), trigger: 'blur' }],
     email: [
         { required: true, message: t('system.user.emailRequired'), trigger: 'blur' },
@@ -369,7 +425,6 @@ const userFormRules = computed<FormRules>(() => ({
     ],
     status: [{ required: true, message: t('system.user.statusRequired'), trigger: 'change' }],
 }));
-const resetFormRules: FormRules = { password: [{ required: true, min: 8, max: 64, message: t('common.pleaseInput'), trigger: 'blur' }] };
 const mfaActionRules: FormRules = {
     reason: [{ required: true, message: t('system.user.mfaReasonRequired'), trigger: 'blur' }],
 };
@@ -388,7 +443,7 @@ onMounted(() => {
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus() });
+        const result = await searchUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus(), activationStatus: activationStatusFilter(), emailVerificationStatus: emailVerificationStatusFilter() });
         rows.value = result.records.map(normalizeRow);
         total.value = result.total;
     } catch (error) {
@@ -424,7 +479,7 @@ function handleSelectionChange(selection: UserRow[]) { selectedRows.value = sele
 async function handleAdd() {
     formMode.value = 'create';
     activeRow.value = null;
-    Object.assign(userForm, { accountId: undefined, loginAccount: '', password: devDefaultUserPassword, realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
+    Object.assign(userForm, { accountId: undefined, loginAccount: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
     selectedRoleIds.value = [];
     userDialogVisible.value = true;
     nextTick(() => userFormRef.value?.clearValidate());
@@ -433,21 +488,21 @@ async function handleAdd() {
 async function handleUpdate(row: UserRow) {
     formMode.value = 'edit';
     activeRow.value = row;
-    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, password: '', realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1, remark: row.remark || '' });
+    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1, remark: row.remark || '' });
     userDialogVisible.value = true;
     nextTick(() => userFormRef.value?.clearValidate());
 }
 
 function openDetail(row: UserRow) { activeRow.value = row; detailVisible.value = true; }
-function openResetPassword(row: UserRow) { activeRow.value = row; resetForm.password = devDefaultUserPassword; resetDialogVisible.value = true; nextTick(() => resetFormRef.value?.clearValidate()); }
+function openResetPassword(row: UserRow) { activeRow.value = row; resetDialogVisible.value = true; }
 
 async function submitUserForm() {
     const valid = await userFormRef.value?.validate().catch(() => false);
     if (!valid) return;
     try {
         if (formMode.value === 'create') {
-            await createUser({ loginAccount: userForm.loginAccount.trim(), password: userForm.password, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
-            ElMessage.success(t('common.addSuccess'));
+            await createUser({ loginAccount: userForm.loginAccount.trim(), realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
+            ElMessage.success(t('system.user.createActivationSent'));
         } else if (userForm.accountId) {
             await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
             ElMessage.success(t('common.editSuccess'));
@@ -460,12 +515,11 @@ async function submitUserForm() {
 }
 
 async function submitResetPassword() {
-    const valid = await resetFormRef.value?.validate().catch(() => false);
-    if (!valid || !activeRow.value) return;
+    if (!activeRow.value) return;
     try {
-        await resetUserPassword({ accountId: activeRow.value.accountId, password: resetForm.password });
+        await resetUserPassword({ accountId: activeRow.value.accountId });
         resetDialogVisible.value = false;
-        ElMessage.success(t('common.success'));
+        ElMessage.success(t('system.user.resetPasswordEmailSent'));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
     }
@@ -498,7 +552,7 @@ async function handleDelete(rowsParam?: UserRow[]) {
 
 async function handleExport() {
     try {
-        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus() });
+        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus(), activationStatus: activationStatusFilter(), emailVerificationStatus: emailVerificationStatusFilter() });
         ElMessage.success(t('common.export'));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
@@ -518,6 +572,10 @@ function handleUserCommand(command: string, row: UserRow) {
         handleDelete([row]);
         return;
     }
+    if (command === 'emailVerification') {
+        sendVerificationEmail(row);
+        return;
+    }
     if (command === 'mfaLogs') {
         openMfaLogs(row);
         return;
@@ -533,6 +591,24 @@ function handleUserCommand(command: string, row: UserRow) {
     const action = actionMap[command];
     if (action) {
         openMfaAction(row, action);
+    }
+}
+
+async function sendVerificationEmail(row: UserRow) {
+    const action = row.activationStatus === 'PENDING_ACTIVATION'
+        ? t('system.user.resendActivationEmail')
+        : t('system.user.sendVerificationEmail');
+    try {
+        await ElMessageBox.confirm(
+            t('system.user.emailVerificationConfirm', { action, name: row.loginAccount }),
+            t('common.confirm'),
+            { type: 'warning' },
+        );
+        await sendUserEmailVerification({ accountId: row.accountId });
+        ElMessage.success(t('system.user.emailVerificationSent'));
+        loadData();
+    } catch (error) {
+        if (error instanceof Error) ElMessage.error(error.message);
     }
 }
 
@@ -664,12 +740,18 @@ async function submitRoleAuth() {
 function keyword() { return String(query.loginAccount || '').trim() || undefined; }
 function numericDeptId() { return typeof query.deptId === 'number' ? query.deptId : undefined; }
 function numericStatus() { return typeof query.status === 'number' ? query.status : undefined; }
+function activationStatusFilter() { return query.activationStatus === 'PENDING_ACTIVATION' || query.activationStatus === 'ACTIVE' ? query.activationStatus : undefined; }
+function emailVerificationStatusFilter() { return query.emailVerificationStatus === 'PENDING' || query.emailVerificationStatus === 'VERIFIED' ? query.emailVerificationStatus : undefined; }
 function normalizeRow(row: SysUserAccount): UserRow { return { ...row, statusTag: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled, lockedText: row.locked === 1 ? t('common.yes') : t('common.no') }; }
 function trimOptional(value: string) { return value.trim() || undefined; }
 function formatPostNames(row: SysUserAccount) { return row.postNames?.length ? row.postNames.join(locale.value === 'zh-CN' ? '、' : ', ') : '-'; }
 function applyRoleSelection() { const checkedIdSet = new Set(selectedRoleIds.value); roleRows.value.forEach((row) => { roleTableRef.value?.toggleRowSelection(row, checkedIdSet.has(row.roleId)); }); }
 
 function mfaPolicyText(value?: string) { return value ? t(`system.user.mfaPolicy_${value}`, value) : t('system.user.mfaPolicy_OPTIONAL'); }
+function activationStatusText(value?: string) { return value ? t(`system.user.activationStatus_${value}`, value) : '-'; }
+function emailVerificationStatusText(value?: string) { return value ? t(`system.user.emailVerificationStatus_${value}`, value) : '-'; }
+function activationStatusTag(value?: string) { return value === 'ACTIVE' ? 'success' : 'warning'; }
+function emailVerificationStatusTag(value?: string) { return value === 'VERIFIED' ? 'success' : 'warning'; }
 function mfaStatusText(value?: string) { return value ? t(`system.user.mfaStatus_${value}`, value) : t('system.user.mfaStatus_NOT_ENABLED'); }
 function mfaPolicyTag(value?: string) {
     if (value === 'REQUIRED') return 'warning';
@@ -746,6 +828,25 @@ function mfaPolicyStatusText(policy?: string, status?: string) {
     gap: 6px;
 }
 
+.email-cell {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.email-cell__current,
+.email-cell__pending {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.email-cell__pending {
+    color: var(--el-color-warning-dark-2);
+    cursor: help;
+    font-size: 12px;
+}
+
 .operation-button-group {
     display: inline-flex;
     align-items: center;
@@ -756,6 +857,24 @@ function mfaPolicyStatusText(policy?: string, status?: string) {
 
 .operation-button-group :deep(.el-button + .el-button) {
     margin-left: 0;
+}
+
+.status-header-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.status-help-icon {
+    color: var(--el-text-color-secondary);
+    cursor: help;
+    outline: none;
+}
+
+.status-help-icon:hover,
+.status-help-icon:focus-visible {
+    color: var(--el-color-primary);
 }
 
 .role-auth-alert,

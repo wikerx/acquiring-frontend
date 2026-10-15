@@ -32,6 +32,24 @@
                         <el-form-item :label="t('profile.email')" prop="email">
                             <el-input v-model.trim="basicForm.email" :placeholder="t('common.pleaseInput')" />
                         </el-form-item>
+                        <el-alert
+                            v-if="account?.pendingEmail"
+                            class="merchant-profile-form__alert"
+                            type="warning"
+                            :closable="false"
+                            show-icon
+                            :title="t('profile.pendingEmailNotice', { email: account.pendingEmail })"
+                        />
+                        <el-form-item v-if="emailChanged" :label="t('profile.mfaCode')" prop="mfaCode">
+                            <el-input
+                                v-model.trim="basicForm.mfaCode"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                maxlength="6"
+                                :placeholder="t('profile.mfaCodePlaceholder')"
+                            />
+                        </el-form-item>
+                        <p v-if="emailChanged" class="merchant-profile-form__hint">{{ t('profile.emailChangeHint') }}</p>
                         <el-form-item>
                             <el-button type="primary" @click="handleSaveBasic">{{ t('common.save') }}</el-button>
                             <el-button @click="router.back()">{{ t('common.close') }}</el-button>
@@ -49,6 +67,13 @@
                         <el-form-item :label="t('profile.confirmPassword')" prop="confirmPassword">
                             <el-input v-model.trim="passwordForm.confirmPassword" type="password" show-password :placeholder="t('profile.confirmPasswordPlaceholder')" />
                         </el-form-item>
+                        <div class="merchant-profile-password-rules">
+                            <span :class="{ met: passwordChecks.length }">{{ t('profile.passwordLength') }}</span>
+                            <span :class="{ met: passwordChecks.upperLower }">{{ t('profile.passwordCase') }}</span>
+                            <span :class="{ met: passwordChecks.numberSpecial }">{{ t('profile.passwordNumberSpecial') }}</span>
+                            <span :class="{ met: passwordChecks.noWhitespace }">{{ t('profile.passwordNoWhitespace') }}</span>
+                        </div>
+                        <p class="merchant-profile-form__hint">{{ t('profile.passwordHistory') }}</p>
                         <el-form-item>
                             <el-button type="primary" @click="handleSavePassword">{{ t('common.save') }}</el-button>
                             <el-button @click="router.back()">{{ t('common.close') }}</el-button>
@@ -66,12 +91,13 @@ import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { Calendar, CollectionTag, Iphone, Message, OfficeBuilding, User, UserFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { changePassword, currentUser, updateProfile } from '@/api/authApi';
 import { useAuthStore } from '@/stores/authStore';
 
 const router = useRouter();
 const auth = useAuthStore();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const activeTab = ref('basic');
 const basicFormRef = ref<FormInstance>();
@@ -89,13 +115,22 @@ const basicForm = reactive({
     nickname: '',
     mobile: '',
     email: '',
+    mfaCode: '',
 });
+const originalEmail = ref('');
 
 const passwordForm = reactive({
     oldPassword: '',
     newPassword: '',
     confirmPassword: '',
 });
+const emailChanged = computed(() => basicForm.email.trim().toLowerCase() !== originalEmail.value.trim().toLowerCase());
+const passwordChecks = computed(() => ({
+    length: passwordForm.newPassword.length >= 12 && passwordForm.newPassword.length <= 64,
+    upperLower: /[a-z]/.test(passwordForm.newPassword) && /[A-Z]/.test(passwordForm.newPassword),
+    numberSpecial: /\d/.test(passwordForm.newPassword) && /[^A-Za-z0-9\s]/.test(passwordForm.newPassword),
+    noWhitespace: !/\s/.test(passwordForm.newPassword),
+}));
 
 const basicRules = computed<FormRules>(() => ({
     nickname: [{ required: true, message: t('common.pleaseInput'), trigger: 'blur' }],
@@ -103,6 +138,12 @@ const basicRules = computed<FormRules>(() => ({
         { required: true, message: t('profile.emailRequired'), trigger: 'blur' },
         { type: 'email', message: t('profile.emailFormat'), trigger: 'blur' },
     ],
+    mfaCode: emailChanged.value
+        ? [
+            { required: true, message: t('profile.mfaCodeRequired'), trigger: 'blur' },
+            { pattern: /^\d{6}$/, message: t('profile.mfaCodeFormat'), trigger: 'blur' },
+        ]
+        : [],
 }));
 
 const passwordRules = computed<FormRules>(() => ({
@@ -128,6 +169,8 @@ watch(
         basicForm.nickname = displayName.value;
         basicForm.mobile = mobileText.value;
         basicForm.email = emailText.value;
+        originalEmail.value = emailText.value;
+        basicForm.mfaCode = '';
     },
     { immediate: true },
 );
@@ -157,13 +200,23 @@ async function handleSaveBasic() {
     if (!valid) {
         return;
     }
-    const response = await updateProfile({
-        nickname: basicForm.nickname,
-        mobile: basicForm.mobile || null,
-        email: basicForm.email,
-    });
-    auth.setCurrentUserResponse(response);
-    ElMessage.success(t('profile.profileSaveSuccess'));
+    const wasEmailChanged = emailChanged.value;
+    try {
+        const response = await updateProfile({
+            nickname: basicForm.nickname,
+            mobile: basicForm.mobile || null,
+            email: basicForm.email,
+            mfaCode: wasEmailChanged ? basicForm.mfaCode : undefined,
+        });
+        auth.setCurrentUserResponse(response);
+        const savedEmail = response.account?.email || originalEmail.value;
+        originalEmail.value = savedEmail;
+        basicForm.email = savedEmail;
+        basicForm.mfaCode = '';
+        ElMessage.success(t(wasEmailChanged ? 'profile.emailVerificationSent' : 'profile.profileSaveSuccess'));
+    } catch (error) {
+        ElMessage.error(resolveFriendlyRequestMessage(error, String(locale.value || 'zh-CN')));
+    }
 }
 
 async function handleSavePassword() {
@@ -171,15 +224,19 @@ async function handleSavePassword() {
     if (!valid) {
         return;
     }
-    await changePassword({
-        oldPassword: passwordForm.oldPassword,
-        newPassword: passwordForm.newPassword,
-    });
-    passwordForm.oldPassword = '';
-    passwordForm.newPassword = '';
-    passwordForm.confirmPassword = '';
-    passwordFormRef.value?.clearValidate();
-    ElMessage.success(t('profile.passwordSaveSuccess'));
+    try {
+        await changePassword({
+            oldPassword: passwordForm.oldPassword,
+            newPassword: passwordForm.newPassword,
+        });
+        passwordForm.oldPassword = '';
+        passwordForm.newPassword = '';
+        passwordForm.confirmPassword = '';
+        passwordFormRef.value?.clearValidate();
+        ElMessage.success(t('profile.passwordSaveSuccess'));
+    } catch (error) {
+        ElMessage.error(resolveFriendlyRequestMessage(error, String(locale.value || 'zh-CN')));
+    }
 }
 
 function validateNewPassword(_rule: unknown, value: string, callback: (error?: Error) => void) {
@@ -187,12 +244,9 @@ function validateNewPassword(_rule: unknown, value: string, callback: (error?: E
         callback(new Error(t('profile.newPasswordPlaceholder')));
         return;
     }
-    if (value.length < 8) {
-        callback(new Error(t('profile.passwordLength')));
-        return;
-    }
-    if (value === passwordForm.oldPassword) {
-        callback(new Error(t('profile.passwordSame')));
+    const checks = passwordChecks.value;
+    if (!checks.length || !checks.upperLower || !checks.numberSpecial || !checks.noWhitespace) {
+        callback(new Error(t('profile.passwordComplexity')));
         return;
     }
     callback();
@@ -395,9 +449,40 @@ function buildAvatarText(value: string) {
     padding-top: 8px;
 }
 
+.merchant-profile-form__alert {
+    max-width: 760px;
+    margin: -2px 0 18px;
+}
+
+.merchant-profile-form__hint {
+    max-width: 760px;
+    margin: -8px 0 18px 96px;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.merchant-profile-password-rules {
+    display: grid;
+    gap: 6px;
+    max-width: 760px;
+    margin: -4px 0 18px 96px;
+    color: #98a2b3;
+    font-size: 12px;
+}
+
+.merchant-profile-password-rules span::before { content: '○'; margin-right: 7px; }
+.merchant-profile-password-rules span.met { color: #047857; }
+.merchant-profile-password-rules span.met::before { content: '✓'; }
+
 @media (max-width: 900px) {
     .merchant-profile-page {
         grid-template-columns: 1fr;
+    }
+
+    .merchant-profile-form__hint,
+    .merchant-profile-password-rules {
+        margin-left: 0;
     }
 }
 </style>

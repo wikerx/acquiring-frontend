@@ -11,6 +11,7 @@ import { i18n } from './i18n';
 import { APP_TITLE } from './constants/app';
 import { useUserStore } from './store';
 import './styles/main.css';
+import { isPublicAuthPath } from './utils/auth-navigation';
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -31,7 +32,7 @@ setupIdleLogout({
         }
         user.reset();
         const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        if (window.location.pathname !== '/login') {
+        if (!isPublicAuthPath(window.location.pathname)) {
             window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
     },

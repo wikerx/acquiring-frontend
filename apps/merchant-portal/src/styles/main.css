@@ -2795,6 +2795,24 @@ body {
     margin-bottom: 20px;
 }
 
+.merchant-login-form__tools {
+    display: flex;
+    justify-content: flex-end;
+    margin: -6px 0 14px;
+    font-size: 13px;
+}
+
+.merchant-login-form__tools a {
+    color: var(--merchant-primary-deep);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.merchant-login-form__tools a:hover {
+    color: var(--merchant-teal);
+    text-decoration: underline;
+}
+
 .merchant-login-form .el-input__wrapper {
     min-height: 50px;
     border-radius: 10px;

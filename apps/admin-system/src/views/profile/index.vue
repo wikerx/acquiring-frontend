@@ -32,6 +32,21 @@
                         <el-form-item :label="t('userProfile.email')" prop="email">
                             <el-input v-model.trim="basicForm.email" :placeholder="t('common.pleaseInput')" />
                         </el-form-item>
+                        <el-form-item v-if="emailChanged" :label="t('userProfile.mfaCode')" prop="mfaCode">
+                            <VerificationCodeInput
+                                v-model="basicForm.mfaCode"
+                                mode="numeric"
+                                :label="t('userProfile.mfaCodePlaceholder')"
+                            />
+                        </el-form-item>
+                        <el-alert
+                            v-if="emailChanged"
+                            class="email-change-alert"
+                            :title="t('userProfile.emailChangeMfaHint')"
+                            type="warning"
+                            show-icon
+                            :closable="false"
+                        />
                         <el-form-item>
                             <el-button type="primary" @click="handleSaveBasic">{{ t('common.save') }}</el-button>
                             <el-button @click="router.back()">{{ t('common.close') }}</el-button>
@@ -68,6 +83,7 @@ import { Calendar, CollectionTag, Iphone, Message, OfficeBuilding, User, UserFil
 import { useI18n } from 'vue-i18n';
 import { useUserStore } from '@/store/modules/user';
 import { changePasswordApi, updateProfileApi } from '@/api/auth';
+import VerificationCodeInput from '@/components/VerificationCodeInput/index.vue';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -85,11 +101,13 @@ const mobileText = computed(() => readProfileField(['mobile', 'phone', 'phoneNum
 const emailText = computed(() => readProfileField(['email', 'mail', 'emailAddress', 'userEmail']));
 const deptText = computed(() => readProfileField(['deptName', 'departmentName', 'dept', 'department']));
 const createTimeText = computed(() => readProfileField(['createdAt', 'createTime', 'createdTime', 'gmtCreate']));
+const emailChanged = computed(() => basicForm.email.trim().toLowerCase() !== emailText.value.trim().toLowerCase());
 
 const basicForm = reactive({
     nickname: '',
     mobile: '',
     email: '',
+    mfaCode: '',
 });
 
 const passwordForm = reactive({
@@ -104,6 +122,14 @@ const basicRules = computed<FormRules>(() => ({
         { required: true, message: t('userProfile.emailRequired'), trigger: 'blur' },
         { type: 'email', message: t('userProfile.emailFormat'), trigger: 'blur' },
     ],
+    mfaCode: [{
+        validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+            if (!emailChanged.value) return callback();
+            if (!/^\d{6}$/.test(value || '')) return callback(new Error(t('userProfile.mfaCodeFormat')));
+            callback();
+        },
+        trigger: 'blur',
+    }],
 }));
 
 const passwordRules = computed<FormRules>(() => ({
@@ -129,6 +155,7 @@ watch(
         basicForm.nickname = displayName.value;
         basicForm.mobile = mobileText.value;
         basicForm.email = emailText.value;
+        basicForm.mfaCode = '';
     },
     { immediate: true },
 );
@@ -142,10 +169,13 @@ async function handleSaveBasic() {
         nickname: basicForm.nickname,
         mobile: basicForm.mobile || null,
         email: basicForm.email,
+        mfaCode: emailChanged.value ? basicForm.mfaCode : undefined,
     });
     userStore.applyLoginResponse(response, userStore.token);
     userStore.persistSession();
-    ElMessage.success(t('userProfile.profileSaveSuccess'));
+    ElMessage.success(emailChanged.value
+        ? t('userProfile.emailChangeVerificationSent')
+        : t('userProfile.profileSaveSuccess'));
 }
 
 async function handleSavePassword() {
@@ -157,11 +187,9 @@ async function handleSavePassword() {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword,
     });
-    passwordForm.oldPassword = '';
-    passwordForm.newPassword = '';
-    passwordForm.confirmPassword = '';
-    passwordFormRef.value?.clearValidate();
     ElMessage.success(t('userProfile.passwordSaveSuccess'));
+    userStore.reset();
+    await router.replace('/login');
 }
 
 function validateNewPassword(_rule: unknown, value: string, callback: (error?: Error) => void) {
@@ -169,8 +197,13 @@ function validateNewPassword(_rule: unknown, value: string, callback: (error?: E
         callback(new Error(t('userProfile.newPasswordPlaceholder')));
         return;
     }
-    if (value.length < 8) {
-        callback(new Error(t('userProfile.passwordLength')));
+    if (value.length < 12 || value.length > 64
+        || !/[a-z]/.test(value)
+        || !/[A-Z]/.test(value)
+        || !/\d/.test(value)
+        || !/[^A-Za-z0-9\s]/.test(value)
+        || /\s/.test(value)) {
+        callback(new Error(t('userProfile.passwordComplexity')));
         return;
     }
     if (value === passwordForm.oldPassword) {
@@ -398,9 +431,18 @@ function buildAvatarText(value: string) {
     padding-top: 8px;
 }
 
+.email-change-alert {
+    margin: 0 0 18px 96px;
+    max-width: 664px;
+}
+
 @media (max-width: 900px) {
     .user-profile-page {
         grid-template-columns: 1fr;
+    }
+
+    .email-change-alert {
+        margin-left: 0;
     }
 }
 </style>

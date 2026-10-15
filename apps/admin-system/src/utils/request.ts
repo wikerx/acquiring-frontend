@@ -3,6 +3,7 @@ import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ElMessage } from 'element-plus';
 import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { getToken, removeAuthStorage } from './auth';
+import { isPublicAuthPath } from './auth-navigation';
 
 const request = axios.create({
     baseURL: import.meta.env.VITE_ADMIN_API_BASE_URL || '',
@@ -35,7 +36,7 @@ export default request;
 
 function redirectToLogin() {
     const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (window.location.pathname === '/login') {
+    if (isPublicAuthPath(window.location.pathname)) {
         return;
     }
     window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
