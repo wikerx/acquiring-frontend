@@ -422,6 +422,8 @@ export default {
         'The system never generates or emails plaintext passwords. A one-time reset link and code will be sent to the verified email address.',
       resetPasswordEmailSent: 'The secure password reset email has been queued',
       assignRole: 'Assign Role',
+      roleSelectPlaceholder: 'Select roles',
+      roleLoadFailed: 'Role options failed to load; profile changes can still be saved',
       userDetail: 'User Detail',
       roleCode: 'Role Code',
       roleName: 'Role Name',

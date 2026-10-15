@@ -153,12 +153,35 @@
                         <el-option v-for="post in postOptions" :key="post.id" :label="post.postName + ' (' + post.postCode + ')'" :value="post.id" />
                     </el-select>
                 </el-form-item>
+                <el-form-item v-if="canAssignRoles" :label="$t('system.user.assignRole')" prop="roleIds">
+                    <el-select
+                        v-model="userForm.roleIds"
+                        multiple
+                        filterable
+                        clearable
+                        collapse-tags
+                        collapse-tags-tooltip
+                        :max-collapse-tags="2"
+                        :loading="formRolesLoading"
+                        :disabled="formRolesLoading || !formRolesReady"
+                        :placeholder="formRolesLoading ? $t('common.loading') : $t('system.user.roleSelectPlaceholder')"
+                        style="width:100%"
+                    >
+                        <el-option
+                            v-for="role in formRoleOptions"
+                            :key="role.roleId"
+                            :label="role.roleName + ' (' + role.roleCode + ')'"
+                            :value="role.roleId"
+                            :disabled="role.assignable === false"
+                        />
+                    </el-select>
+                </el-form-item>
                 <el-form-item :label="$t('system.user.mobile')" prop="mobile"><el-input v-model="userForm.mobile" maxlength="30" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('system.user.email')" prop="email"><el-input v-model="userForm.email" maxlength="150" :placeholder="$t('common.pleaseInput')" /></el-form-item>
                 <el-form-item :label="$t('common.status')" prop="status"><el-select v-model="userForm.status" :placeholder="$t('common.pleaseSelect')" style="width:100%"><el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <el-form-item :label="$t('system.user.remark')" prop="remark"><el-input v-model="userForm.remark" type="textarea" maxlength="500" show-word-limit :autosize="{ minRows: 2, maxRows: 4 }" :placeholder="$t('common.pleaseInput')" /></el-form-item>
             </el-form>
-            <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitUserForm">{{ $t('common.confirm') }}</el-button><el-button @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button type="primary" :loading="userFormSaving" :disabled="formRolesLoading" @click="submitUserForm">{{ $t('common.confirm') }}</el-button><el-button :disabled="userFormSaving" @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
 
         <el-dialog v-model="resetDialogVisible" :title="$t('system.user.resetPassword')" width="480px" append-to-body destroy-on-close>
@@ -317,6 +340,7 @@ import {
     disableUserMfa,
     exemptUserMfa,
     exportUsers,
+    getUserRoleOptions,
     getUserRoles,
     grantUserRoles,
     requireUserMfa,
@@ -356,7 +380,7 @@ const { locale, t } = useI18n();
 const userStore = useUserStore();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
-interface UserForm { accountId?: number; loginAccount: string; realName: string; deptId?: number; postIds: number[]; mobile: string; email: string; status: number; remark: string; }
+interface UserForm { accountId?: number; loginAccount: string; realName: string; deptId?: number; postIds: number[]; roleIds: number[]; mobile: string; email: string; status: number; remark: string; }
 type PostOption = SysPost & { id: number };
 type MfaActionType = 'require' | 'reset' | 'exempt' | 'disable' | 'unlock' | 'resend';
 
@@ -387,13 +411,19 @@ const roleAuthSaving = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const activeRow = ref<UserRow | null>(null);
 const userFormRef = ref<FormInstance>();
+const userFormSaving = ref(false);
 const roleTableRef = ref<TableInstance>();
 const roleRows = ref<SysRole[]>([]);
 const selectedRoleIds = ref<number[]>([]);
+const formRoleOptions = ref<SysRole[]>([]);
+const initialFormRoleIds = ref<number[]>([]);
+const formRolesLoading = ref(false);
+const formRolesReady = ref(false);
 const deptOptions = ref<SysDept[]>([]);
 const postOptions = ref<PostOption[]>([]);
+const canAssignRoles = computed(() => userStore.hasPermission('system:user:assign-role'));
 const dialogTitle = computed(() => formMode.value === 'create' ? t('system.user.addUser') : t('system.user.editUser'));
-const userForm = reactive<UserForm>({ loginAccount: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
+const userForm = reactive<UserForm>({ loginAccount: '', realName: '', deptId: undefined, postIds: [], roleIds: [], mobile: '', email: '', status: 1, remark: '' });
 const mfaActionDialogVisible = ref(false);
 const mfaActionSaving = ref(false);
 const mfaActionType = ref<MfaActionType>('require');
@@ -479,39 +509,84 @@ function handleSelectionChange(selection: UserRow[]) { selectedRows.value = sele
 async function handleAdd() {
     formMode.value = 'create';
     activeRow.value = null;
-    Object.assign(userForm, { accountId: undefined, loginAccount: '', realName: '', deptId: undefined, postIds: [], mobile: '', email: '', status: 1, remark: '' });
+    Object.assign(userForm, { accountId: undefined, loginAccount: '', realName: '', deptId: undefined, postIds: [], roleIds: [], mobile: '', email: '', status: 1, remark: '' });
+    resetUserFormRoles();
     selectedRoleIds.value = [];
     userDialogVisible.value = true;
     nextTick(() => userFormRef.value?.clearValidate());
+    if (canAssignRoles.value) void loadUserFormRoles();
 }
 
 async function handleUpdate(row: UserRow) {
     formMode.value = 'edit';
     activeRow.value = row;
-    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1, remark: row.remark || '' });
+    Object.assign(userForm, { accountId: row.accountId, loginAccount: row.loginAccount, realName: row.realName || '', deptId: row.deptId, postIds: row.postIds || [], roleIds: [], mobile: row.mobile || '', email: row.email || '', status: row.status ?? 1, remark: row.remark || '' });
+    resetUserFormRoles();
     userDialogVisible.value = true;
     nextTick(() => userFormRef.value?.clearValidate());
+    if (canAssignRoles.value) void loadUserFormRoles(row.accountId);
 }
 
 function openDetail(row: UserRow) { activeRow.value = row; detailVisible.value = true; }
 function openResetPassword(row: UserRow) { activeRow.value = row; resetDialogVisible.value = true; }
 
 async function submitUserForm() {
+    if (userFormSaving.value) return;
     const valid = await userFormRef.value?.validate().catch(() => false);
     if (!valid) return;
+    userFormSaving.value = true;
     try {
+        const rolePayload = buildUserFormRolePayload();
         if (formMode.value === 'create') {
-            await createUser({ loginAccount: userForm.loginAccount.trim(), realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
+            await createUser({ loginAccount: userForm.loginAccount.trim(), realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, ...rolePayload, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
             ElMessage.success(t('system.user.createActivationSent'));
         } else if (userForm.accountId) {
-            await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
+            await updateUser({ accountId: userForm.accountId, realName: userForm.realName.trim(), deptId: userForm.deptId, postIds: userForm.postIds, ...rolePayload, mobile: trimOptional(userForm.mobile), email: userForm.email.trim(), status: userForm.status, remark: trimOptional(userForm.remark) });
             ElMessage.success(t('common.editSuccess'));
         }
         userDialogVisible.value = false;
         loadData();
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
+    } finally {
+        userFormSaving.value = false;
     }
+}
+
+function resetUserFormRoles() {
+    formRoleOptions.value = [];
+    initialFormRoleIds.value = [];
+    formRolesLoading.value = false;
+    formRolesReady.value = false;
+}
+
+async function loadUserFormRoles(accountId?: number) {
+    formRolesLoading.value = true;
+    formRolesReady.value = false;
+    try {
+        const result = accountId
+            ? await getUserRoles({ accountId })
+            : await getUserRoleOptions();
+        formRoleOptions.value = result.roles || [];
+        const checkedRoleIds = [...(result.checkedRoleIds || [])];
+        userForm.roleIds = checkedRoleIds;
+        initialFormRoleIds.value = checkedRoleIds;
+        formRolesReady.value = true;
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('system.user.roleLoadFailed'));
+    } finally {
+        formRolesLoading.value = false;
+    }
+}
+
+function buildUserFormRolePayload(): { roleIds?: number[] } {
+    if (!canAssignRoles.value || !formRolesReady.value) {
+        return {};
+    }
+    const current = [...userForm.roleIds].sort((left, right) => left - right);
+    const initial = [...initialFormRoleIds.value].sort((left, right) => left - right);
+    const changed = current.length !== initial.length || current.some((roleId, index) => roleId !== initial[index]);
+    return changed ? { roleIds: current } : {};
 }
 
 async function submitResetPassword() {
@@ -824,8 +899,16 @@ function mfaPolicyStatusText(policy?: string, status?: string) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
     gap: 6px;
+}
+
+.role-tags {
+    justify-content: center;
+}
+
+.detail-tags {
+    width: 100%;
+    justify-content: flex-start;
 }
 
 .email-cell {

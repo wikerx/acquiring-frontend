@@ -16,6 +16,8 @@
     --admin-panel-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
     --admin-panel-radius: 6px;
     --admin-control-height: 28px;
+    --app-header-height: 56px;
+    --app-tags-height: 34px;
     --app-sidebar-width: 216px;
     --app-sidebar-collapsed-width: 54px;
     --nav-bg: #ffffff;
@@ -226,7 +228,7 @@ textarea {
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 50px;
+    height: var(--app-header-height);
     flex-shrink: 0;
     padding: 0 12px;
     color: var(--nav-active-text);
@@ -418,10 +420,11 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 56px;
+    height: var(--app-header-height);
+    min-height: var(--app-header-height);
     padding: 0 18px;
     background: #fff;
-    border-bottom: 1px solid #e8eaf0;
+    border-bottom: 1px solid var(--nav-border);
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
 }
 
@@ -914,8 +917,8 @@ textarea {
     display: flex;
     align-items: center;
     gap: 4px;
-    height: 34px;
-    min-height: 34px;
+    height: var(--app-tags-height);
+    min-height: var(--app-tags-height);
     padding: 0 0 0 12px;
     background: var(--tags-bg);
     border-bottom: 1px solid var(--tags-border);

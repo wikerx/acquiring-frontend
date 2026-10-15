@@ -52,6 +52,7 @@ export interface SysUserAccountCreateRequest {
     realName: string;
     deptId?: number;
     postIds?: number[];
+    roleIds?: number[];
     mobile?: string;
     email?: string;
     status?: number;
@@ -67,6 +68,7 @@ export interface SysUserAccountUpdateRequest {
     realName?: string;
     deptId?: number;
     postIds?: number[];
+    roleIds?: number[];
     mobile?: string;
     email?: string;
     status?: number;
@@ -83,7 +85,7 @@ export interface SysUserAccountResetPasswordRequest {
 }
 
 export interface SysUserRoleAuth {
-    accountId: number;
+    accountId?: number;
     roles: SysRole[];
     checkedRoleIds: number[];
 }
@@ -191,6 +193,13 @@ export async function getUserRoles(requestBody: { accountId: number }) {
     const result = await http.post<CommonResult<SysUserRoleAuth>>(
         '/admin/system/users/roles',
         requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getUserRoleOptions() {
+    const result = await http.get<CommonResult<SysUserRoleAuth>>(
+        '/admin/system/users/roles/options',
     );
     return unwrapResult(result.data);
 }

@@ -27,6 +27,9 @@ body {
     --merchant-border: #dce7f2;
     --merchant-card-shadow: 0 14px 34px rgb(15 23 42 / 6%);
     --merchant-card-shadow-soft: 0 8px 22px rgb(15 23 42 / 4%);
+    --merchant-header-height: 68px;
+    --merchant-breadcrumb-height: 34px;
+    --merchant-tags-height: 38px;
     --merchant-control-height: 32px;
     --merchant-control-radius: 6px;
     --merchant-control-border: #dfe7f1;
@@ -96,7 +99,7 @@ body {
 }
 
 .brand {
-    height: 78px;
+    height: var(--merchant-header-height);
     padding: 0 22px;
     display: flex;
     align-items: center;
@@ -133,9 +136,9 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    height: 68px;
+    height: var(--merchant-header-height);
     padding: 0 24px;
-    border-bottom: 1px solid #e7edf5;
+    border-bottom: 1px solid var(--merchant-nav-border);
     background: #ffffff;
 }
 
@@ -268,7 +271,7 @@ body {
     gap: 10px;
     min-width: 220px;
     max-width: 260px;
-    height: 68px;
+    height: var(--merchant-header-height);
     padding-right: 16px;
     flex: 0 0 auto;
 }
@@ -302,7 +305,7 @@ body {
 .merchant-top-menu {
     min-width: 0;
     flex: 1 1 auto;
-    height: 68px;
+    height: var(--merchant-header-height);
     border-bottom: 0;
     background: transparent;
     overflow-x: auto;
@@ -311,7 +314,7 @@ body {
 
 .merchant-top-menu.el-menu--horizontal > .el-menu-item,
 .merchant-top-menu.el-menu--horizontal > .el-sub-menu .el-sub-menu__title {
-    height: 68px;
+    height: var(--merchant-header-height);
     padding: 0 20px;
     color: var(--merchant-nav-text);
     border-bottom: 2px solid transparent;
@@ -397,7 +400,7 @@ body {
 }
 
 .merchant-breadcrumb-bar {
-    height: 34px;
+    height: var(--merchant-breadcrumb-height);
     display: flex;
     align-items: center;
     padding: 0 24px;
@@ -406,7 +409,7 @@ body {
 }
 
 .merchant-tags-view {
-    height: 38px;
+    height: var(--merchant-tags-height);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -445,7 +448,7 @@ body {
 
 .merchant-tags-view.google .merchant-tag {
     position: relative;
-    height: 38px;
+    height: var(--merchant-tags-height);
     margin: 0;
     padding: 0 14px;
     border: 0;
@@ -485,7 +488,7 @@ body {
 }
 
 .merchant-main {
-    min-height: calc(100vh - 140px);
+    min-height: calc(100vh - var(--merchant-header-height) - var(--merchant-breadcrumb-height) - var(--merchant-tags-height));
     min-width: 0;
     padding: 24px;
     background:
@@ -493,7 +496,7 @@ body {
 }
 
 .without-tags .merchant-main {
-    min-height: calc(100vh - 102px);
+    min-height: calc(100vh - var(--merchant-header-height) - var(--merchant-breadcrumb-height));
 }
 
 .merchant-footer {
