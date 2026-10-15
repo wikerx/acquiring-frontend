@@ -63,6 +63,7 @@ export interface AuthAccount {
     phoneNumber?: string | null;
     telephone?: string | null;
     email?: string | null;
+    pendingEmail?: string | null;
     mail?: string | null;
     emailAddress?: string | null;
     deptName?: string | null;
@@ -87,11 +88,75 @@ export interface AuthProfileUpdateRequest {
     nickname: string;
     mobile?: string | null;
     email: string;
+    mfaCode?: string;
 }
 
 export interface AuthPasswordChangeRequest {
     oldPassword: string;
     newPassword: string;
+}
+
+export interface PasswordResetRequest {
+    loginAccount: string;
+    verifyCodeId: string;
+    verifyCode: string;
+    locale?: 'zh-CN' | 'en-US';
+}
+
+export interface PasswordResetRequestResponse {
+    requestId: string;
+    expireSeconds: number;
+    message: string;
+}
+
+export interface PasswordResetEmailVerifyRequest {
+    requestId: string;
+    emailCode: string;
+}
+
+export interface PasswordResetMfaVerifyRequest {
+    requestId: string;
+    actionToken: string;
+    totpCode: string;
+}
+
+export interface PasswordResetVerifyResponse {
+    nextStep: 'MFA' | 'RESET_PASSWORD' | 'ADMIN_SUPPORT';
+    actionToken?: string | null;
+    expireSeconds: number;
+    message: string;
+}
+
+export interface PasswordResetConfirmRequest {
+    requestId: string;
+    resetToken: string;
+    newPassword: string;
+}
+
+export interface PasswordResetConfirmResponse {
+    message: string;
+}
+
+export interface EmailVerificationVerifyRequest {
+    requestId: string;
+    emailCode: string;
+}
+
+export interface EmailVerificationVerifyResponse {
+    nextStep: 'SET_PASSWORD' | 'COMPLETED';
+    actionToken?: string | null;
+    expireSeconds: number;
+    message: string;
+}
+
+export interface AccountActivationCompleteRequest {
+    requestId: string;
+    actionToken: string;
+    newPassword: string;
+}
+
+export interface AccountActivationCompleteResponse {
+    message: string;
 }
 
 export interface AuthMenu {
@@ -335,7 +400,7 @@ export function resolveFriendlyRequestMessage(
     error: unknown,
     locale: string = 'zh-CN',
 ): string {
-    const isChinese = locale !== 'en-US';
+    const isChinese = !locale.toLowerCase().startsWith('en');
     const defaultMessage = isChinese ? '请求暂时失败，请稍后重试。' : 'The request failed. Please try again later.';
     if (!error || typeof error !== 'object') {
         return defaultMessage;
@@ -356,6 +421,12 @@ export function resolveFriendlyRequestMessage(
     const code = axiosLikeError.code;
     const businessCode = error instanceof BusinessResultError ? error.resultCode : undefined;
     const businessMessage = backendMessage || errorMessage;
+
+    if (businessCode === 'F429' || status === 429) {
+        return isChinese
+            ? '操作过于频繁，请稍后再试。'
+            : 'Too many requests. Please try again later.';
+    }
 
     if (businessCode === 'F401' || status === 401) {
         if (businessMessage === 'account disabled or not found') {
@@ -382,6 +453,11 @@ export function resolveFriendlyRequestMessage(
         if (businessMessage === 'mfa is not enabled') {
             return isChinese ? '当前账号未启用 MFA。' : 'MFA is not enabled for this account.';
         }
+        if (businessMessage === 'Verification failed or expired.') {
+            return isChinese
+                ? '验证码错误或已过期，请重新获取后再试。'
+                : 'The verification code is incorrect or has expired. Request a new code and try again.';
+        }
         if (status === 401) {
             return isChinese ? '登录状态已失效，请重新登录。' : 'Your session has expired. Please sign in again.';
         }
@@ -405,6 +481,60 @@ export function resolveFriendlyRequestMessage(
         return isChinese
             ? '网络连接失败，或后端服务尚未启动，请检查服务状态后重试。'
             : 'The network request failed, or the backend service may not be running. Please check the service and try again.';
+    }
+
+    const localizedBusinessMessages: Record<string, [string, string]> = {
+        'Verification failed or expired.': [
+            '验证码错误或已过期，请重新获取后再试。',
+            'The verification code is incorrect or has expired. Request a new code and try again.',
+        ],
+        'new password must differ from current password': [
+            '新密码不能与当前密码相同。',
+            'The new password must be different from the current password.',
+        ],
+        'new password was used recently': [
+            '新密码不能与当前及最近 4 个密码相同。',
+            'The new password cannot match the current or previous 4 passwords.',
+        ],
+        'mfa is required for email change': [
+            '修改邮箱前必须先启用并验证当前账号的 MFA。',
+            'MFA must be enabled and verified before changing the email address.',
+        ],
+        'mfa code is invalid': [
+            'MFA 验证码错误、已使用或已过期。',
+            'The MFA code is incorrect, already used, or expired.',
+        ],
+        'account must be enabled with a verified email before password reset': [
+            '该账号必须处于启用状态且邮箱已验证，才能发送重置邮件。',
+            'The account must be enabled with a verified email before a reset email can be sent.',
+        ],
+        'password reset email could not be prepared': [
+            '重置邮件创建失败，请检查邮件模板和发件账户配置。',
+            'The reset email could not be prepared. Check the email template and sender account.',
+        ],
+        'email verification message could not be prepared': [
+            '验证邮件创建失败，请检查邮件模板和发件账户配置。',
+            'The verification email could not be prepared. Check the email template and sender account.',
+        ],
+        'account is already activated': [
+            '该账号已完成激活，无需重复操作。',
+            'This account has already been activated.',
+        ],
+        'account email is already verified': [
+            '当前邮箱已完成验证，无需重复操作。',
+            'The current email address has already been verified.',
+        ],
+        'pending account must use activation email': [
+            '待激活账号请使用账号激活邮件完成验证。',
+            'Pending accounts must be verified through the account activation email.',
+        ],
+        'account email is missing': [
+            '该账号尚未绑定邮箱，请先完善用户信息。',
+            'This account does not have an email address. Add one before continuing.',
+        ],
+    };
+    if (businessMessage && localizedBusinessMessages[businessMessage]) {
+        return localizedBusinessMessages[businessMessage][isChinese ? 0 : 1];
     }
     if (backendMessage && !/^Request failed with status code \d+$/.test(backendMessage)) {
         return backendMessage;

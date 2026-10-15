@@ -17,6 +17,11 @@ export interface SysUserAccount {
     realName?: string;
     mobile?: string;
     email?: string;
+    pendingEmail?: string;
+    emailVerificationStatus?: 'PENDING' | 'VERIFIED';
+    emailVerifiedAt?: string;
+    activationStatus?: 'PENDING_ACTIVATION' | 'ACTIVE';
+    activatedAt?: string;
     userType?: string;
     status?: number;
     locked?: number;
@@ -38,11 +43,12 @@ export interface SysUserAccountQuery extends PageQuery {
     email?: string;
     deptId?: number;
     status?: number;
+    emailVerificationStatus?: 'PENDING' | 'VERIFIED';
+    activationStatus?: 'PENDING_ACTIVATION' | 'ACTIVE';
 }
 
 export interface SysUserAccountCreateRequest {
     loginAccount: string;
-    password: string;
     realName: string;
     deptId?: number;
     postIds?: number[];
@@ -50,6 +56,10 @@ export interface SysUserAccountCreateRequest {
     email?: string;
     status?: number;
     remark?: string;
+}
+
+export interface SysUserEmailVerificationSendRequest {
+    accountId: number;
 }
 
 export interface SysUserAccountUpdateRequest {
@@ -70,7 +80,6 @@ export interface SysUserAccountStatusRequest {
 
 export interface SysUserAccountResetPasswordRequest {
     accountId: number;
-    password: string;
 }
 
 export interface SysUserRoleAuth {
@@ -165,6 +174,14 @@ export async function updateUserStatus(requestBody: SysUserAccountStatusRequest)
 export async function resetUserPassword(requestBody: SysUserAccountResetPasswordRequest) {
     const result = await http.post<CommonResult<void>>(
         '/admin/system/users/reset-password',
+        requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function sendUserEmailVerification(requestBody: SysUserEmailVerificationSendRequest) {
+    const result = await http.post<CommonResult<void>>(
+        '/admin/system/users/email-verification/send',
         requestBody,
     );
     return unwrapResult(result.data);
