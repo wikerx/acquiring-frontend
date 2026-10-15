@@ -84,6 +84,9 @@
                                 @keyup.enter="handleLogin"
                             />
                         </el-form-item>
+                        <div class="merchant-login-form__tools">
+                            <router-link to="/forgot-password">{{ t('login.forgotPassword') }}</router-link>
+                        </div>
                         <el-form-item :label="t('login.verifyCode')">
                             <div class="merchant-login-verify-code">
                                 <el-input

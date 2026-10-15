@@ -36,6 +36,8 @@ export const router = createRouter({
     history: createWebHistory(),
     routes: [
         { path: '/login', component: Login },
+        { path: '/forgot-password', component: () => import('@/pages/forgot-password/index.vue') },
+        { path: '/account-verification', component: () => import('@/pages/account-verification/index.vue') },
         { path: '/403', component: Forbidden, meta: { title: '403' } },
         {
             path: '/',
@@ -79,11 +81,13 @@ router.beforeEach(async (to) => {
     const defaultTitle = VEXRA_BRAND.systems.merchant.title;
     const titleKey = to.meta.titleKey as string | undefined;
     const localizedTitle = titleKey ? i18n.global.t(titleKey) : VEXRA_BRAND.systems.merchant.subtitleEn;
+    const publicPaths = ['/login', '/forgot-password', '/account-verification'];
+    const isPublicPath = publicPaths.includes(to.path);
     document.title =
-        to.path === '/login'
+        isPublicPath
             ? defaultTitle
             : `${localizedTitle} - ${VEXRA_BRAND.systems.merchant.name}`;
-    if (to.path !== '/login') {
+    if (!isPublicPath) {
         await refreshCurrentUserIfNeeded();
         syncDynamicRoutes(auth.session?.menus || []);
         const resolvedAfterSync = router.resolve(to.fullPath);
@@ -91,13 +95,13 @@ router.beforeEach(async (to) => {
             return { path: to.fullPath, query: to.query, hash: to.hash, replace: true };
         }
     }
-    if (to.path !== '/login' && !auth.session) {
+    if (!isPublicPath && !auth.session) {
         return '/login';
     }
     if (to.path === '/' && auth.session) {
         return firstAvailableMenuPath(auth.session.menus || []);
     }
-    if (to.path === '/login' && auth.session) {
+    if (isPublicPath && auth.session) {
         return firstAvailableMenuPath(auth.session.menus || []);
     }
     if (to.meta.permission && !auth.hasPermission(to.meta.permission as string)) {

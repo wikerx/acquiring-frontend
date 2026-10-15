@@ -97,6 +97,7 @@ export interface AuthPasswordChangeRequest {
 }
 
 export interface PasswordResetRequest {
+    merchantId?: string;
     loginAccount: string;
     verifyCodeId: string;
     verifyCode: string;
@@ -121,7 +122,7 @@ export interface PasswordResetMfaVerifyRequest {
 }
 
 export interface PasswordResetVerifyResponse {
-    nextStep: 'MFA' | 'RESET_PASSWORD' | 'ADMIN_SUPPORT';
+    nextStep: 'MFA' | 'RESET_PASSWORD' | 'ADMIN_SUPPORT' | 'MERCHANT_SUPPORT';
     actionToken?: string | null;
     expireSeconds: number;
     message: string;

@@ -36,6 +36,19 @@
                 <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
                 <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
                 <el-table-column prop="email" :label="t('system.account.email')" min-width="190" />
+                <el-table-column prop="pendingEmail" :label="t('system.account.pendingEmail')" min-width="190">
+                    <template #default="{ row }">{{ row.pendingEmail || '-' }}</template>
+                </el-table-column>
+                <el-table-column :label="t('system.account.activationStatus')" min-width="130" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" :type="activationStatusTag(row.activationStatus)" effect="plain">{{ activationStatusText(row.activationStatus) }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column :label="t('system.account.emailVerificationStatus')" min-width="130" align="center">
+                    <template #default="{ row }">
+                        <el-tag size="small" :type="emailStatusTag(row.emailVerificationStatus)" effect="plain">{{ emailStatusText(row.emailVerificationStatus) }}</el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column :label="t('system.account.role')" min-width="180"><template #default="{ row }">{{ row.roleNames?.join(', ') || '-' }}</template></el-table-column>
                 <el-table-column :label="t('system.account.mfaPolicy')" min-width="120" align="center">
                     <template #default="{ row }">
@@ -49,6 +62,8 @@
                 </el-table-column>
                 <el-table-column :label="t('common.status')" width="100" align="center"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? t('common.enabled') : t('common.disabled') }}</el-tag></template></el-table-column>
                 <el-table-column :label="t('system.role.createdTime')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.createdAt" /></template></el-table-column>
+                <el-table-column :label="t('system.account.activatedAt')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.activatedAt" /></template></el-table-column>
+                <el-table-column :label="t('system.account.emailVerifiedAt')" min-width="170" align="center"><template #default="{ row }"><BaseDateTime :value="row.emailVerifiedAt" /></template></el-table-column>
                 <el-table-column :label="t('common.operation')" width="142" align="center" fixed="right">
                     <template #default="{ row }">
                         <div class="account-operation-group">
@@ -62,6 +77,7 @@
                                         <el-dropdown-item v-if="canEdit || canAssignRole" command="edit">{{ t('common.edit') }}</el-dropdown-item>
                                         <el-dropdown-item v-if="canResetPassword && !row.currentAccount" command="resetPassword" :divided="canEdit || canAssignRole">{{ t('system.account.resetPassword') }}</el-dropdown-item>
                                         <el-dropdown-item v-if="row.currentAccount && canResetPassword" disabled :divided="canEdit || canAssignRole">{{ t('system.account.passwordSelfProtected') }}</el-dropdown-item>
+                                        <el-dropdown-item v-if="canEmailVerify" command="emailVerification" :divided="hasPasswordActions || canEdit || canAssignRole">{{ emailVerificationActionText(row) }}</el-dropdown-item>
                                         <el-dropdown-item v-if="canMfaRequire" command="mfaRequire" :divided="hasPasswordActions || canEdit || canAssignRole">{{ t('system.account.mfaRequire') }}</el-dropdown-item>
                                         <el-dropdown-item v-if="canMfaReset && !row.currentAccount" command="mfaReset">{{ t('system.account.mfaReset') }}</el-dropdown-item>
                                         <el-dropdown-item v-if="canMfaUnlock" command="mfaUnlock">{{ t('system.account.mfaUnlock') }}</el-dropdown-item>
@@ -86,7 +102,6 @@
         <el-dialog v-model="visible" :title="form.accountId ? t('system.account.editEmployee') : t('system.account.addEmployee')" width="560px">
             <el-form ref="formRef" :model="form" :rules="rules" label-width="92px">
                 <el-form-item :label="t('system.account.loginAccount')" prop="loginAccount"><el-input v-model="form.loginAccount" :disabled="!canSaveAccountBase" /></el-form-item>
-                <el-form-item v-if="!form.accountId" :label="t('system.account.initialPassword')" prop="password"><el-input v-model="form.password" type="password" show-password /></el-form-item>
                 <el-form-item :label="t('system.account.realName')" prop="realName"><el-input v-model="form.realName" :disabled="!canSaveAccountBase" /></el-form-item>
                 <el-form-item :label="t('system.account.mobile')"><el-input v-model="form.mobile" :disabled="!canSaveAccountBase" /></el-form-item>
                 <el-form-item :label="t('system.account.email')" prop="email"><el-input v-model="form.email" :disabled="!canSaveAccountBase" /></el-form-item>
@@ -99,10 +114,8 @@
         </el-dialog>
         <el-dialog v-model="resetPasswordVisible" :title="t('system.account.resetPasswordTitle')" width="520px" destroy-on-close>
             <el-alert class="reset-password-alert" :title="t('system.account.resetPasswordTip')" type="warning" show-icon :closable="false" />
-            <el-form ref="resetPasswordFormRef" :model="resetPasswordForm" :rules="resetPasswordRules" label-width="96px">
+            <el-form label-width="96px">
                 <el-form-item :label="t('system.account.loginAccount')"><el-input :model-value="activePasswordRow?.loginAccount || '-'" disabled /></el-form-item>
-                <el-form-item :label="t('system.account.newPassword')" prop="password"><el-input v-model="resetPasswordForm.password" type="password" show-password autocomplete="new-password" /></el-form-item>
-                <el-form-item :label="t('system.account.confirmPassword')" prop="confirmPassword"><el-input v-model="resetPasswordForm.confirmPassword" type="password" show-password autocomplete="new-password" /></el-form-item>
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
@@ -144,7 +157,7 @@ import { systemApi, type AccountItem, type DeptItem, type PostItem, type RoleIte
 import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const loading = ref(false);
 const visible = ref(false);
 const showSearch = ref(true);
@@ -156,7 +169,7 @@ const roles = ref<RoleItem[]>([]);
 const posts = ref<PostItem[]>([]);
 const deptTree = ref<DeptItem[]>([]);
 const query = reactive<{ keyword: string; roleId?: number; status?: number }>({ keyword: '' });
-const form = reactive<Partial<AccountItem> & { password?: string }>({ status: 1, roleIds: [], deptIds: [], postIds: [] });
+const form = reactive<Partial<AccountItem>>({ status: 1, roleIds: [], deptIds: [], postIds: [] });
 const formRef = ref<FormInstance>();
 type MfaActionType = 'require' | 'reset' | 'exempt' | 'disable' | 'unlock' | 'resend';
 const mfaActionVisible = ref(false);
@@ -168,11 +181,8 @@ const mfaActionForm = reactive({ reason: '', exemptUntil: '' });
 const resetPasswordVisible = ref(false);
 const resetPasswordSaving = ref(false);
 const activePasswordRow = ref<AccountItem | null>(null);
-const resetPasswordFormRef = ref<FormInstance>();
-const resetPasswordForm = reactive({ password: '', confirmPassword: '' });
 const rules = computed<FormRules>(() => ({
     loginAccount: [{ required: true, message: t('system.account.loginAccountRequired'), trigger: 'blur' }],
-    password: [{ required: !form.accountId, message: t('system.account.initialPasswordRequired'), trigger: 'blur' }],
     realName: [{ required: true, message: t('system.account.realNameRequired'), trigger: 'blur' }],
     email: [
         { required: true, message: t('system.account.emailRequired'), trigger: 'blur' },
@@ -182,26 +192,11 @@ const rules = computed<FormRules>(() => ({
 const mfaActionRules = computed<FormRules>(() => ({
     reason: [{ required: true, message: t('system.account.mfaReasonRequired'), trigger: 'blur' }],
 }));
-const resetPasswordRules = computed<FormRules>(() => ({
-    password: [
-        { required: true, message: t('system.account.newPasswordRequired'), trigger: 'blur' },
-        { min: 8, max: 64, message: t('system.account.passwordLength'), trigger: 'blur' },
-    ],
-    confirmPassword: [
-        { required: true, message: t('system.account.confirmPasswordRequired'), trigger: 'blur' },
-        {
-            validator: (_rule, value, callback) => {
-                if (value !== resetPasswordForm.password) callback(new Error(t('system.account.passwordMismatch')));
-                else callback();
-            },
-            trigger: 'blur',
-        },
-    ],
-}));
 const canAdd = hasPermission('merchant:system:account:add');
 const canEdit = hasPermission('merchant:system:account:edit');
 const canDelete = hasPermission('merchant:system:account:delete');
 const canResetPassword = hasPermission('merchant:system:account:resetPassword');
+const canEmailVerify = hasPermission('merchant:system:account:emailVerify');
 const canChangeStatus = hasPermission('merchant:system:account:status');
 const canAssignRole = hasPermission('merchant:system:account:assignRole');
 const canMfaRequire = hasPermission('merchant:system:account:mfa:require');
@@ -212,7 +207,7 @@ const canMfaUnlock = hasPermission('merchant:system:account:mfa:unlock');
 const canMfaResend = hasPermission('merchant:system:account:mfa:resend');
 const canSaveAccountBase = computed(() => form.accountId ? canEdit : canAdd);
 const hasPasswordActions = computed(() => canResetPassword);
-const hasAccountMoreActions = computed(() => canChangeStatus || canDelete || hasPasswordActions.value);
+const hasAccountMoreActions = computed(() => canChangeStatus || canDelete || canEmailVerify || hasPasswordActions.value);
 const hasMfaActions = computed(() => canMfaRequire || canMfaReset || canMfaExempt || canMfaDisable || canMfaUnlock || canMfaResend);
 const hasActionMenu = computed(() => canEdit || canAssignRole || hasAccountMoreActions.value || hasMfaActions.value);
 const hasSelfProtectedMfaActions = computed(() => canMfaReset || canMfaExempt || canMfaDisable);
@@ -290,7 +285,7 @@ function resetQuery() {
 }
 
 function openForm(row?: AccountItem) {
-    Object.assign(form, row ? { ...row, password: undefined } : { accountId: undefined, loginAccount: '', password: '', realName: '', mobile: '', email: '', status: 1, roleIds: [], deptIds: [], postIds: [] });
+    Object.assign(form, row ? { ...row } : { accountId: undefined, loginAccount: '', realName: '', mobile: '', email: '', status: 1, roleIds: [], deptIds: [], postIds: [] });
     visible.value = true;
     nextTick(() => formRef.value?.clearValidate());
 }
@@ -301,7 +296,7 @@ async function submit() {
         return;
     }
     if (!form.accountId) {
-        await systemApi.saveAccount(form);
+        await systemApi.saveAccount({ ...form, locale: currentLocale() });
     } else {
         const tasks: Promise<unknown>[] = [];
         if (canEdit) {
@@ -356,6 +351,10 @@ function handleAccountCommand(command: string, row: AccountItem) {
         openResetPassword(row);
         return;
     }
+    if (command === 'emailVerification') {
+        sendEmailVerification(row);
+        return;
+    }
     const actionMap: Record<string, MfaActionType> = {
         mfaRequire: 'require',
         mfaReset: 'reset',
@@ -380,20 +379,16 @@ function openResetPassword(row: AccountItem) {
         return;
     }
     activePasswordRow.value = row;
-    resetPasswordForm.password = '';
-    resetPasswordForm.confirmPassword = '';
     resetPasswordVisible.value = true;
-    nextTick(() => resetPasswordFormRef.value?.clearValidate());
 }
 
 async function submitResetPassword() {
-    const valid = await resetPasswordFormRef.value?.validate().catch(() => false);
-    if (!valid || !activePasswordRow.value) {
+    if (!activePasswordRow.value) {
         return;
     }
     resetPasswordSaving.value = true;
     try {
-        await systemApi.resetAccountPassword(activePasswordRow.value.accountId, { password: resetPasswordForm.password });
+        await systemApi.resetAccountPassword(activePasswordRow.value.accountId, { locale: currentLocale() });
         ElMessage.success(t('system.account.resetPasswordSuccess'));
         resetPasswordVisible.value = false;
         await loadData();
@@ -402,6 +397,48 @@ async function submitResetPassword() {
     } finally {
         resetPasswordSaving.value = false;
     }
+}
+
+async function sendEmailVerification(row: AccountItem) {
+    const confirmed = await confirmAction(
+        t('system.account.emailVerificationConfirm', { name: row.loginAccount }),
+        t('system.account.emailVerificationTitle'),
+        { type: 'info' },
+    );
+    if (!confirmed) return;
+    try {
+        await systemApi.sendAccountEmailVerification(row.accountId, currentLocale());
+        ElMessage.success(t('system.account.emailVerificationSent'));
+        await loadData();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('system.account.emailVerificationFailed'));
+    }
+}
+
+function currentLocale(): 'zh-CN' | 'en-US' {
+    return locale.value === 'en-US' ? 'en-US' : 'zh-CN';
+}
+
+function activationStatusText(value?: string) {
+    return value ? t(`system.account.activationStatus_${value}`, value) : t('system.account.activationStatus_PENDING_ACTIVATION');
+}
+
+function activationStatusTag(value?: string) {
+    return value === 'ACTIVE' ? 'success' : 'warning';
+}
+
+function emailStatusText(value?: string) {
+    return value ? t(`system.account.emailStatus_${value}`, value) : t('system.account.emailStatus_PENDING');
+}
+
+function emailStatusTag(value?: string) {
+    return value === 'VERIFIED' ? 'success' : 'warning';
+}
+
+function emailVerificationActionText(row: AccountItem) {
+    if (row.activationStatus === 'PENDING_ACTIVATION') return t('system.account.resendActivationEmail');
+    if (row.pendingEmail) return t('system.account.resendEmailChangeVerification');
+    return t('system.account.sendEmailVerification');
 }
 
 function activeSelfProtectedMfaAction(row: AccountItem, action: MfaActionType) {
