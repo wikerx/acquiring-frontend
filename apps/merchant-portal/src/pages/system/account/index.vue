@@ -31,13 +31,19 @@
                     <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
                 </div>
             </div>
-            <StandardTable table-key="merchant-system-account" v-loading="loading" :data="rows" row-key="accountId" size="small">
+            <StandardTable table-key="merchant-system-account-v2" v-loading="loading" :data="rows" row-key="accountId" size="small">
                 <el-table-column prop="loginAccount" :label="t('system.account.loginAccount')" min-width="160" />
                 <el-table-column prop="realName" :label="t('system.account.realName')" min-width="140" />
                 <el-table-column prop="mobile" :label="t('system.account.mobile')" min-width="140" />
-                <el-table-column prop="email" :label="t('system.account.email')" min-width="190" />
-                <el-table-column prop="pendingEmail" :label="t('system.account.pendingEmail')" min-width="190">
-                    <template #default="{ row }">{{ row.pendingEmail || '-' }}</template>
+                <el-table-column prop="email" :label="t('system.account.email')" min-width="280">
+                    <template #default="{ row }">
+                        <div class="account-email-cell">
+                            <span>{{ row.email || '-' }}</span>
+                            <small v-if="row.pendingEmail">
+                                {{ t('system.account.pendingEmailNotice', { email: row.pendingEmail }) }}
+                            </small>
+                        </div>
+                    </template>
                 </el-table-column>
                 <el-table-column :label="t('system.account.activationStatus')" min-width="130" align="center">
                     <template #default="{ row }">
@@ -566,6 +572,26 @@ onMounted(loadData);
 
 .account-operation-group :deep(.el-button + .el-button) {
     margin-left: 0;
+}
+
+.account-email-cell {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.45;
+}
+
+.account-email-cell > span,
+.account-email-cell > small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.account-email-cell > small {
+    color: var(--el-color-warning-dark-2);
+    font-size: 12px;
 }
 
 .mfa-action-alert {
