@@ -2285,14 +2285,6 @@ textarea {
     box-shadow: 0 18px 34px rgb(15 23 42 / 18%);
 }
 
-.mfa-code-input .el-input__inner {
-    font-family: SFMono-Regular, Consolas, Menlo, monospace;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 0.22em;
-    text-align: center;
-}
-
 .mfa-form {
     margin-top: 2px;
 }

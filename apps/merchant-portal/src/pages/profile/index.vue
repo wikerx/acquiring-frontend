@@ -22,7 +22,7 @@
             <div class="merchant-profile-card__header">{{ t('profile.basicTitle') }}</div>
             <el-tabs v-model="activeTab" class="merchant-profile-tabs">
                 <el-tab-pane :label="t('profile.basicTab')" name="basic">
-                    <el-form ref="basicFormRef" :model="basicForm" :rules="basicRules" label-width="96px" class="merchant-profile-form">
+                    <el-form ref="basicFormRef" :model="basicForm" :rules="basicRules" label-width="104px" class="merchant-profile-form">
                         <el-form-item :label="t('profile.nickname')" prop="nickname">
                             <el-input v-model.trim="basicForm.nickname" />
                         </el-form-item>
@@ -40,13 +40,11 @@
                             show-icon
                             :title="t('profile.pendingEmailNotice', { email: account.pendingEmail })"
                         />
-                        <el-form-item v-if="emailChanged" :label="t('profile.mfaCode')" prop="mfaCode">
-                            <el-input
-                                v-model.trim="basicForm.mfaCode"
-                                inputmode="numeric"
-                                autocomplete="one-time-code"
-                                maxlength="6"
-                                :placeholder="t('profile.mfaCodePlaceholder')"
+                        <el-form-item v-if="emailChanged" class="merchant-profile-mfa-code-item" :label="t('profile.mfaCode')" prop="mfaCode">
+                            <VerificationCodeInput
+                                v-model="basicForm.mfaCode"
+                                mode="numeric"
+                                :label="t('profile.mfaCodePlaceholder')"
                             />
                         </el-form-item>
                         <p v-if="emailChanged" class="merchant-profile-form__hint">{{ t('profile.emailChangeHint') }}</p>
@@ -93,6 +91,7 @@ import { Calendar, CollectionTag, Iphone, Message, OfficeBuilding, User, UserFil
 import { useI18n } from 'vue-i18n';
 import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { changePassword, currentUser, updateProfile } from '@/api/authApi';
+import VerificationCodeInput from '@/components/VerificationCodeInput/index.vue';
 import { useAuthStore } from '@/stores/authStore';
 
 const router = useRouter();
@@ -456,10 +455,18 @@ function buildAvatarText(value: string) {
 
 .merchant-profile-form__hint {
     max-width: 760px;
-    margin: -8px 0 18px 96px;
+    margin: -8px 0 18px 104px;
     color: #667085;
     font-size: 12px;
     line-height: 1.6;
+}
+
+:deep(.merchant-profile-mfa-code-item .el-form-item__label) {
+    white-space: nowrap;
+}
+
+:deep(.merchant-profile-mfa-code-item .verification-code-input) {
+    margin-left: 0;
 }
 
 .merchant-profile-password-rules {
@@ -483,6 +490,23 @@ function buildAvatarText(value: string) {
     .merchant-profile-form__hint,
     .merchant-profile-password-rules {
         margin-left: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    :deep(.merchant-profile-mfa-code-item) {
+        display: block;
+    }
+
+    :deep(.merchant-profile-mfa-code-item .el-form-item__label) {
+        width: 100% !important;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+        padding: 0;
+    }
+
+    :deep(.merchant-profile-mfa-code-item .el-form-item__content) {
+        margin-left: 0 !important;
     }
 }
 </style>
