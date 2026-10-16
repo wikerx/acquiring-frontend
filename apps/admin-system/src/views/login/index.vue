@@ -183,15 +183,11 @@
                             @submit.prevent="handleMfaSubmit"
                         >
                             <el-form-item prop="totpCode">
-                                <el-input
+                                <VerificationCodeInput
                                     v-model="mfaForm.totpCode"
-                                    class="mfa-code-input"
-                                    inputmode="numeric"
-                                    autocomplete="one-time-code"
-                                    :placeholder="$t('login.mfaCodePlaceholder')"
-                                    :prefix-icon="Key"
-                                    @input="normalizeTotpCode"
-                                    @keyup.enter="handleMfaSubmit"
+                                    mode="numeric"
+                                    :label="$t('login.mfaCodePlaceholder')"
+                                    autofocus
                                 />
                             </el-form-item>
                             <el-form-item>
@@ -235,6 +231,7 @@ import { useUserStore } from '@/store/modules/user';
 import { useI18n } from 'vue-i18n';
 import LanguageSwitch from '@/components/LanguageSwitch/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import VerificationCodeInput from '@/components/VerificationCodeInput/index.vue';
 import { sanitizeLoginRedirect } from '@/utils/auth-navigation';
 
 const { t, locale } = useI18n();
@@ -448,10 +445,6 @@ async function finishLogin() {
     ElMessage.success(t('login.loginSuccess'));
     const redirect = sanitizeLoginRedirect(route.query.redirect);
     await router.push(redirect);
-}
-
-function normalizeTotpCode(value: string | number) {
-    mfaForm.totpCode = String(value || '').replace(/\D/g, '').slice(0, 6);
 }
 
 function resetMfaStage() {

@@ -92,10 +92,6 @@ function firstEmptyIndex(): number {
 }
 
 function replaceCharacter(index: number, value: string) {
-    if (!value) {
-        emit('update:modelValue', sanitize(props.modelValue).slice(0, index));
-        return;
-    }
     const characters = Array.from({ length: props.length }, (_, itemIndex) => characterAt(itemIndex));
     characters[index] = value;
     emit('update:modelValue', characters.join(''));
@@ -114,8 +110,13 @@ function distribute(value: string, startIndex: number) {
 
 function handleInput(event: Event, index: number) {
     const input = event.target as HTMLInputElement;
-    const value = sanitize(input.value);
+    const rawValue = input.value;
+    const value = sanitize(rawValue);
     if (!value) {
+        if (rawValue) {
+            input.value = characterAt(index);
+            return;
+        }
         replaceCharacter(index, '');
         return;
     }
@@ -195,6 +196,14 @@ function handlePaste(event: ClipboardEvent, index: number) {
 .verification-code-input__cell:focus {
     border-color: #0f766e;
     box-shadow: 0 0 0 3px rgb(15 118 110 / 14%);
+}
+
+:global(.el-form-item.is-error) .verification-code-input__cell {
+    border-color: #f56c6c;
+}
+
+:global(.el-form-item.is-error) .verification-code-input__cell:focus {
+    box-shadow: 0 0 0 3px rgb(245 108 108 / 14%);
 }
 
 .verification-code-input__cell:disabled {

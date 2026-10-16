@@ -22,7 +22,7 @@
             <div class="profile-card__header">{{ t('userProfile.basicTitle') }}</div>
             <el-tabs v-model="activeTab" class="profile-tabs">
                 <el-tab-pane :label="t('userProfile.basicTab')" name="basic">
-                    <el-form ref="basicFormRef" :model="basicForm" :rules="basicRules" label-width="96px" class="profile-form">
+                    <el-form ref="basicFormRef" :model="basicForm" :rules="basicRules" label-width="104px" class="profile-form">
                         <el-form-item :label="t('userProfile.nickname')" prop="nickname">
                             <el-input v-model.trim="basicForm.nickname" />
                         </el-form-item>
@@ -32,7 +32,7 @@
                         <el-form-item :label="t('userProfile.email')" prop="email">
                             <el-input v-model.trim="basicForm.email" :placeholder="t('common.pleaseInput')" />
                         </el-form-item>
-                        <el-form-item v-if="emailChanged" :label="t('userProfile.mfaCode')" prop="mfaCode">
+                        <el-form-item v-if="emailChanged" class="profile-mfa-code-item" :label="t('userProfile.mfaCode')" prop="mfaCode">
                             <VerificationCodeInput
                                 v-model="basicForm.mfaCode"
                                 mode="numeric"
@@ -432,8 +432,16 @@ function buildAvatarText(value: string) {
 }
 
 .email-change-alert {
-    margin: 0 0 18px 96px;
-    max-width: 664px;
+    margin: 0 0 18px 104px;
+    max-width: 656px;
+}
+
+:deep(.profile-mfa-code-item .el-form-item__label) {
+    white-space: nowrap;
+}
+
+:deep(.profile-mfa-code-item .verification-code-input) {
+    margin-left: 0;
 }
 
 @media (max-width: 900px) {
@@ -443,6 +451,23 @@ function buildAvatarText(value: string) {
 
     .email-change-alert {
         margin-left: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    :deep(.profile-mfa-code-item) {
+        display: block;
+    }
+
+    :deep(.profile-mfa-code-item .el-form-item__label) {
+        width: 100% !important;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+        padding: 0;
+    }
+
+    :deep(.profile-mfa-code-item .el-form-item__content) {
+        margin-left: 0 !important;
     }
 }
 </style>
