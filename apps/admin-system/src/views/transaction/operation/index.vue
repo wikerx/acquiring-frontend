@@ -47,8 +47,29 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.cardBrand')">
-                    <el-select v-model="query.paymentBrand" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <el-select v-model="query.paymentBrand" class="transaction-brand-select" :placeholder="t('common.pleaseSelect')" clearable filterable>
+                        <template #prefix>
+                            <PaymentLogoGroup
+                                v-if="selectedPaymentBrandLogoKeys.length"
+                                :keys="selectedPaymentBrandLogoKeys"
+                                size="sm"
+                                fallback="text"
+                                class="transaction-brand-select__prefix"
+                            />
+                        </template>
+                        <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="transaction-brand-option">
+                                <PaymentLogoGroup
+                                    v-if="cardBrandOptionLogoKeys(item).length"
+                                    :keys="cardBrandOptionLogoKeys(item)"
+                                    size="sm"
+                                    fallback="text"
+                                    class="transaction-brand-option__logo"
+                                />
+                                <span>{{ item.label }}</span>
+                                <small>{{ item.value }}</small>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.cardBin')">
@@ -534,6 +555,9 @@ const reconciliationStatusOptions = ref<TransactionDictOption[]>([]);
 const settlementStatusOptions = ref<TransactionDictOption[]>([]);
 const merchantNotificationStatusOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref<SelectOption[]>([]);
+const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(
+    cardBrandOptions.value.find((item) => item.value === query.paymentBrand),
+));
 const refundForm = reactive({
     amount: null as number | null | undefined,
     currency: '',
@@ -635,6 +659,14 @@ const summaryItems = computed(() => [
         details: amountSummaryDetails(summary.value.successAmountSummaries),
     },
     {
+        key: 'paymentMethod',
+        label: t('transaction.summary.paymentMethod'),
+        value: '',
+        description: '',
+        tone: 'balance' as const,
+        details: paymentMethodSummaryDetails(),
+    },
+    {
         key: 'failed',
         label: t('transaction.summary.failed'),
         value: t('transaction.summary.countUnit', { count: summary.value.failedCount.toLocaleString() }),
@@ -645,14 +677,6 @@ const summaryItems = computed(() => [
             tone: failedRateTone.value,
         },
         details: amountSummaryDetails(summary.value.failedAmountSummaries),
-    },
-    {
-        key: 'paymentMethod',
-        label: t('transaction.summary.paymentMethod'),
-        value: '',
-        description: '',
-        tone: 'balance' as const,
-        details: paymentMethodSummaryDetails(),
     },
 ]);
 
@@ -820,6 +844,10 @@ function paymentLogos(row: TransactionOperation): PaymentLogoKey[] {
     return transactionPaymentLogoKeys(row.paymentMethod, row.paymentBrand);
 }
 
+function cardBrandOptionLogoKeys(option?: SelectOption): PaymentLogoKey[] {
+    return transactionPaymentLogoKeys('BANK_CARD', option?.value);
+}
+
 function fallbackStatusOptions(scope: 'channelMatch' | 'reconciliation' | 'settlement' | 'merchantNotification'): TransactionDictOption[] {
     const values = scope === 'channelMatch'
         ? ['NOT_REQUIRED', 'PENDING', 'REVIEW_REQUIRED', 'MATCHED', 'MISMATCHED', 'FAILED']
@@ -858,23 +886,21 @@ function amountSummaryDetails(amountSummaries: TransactionAmountSummary[]) {
 }
 
 function paymentMethodSummaryDetails() {
-    const details = summary.value.paymentMethodSummaries.slice(0, 2).map((item) => {
+    const details = summary.value.paymentMethodSummaries.map((item) => {
         const logoKeys = transactionPaymentLogoKeys(item.paymentMethod, item.paymentBrand);
-        const primaryAmount = item.amountSummaries[0];
+        const formattedCount = Number(item.count || 0).toLocaleString();
         return {
             key: paymentSummaryKey(item),
             label: '',
-            value: `${item.count}笔 ${amountSummaryInlineText(item.amountSummaries)}`,
-            description: `${paymentSummaryLabel(item)} ${t('transaction.summary.countUnit', { count: item.count })} ${amountSummaryInlineText(item.amountSummaries)}`,
+            value: `${t('transaction.summary.countUnit', { count: formattedCount })} ${amountSummaryInlineText(item.amountSummaries)}`,
+            description: `${paymentSummaryLabel(item)} ${t('transaction.summary.countUnit', { count: formattedCount })} ${amountSummaryInlineText(item.amountSummaries)}`,
             logoKeys,
             logoPlaceholder: !logoKeys.length,
-            amountMeta: primaryAmount
-                ? {
-                    countText: t('transaction.summary.countUnit', { count: item.count }),
-                    currency: primaryAmount.currency || '-',
-                    amountText: amountText(primaryAmount.amount ?? 0, primaryAmount.currencyExponent),
-                }
-                : undefined,
+            countText: t('transaction.summary.countUnit', { count: formattedCount }),
+            amountMetas: item.amountSummaries.map((amount) => ({
+                currency: amount.currency || '-',
+                amountText: amountText(amount.amount ?? 0, amount.currencyExponent),
+            })),
         };
     });
     if (!details.length) {
@@ -885,7 +911,6 @@ function paymentMethodSummaryDetails() {
 
 function amountSummaryInlineText(amountSummaries: TransactionAmountSummary[]) {
     const text = amountSummaries
-        .slice(0, 1)
         .map((item) => amountSummaryText(item))
         .join('    ');
     return text || '-';
@@ -1291,6 +1316,36 @@ async function refreshAfterAction(row: TransactionOperation) {
 
 .transaction-page__table :deep(.payment-logo-group) {
     justify-content: center;
+}
+
+.transaction-brand-select__prefix :deep(.payment-logo-mark),
+.transaction-brand-option__logo :deep(.payment-logo-mark) {
+    --payment-logo-height: 16px;
+}
+
+.transaction-brand-option {
+    display: grid;
+    grid-template-columns: 66px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+.transaction-brand-option span {
+    overflow: hidden;
+    min-width: 0;
+    color: #1f2937;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.transaction-brand-option small {
+    color: #94a3b8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 11px;
 }
 
 .transaction-page__table :deep(.base-date-time),

@@ -153,7 +153,16 @@ import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { exportTransactionOrders, getTransactionOrderDetail, searchTransactionOrders, type TransactionDetail, type TransactionOrder, type TransactionPageQuery } from '@/api/transaction';
+import {
+    exportTransactionOrders,
+    getTransactionOrderDetail,
+    searchTransactionOrdersWithSummary,
+    type TransactionDetail,
+    type TransactionAmountSummary,
+    type TransactionOrder,
+    type TransactionOrderSummary,
+    type TransactionPageQuery,
+} from '@/api/transaction';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
@@ -193,6 +202,17 @@ const detail = ref<TransactionDetail | null>(null);
 const selectedDetailTransactionId = ref('');
 const selectedMerchantId = ref('');
 const total = ref(0);
+const summary = ref<TransactionOrderSummary>({
+    totalCount: 0,
+    successCount: 0,
+    failedCount: 0,
+    processingCount: 0,
+    capturedCount: 0,
+    amountSummaries: [],
+    successAmountSummaries: [],
+    capturedAmountSummaries: [],
+    failedAmountSummaries: [],
+});
 const page = ref(1);
 const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
@@ -216,30 +236,46 @@ const summaryItems = computed(() => [
         key: 'total',
         label: t('transaction.summary.total'),
         value: total.value.toLocaleString(),
-        description: t('transaction.summary.loaded', { count: rows.value.length }),
+        description: t('transaction.summary.processingMatched', { count: summary.value.processingCount.toLocaleString() }),
+        details: amountSummaryDetails(summary.value.amountSummaries),
     },
     {
         key: 'success',
         label: t('transaction.summary.success'),
-        value: statusCount('SUCCESS'),
-        description: t('transaction.summary.currentPage'),
+        value: summary.value.successCount.toLocaleString(),
+        description: t('transaction.summary.fullQuery'),
         tone: 'success' as const,
-    },
-    {
-        key: 'failed',
-        label: t('transaction.summary.failed'),
-        value: statusCount('FAILED'),
-        description: t('transaction.summary.currentPage'),
-        tone: 'danger' as const,
+        details: amountSummaryDetails(summary.value.successAmountSummaries),
     },
     {
         key: 'captured',
         label: t('transaction.summary.captured'),
-        value: lifecycleCount('CAPTURED'),
-        description: t('transaction.summary.lifecycleCurrentPage'),
+        value: summary.value.capturedCount.toLocaleString(),
+        description: t('transaction.summary.fullQuery'),
         tone: 'balance' as const,
+        details: amountSummaryDetails(summary.value.capturedAmountSummaries),
+    },
+    {
+        key: 'failed',
+        label: t('transaction.summary.failed'),
+        value: summary.value.failedCount.toLocaleString(),
+        description: t('transaction.summary.fullQuery'),
+        tone: 'danger' as const,
+        details: amountSummaryDetails(summary.value.failedAmountSummaries),
     },
 ]);
+
+function amountSummaryDetails(items?: TransactionAmountSummary[]) {
+    return (items || []).slice(0, 4).map((item) => ({
+        key: `${item.currency || '-'}:${item.currencyExponent ?? '-'}`,
+        value: moneyText(item.amount ?? 0, item.currency || '-', item.currencyExponent),
+        description: moneyText(item.amount ?? 0, item.currency || '-', item.currencyExponent),
+        amountMeta: {
+            currency: item.currency || '-',
+            amountText: moneyText(item.amount ?? 0, undefined, item.currencyExponent),
+        },
+    }));
+}
 
 onMounted(async () => {
     await loadDictionaries();
@@ -276,9 +312,10 @@ async function loadDictionaries() {
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchTransactionOrders(buildQuery(page.value, pageSize.value));
-        rows.value = result.records;
-        total.value = result.total;
+        const result = await searchTransactionOrdersWithSummary(buildQuery(page.value, pageSize.value));
+        rows.value = result.page.records;
+        summary.value = result.summary;
+        total.value = result.summary.totalCount;
     } finally {
         loading.value = false;
     }
@@ -342,14 +379,6 @@ function openDetail(row: TransactionOrder) {
 function openMerchant(merchantId: string) {
     selectedMerchantId.value = merchantId;
     merchantVisible.value = true;
-}
-
-function statusCount(status: string) {
-    return rows.value.filter((row) => row.transactionStatus === status).length;
-}
-
-function lifecycleCount(status: string) {
-    return rows.value.filter((row) => row.lifecycleStatus === status).length;
 }
 
 function fallbackStatusOptions(scope: 'channelMatch' | 'reconciliation' | 'settlement'): TransactionDictOption[] {

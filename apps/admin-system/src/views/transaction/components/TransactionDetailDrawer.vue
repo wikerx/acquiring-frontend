@@ -89,6 +89,38 @@
                     </el-descriptions>
                 </el-tab-pane>
 
+                <el-tab-pane :label="t('transaction.detail.accessProcessing')" name="accessProcessing">
+                    <el-descriptions :column="2" border size="small">
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.accessType')">
+                            {{ accessTypeText }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.merchantWebsite')">
+                            <CopyableText :value="auditText(detail.order?.merchantWebsite)" :label="t('transaction.detail.accessFields.merchantWebsite')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.ingressClientIp')">
+                            <CopyableText :value="auditText(accessOperation?.ingressClientIp)" :label="t('transaction.detail.accessFields.ingressClientIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.payerIp')">
+                            <CopyableText :value="auditText(detail.payerInfo?.ipAddress)" :label="t('transaction.detail.accessFields.payerIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.traceId')">
+                            <CopyableText :value="auditText(processingTraceId)" :label="t('transaction.detail.accessFields.traceId')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorService')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorService)" :label="t('transaction.detail.accessFields.processorService')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorInstanceId')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorInstanceId)" :label="t('transaction.detail.accessFields.processorInstanceId')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorPrivateIp')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorPrivateIp)" :label="t('transaction.detail.accessFields.processorPrivateIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorHostName')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorHostName)" :label="t('transaction.detail.accessFields.processorHostName')" wrap />
+                        </el-descriptions-item>
+                    </el-descriptions>
+                </el-tab-pane>
+
                 <el-tab-pane v-if="partyInfoSections.length" :label="t('transaction.detail.partyInfo')" name="partyInfo">
                     <div class="transaction-detail__party-sections">
                         <section v-for="section in partyInfoSections" :key="section.key" class="transaction-detail__party-section">
@@ -225,7 +257,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
-import type { TransactionContactInfo, TransactionDetail, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
+import type { TransactionContactInfo, TransactionDetail, TransactionFlowEvent, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
@@ -373,6 +405,57 @@ const focusedOperation = computed(() => {
     }
     return undefined;
 });
+
+const accessOperation = computed(() => {
+    if (focusedOperation.value) {
+        return focusedOperation.value;
+    }
+    const operations = props.detail?.operations || [];
+    const rootTransactionId = props.detail?.order?.rootTransactionId;
+    return operations.find((item) => item.transactionId === rootTransactionId) || operations[0];
+});
+
+const accessTypeText = computed(() => {
+    const accessType = accessOperation.value?.accessType;
+    if (accessType === 'HOSTED_CHECKOUT') {
+        return t('transaction.detail.accessTypes.hostedCheckout');
+    }
+    if (accessType === 'DIRECT_API') {
+        return t('transaction.detail.accessTypes.directApi');
+    }
+    return auditText(accessType);
+});
+
+const completionFlowEvent = computed<TransactionFlowEvent | undefined>(() => {
+    const events = props.detail?.flowEvents || [];
+    const hasProcessorAudit = (event: TransactionFlowEvent) => Boolean(
+        event.processorService
+        || event.processorInstanceId
+        || event.processorHostName
+        || event.processorPrivateIp
+        || event.traceId,
+    );
+    const focusedEvents = props.focusTransactionId
+        ? events.filter((event) => event.transactionId === props.focusTransactionId)
+        : events;
+    return [...focusedEvents].reverse().find(hasProcessorAudit)
+        || [...events].reverse().find(hasProcessorAudit);
+});
+
+const processingTraceId = computed(() => {
+    if (completionFlowEvent.value?.traceId) {
+        return completionFlowEvent.value.traceId;
+    }
+    const apiLogs = props.detail?.merchantApiInteractionLogs || [];
+    const focusedLog = props.focusTransactionId
+        ? [...apiLogs].reverse().find((item) => item.transactionId === props.focusTransactionId && item.traceId)
+        : undefined;
+    return focusedLog?.traceId || [...apiLogs].reverse().find((item) => item.traceId)?.traceId;
+});
+
+function auditText(value: unknown): string {
+    return value === undefined || value === null || value === '' ? '-' : String(value);
+}
 
 const capabilityRecord = computed(() => focusedOperation.value || props.detail?.order);
 

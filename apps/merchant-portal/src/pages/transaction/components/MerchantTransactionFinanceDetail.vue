@@ -13,9 +13,13 @@
                         <div class="transaction-finance-detail__summary">
                             <div>
                                 <span>{{ t('transaction.order.clearingStatus') }}</span>
-                                <el-tag size="small" :type="processingStatusType(clearingDetail.summary.clearingStatus)" effect="plain">
-                                    {{ clearingStatusText(clearingDetail.summary.clearingStatus) }}
-                                </el-tag>
+                                <div
+                                    class="transaction-finance-detail__status"
+                                    :class="`is-${clearingStatusPresentation.tone}`"
+                                >
+                                    <el-icon><component :is="clearingStatusPresentation.icon" /></el-icon>
+                                    <span>{{ clearingStatusText(clearingDetail.summary.clearingStatus) }}</span>
+                                </div>
                             </div>
                             <div>
                                 <span>{{ t('transaction.order.transactionType') }}</span>
@@ -309,7 +313,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Collection, DataAnalysis, Lock, Memo, Refresh } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, Collection, DataAnalysis, Lock, Memo, Minus, Refresh } from '@element-plus/icons-vue';
 import { DirectionTag, formatDecimalAmount } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -361,6 +365,15 @@ const reserveTotal = ref(0);
 const reservePage = ref(1);
 const reservePageSize = ref(10);
 const identityKey = computed(() => `${props.transactionId}|${props.transactionDateTime}`);
+const clearingStatusPresentation = computed(() => {
+    const status = String(clearingDetail.value?.summary?.clearingStatus || '').toUpperCase();
+    if (status === 'CLEARED') return { tone: 'success', icon: CircleCheck };
+    if (status === 'FAILED') return { tone: 'danger', icon: CircleClose };
+    if (['PENDING', 'PROCESSING', 'WAITING_SOURCE', 'MANUAL_REVIEW'].includes(status)) {
+        return { tone: 'warning', icon: Clock };
+    }
+    return { tone: 'neutral', icon: Minus };
+});
 let stateVersion = 0;
 
 watch(
@@ -616,9 +629,14 @@ function openReserve(row: MerchantSettlementReserveItem) {
 .transaction-finance-detail__summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; border-top: 1px solid #dce4ec; border-left: 1px solid #dce4ec; background: #f6f9fb; }
 .transaction-finance-detail__summary > div { min-width: 0; min-height: 72px; padding: 12px; border-right: 1px solid #dce4ec; border-bottom: 1px solid #dce4ec; text-align: center; }
 .transaction-finance-detail__summary > div.is-money { text-align: right; }
-.transaction-finance-detail__summary span, .transaction-finance-detail__summary strong { display: block; }
-.transaction-finance-detail__summary span { margin-bottom: 6px; color: #667085; font-size: 12px; }
-.transaction-finance-detail__summary strong { overflow-wrap: anywhere; color: #344054; font-size: 13px; }
+.transaction-finance-detail__summary > div > span, .transaction-finance-detail__summary > div > strong { display: block; }
+.transaction-finance-detail__summary > div > span { margin-bottom: 6px; color: #667085; font-size: 12px; }
+.transaction-finance-detail__summary > div > strong { overflow-wrap: anywhere; color: #344054; font-size: 13px; }
+.transaction-finance-detail__status { display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-height: 22px; margin: 0 auto; border: 1px solid #d0d5dd; border-radius: 4px; padding: 1px 7px; background: #f8fafc; color: #667085; font-size: 12px; font-weight: 600; line-height: 18px; }
+.transaction-finance-detail__status .el-icon { margin-right: 4px; font-size: 13px; }
+.transaction-finance-detail__status.is-success { border-color: #b7dfae; background: #f0f9eb; color: #529b2e; }
+.transaction-finance-detail__status.is-danger { border-color: #fab6b6; background: #fef0f0; color: #c45656; }
+.transaction-finance-detail__status.is-warning { border-color: #f3d19e; background: #fdf6ec; color: #b88230; }
 .transaction-finance-detail__section { margin-top: 18px; }
 .transaction-finance-detail__heading { display: flex; align-items: center; justify-content: space-between; min-height: 32px; margin-bottom: 8px; color: #344054; font-size: 13px; }
 .transaction-finance-detail__table { width: 100%; }

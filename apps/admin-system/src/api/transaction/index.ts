@@ -86,6 +86,7 @@ export interface TransactionOrder {
     merchantId: string;
     merchantOrderNo: string;
     merchantOrderId: string;
+    merchantWebsite?: string;
     paymentMethod?: string;
     paymentBrand?: string;
     transactionType: string;
@@ -124,6 +125,23 @@ export interface TransactionOrder {
     transactionTimeZone?: string;
 }
 
+export interface TransactionOrderSummary {
+    totalCount: number;
+    successCount: number;
+    failedCount: number;
+    processingCount: number;
+    capturedCount: number;
+    amountSummaries: TransactionAmountSummary[];
+    successAmountSummaries: TransactionAmountSummary[];
+    capturedAmountSummaries: TransactionAmountSummary[];
+    failedAmountSummaries: TransactionAmountSummary[];
+}
+
+export interface TransactionOrderSearchResult {
+    page: PageResult<TransactionOrder>;
+    summary: TransactionOrderSummary;
+}
+
 export interface TransactionOperation {
     operationId: string;
     transactionId: string;
@@ -156,6 +174,7 @@ export interface TransactionOperation {
     cardBin?: string;
     cardNumberMasked?: string;
     accessType?: string;
+    ingressClientIp?: string;
     channelCode?: string;
     channelName?: string;
     channelOrderNo?: string;
@@ -221,6 +240,15 @@ export interface TransactionPayerInfo extends TransactionContactInfo {
     userAgent?: string;
 }
 
+export interface TransactionFlowEvent extends Record<string, unknown> {
+    transactionId?: string;
+    processorService?: string;
+    processorInstanceId?: string;
+    processorHostName?: string;
+    processorPrivateIp?: string;
+    traceId?: string;
+}
+
 export interface TransactionDetail {
     order?: TransactionOrder;
     billingCardHolderInfo?: TransactionContactInfo;
@@ -228,7 +256,7 @@ export interface TransactionDetail {
     shippingInfo?: TransactionContactInfo;
     operations: TransactionOperation[];
     statusHistory: Record<string, unknown>[];
-    flowEvents: Record<string, unknown>[];
+    flowEvents: TransactionFlowEvent[];
     riskEvents: Record<string, unknown>[];
     amountChanges: Record<string, unknown>[];
     channelRequests: Record<string, unknown>[];
@@ -827,6 +855,11 @@ function normalizeTransactionActionShardTimes(data: TransactionActionRequest): T
 
 export async function searchTransactionOrders(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<PageResult<TransactionOrder>>>('/admin/transactions/orders/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function searchTransactionOrdersWithSummary(data: TransactionPageQuery) {
+    const result = await http.post<CommonResult<TransactionOrderSearchResult>>('/admin/transactions/orders/search-with-summary', data);
     return unwrapResult(result.data);
 }
 

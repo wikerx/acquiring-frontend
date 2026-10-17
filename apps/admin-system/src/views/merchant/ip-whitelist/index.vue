@@ -46,12 +46,6 @@
           <el-option :label="$t('merchant.ipWhitelist.sourceMerchant')" value="MERCHANT" />
         </el-select>
       </el-form-item>
-      <el-form-item :label="$t('merchant.ipWhitelist.accessControl')" prop="ipWhitelistEnabled">
-        <el-select v-model="query.ipWhitelistEnabled" :placeholder="$t('common.pleaseSelect')" clearable>
-          <el-option :label="$t('common.enable')" :value="1" />
-          <el-option :label="$t('common.disable')" :value="0" />
-        </el-select>
-      </el-form-item>
       <el-form-item>
         <el-button type="primary" :icon="Search" size="small" @click="handleSearch">{{ $t('common.search') }}</el-button>
         <el-button :icon="Refresh" size="small" @click="resetQuery">{{ $t('common.reset') }}</el-button>
@@ -82,9 +76,10 @@
       <el-table-column label="IP" min-width="420" align="center">
         <template #default="{ row }">
           <div v-if="ipItems(row).length" class="ip-pill-list">
-            <div v-for="item in ipItems(row)" :key="item.id || item.ipValue" class="ip-pill" :class="[item.ipType === 'IPv6' ? 'is-ipv6' : 'is-ipv4', item.status === 1 ? '' : 'is-disabled']">
-              <span>{{ ipTypeLabel(item.ipType) }}</span>
+            <div v-for="item in ipItems(row)" :key="item.id || item.ipValue" class="ip-pill" :class="[item.ipType === 'IPv6' ? 'is-ipv6' : 'is-ipv4', item.status === 1 ? 'is-enabled' : 'is-disabled']">
+              <span class="ip-pill__type">{{ ipTypeLabel(item.ipType) }}</span>
               <code>{{ item.ipValue || '-' }}</code>
+              <el-tag class="ip-pill__status" size="small" :type="item.status === 1 ? 'success' : 'danger'" effect="plain">{{ transactionStatusText(item.status) }}</el-tag>
               <el-tag class="ip-pill__approval" size="small" :type="approvalTagType(item.approvalStatus)" effect="plain">{{ approvalStatusText(item.approvalStatus) }}</el-tag>
               <el-dropdown v-if="hasIpMenuActions(item)" trigger="click" @command="(command: string) => handleIpCommand(command, row, item)">
                 <button class="ip-pill-action" type="button" @click.stop>
@@ -105,21 +100,9 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column :label="$t('merchant.ipWhitelist.accessControl')" width="120" align="center">
-        <template #default="{ row }">
-          <el-switch
-            :model-value="row.ipWhitelistEnabled"
-            :active-value="1"
-            :inactive-value="0"
-            :disabled="!row.merchantId"
-            @change="toggleConfig(row)"
-            v-hasPermi="'merchant:ip-whitelist:config'"
-          />
-        </template>
-      </el-table-column>
       <el-table-column :label="$t('merchant.ipWhitelist.transactionStatus')" width="112" align="center">
         <template #default="{ row }">
-          <el-tag size="small" :type="hasDisabledIp(row) ? 'warning' : 'success'" effect="plain">{{ ipStatusSummary(row) }}</el-tag>
+          <el-tag size="small" :type="ipStatusSummaryType(row)" effect="plain">{{ ipStatusSummary(row) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column :label="$t('merchant.ipWhitelist.approvalStatus')" width="126" align="center">
@@ -231,7 +214,7 @@
           </el-table-column>
           <el-table-column :label="$t('merchant.ipWhitelist.transactionStatus')" width="112" align="center">
             <template #default="{ row: item }">
-              <el-tag size="small" :type="item.status === 1 ? 'success' : 'info'" effect="plain">{{ transactionStatusText(item.status) }}</el-tag>
+              <el-tag size="small" :type="item.status === 1 ? 'success' : 'danger'" effect="plain">{{ transactionStatusText(item.status) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="remark" :label="$t('common.remark')" min-width="150" show-overflow-tooltip>
@@ -327,9 +310,6 @@
         <el-descriptions-item :label="$t('merchant.info.merchantName')">{{ detail.merchantName || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('merchant.ipWhitelist.ipType')">{{ detail.ipType || '-' }}</el-descriptions-item>
         <el-descriptions-item label="IP">{{ detail.ipValue || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.ipWhitelist.accessControl')">
-          <el-tag size="small" :type="detail.ipWhitelistEnabled === 1 ? 'success' : 'info'">{{ detail.ipWhitelistEnabled === 1 ? $t('common.enable') : $t('common.disable') }}</el-tag>
-        </el-descriptions-item>
         <el-descriptions-item :label="$t('merchant.ipWhitelist.transactionStatus')">
           <el-tag size="small" :type="detail.status === 1 ? 'success' : 'danger'">{{ transactionStatusText(detail.status) }}</el-tag>
         </el-descriptions-item>
@@ -339,7 +319,6 @@
         <el-descriptions-item :label="$t('merchant.ipWhitelist.reviewBy')">{{ detail.reviewBy || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('merchant.ipWhitelist.reviewTime')"><BaseDateTime :value="detail.reviewTime" /></el-descriptions-item>
         <el-descriptions-item :label="$t('common.remark')" :span="2">{{ detail.remark || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('merchant.ipWhitelist.configRemark')" :span="2">{{ detail.configRemark || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('common.createTime')"><BaseDateTime :value="detail.gmtCreate" /></el-descriptions-item>
         <el-descriptions-item :label="$t('common.updateTime')"><BaseDateTime :value="detail.gmtModified" /></el-descriptions-item>
       </el-descriptions>
@@ -366,7 +345,6 @@ import {
   getMerchantIpWhitelist,
   searchMerchantIpWhitelists,
   updateMerchantIpWhitelist,
-  updateMerchantIpWhitelistConfig,
   updateMerchantIpWhitelistStatus,
   type MerchantIpWhitelistItem,
   type MerchantIpWhitelistQuery,
@@ -609,29 +587,6 @@ async function toggleStatus(row: MerchantIpWhitelistRow, item?: MerchantIpWhitel
   }
 }
 
-async function toggleConfig(row: MerchantIpWhitelistRow) {
-  const nextStatus = row.ipWhitelistEnabled === 1 ? 0 : 1;
-  let remark: string | undefined;
-  try {
-    const result = await ElMessageBox.prompt(t('merchant.ipWhitelist.configRemarkPrompt'), t('merchant.ipWhitelist.configConfirm', { action: nextStatus === 1 ? t('common.enable') : t('common.disable'), name: row.merchantId }), {
-      type: nextStatus === 1 ? 'warning' : 'info',
-      inputType: 'textarea',
-      inputValue: row.configRemark || '',
-      inputPlaceholder: t('merchant.ipWhitelist.configRemarkPlaceholder'),
-    });
-    remark = result.value;
-  } catch {
-    return;
-  }
-  try {
-    await updateMerchantIpWhitelistConfig({ merchantId: row.merchantId, ipWhitelistEnabled: nextStatus, remark: remark || undefined });
-    ElMessage.success(t('common.success'));
-    await loadData();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
-  }
-}
-
 async function handleExport() {
   exporting.value = true;
   try {
@@ -866,20 +821,24 @@ function toSingleIpRow(row: MerchantIpWhitelistRow, item: MerchantIpWhitelistIte
   };
 }
 
-function hasDisabledIp(row: MerchantIpWhitelistRow) {
-  return ipItems(row).some((item) => item.status !== 1);
-}
-
 function ipStatusSummary(row: MerchantIpWhitelistRow) {
   const items = ipItems(row);
-  const enabled = items.filter((item) => item.status === 1).length;
-  if (!items.length || enabled === items.length) {
+  const enabled = items.filter((item) => item.status === 1 && item.approvalStatus === 1).length;
+  if (items.length > 0 && enabled === items.length) {
     return t('merchant.ipWhitelist.transactionAllowed');
   }
   if (enabled === 0) {
     return t('merchant.ipWhitelist.transactionProhibited');
   }
   return `${enabled}/${items.length}`;
+}
+
+function ipStatusSummaryType(row: MerchantIpWhitelistRow): 'warning' | 'success' | 'danger' {
+  const items = ipItems(row);
+  const enabled = items.filter((item) => item.status === 1 && item.approvalStatus === 1).length;
+  if (items.length > 0 && enabled === items.length) return 'success';
+  if (enabled === 0) return 'danger';
+  return 'warning';
 }
 
 function approvalStatusText(status?: number) {
@@ -988,7 +947,7 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   vertical-align: middle;
 }
 
-.ip-pill > span:not(.ip-pill__approval) {
+.ip-pill__type {
   flex: 0 0 auto;
   padding: 5px 9px;
   border-right: 1px solid #cfe2ff;
@@ -998,13 +957,21 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   line-height: 16px;
 }
 
+.ip-pill .ip-pill__status,
 .ip-pill .ip-pill__approval {
   flex: 0 0 auto;
-  margin-right: 6px;
   padding: 0 6px;
-  border-right: 1px solid var(--el-border-color-light);
-  background: transparent;
   font-size: 11px;
+}
+
+.ip-pill .ip-pill__status {
+  margin-right: 4px;
+  font-weight: 600;
+}
+
+.ip-pill .ip-pill__approval {
+  margin-right: 6px;
+  background: transparent;
 }
 
 .ip-pill code {
@@ -1037,17 +1004,13 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
   color: #1165ff;
 }
 
-.ip-pill.is-disabled {
-  opacity: 0.62;
-}
-
 .ip-pill.is-ipv6 {
   border-color: #dcd7ff;
   background: #fbfaff;
   box-shadow: inset 0 0 0 1px rgba(103, 69, 168, 0.08);
 }
 
-.ip-pill.is-ipv6 > span:not(.ip-pill__approval) {
+.ip-pill.is-ipv6 .ip-pill__type {
   border-right-color: #dcd7ff;
   background: #f1efff;
   color: #6745d8;
@@ -1065,6 +1028,33 @@ function cleanQuery(source: MerchantIpWhitelistQuery) {
 .ip-pill.is-ipv6 .ip-pill-action:hover {
   background: #f1efff;
   color: #6745d8;
+}
+
+.ip-pill.is-disabled {
+  border-color: var(--el-color-danger-light-5);
+  background: var(--el-color-danger-light-9);
+  box-shadow: inset 3px 0 0 var(--el-color-danger);
+}
+
+.ip-pill.is-disabled .ip-pill__type {
+  border-right-color: var(--el-color-danger-light-5);
+  background: var(--el-color-danger-light-8);
+  color: var(--el-color-danger-dark-2);
+}
+
+.ip-pill.is-disabled code {
+  color: var(--el-color-danger-dark-2);
+  font-weight: 600;
+}
+
+.ip-pill.is-disabled .ip-pill-action {
+  border-left-color: var(--el-color-danger-light-5);
+  color: var(--el-color-danger);
+}
+
+.ip-pill.is-disabled .ip-pill-action:hover {
+  background: var(--el-color-danger-light-8);
+  color: var(--el-color-danger-dark-2);
 }
 
 .ip-form {

@@ -89,7 +89,7 @@
                     <div class="transaction-result-row__label">
                         <span>{{ item.label }}</span>
                     </div>
-                    <div class="transaction-result-row__content">
+                    <div v-if="item.kind === 'metric'" class="transaction-result-row__content">
                         <span v-if="item.countText" class="transaction-result-pill transaction-result-pill--count">{{ item.countText }}</span>
                         <span v-if="item.rateText" :class="['transaction-result-pill', 'transaction-result-pill--rate', `is-${item.rateTone}`]">{{ item.rateText }}</span>
                         <span v-for="amountItem in item.amounts" :key="amountItem.key" class="transaction-money-pill">
@@ -97,20 +97,15 @@
                             <b>{{ amountItem.amount }}</b>
                         </span>
                     </div>
-                </article>
-                <article class="transaction-result-row transaction-result-row--method">
-                    <div class="transaction-result-row__label">
-                        <span>{{ t('transaction.order.paymentMethodSummary') }}</span>
-                    </div>
-                    <div class="transaction-result-row__content">
+                    <div v-else class="transaction-result-row__content">
                         <template v-if="paymentSummaryItems.length">
-                            <span v-for="item in paymentSummaryItems" :key="item.key" class="transaction-method-pill" :title="item.title">
-                                <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" size="sm" align="start" fallback="text" class="transaction-method-pill__logos" />
-                                <span v-else class="transaction-method-pill__text">{{ item.label }}</span>
-                                <span class="transaction-method-pill__count">{{ item.countText }}</span>
-                                <span v-if="item.primaryAmount" class="transaction-money-pill transaction-money-pill--method">
-                                    <span class="transaction-money-pill__currency">{{ item.primaryAmount.currency }}</span>
-                                    <b>{{ item.primaryAmount.amount }}</b>
+                            <span v-for="method in paymentSummaryItems" :key="method.key" class="transaction-method-pill" :title="method.title">
+                                <PaymentLogoGroup v-if="method.logoKeys.length" :keys="method.logoKeys" size="sm" align="start" fallback="text" class="transaction-method-pill__logos" />
+                                <span v-else class="transaction-method-pill__text">{{ method.label }}</span>
+                                <span class="transaction-method-pill__count">{{ method.countText }}</span>
+                                <span v-for="amount in method.amounts" :key="amount.key" class="transaction-money-pill transaction-money-pill--method">
+                                    <span class="transaction-money-pill__currency">{{ amount.currency }}</span>
+                                    <b>{{ amount.amount }}</b>
                                 </span>
                             </span>
                         </template>
@@ -654,6 +649,7 @@ const resultRows = computed(() => {
     return [
         {
             key: 'total',
+            kind: 'metric' as const,
             label: t('transaction.order.queryResult'),
             tone: 'total',
             countText: countText(totalCount),
@@ -661,6 +657,7 @@ const resultRows = computed(() => {
         },
         {
             key: 'success',
+            kind: 'metric' as const,
             label: t('transaction.order.successTransactions'),
             tone: 'success',
             countText: countText(successCount),
@@ -669,7 +666,18 @@ const resultRows = computed(() => {
             amounts: amountPills(summary.value?.successAmountSummaries || []),
         },
         {
+            key: 'paymentMethod',
+            kind: 'payment' as const,
+            label: t('transaction.order.paymentMethodSummary'),
+            tone: 'method',
+            countText: '',
+            rateText: '',
+            rateTone: 'primary',
+            amounts: [],
+        },
+        {
             key: 'failed',
+            kind: 'metric' as const,
             label: t('transaction.order.failedTransactions'),
             tone: 'danger',
             countText: countText(failedCount),
@@ -679,15 +687,16 @@ const resultRows = computed(() => {
         },
     ];
 });
-const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummaries || []).slice(0, 3).map((item: TransactionPaymentMethodSummary) => {
+const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummaries || []).map((item: TransactionPaymentMethodSummary) => {
     const label = paymentSummaryLabel(item);
+    const amounts = amountPills(item.amountSummaries || [], false);
     return {
         key: `${item.paymentMethod || '-'}-${item.paymentBrand || '-'}`,
         label,
         logoKeys: paymentLogos(item),
         countText: countText(item.count || 0),
-        title: `${label} ${countText(item.count || 0)}`,
-        primaryAmount: amountPills(item.amountSummaries || [])[0],
+        title: `${label} ${countText(item.count || 0)} ${amounts.map((amount) => `${amount.currency} ${amount.amount}`).join(' ')}`.trim(),
+        amounts,
     };
 }));
 const captureAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.availableCaptureAmount ?? activeActionRow.value?.transactionAmount));
@@ -1101,8 +1110,9 @@ function rateTone(count: number, totalCount: number, reverse = false) {
     return 'danger';
 }
 
-function amountPills(amountSummaries: TransactionAmountSummary[]) {
-    return amountSummaries.slice(0, 4).map((item) => ({
+function amountPills(amountSummaries: TransactionAmountSummary[], limit = true) {
+    const visibleAmounts = limit ? amountSummaries.slice(0, 4) : amountSummaries;
+    return visibleAmounts.map((item) => ({
         key: item.currency || '-',
         currency: item.currency || '-',
         amount: amountOnlyText(item.amount ?? 0, item.currencyExponent),
@@ -1380,10 +1390,12 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-method-pill {
+    flex-wrap: wrap;
     gap: 5px;
-    height: 24px;
+    height: auto;
+    min-height: 24px;
     border: 1px solid #edf2f7;
-    padding: 0 5px;
+    padding: 1px 5px;
     background: #ffffff;
 }
 
