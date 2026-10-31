@@ -35,7 +35,11 @@
                 <strong>{{ t('trustbar.ssl') }}</strong>
                 <span>{{ t('trustbar.sslDesc') }}</span>
             </div>
-            <div class="checkout-trustbar__item checkout-trustbar__item--cards" :aria-label="t('trustbar.cards')">
+            <div
+                v-if="trustbarLogoKeys.length > 0"
+                class="checkout-trustbar__item checkout-trustbar__item--cards"
+                :aria-label="t('trustbar.cards')"
+            >
                 <PaymentLogoGroup :keys="trustbarLogoKeys" size="sm" align="start" />
             </div>
             <div v-if="session?.merchant?.displayName" class="checkout-trustbar__item checkout-trustbar__item--merchant">
@@ -637,6 +641,7 @@ const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     UNIONPAY: 'unionPay',
 };
 const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
+    F1000: 'status.failureReasons.F1000',
     PAYMENT_TIMEOUT: 'status.failureReasons.PAYMENT_TIMEOUT',
     RISK_REJECTED: 'status.failureReasons.RISK_REJECTED',
     ROUTE_FAILED: 'status.failureReasons.ROUTE_FAILED',
@@ -2319,7 +2324,7 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
                 transactionType: 'PAYMENT',
                 transactionStatus: 'SUCCESS',
                 transactionDateTime,
-                code: 'T200',
+                code: 'T0000',
                 message: 'Success',
             },
         } : undefined,
@@ -2342,7 +2347,7 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             transactionDateTime: new Date().toISOString(),
         },
         failure: {
-            reasonCode: 'ISSUER_DECLINED',
+            reasonCode: 'F1000',
             message: t('status.failedHelpDesc'),
             retryAllowed: true,
         },

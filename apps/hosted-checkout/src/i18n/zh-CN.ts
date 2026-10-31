@@ -90,6 +90,7 @@ export default {
     failureReason: '失败原因',
     failureReasonValue: '发卡行拒绝交易',
     failureReasons: {
+      F1000: '交易已被拒绝，请联系发卡行或尝试其他支付方式。',
       PAYMENT_TIMEOUT: '超过付款截止时间，链接已失效',
       RISK_REJECTED: '交易未通过安全检查',
       ROUTE_FAILED: '暂时无法选择可用支付通道',

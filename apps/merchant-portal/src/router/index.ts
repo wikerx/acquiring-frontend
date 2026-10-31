@@ -96,7 +96,7 @@ router.beforeEach(async (to) => {
         }
     }
     if (!isPublicPath && !auth.session) {
-        return '/login';
+        return { path: '/login', query: { redirect: to.fullPath } };
     }
     if (to.path === '/' && auth.session) {
         return firstAvailableMenuPath(auth.session.menus || []);

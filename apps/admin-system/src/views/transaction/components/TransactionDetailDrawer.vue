@@ -56,6 +56,18 @@
                         <el-descriptions-item :label="t('transaction.fields.transactionStatus')">
                             <el-tag size="small" :type="statusTagType(detail.order?.transactionStatus, statusOptions)">{{ optionText(statusOptions, detail.order?.transactionStatus) }}</el-tag>
                         </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.openApiResultCode')" :span="2">
+                            <CopyableText :value="summaryRecord?.openApiResultCode" :label="t('transaction.fields.openApiResultCode')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.internalResultMessage')" :span="2">
+                            {{ summaryRecord?.internalResultMessage || '-' }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.merchantResultMessage')" :span="2">
+                            {{ summaryRecord?.merchantResponseMessage || '-' }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.payerResultMessage')" :span="2">
+                            {{ summaryRecord?.payerResultMessage || '-' }}
+                        </el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.paymentMethodCardBrand')">
                             <PaymentLogoGroup v-if="paymentLogos(detail.order).length" :keys="paymentLogos(detail.order)" size="sm" align="start" class="transaction-detail__inline-logos" />
                             <span v-else>{{ paymentText(detail.order?.paymentMethod, detail.order?.paymentBrand) }}</span>

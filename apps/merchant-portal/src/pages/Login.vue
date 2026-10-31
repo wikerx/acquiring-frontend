@@ -192,7 +192,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, Key, Lock } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
@@ -209,9 +209,11 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import LanguageSwitch from '@/components/LanguageSwitch.vue';
 import VerificationCodeInput from '@/components/VerificationCodeInput/index.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { sanitizeLoginRedirect } from '@/utils/auth-navigation';
 import { firstAvailableMenuPath } from '@/utils/menu';
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 const merchantBrand = getSystemBrand('merchant');
 const merchantProductName = computed(() => {
@@ -463,7 +465,7 @@ async function handleLoginResponse(response: AuthLoginResponse) {
         return;
     }
     auth.setLoginResponse(response);
-    await router.push(firstAvailableMenuPath(response.menus || []));
+    await router.push(resolveLoginDestination(response.menus));
 }
 
 async function loadMfaBindInfo() {
@@ -517,13 +519,18 @@ async function handleMfaSubmit() {
         const response = loginStage.value === 'bind'
             ? await auth.confirmMfaBind(loginTicket.value, mfaForm.totpCode)
             : await auth.verifyMfa(loginTicket.value, mfaForm.totpCode);
-        await router.push(firstAvailableMenuPath(response.menus || auth.session?.menus || []));
+        await router.push(resolveLoginDestination(response.menus || auth.session?.menus));
     } catch (error) {
         const locale = document.documentElement.lang || navigator.language || 'zh-CN';
         ElMessage.error(resolveFriendlyRequestMessage(error, locale));
     } finally {
         mfaLoading.value = false;
     }
+}
+
+function resolveLoginDestination(menus?: AuthLoginResponse['menus']): string {
+    const fallback = firstAvailableMenuPath(menus || []);
+    return sanitizeLoginRedirect(route.query.redirect, fallback);
 }
 
 function resetMfaStage() {

@@ -227,7 +227,8 @@ async function postCheckout<T>(url: string, payload: unknown): Promise<T> {
             'Content-Type': 'application/json',
         },
     });
-    if (result.data.code !== 'T200' && result.data.code !== 'SUCCESS') {
+    // A0000 仅表示本次浏览器 API 正常返回；支付终态继续由 data.pageState 表达。
+    if (result.data.code !== 'A0000') {
         throw new CheckoutApiError(result.data.code);
     }
     return result.data.data;

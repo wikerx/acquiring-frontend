@@ -82,8 +82,8 @@
             </el-table-column>
             <el-table-column :label="t('transaction.fields.merchantResponseCode')" width="128" align="center">
                 <template #default="{ row }">
-                    <el-tooltip :content="responseTooltip(row.merchantResponseCode, row.merchantResponseMessage)" placement="top">
-                        <el-tag size="small" effect="plain">{{ row.merchantResponseCode || '-' }}</el-tag>
+                    <el-tooltip :content="responseTooltip(row.openApiResultCode || row.merchantResponseCode, row.internalResultMessage)" placement="top">
+                        <el-tag size="small" effect="plain">{{ row.openApiResultCode || row.merchantResponseCode || '-' }}</el-tag>
                     </el-tooltip>
                 </template>
             </el-table-column>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Acquiring Frontend Development"
+  short_description: "Govern Vexra frontend changes"
+  default_prompt: "Use $acquiring-frontend-development to plan, implement, and verify this frontend change against the app-specific rules."

@@ -107,6 +107,9 @@ export interface TransactionOrder {
     edcEnabled?: number;
     merchantResponseCode?: string;
     merchantResponseMessage?: string;
+    openApiResultCode?: string;
+    internalResultMessage?: string;
+    payerResultMessage?: string;
     merchantNotificationStatus?: string;
     authorizedAmount?: number | string;
     capturedAmount?: number | string;
@@ -164,6 +167,9 @@ export interface TransactionOperation {
     edcEnabled?: number;
     merchantResponseCode?: string;
     merchantResponseMessage?: string;
+    openApiResultCode?: string;
+    internalResultMessage?: string;
+    payerResultMessage?: string;
     authorizedAmount?: number | string;
     capturedAmount?: number | string;
     refundedAmount?: number | string;
