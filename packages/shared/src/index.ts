@@ -22,11 +22,11 @@ export * from './settlementVoucher';
 export * from './settlementVoucherPdf';
 
 declare module 'axios' {
-    export interface AxiosRequestConfig<D = any> {
+    export interface AxiosRequestConfig {
         skipAuth?: boolean;
     }
 
-    export interface InternalAxiosRequestConfig<D = any> {
+    export interface InternalAxiosRequestConfig {
         skipAuth?: boolean;
     }
 }

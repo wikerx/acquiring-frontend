@@ -649,8 +649,6 @@ const formCardBrandText = computed(() => form.cardBrand ? cardBrandDisplay(form.
 const showRuleConditionSection = computed(() => !isThreeDsRule.value && (profile.value.showMatchValue || profile.value.showCountry || profile.value.showLimitType || profile.value.showFrequency));
 const showAmountMinInput = computed(() => profile.value.showAmount && !isMerchantLimitRule.value && String(form.limitType || '') === 'SINGLE_MIN');
 const showAmountMaxInput = computed(() => profile.value.showAmount && !isMerchantLimitRule.value && !!form.limitType && String(form.limitType) !== 'SINGLE_MIN');
-const showThreeDsAmountMinInput = computed(() => ['GE', 'BETWEEN'].includes(String(form.amountMatchType || '')));
-const showThreeDsAmountMaxInput = computed(() => ['LE', 'BETWEEN'].includes(String(form.amountMatchType || '')));
 const isMerchantLimitMultiEdit = computed(() => formMode.value === 'add' || formMode.value === 'dimensionEdit');
 const merchantLimitAmountTypes = computed(() => isMerchantLimitMultiEdit.value ? merchantLimitForm.limitTypes : form.limitType ? [String(form.limitType)] : []);
 const currentRuleGuidance = computed(() => t(`risk.rule.guidance.${current.value.functionCode}`));
@@ -838,7 +836,11 @@ async function submitForm() {
     } else if (isMerchantLimitRule.value && !editingId.value) {
       await createMerchantLimitRules(payload);
     } else {
-      editingId.value ? await updateRiskRule(current.value.functionCode, editingId.value, payload) : await createRiskRule(current.value.functionCode, payload);
+      if (editingId.value) {
+        await updateRiskRule(current.value.functionCode, editingId.value, payload);
+      } else {
+        await createRiskRule(current.value.functionCode, payload);
+      }
     }
     ElMessage.success(t('common.saveSuccess'));
     formOpen.value = false;
@@ -938,7 +940,11 @@ function isStatusUpdating(id?: number) { return id ? statusUpdatingIds.value.has
 function setStatusUpdating(id: number | undefined, loading: boolean) {
   if (!id) return;
   const next = new Set(statusUpdatingIds.value);
-  loading ? next.add(id) : next.delete(id);
+  if (loading) {
+    next.add(id);
+  } else {
+    next.delete(id);
+  }
   statusUpdatingIds.value = next;
 }
 async function handleExport() {

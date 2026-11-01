@@ -343,7 +343,6 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import {
     merchantInfoApi,
     type MerchantProfile,
-    type MerchantProfileChangeRequest,
     type MerchantProfileDocument,
     type MerchantProfileSnapshot,
     type MerchantProfileUpdatePayload,

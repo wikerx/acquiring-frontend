@@ -222,7 +222,7 @@ export interface SettlementReviewDetail {
     summaries: SettlementSummaryLine[];
 }
 
-export interface SettlementReviewCandidateQuery extends PageQuery {}
+export type SettlementReviewCandidateQuery = PageQuery;
 
 export interface SettlementReviewSubmitRequest {
     requestKey: string;

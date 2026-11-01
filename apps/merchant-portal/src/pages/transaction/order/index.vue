@@ -430,7 +430,7 @@
             </section>
             <section v-if="activeActionRow" class="transaction-action-section">
                 <h3>{{ t('transaction.order.refundInfo') }}</h3>
-                <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="refundSaving" :t="t" :locale="locale" />
+                <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="refundSaving" :t="t" :locale="locale" @update:model="Object.assign(refundForm, $event)" />
             </section>
             <template #footer>
                 <div class="dialog-footer">

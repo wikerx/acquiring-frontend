@@ -111,7 +111,6 @@ const isExpandAll=ref(true); const refreshTable=ref(true);
 const dialogTitle=computed(()=>formMode.value==='create'?t('system.menu.addMenu'):t('system.menu.editMenu'));
 const menuForm=reactive<MenuForm>({parentId:0,menuCode:'',menuName:'',menuType:'MENU',routePath:'',componentPath:'',permissionCode:'',icon:'',redirect:'',visible:1,keepAlive:0,externalLink:0,sortNo:100,status:1});
 const menuFormRules=computed<FormRules>(()=>({parentId:[{required:true,message:t('system.menu.pleaseSelectParent'),trigger:'change'}],menuCode:[{required:true,message:t('common.pleaseInput'),trigger:'blur'}],menuName:[{required:true,message:t('common.pleaseInput'),trigger:'blur'}],menuType:[{required:true,message:t('system.menu.pleaseSelectType'),trigger:'change'}]}));
-const menuTypeOptions=computed(()=>[{label:t('system.menu.typeCatalog'),value:'CATALOG'},{label:t('system.menu.typeMenu'),value:'MENU'},{label:t('system.menu.typeButton'),value:'BUTTON'},{label:t('system.menu.typeLink'),value:'LINK'}]);
 const treeSelectData=computed(()=>[{menuId:0,menuName:t('system.menu.rootDir'),children:rows.value as any}]);
 
 onMounted(()=>loadData());

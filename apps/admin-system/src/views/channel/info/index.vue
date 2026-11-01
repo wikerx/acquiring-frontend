@@ -555,7 +555,7 @@ async function toggleStatus(row: ChannelInfo) {
     } catch {
         return;
     }
-    let confirmed = false;
+    let confirmed: boolean;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { channelStatus: nextValue });
     } catch (error) {
@@ -586,7 +586,7 @@ async function toggle3ds(row: ChannelInfo) {
     } catch {
         return;
     }
-    let confirmed = false;
+    let confirmed: boolean;
     try {
         confirmed = await confirmChannelCapabilityImpact(row, { support3ds: nextValue });
     } catch (error) {

@@ -38,14 +38,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { Close } from '@element-plus/icons-vue';
 import type { VisitedView } from '@/store/modules/tagsView';
 import { resolveMenuIcon } from '@/utils/menu-icon';
 const { t } = useI18n();
 
-const props = defineProps<{
+defineProps<{
     tags: VisitedView[];
     tagsViewStyle?: 'card' | 'google';
 }>();
@@ -56,8 +55,6 @@ const emit = defineEmits<{
     closeAll: [];
 }>();
 
-const route = useRoute();
-const router = useRouter();
 const contextVisible = ref(false);
 const contextX = ref(0);
 const contextY = ref(0);

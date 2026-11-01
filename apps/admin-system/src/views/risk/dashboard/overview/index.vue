@@ -95,7 +95,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowRight, DataAnalysis, Histogram, Operation, TrendCharts } from '@element-plus/icons-vue';
+import { ArrowRight, Histogram, Operation, TrendCharts } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import { getRiskDashboard, type RiskDashboardFunction } from '@/api/risk';

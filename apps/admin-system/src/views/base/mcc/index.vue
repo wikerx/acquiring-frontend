@@ -264,7 +264,6 @@ import {
     type MccCodeDetail,
     type MccCodeSaveRequest,
     type MccNodeType,
-    type MccOption,
     type MccOptions,
     type MccRiskPolicy,
     type MccRiskPolicyQuery,

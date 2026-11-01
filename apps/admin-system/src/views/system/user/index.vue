@@ -844,7 +844,6 @@ function activationStatusFilter() { return query.activationStatus === 'PENDING_A
 function emailVerificationStatusFilter() { return query.emailVerificationStatus === 'PENDING' || query.emailVerificationStatus === 'VERIFIED' ? query.emailVerificationStatus : undefined; }
 function normalizeRow(row: SysUserAccount): UserRow { return { ...row, statusTag: row.status === 1 ? CommonStatus.Enabled : CommonStatus.Disabled, lockedText: row.locked === 1 ? t('common.yes') : t('common.no') }; }
 function trimOptional(value: string) { return value.trim() || undefined; }
-function formatPostNames(row: SysUserAccount) { return row.postNames?.length ? row.postNames.join(locale.value === 'zh-CN' ? '、' : ', ') : '-'; }
 function applyRoleSelection() { const checkedIdSet = new Set(selectedRoleIds.value); roleRows.value.forEach((row) => { roleTableRef.value?.toggleRowSelection(row, checkedIdSet.has(row.roleId)); }); }
 
 function mfaPolicyText(value?: string) { return value ? t(`system.user.mfaPolicy_${value}`, value) : t('system.user.mfaPolicy_OPTIONAL'); }

@@ -194,7 +194,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowLeft, Key, Lock } from '@element-plus/icons-vue';
+import { ArrowLeft, Lock } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import {
     VEXRA_BRAND,
