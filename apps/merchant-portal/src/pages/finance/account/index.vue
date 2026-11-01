@@ -1,6 +1,6 @@
 <template>
     <div class="page system-page merchant-redesigned-page merchant-account-page">
-        <el-alert v-if="account && Number(account.availableBalance) < 0" :title="$t('finance.negativeAlert')" type="error" :closable="false" show-icon />
+        <el-alert v-if="hasNegativeAvailableBalance" :title="$t('finance.negativeAlert')" type="error" :closable="false" show-icon />
 
         <div v-if="account" class="account-state-bar">
             <div><span>{{ $t('finance.accountNo') }}</span><strong>{{ account.accountNo }}</strong></div>
@@ -161,8 +161,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { CurrencyAmountPills, DirectionTag, formatDecimalAmount, FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { computed, onMounted, ref } from 'vue';
+import { compareDecimalAmounts, CurrencyAmountPills, DirectionTag, formatDecimalAmount, FULL_DAY_RANGE_DEFAULT_TIMES, normalizeDecimalAmount } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -193,6 +193,10 @@ const ledgerDetailVisible = ref(false);
 const selectedLedger = ref<FundLedger | null>(null);
 const businessTypeOptions = ref<TransactionDictOption[]>([]);
 const directionOptions = ref<TransactionDictOption[]>([]);
+const hasNegativeAvailableBalance = computed(() => {
+    const amount = normalizeDecimalAmount(account.value?.availableBalance);
+    return amount !== null && compareDecimalAmounts(amount, '0') < 0;
+});
 
 onMounted(async () => {
     await loadDictionaries();

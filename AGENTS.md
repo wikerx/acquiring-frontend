@@ -105,6 +105,7 @@ layout changed. Report failures and skipped checks accurately; do not use old ou
 Use the relevant existing commands:
 
 ```bash
+npm run lint
 npm run typecheck
 npm run build:admin
 npm run build:merchant
@@ -115,7 +116,8 @@ Run only affected apps first. If rendered behavior changes, verify the real flow
 representative desktop and mobile viewports. Check console errors, network failures, text overflow,
 overlap, keyboard/focus behavior, permissions, and sensitive-data exposure.
 
-The repository currently has no general `lint` script. Record that gap; never report lint as passing.
+Run `npm run lint` for changed TypeScript and Vue code. Do not use `--fix` as an unreviewed substitute
+for understanding a lint failure, and do not weaken the rules to make a change pass.
 
 ## Documentation And Skill
 

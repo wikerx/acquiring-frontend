@@ -189,7 +189,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
-import { PaymentLogoGroup } from '@acquiring/shared';
+import { isPositiveDecimalAmount, PaymentLogoGroup } from '@acquiring/shared';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -301,26 +301,18 @@ function summaryItem(
 function currencyAmountDetails(field: 'totalAmount' | 'pendingApprovalAmount' | 'successfulAmount' | 'pendingAmount') {
     return (summary.value.currencyAmounts || []).flatMap((item) => {
         const currency = item.currency?.trim();
-        const amount = Number(item[field]);
-        if (!currency || !Number.isFinite(amount) || amount <= 0) return [];
+        const amount = item[field];
+        if (!currency || !isPositiveDecimalAmount(amount)) return [];
         return [{
-            key: `${field}:${currency}`,
-            value: item[field] ?? 0,
+            key: `${field}:${currency}:${item.currencyExponent ?? 'unknown'}`,
+            value: amount ?? '0',
             description: t(`transaction.refund.summary.${field}`),
             amountMeta: {
                 currency,
-                amountText: summaryAmountText(item[field]),
+                amountText: moneyText(amount, undefined, item.currencyExponent),
             },
         }];
     }).slice(0, 4);
-}
-
-function summaryAmountText(amount?: number | string) {
-    const value = Number(amount || 0);
-    if (!Number.isFinite(value)) return String(amount || 0);
-    const decimalLength = String(amount ?? '').split('.')[1]?.length || 2;
-    const digits = Math.min(Math.max(decimalLength, 2), 8);
-    return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 async function loadData() {

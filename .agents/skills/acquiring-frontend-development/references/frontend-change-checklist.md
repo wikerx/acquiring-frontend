@@ -44,6 +44,7 @@ checkout, responsive, or significant UI work.
 ## Verification
 
 ```bash
+npm run lint
 npm --workspace @acquiring/admin-system run typecheck
 npm --workspace @acquiring/admin-system run build
 npm --workspace @acquiring/merchant-portal run typecheck

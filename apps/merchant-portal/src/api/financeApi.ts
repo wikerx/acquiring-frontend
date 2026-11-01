@@ -5,6 +5,9 @@ import { downloadBlob } from '@/utils/download';
 
 export type DecimalValue = string | number;
 
+/** 资金接口金额由后端按十进制字符串返回，浏览器不得使用浮点数承载。 */
+export type FundDecimalValue = string;
+
 export interface FeeTier {
     id: number;
     lowerBound: DecimalValue;
@@ -54,14 +57,14 @@ export interface CurrentFee {
 
 export interface CurrencyBalance {
     currency: string;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
 }
 
 export interface FundAccount {
     id: number;
     accountNo: string;
     settlementCurrency: string;
-    availableBalance: DecimalValue;
+    availableBalance: FundDecimalValue;
     pendingBalances: CurrencyBalance[];
     reserveBalances: CurrencyBalance[];
     accountStatus: string;
@@ -92,9 +95,9 @@ export interface FundLedger {
     transactionId?: string | null;
     currency: string;
     direction: string;
-    amount: DecimalValue;
-    balanceBefore: DecimalValue;
-    balanceAfter: DecimalValue;
+    amount: FundDecimalValue;
+    balanceBefore: FundDecimalValue;
+    balanceAfter: FundDecimalValue;
     accountSequence: number;
     operatorName: string;
     reviewerName?: string | null;

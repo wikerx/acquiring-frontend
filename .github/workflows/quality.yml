@@ -1,6 +1,7 @@
 name: Frontend Quality
 
 on:
+  push:
   pull_request:
   workflow_dispatch:
 
@@ -23,6 +24,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Lint workspaces
+        run: npm run lint
       - name: Typecheck workspaces
         run: npm run typecheck
       - name: Build workspaces

@@ -4118,6 +4118,9 @@ export default {
     },
     usageSnapshot: {
       detailTitle: '汇率使用快照详情',
+      eventSection: '业务事件',
+      rateSection: '汇率证据',
+      auditSection: '时间与计算',
     },
     messages: {},
     placeholders: {
@@ -4209,6 +4212,11 @@ export default {
       usageScene: '使用场景',
       businessType: '业务类型',
       businessNo: '业务编号',
+      usageEventId: '使用事件ID',
+      producerService: '生产服务',
+      rateSource: '汇率来源',
+      sourceQuoteDirection: '原报价方向',
+      rateEffectiveTime: '汇率生效时间',
       appliedTime: '使用时间',
       adjustDescription: '调整说明',
       calculationDescription: '计算说明',

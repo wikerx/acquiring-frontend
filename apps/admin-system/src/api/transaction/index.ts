@@ -390,6 +390,7 @@ export interface RefundManagementRecord {
 
 export interface RefundCurrencySummary {
     currency?: string;
+    currencyExponent?: number;
     totalAmount?: number | string;
     pendingApprovalAmount?: number | string;
     successfulAmount?: number | string;

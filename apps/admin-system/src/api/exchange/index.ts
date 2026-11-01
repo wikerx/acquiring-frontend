@@ -86,6 +86,8 @@ export interface ExchangeBusinessRate {
 
 export interface ExchangeRateUsageSnapshot {
     id: number;
+    usageEventId?: string;
+    producerService?: string;
     rateType: string;
     usageScene: string;
     businessType: string;
@@ -96,6 +98,9 @@ export interface ExchangeRateUsageSnapshot {
     businessRateId?: number;
     rawRateId?: number;
     ruleId?: number;
+    rateSource?: string;
+    sourceQuoteDirection?: string;
+    rateEffectiveTime?: string;
     calculationDescription?: string;
     appliedTime: string;
     createTime?: string;

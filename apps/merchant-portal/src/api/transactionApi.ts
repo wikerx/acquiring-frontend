@@ -249,6 +249,7 @@ export interface MerchantRefundSummary {
     failedOrRejectedCount: number;
     currencyAmounts?: Array<{
         currency?: string;
+        currencyExponent?: number;
         totalAmount?: number | string;
         pendingApprovalAmount?: number | string;
         successfulAmount?: number | string;

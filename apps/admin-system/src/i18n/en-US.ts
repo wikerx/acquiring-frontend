@@ -4377,6 +4377,9 @@ export default {
     },
     usageSnapshot: {
       detailTitle: 'Rate Usage Snapshot Detail',
+      eventSection: 'Business Event',
+      rateSection: 'Rate Evidence',
+      auditSection: 'Timing and Calculation',
     },
     messages: {},
     placeholders: {
@@ -4469,6 +4472,11 @@ export default {
       usageScene: 'Usage Scene',
       businessType: 'Business Type',
       businessNo: 'Business No.',
+      usageEventId: 'Usage Event ID',
+      producerService: 'Producer Service',
+      rateSource: 'Rate Source',
+      sourceQuoteDirection: 'Source Quote Direction',
+      rateEffectiveTime: 'Rate Effective Time',
       appliedTime: 'Applied Time',
       adjustDescription: 'Adjustment Note',
       calculationDescription: 'Calculation Note',

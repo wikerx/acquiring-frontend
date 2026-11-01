@@ -11,6 +11,7 @@
         ]"
         :title="logo.label"
         :aria-label="logo.label"
+        :data-logo-key="logo.key"
     >
         <img v-if="logo.asset" class="payment-logo-mark__asset" :src="logo.asset" :alt="logo.label" />
         <span v-else class="payment-logo-mark__text">{{ logo.textFallback }}</span>
@@ -63,6 +64,11 @@ const shouldRender = computed(() => Boolean(logo.value.asset) || props.fallback 
 .payment-logo-mark--sm {
     --payment-logo-height: 22px;
     max-width: 82px;
+}
+
+/* Discover 横向字标宽高比明显高于其他卡品牌，紧凑场景按视觉体量单独收敛。 */
+.payment-logo-mark--sm[data-logo-key='discover'] {
+    max-width: 52px;
 }
 
 .payment-logo-mark--lg {

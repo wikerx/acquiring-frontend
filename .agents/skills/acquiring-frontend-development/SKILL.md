@@ -45,10 +45,9 @@ browser verification when the rendered result or flow changes.
 
 ## Verification And Handoff
 
-Run the affected workspace's typecheck/build first. Then verify the changed flow at representative
-viewports when applicable, checking console/network errors, overlap, text fit, focus, permissions,
-i18n, table/dialog behavior, and sensitive-data exposure.
+Run lint plus the affected workspace's typecheck/build first. Then verify the changed flow at
+representative viewports when applicable, checking console/network errors, overlap, text fit, focus,
+permissions, i18n, table/dialog behavior, and sensitive-data exposure.
 
-Report exact commands and outcomes. Do not claim lint passed because this repository currently has no
-general lint script. Summarize changed files, API/permission impact, browser evidence, and unverified
-risk.
+Report exact commands and outcomes. Summarize changed files, API/permission impact, browser evidence,
+and unverified risk. Never weaken lint, type, or build rules to make a change pass.
