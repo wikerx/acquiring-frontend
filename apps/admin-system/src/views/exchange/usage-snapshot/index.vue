@@ -175,6 +175,9 @@ async function openDetail(row: ExchangeRateUsageSnapshot) {
     detailRow.value = null;
     try {
         detailRow.value = await getExchangeUsageSnapshot(row.id);
+    } catch {
+        detailVisible.value = false;
+        detailRow.value = null;
     } finally {
         detailLoading.value = false;
     }
