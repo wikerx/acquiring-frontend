@@ -53,7 +53,7 @@ const dynamicRouteRemovers: Array<() => void> = [];
 
 async function refreshCurrentUserIfNeeded() {
     const auth = useAuthStore();
-    if (!auth.session || auth.hydrated) {
+    if (auth.hydrated) {
         return;
     }
     try {
@@ -66,7 +66,7 @@ async function refreshCurrentUserIfNeeded() {
             return;
         }
         auth.markHydrated();
-        syncDynamicRoutes(auth.session?.menus || []);
+        syncDynamicRoutes([]);
     }
 }
 

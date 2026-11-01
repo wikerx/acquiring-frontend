@@ -195,9 +195,6 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
-    fallbackCardBrandOptions,
-    fallbackPaymentMethodOptions,
-    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
     type TransactionDictOption,
 } from '@/pages/transaction/shared';
@@ -252,9 +249,9 @@ const componentVisible = ref(false), componentLoading = ref(false), componentTot
 const componentRows = ref<MerchantSettlementTransactionItem[]>([]);
 const componentPage = ref(1), componentPageSize = ref(10);
 const selectedTransaction = ref<MerchantSettlementTransaction | null>(null);
-const paymentTypeOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
-const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
-const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const paymentTypeOptions = ref<TransactionDictOption[]>([]);
+const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const transactionTypeOptions = ref<TransactionDictOption[]>([]);
 
 onMounted(async () => {
     const linkedBatchNo = typeof route.query.settlementBatchNo === 'string'
@@ -494,9 +491,9 @@ async function loadDimensionDictionaries() {
         loadTransactionDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes.length ? paymentTypes : fallbackPaymentMethodOptions(t);
-    paymentMethodOptions.value = paymentMethods.length ? paymentMethods : fallbackCardBrandOptions();
-    transactionTypeOptions.value = transactionTypes.length ? transactionTypes : fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = paymentTypes;
+    paymentMethodOptions.value = paymentMethods;
+    transactionTypeOptions.value = transactionTypes;
 }
 function enumText(group: string, value?: string) {
     if (!value) return '-';

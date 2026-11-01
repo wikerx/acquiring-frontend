@@ -236,7 +236,6 @@ export interface AuthMfaVerifyRequest {
 }
 
 export interface AuthSession {
-    token: string;
     account: AuthAccount;
     menus: AuthMenu[];
     roles?: string[];
@@ -248,6 +247,10 @@ export type UnauthorizedHandler = () => void;
 export type LocaleReader = () => string;
 export type ErrorMessageResolver = (error: unknown) => string;
 
+export interface BrowserSessionOptions {
+    csrfCookieName: string;
+}
+
 export class BusinessResultError extends Error {
     public readonly resultCode: string;
 
@@ -256,6 +259,32 @@ export class BusinessResultError extends Error {
         this.name = 'BusinessResultError';
         this.resultCode = resultCode;
     }
+}
+
+/**
+ * 返回不包含请求头、报文或响应体的安全诊断类别。
+ */
+export function safeErrorType(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+        return error.response?.status ? `Http${error.response.status}` : 'NetworkError';
+    }
+    return error instanceof Error && error.name ? error.name : 'UnknownError';
+}
+
+/**
+ * 返回可展示给用户的受控错误文案，避免直接渲染 Axios 原始异常或响应内容。
+ */
+export function userFacingErrorMessage(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object' && 'friendlyMessage' in error) {
+        const friendlyMessage = (error as { friendlyMessage?: unknown }).friendlyMessage;
+        if (typeof friendlyMessage === 'string' && friendlyMessage.trim()) {
+            return friendlyMessage;
+        }
+    }
+    if (error instanceof BusinessResultError && error.message.trim()) {
+        return error.message;
+    }
+    return fallback;
 }
 
 export interface AuthAwareAxiosRequestConfig<D = unknown> extends AxiosRequestConfig<D> {
@@ -278,30 +307,24 @@ function createRequestId(): string {
 
 export function createHttpClient(
     baseURL: string,
-    readSession: SessionReader,
     onUnauthorized: UnauthorizedHandler,
     readLocale?: LocaleReader,
     resolveErrorMessage?: ErrorMessageResolver,
+    browserSession?: BrowserSessionOptions,
 ): AxiosInstance {
     const client = axios.create({
         baseURL,
         timeout: 15000,
+        withCredentials: true,
     });
 
     client.interceptors.request.use((config) => {
-        const session = readSession();
-        const token = session?.token;
         config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
-        if (!config.skipAuth && token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        if (!config.skipAuth && session?.account) {
-            config.headers['X-Operator-Id'] = String(session.account.accountId);
-            config.headers['X-Operator-Name'] =
-                session.account.realName || session.account.loginAccount;
-            config.headers['X-Operator-Type'] = session.account.merchantId ? '2' : '1';
-            if (session.account.merchantId) {
-                config.headers['X-Merchant-Id'] = session.account.merchantId;
+        if (browserSession) {
+            config.headers['X-Auth-Mode'] = 'cookie';
+            const csrfToken = readCookie(browserSession.csrfCookieName);
+            if (csrfToken) {
+                config.headers['X-CSRF-Token'] = csrfToken;
             }
         }
         const locale = readLocale?.();
@@ -325,6 +348,25 @@ export function createHttpClient(
     );
 
     return client;
+}
+
+function readCookie(name: string): string {
+    if (typeof document === 'undefined') {
+        return '';
+    }
+    const encodedName = `${encodeURIComponent(name)}=`;
+    const cookie = document.cookie
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(encodedName));
+    if (!cookie) {
+        return '';
+    }
+    try {
+        return decodeURIComponent(cookie.slice(encodedName.length));
+    } catch {
+        return '';
+    }
 }
 
 export function setupIdleLogout(options: IdleLogoutOptions): () => void {

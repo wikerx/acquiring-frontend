@@ -171,8 +171,7 @@ async function handleSaveBasic() {
         email: basicForm.email,
         mfaCode: emailChanged.value ? basicForm.mfaCode : undefined,
     });
-    userStore.applyLoginResponse(response, userStore.token);
-    userStore.persistSession();
+    userStore.applyLoginResponse(response);
     ElMessage.success(emailChanged.value
         ? t('userProfile.emailChangeVerificationSent')
         : t('userProfile.profileSaveSuccess'));

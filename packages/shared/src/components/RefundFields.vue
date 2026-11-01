@@ -16,7 +16,7 @@
             </el-form-item>
             <el-form-item :label="t('refundForm.amount')" prop="amount">
                 <div class="refund-fields__amount">
-                    <el-input-number v-model="model.amount" :disabled="formDisabled || model.mode === 'FULL'" :min="0" :max="maximum" :precision="digits" :step="minimum" :controls="false" :placeholder="t('refundForm.amountPlaceholder')" />
+                    <el-input v-model="model.amount" :disabled="formDisabled || model.mode === 'FULL'" inputmode="decimal" autocomplete="off" :placeholder="t('refundForm.amountPlaceholder')" />
                     <span>{{ context?.currency || model.currency }}</span>
                 </div>
             </el-form-item>
@@ -29,15 +29,15 @@
                 <el-input v-model="model.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t(model.reason === 'OTHER' ? 'refundForm.descriptionRequired' : 'refundForm.descriptionPlaceholder')" />
             </el-form-item>
         </el-form>
-        <p v-if="model.amount != null && model.amount > 0" class="refund-fields__preview">{{ t('refundForm.currentRefund', { amount: money(model.amount) }) }}</p>
-        <el-alert v-if="context" type="warning" show-icon :closable="false" :title="t(maximum > 0 ? 'refundForm.limit' : 'refundForm.noAvailable')" />
+        <p v-if="isPositiveDecimalAmount(model.amount)" class="refund-fields__preview">{{ t('refundForm.currentRefund', { amount: money(model.amount!) }) }}</p>
+        <el-alert v-if="context" type="warning" show-icon :closable="false" :title="t(hasAvailableAmount ? 'refundForm.limit' : 'refundForm.noAvailable')" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { formatDecimalAmount } from '../amount';
+import { compareDecimalAmounts, formatDecimalAmount, isPositiveDecimalAmount, normalizeDecimalAmount } from '../amount';
 import { REFUND_REASON_CODES, type RefundContext, type RefundDraft } from '../refund';
 
 // 两端共享字段、校验和额度展示；翻译函数由宿主传入，兼容两端不同的 vue-i18n 版本。
@@ -51,9 +51,9 @@ const props = defineProps<{
 }>();
 const formRef = ref<FormInstance>();
 const digits = computed(() => props.context?.currencyExponent ?? 2);
-const minimum = computed(() => 10 ** -digits.value);
-const maximum = computed(() => Number(props.context?.availableRefundAmount ?? 0));
-const formDisabled = computed(() => props.loading || props.submitting || !props.context || maximum.value <= 0);
+const maximum = computed(() => normalizeDecimalAmount(props.context?.availableRefundAmount ?? '0') ?? '0');
+const hasAvailableAmount = computed(() => isPositiveDecimalAmount(maximum.value));
+const formDisabled = computed(() => props.loading || props.submitting || !props.context || !hasAvailableAmount.value);
 const balances = computed(() => [
     { key: 'refunded', amount: props.context?.refundedAmount ?? 0 },
     { key: 'pending', amount: props.context?.pendingRefundAmount ?? 0 },
@@ -61,9 +61,12 @@ const balances = computed(() => [
 ]);
 const rules = computed<FormRules>(() => ({
     amount: [{ required: true, validator: (_rule, value, callback) => {
-        if (value == null || !Number.isFinite(value) || value <= 0) {
+        const normalized = normalizeDecimalAmount(value);
+        if (normalized === null || !isPositiveDecimalAmount(normalized)) {
             callback(new Error(props.t('refundForm.amountRequired')));
-        } else if (value > maximum.value) {
+        } else if ((String(value).trim().split('.')[1]?.length ?? 0) > digits.value) {
+            callback(new Error(props.t('refundForm.amountPrecision', { digits: digits.value })));
+        } else if (compareDecimalAmounts(normalized, maximum.value) > 0) {
             callback(new Error(props.t('refundForm.amountExceedsAvailable')));
         } else {
             callback();
@@ -91,7 +94,7 @@ function changeMode() {
 watch(() => props.locale, () => formRef.value?.clearValidate());
 
 async function validate() {
-    if (props.loading || !props.context || maximum.value <= 0) return false;
+    if (props.loading || !props.context || !hasAvailableAmount.value) return false;
     return (await formRef.value?.validate().catch(() => false)) === true;
 }
 defineExpose({ validate });
@@ -108,7 +111,7 @@ defineExpose({ validate });
 .refund-fields__form :deep(.el-radio__label) { white-space: normal; }
 .refund-fields__form :deep(.el-form-item__label) { height: auto; }
 .refund-fields__amount { display: flex; width: 100%; align-items: center; gap: 8px; }
-.refund-fields__amount :deep(.el-input-number) { flex: 1; width: 0; }
+.refund-fields__amount :deep(.el-input) { flex: 1; width: 0; }
 .refund-fields__preview { margin: 0 0 12px; font-weight: 600; }
 @media (max-width: 560px) { .refund-fields__form { grid-template-columns: 1fr; } .refund-fields__balances { grid-template-columns: 1fr; gap: 10px; } }
 </style>

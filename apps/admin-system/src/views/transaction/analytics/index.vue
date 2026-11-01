@@ -485,6 +485,7 @@ import {
     createTransactionAnalyticsRange,
     formatAnalyticsAmountValue,
     resolvePaymentLogoKeys,
+    safeErrorType,
     type AnalyticsChartClick,
     type PaymentLogoKey,
     type TransactionAnalyticsChannelPerformance,
@@ -511,7 +512,6 @@ import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter
 import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     ensureTransactionTimezoneOptions,
-    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
     type TransactionDictOption,
 } from '../shared';
@@ -551,10 +551,9 @@ const merchantPerformance = ref<TransactionAnalyticsMerchantPerformance>();
 const failureAnalysis = ref<TransactionAnalyticsFailureAnalysis>();
 const channelPerformance = ref<TransactionAnalyticsChannelPerformance>();
 const threeDsAnalysis = ref<TransactionAnalyticsThreeDs>();
-const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t)
-    .filter((item) => supportedTransactionTypes.has(item.value)));
-const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethods());
-const paymentBrandOptions = ref<TransactionDictOption[]>(fallbackPaymentBrands());
+const transactionTypeOptions = ref<TransactionDictOption[]>([]);
+const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const paymentBrandOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const filters = reactive({
     merchantIds: [] as string[],
@@ -890,33 +889,13 @@ async function loadFilterOptions() {
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
         const supportedTypes = types.filter((item) => supportedTransactionTypes.has(item.value));
-        if (supportedTypes.length) transactionTypeOptions.value = supportedTypes;
-        if (methods.length) paymentMethodOptions.value = methods;
-        if (brands.length) paymentBrandOptions.value = brands;
+        transactionTypeOptions.value = supportedTypes;
+        paymentMethodOptions.value = methods;
+        paymentBrandOptions.value = brands;
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
-        console.warn('[admin-system] Failed to load transaction analytics dictionaries, fallback options are used.', error);
+        console.warn('[admin-system] transaction analytics dictionaries unavailable', safeErrorType(error));
     }
-}
-
-function fallbackPaymentMethods(): TransactionDictOption[] {
-    return ['BANK_CARD', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'ALIPAY_PLUS'].map((value) => ({
-        value,
-        label: te(`transaction.paymentMethod.${value}`) ? t(`transaction.paymentMethod.${value}`) : value,
-    }));
-}
-
-function fallbackPaymentBrands(): TransactionDictOption[] {
-    return [
-        { value: 'VISA', label: 'Visa' },
-        { value: 'MASTERCARD', label: 'Mastercard' },
-        { value: 'AMEX', label: 'American Express' },
-        { value: 'JCB', label: 'JCB' },
-        { value: 'UNIONPAY', label: 'UnionPay' },
-        { value: 'DISCOVER', label: 'Discover' },
-        { value: 'DINERS_CLUB', label: 'Diners Club' },
-        { value: 'MAESTRO', label: 'Maestro' },
-    ];
 }
 
 onMounted(async () => {

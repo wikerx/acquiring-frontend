@@ -34,6 +34,7 @@ export default {
     country: 'Country',
     selectCountry: 'Select country',
     countryFallback: 'Country list is temporarily unavailable. Please try again later.',
+    countryRetry: 'Reload',
     state: 'State / Province',
     city: 'City',
     postal: 'Postal Code',

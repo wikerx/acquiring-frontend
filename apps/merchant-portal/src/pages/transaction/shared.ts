@@ -1,5 +1,5 @@
 import { systemApi, type DictDataItem } from '@/api/systemApi';
-import type { PaymentLogoKey } from '@acquiring/shared';
+import { formatDecimalAmount, roundDecimalAmount, type PaymentLogoKey } from '@acquiring/shared';
 import { formatDateTimeInTimeZone } from '@/utils/format';
 
 export const DEFAULT_TRANSACTION_QUERY_TIME_ZONE = 'Asia/Shanghai';
@@ -75,62 +75,6 @@ export function ensureTransactionTimezoneOptions(options: SelectOption[]) {
     });
 }
 
-export function fallbackTransactionTypeOptions(t: (key: string, fallback?: string) => string): TransactionDictOption[] {
-    return [
-        'PAYMENT',
-        'AUTHORIZATION',
-        'PRE_AUTHORIZATION',
-        'PRE_AUTH_COMPLETION',
-        'INCREMENTAL_AUTHORIZATION',
-        'CAPTURE',
-        'REFUND',
-        'VOID',
-        'QUERY',
-        'REVERSAL',
-        'CHARGEBACK',
-        'REPRESENTMENT',
-        'RETRIEVAL_REQUEST',
-    ].map((value) => ({ label: t(`transaction.type.${value}`, value), value }));
-}
-
-export function fallbackTransactionStatusOptions(t: (key: string, fallback?: string) => string): TransactionDictOption[] {
-    return [
-        { value: 'SUCCESS', listClass: 'success' },
-        { value: 'FAILED', listClass: 'danger' },
-        { value: 'PENDING', listClass: 'warning' },
-        { value: 'PROCESSING', listClass: 'primary' },
-    ].map((item) => ({ ...item, label: t(`transaction.status.${item.value}`, item.value) }));
-}
-
-export function fallbackPaymentMethodOptions(t: (key: string, fallback?: string) => string): TransactionDictOption[] {
-    return ['BANK_CARD', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'ALIPAY_PLUS'].map((value) => ({
-        label: t(`transaction.paymentMethod.${value}`, value),
-        value,
-    }));
-}
-
-export function fallbackCardBrandOptions(): TransactionDictOption[] {
-    return [
-        { label: 'Visa', value: 'VISA' },
-        { label: 'Mastercard', value: 'MASTERCARD' },
-        { label: 'JCB', value: 'JCB' },
-        { label: 'Maestro', value: 'MAESTRO' },
-        { label: 'American Express', value: 'AMEX' },
-        { label: 'Diners Club', value: 'DINERS_CLUB' },
-        { label: 'Discover', value: 'DISCOVER' },
-        { label: 'UnionPay', value: 'UNIONPAY' },
-    ];
-}
-
-export function fallbackStatusOptions(t: (key: string, fallback?: string) => string, scope: string): TransactionDictOption[] {
-    const values = scope === 'settlement'
-        ? ['NOT_SETTLED', 'SETTLING', 'SETTLED', 'FAILED']
-        : scope === 'reconciliation'
-            ? ['NOT_RECONCILED', 'RECONCILED', 'MISMATCHED']
-            : ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED'];
-    return values.map((value) => ({ label: t(`transaction.genericStatus.${value}`, value), value }));
-}
-
 export function tagText(options: TransactionDictOption[], value?: string) {
     if (!value) return '-';
     return options.find((item) => item.value === value)?.label || value;
@@ -193,21 +137,16 @@ export function transactionPaymentLogoKeys(
 
 export function moneyText(amount?: number | string | null, currency?: string, currencyExponent?: number | null) {
     if (amount === undefined || amount === null || amount === '') return '-';
-    const value = Number(amount);
-    if (!Number.isFinite(value)) return `${currency || ''} ${amount}`.trim();
     const digits = typeof currencyExponent === 'number' && currencyExponent >= 0
         ? Math.min(currencyExponent, 8)
-        : Math.min(resolveDecimalLength(String(amount)), 2);
-    return `${currency || ''} ${value.toLocaleString(undefined, {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-    })}`.trim();
+        : Math.max(2, Math.min(resolveDecimalLength(String(amount)), 8));
+    const rounded = roundDecimalAmount(amount, digits);
+    return `${currency || ''} ${formatDecimalAmount(rounded, undefined, digits, digits)}`.trim();
 }
 
 export function rateText(rate?: number | string | null) {
     if (rate === undefined || rate === null || rate === '') return '1.00000000';
-    const value = Number(rate);
-    return Number.isFinite(value) ? value.toFixed(8) : String(rate);
+    return roundDecimalAmount(rate, 8);
 }
 
 export function splitDateRange(range: string[]) {

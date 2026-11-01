@@ -381,7 +381,7 @@ async function loadHandlers() {
     try {
         handlerOptions.value = await getJobHandlers();
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         handlerOptions.value = [];
     }
 }
@@ -400,7 +400,7 @@ async function loadData() {
         rows.value = result.records;
         total.value = result.total;
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         rows.value = [];
         total.value = 0;
         ElMessage.error(t('common.loadFailed'));
@@ -537,7 +537,7 @@ async function submitForm() {
         dialogVisible.value = false;
         loadData();
     } catch (error: unknown) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
     }
 }
@@ -558,7 +558,7 @@ async function handleToggleStatus(row: JobTaskRow) {
         ElMessage.success(t('common.success'));
         loadData();
     } catch (error: unknown) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
     }
 }
@@ -596,7 +596,7 @@ async function submitTrigger() {
         triggerDialogVisible.value = false;
         loadData();
     } catch (error: unknown) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
     }
 }
@@ -619,7 +619,7 @@ async function handleDelete(row?: JobTaskRow) {
         ElMessage.success(t('common.deleteSuccess'));
         loadData();
     } catch (error: unknown) {
-        console.error(error);
+        console.error('[admin-system] job request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(error instanceof Error ? error.message : t('common.saveFailed'));
     }
 }

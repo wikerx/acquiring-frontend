@@ -151,6 +151,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { safeErrorType } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
@@ -175,8 +176,6 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
-    fallbackTransactionStatusOptions,
-    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
     moneyText,
     openTransactionDetail,
@@ -283,11 +282,11 @@ onMounted(async () => {
 });
 
 async function loadDictionaries() {
-    typeOptions.value = fallbackTransactionTypeOptions(t);
-    statusOptions.value = fallbackTransactionStatusOptions(t);
-    channelMatchStatusOptions.value = fallbackStatusOptions('channelMatch');
-    reconciliationStatusOptions.value = fallbackStatusOptions('reconciliation');
-    settlementStatusOptions.value = fallbackStatusOptions('settlement');
+    typeOptions.value = [];
+    statusOptions.value = [];
+    channelMatchStatusOptions.value = [];
+    reconciliationStatusOptions.value = [];
+    settlementStatusOptions.value = [];
     try {
         const [types, statuses, channelMatches, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
@@ -297,14 +296,14 @@ async function loadDictionaries() {
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types.length ? types : typeOptions.value;
-        statusOptions.value = statuses.length ? statuses : statusOptions.value;
-        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
-        reconciliationStatusOptions.value = reconciliations.length ? reconciliations : reconciliationStatusOptions.value;
-        settlementStatusOptions.value = settlements.length ? settlements : settlementStatusOptions.value;
+        typeOptions.value = types;
+        statusOptions.value = statuses;
+        channelMatchStatusOptions.value = channelMatches;
+        reconciliationStatusOptions.value = reconciliations;
+        settlementStatusOptions.value = settlements;
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
-        console.warn('[admin-system] Failed to load transaction dictionaries, fallback options are used.', error);
+        console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
         timezoneOptions.value = ensureTransactionTimezoneOptions([]);
     }
 }
@@ -379,15 +378,6 @@ function openDetail(row: TransactionOrder) {
 function openMerchant(merchantId: string) {
     selectedMerchantId.value = merchantId;
     merchantVisible.value = true;
-}
-
-function fallbackStatusOptions(scope: 'channelMatch' | 'reconciliation' | 'settlement'): TransactionDictOption[] {
-    const values = scope === 'channelMatch'
-        ? ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED']
-        : scope === 'reconciliation'
-            ? ['NOT_RECONCILED', 'RECONCILED', 'MISMATCHED']
-            : ['NOT_SETTLED', 'SETTLING', 'SETTLED', 'FAILED'];
-    return values.map((value) => ({ label: t(`transaction.statusOption.${value}`, value), value }));
 }
 
 function lifecycleText(row: TransactionOrder) {

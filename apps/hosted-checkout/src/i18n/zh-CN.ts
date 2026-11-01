@@ -34,6 +34,7 @@ export default {
     country: '国家',
     selectCountry: '选择国家',
     countryFallback: '国家列表暂时不可用，请稍后重试。',
+    countryRetry: '重新加载',
     state: '州 / 省',
     city: '城市',
     postal: '邮编',

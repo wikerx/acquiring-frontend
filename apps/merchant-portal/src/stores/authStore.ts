@@ -6,42 +6,29 @@ import {
     verifyMfa,
 } from '@/api/authApi';
 
-const STORAGE_KEY = 'acquiring_merchant_session';
-
-// Security note: current merchant login state is intentionally kept in localStorage for this phase.
-// Do not render untrusted HTML; migrate this token to HttpOnly + Secure + SameSite Cookie in the next auth upgrade.
-function loadSession(): AuthSession | null {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? (JSON.parse(raw) as AuthSession) : null;
-    } catch {
-        localStorage.removeItem(STORAGE_KEY);
-        return null;
-    }
-}
+const LEGACY_STORAGE_KEY = 'acquiring_merchant_session';
 
 export const useAuthStore = defineStore('merchantAuth', {
     state: () => ({
-        session: loadSession() as AuthSession | null,
+        session: null as AuthSession | null,
         hydrated: false,
     }),
     actions: {
         setLoginResponse(response: AuthLoginResponse) {
-            if (!response.accessToken || !response.account) {
+            if (!response.account) {
                 return;
             }
             this.session = {
-                token: response.accessToken,
                 account: response.account,
                 menus: response.menus || [],
                 roles: response.roles || [],
                 permissions: response.permissions || [],
             };
             this.hydrated = true;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
+            localStorage.removeItem(LEGACY_STORAGE_KEY);
         },
         setFinalLoginResponse(response: AuthLoginResponse) {
-            if (!response.accessToken || !response.account) {
+            if (!response.account) {
                 throw new Error('MFA verification did not return a login session');
             }
             this.setLoginResponse(response);
@@ -60,24 +47,18 @@ export const useAuthStore = defineStore('merchantAuth', {
             return response;
         },
         setCurrentUserResponse(response: AuthLoginResponse) {
-            if (!this.session) {
-                return;
-            }
-            const token = response.accessToken || this.session.token;
-            if (!token) {
+            if (!response.account) {
                 this.clearSession();
                 return;
             }
-            const account = response.account || this.session.account;
             this.session = {
-                token,
-                account,
+                account: response.account,
                 menus: response.menus || [],
                 roles: response.roles || [],
                 permissions: response.permissions || [],
             };
             this.hydrated = true;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session));
+            localStorage.removeItem(LEGACY_STORAGE_KEY);
         },
         markHydrated() {
             this.hydrated = true;
@@ -92,7 +73,7 @@ export const useAuthStore = defineStore('merchantAuth', {
         clearSession() {
             this.session = null;
             this.hydrated = false;
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LEGACY_STORAGE_KEY);
         },
     },
 });

@@ -387,7 +387,7 @@ import { useUserStore } from '@/store/modules/user';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/views/transaction/shared';
+import { loadTransactionDictOptions } from '@/views/transaction/shared';
 import {
     businessDateFromBusinessNo,
     decimalText,
@@ -440,7 +440,7 @@ const decisionForm = reactive({ comment: '' });
 const decisionTaskResumeForm = reactive({ reason: '' });
 const paymentTypeOptions = ref<SelectOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
+const transactionTypeOptions = ref<SelectOption[]>([]);
 const decisionTitle = computed(() => t(`transaction.settlement.decisionTitle.${decisionAction.value}`));
 const decisionTaskFailureText = computed(() => {
     if (!decisionTask.value) return '';
@@ -491,7 +491,7 @@ async function loadDimensionDictionaries() {
     ]);
     paymentTypeOptions.value = paymentTypes;
     paymentMethodOptions.value = paymentMethods;
-    if (transactionTypes.length) transactionTypeOptions.value = transactionTypes;
+    transactionTypeOptions.value = transactionTypes;
 }
 
 function requestQuery(): SettlementReviewQuery {

@@ -472,7 +472,7 @@ import CopyableText from '@/views/transaction/components/CopyableText.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionResultBar from '@/views/transaction/components/TransactionResultBar.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/views/transaction/shared';
+import { loadTransactionDictOptions } from '@/views/transaction/shared';
 import { businessDateFromBusinessNo, moneyTextByExponent, settlementFormulaText } from '@/views/settlement/shared';
 
 type CommandType = 'retry' | 'cancel' | 'reversalRequest';
@@ -561,7 +561,7 @@ const componentPageSize = ref(10);
 const selectedTransaction = ref<SettlementTransactionSummary | null>(null);
 const paymentTypeOptions = ref<SelectOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
+const transactionTypeOptions = ref<SelectOption[]>([]);
 const commandVisible = ref(false);
 const commandLoading = ref(false);
 const commandType = ref<CommandType>('cancel');
@@ -1350,7 +1350,7 @@ async function loadDimensionDictionaries() {
     ]);
     paymentTypeOptions.value = paymentTypes;
     paymentMethodOptions.value = paymentMethods;
-    if (transactionTypes.length) transactionTypeOptions.value = transactionTypes;
+    transactionTypeOptions.value = transactionTypes;
 }
 
 onMounted(async () => {

@@ -162,10 +162,10 @@ router.beforeEach(async (to) => {
     }
     syncDynamicRoutes(user.menus);
   }
-  if (!to.meta.public && !user.token) {
+  if (!to.meta.public && !user.account) {
     return { path: '/login', query: { redirect: to.fullPath } };
   }
-  if (to.meta.public && user.token) {
+  if (to.meta.public && user.account) {
     return '/dashboard';
   }
   if (isMissingRoute(to.name) && hasResolvedRoute(to.fullPath)) {

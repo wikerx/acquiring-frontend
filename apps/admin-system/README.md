@@ -59,7 +59,7 @@ http://localhost:5173
 
 ```text
 账号：admin
-密码：Admin@123456
+密码：通过本地环境变量 `VITE_ADMIN_DEV_LOGIN_PASSWORD` 配置
 ```
 
 登录页会调用 `/admin/auth/verify-code/send` 获取开发验证码，并自动回填验证码输入框。

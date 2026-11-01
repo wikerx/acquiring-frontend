@@ -10,7 +10,7 @@ import {
     verifyMfaApi,
     type LoginParams,
 } from '@/api/auth';
-import { getToken, removeAuthStorage, setToken } from '@/utils/auth';
+import { removeAuthStorage } from '@/utils/auth';
 import { usePermissionStore } from './permission';
 
 export interface AdminUserInfo {
@@ -18,26 +18,6 @@ export interface AdminUserInfo {
     username: string;
     realName: string;
     email?: string;
-}
-
-const SESSION_KEY = 'acquiring_admin_user_session';
-
-interface UserSessionCache {
-    token: string;
-    account: AuthAccount | null;
-    menus: AuthMenu[];
-    roles: string[];
-    permissions: string[];
-}
-
-function loadSession(): UserSessionCache | null {
-    try {
-        const raw = localStorage.getItem(SESSION_KEY);
-        return raw ? (JSON.parse(raw) as UserSessionCache) : null;
-    } catch {
-        localStorage.removeItem(SESSION_KEY);
-        return null;
-    }
 }
 
 function toUserInfo(account: AuthAccount | null): AdminUserInfo | null {
@@ -56,25 +36,21 @@ function nullToUndefined<T>(value: T | null | undefined): T | undefined {
     return value == null ? undefined : value;
 }
 
-const cachedSession = loadSession();
-
 export const useUserStore = defineStore('user', {
     state: () => ({
-        token: getToken() || cachedSession?.token || '',
-        account: cachedSession?.account || null,
-        userInfo: toUserInfo(cachedSession?.account || null),
-        roles: cachedSession?.roles || ([] as string[]),
-        permissions: cachedSession?.permissions || ([] as string[]),
-        menus: cachedSession?.menus || ([] as AuthMenu[]),
+        account: null as AuthAccount | null,
+        userInfo: null as AdminUserInfo | null,
+        roles: [] as string[],
+        permissions: [] as string[],
+        menus: [] as AuthMenu[],
         hydrated: false,
     }),
     getters: {
         authSession(state): AuthSession | null {
-            if (!state.token || !state.account) {
+            if (!state.account) {
                 return null;
             }
             return {
-                token: state.token,
                 account: state.account,
                 menus: state.menus,
                 roles: state.roles,
@@ -88,9 +64,8 @@ export const useUserStore = defineStore('user', {
         },
         async login(params: LoginParams) {
             const result = await loginApi(params);
-            if (result.accessToken) {
+            if (result.account) {
                 this.applyLoginResponse(result);
-                this.persistSession();
             }
             return result;
         },
@@ -112,41 +87,32 @@ export const useUserStore = defineStore('user', {
             this.reset();
         },
         async hydrateSession() {
-            if (!this.token) {
-                return;
-            }
             if (this.hydrated) {
                 usePermissionStore().setBackendMenus(this.menus);
                 return;
             }
             const result = await getUserInfoApi();
-            this.applyLoginResponse(result, this.token);
-            this.persistSession();
+            this.applyLoginResponse(result);
         },
-        applyLoginResponse(response: AuthLoginResponse, fallbackToken?: string) {
-            const token = response.accessToken || fallbackToken || this.token;
-            if (!token || !response.account) {
+        applyLoginResponse(response: AuthLoginResponse) {
+            if (!response.account) {
                 return;
             }
-            this.token = token;
             this.account = response.account;
             this.userInfo = toUserInfo(response.account);
             this.roles = response.roles || [];
             this.permissions = response.permissions || [];
             this.menus = response.menus || [];
             this.hydrated = true;
-            setToken(token);
             usePermissionStore().setBackendMenus(this.menus);
         },
         applyFinalLoginResponse(response: AuthLoginResponse) {
-            if (!response.accessToken) {
+            if (!response.account) {
                 throw new Error('MFA verification did not return a login session');
             }
             this.applyLoginResponse(response);
-            this.persistSession();
         },
         reset() {
-            this.token = '';
             this.account = null;
             this.userInfo = null;
             this.roles = [];
@@ -161,18 +127,6 @@ export const useUserStore = defineStore('user', {
                 return true;
             }
             return this.permissions.includes(permission) || this.permissions.includes('*:*:*');
-        },
-        persistSession() {
-            localStorage.setItem(
-                SESSION_KEY,
-                JSON.stringify({
-                    token: this.token,
-                    account: this.account,
-                    menus: this.menus,
-                    roles: this.roles,
-                    permissions: this.permissions,
-                }),
-            );
         },
         hasRole(role?: string) {
             if (!role) {

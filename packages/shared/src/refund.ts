@@ -13,7 +13,7 @@ export interface RefundContext {
 }
 
 export interface RefundDraft {
-    amount: number | null | undefined;
+    amount: string | null | undefined;
     currency: string;
     mode: string;
     reason: string;

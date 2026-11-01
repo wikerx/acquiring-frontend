@@ -264,14 +264,14 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { CircleCheckFilled, CircleCloseFilled, Loading, VideoPause } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { PaymentLogoGroup, safeErrorType, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
 import type { TransactionContactInfo, TransactionDetail, TransactionFlowEvent, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 import RecordList from './TransactionRecordList.vue';
 import TransactionFinanceDetail from './TransactionFinanceDetail.vue';
@@ -569,26 +569,21 @@ onMounted(loadDictionaries);
 watch(locale, loadDictionaries);
 
 async function loadDictionaries() {
-    typeOptions.value = fallbackTransactionTypeOptions(t);
-    statusOptions.value = fallbackTransactionStatusOptions(t);
-    channelMatchStatusOptions.value = fallbackChannelMatchStatusOptions();
+    typeOptions.value = [];
+    statusOptions.value = [];
+    channelMatchStatusOptions.value = [];
     try {
         const [types, statuses, channelMatches] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types.length ? types : typeOptions.value;
-        statusOptions.value = statuses.length ? statuses : statusOptions.value;
-        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
+        typeOptions.value = types;
+        statusOptions.value = statuses;
+        channelMatchStatusOptions.value = channelMatches;
     } catch (error) {
-        console.warn('[admin-system] Failed to load transaction dictionaries, fallback options are used.', error);
+        console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
     }
-}
-
-function fallbackChannelMatchStatusOptions(): TransactionDictOption[] {
-    return ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED']
-        .map((value) => ({ label: t(`transaction.statusOption.${value}`, value), value }));
 }
 
 function paymentText(paymentMethod?: string, paymentBrand?: string) {
