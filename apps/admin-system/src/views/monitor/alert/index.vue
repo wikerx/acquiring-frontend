@@ -7,8 +7,7 @@
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
             <el-form-item :label="t('monitor.workbench.fields.source')">
                 <el-select v-model="query.sourceType" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
-                    <el-option label="CHANNEL" value="CHANNEL" />
-                    <el-option label="SECURITY" value="SECURITY" />
+                    <el-option v-for="source in alertSources" :key="source" :label="sourceText(source)" :value="source" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.level')">
@@ -45,7 +44,7 @@
 
         <StandardTable table-key="monitor-alert-main" v-loading="loading" :data="response?.page.records || []" :row-key="alertRowKey" size="small">
             <el-table-column :label="t('monitor.workbench.fields.level')" width="110" fixed="left" align="center"><template #default="{ row }"><el-tag size="small" :type="monitorTagType(row.level)">{{ statusText(row.level) }}</el-tag></template></el-table-column>
-            <el-table-column prop="sourceType" :label="t('monitor.workbench.fields.source')" width="120" align="center" />
+            <el-table-column prop="sourceType" :label="t('monitor.workbench.fields.source')" width="120" align="center"><template #default="{ row }">{{ sourceText(row.sourceType) }}</template></el-table-column>
             <el-table-column prop="serviceName" :label="t('monitor.workbench.fields.serviceModule')" min-width="160" show-overflow-tooltip />
             <el-table-column prop="title" :label="t('monitor.workbench.fields.title')" min-width="230" show-overflow-tooltip />
             <el-table-column prop="occurrenceCount" :label="t('monitor.workbench.fields.occurrences')" width="92" align="center" />
@@ -67,28 +66,28 @@
                     <el-button v-if="canProcess" type="warning" plain :icon="Loading" @click="openAction('processing')">{{ t('monitor.workbench.actions.markProcessing') }}</el-button>
                     <el-button v-if="canClose" type="danger" plain :icon="CircleClose" @click="openAction('close')">{{ t('monitor.workbench.actions.closeAlert') }}</el-button>
                 </div>
-                <el-descriptions :column="2" border size="small">
-                    <el-descriptions-item :label="t('monitor.workbench.fields.source')">{{ detail.alert.sourceType }}</el-descriptions-item>
+                <el-descriptions :column="detailColumnCount" border size="small">
+                    <el-descriptions-item :label="t('monitor.workbench.fields.source')">{{ sourceText(detail.alert.sourceType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.sourceId')">{{ detail.alert.sourceId }}</el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.level')"><el-tag size="small" :type="monitorTagType(detail.alert.level)">{{ statusText(detail.alert.level) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="t('common.status')"><el-tag size="small" :type="monitorTagType(detail.alert.status)">{{ statusText(detail.alert.status) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.serviceModule')">{{ detail.alert.serviceName || detail.alert.moduleName || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.owner')">{{ detail.alert.ownerName || '-' }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('monitor.workbench.fields.title')" :span="2">{{ detail.alert.title || '-' }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('monitor.workbench.fields.content')" :span="2">{{ detail.alert.content || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('monitor.workbench.fields.title')" :span="detailColumnCount">{{ detail.alert.title || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('monitor.workbench.fields.content')" :span="detailColumnCount">{{ detail.alert.content || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.firstOccurredAt')"><BaseDateTime :value="detail.alert.firstOccurredAt" /></el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.lastOccurredAt')"><BaseDateTime :value="detail.alert.lastOccurredAt" /></el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.occurrences')">{{ detail.alert.occurrenceCount }}</el-descriptions-item>
                     <el-descriptions-item :label="t('monitor.workbench.fields.version')">{{ detail.alert.version }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('common.remark')" :span="2">{{ detail.alert.handleRemark || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('common.remark')" :span="detailColumnCount">{{ detail.alert.handleRemark || '-' }}</el-descriptions-item>
                 </el-descriptions>
 
                 <el-divider content-position="left">{{ t('monitor.workbench.alert.sourceMetrics') }}</el-divider>
-                <el-descriptions v-if="sourceMetricEntries.length" :column="2" border size="small">
-                    <el-descriptions-item v-for="entry in sourceMetricEntries" :key="entry.key" :label="entry.key">{{ entry.value }}</el-descriptions-item>
+                <el-descriptions v-if="sourceMetricEntries.length" :column="detailColumnCount" border size="small">
+                    <el-descriptions-item v-for="entry in sourceMetricEntries" :key="entry.key" :label="sourceMetricLabel(entry.key)">{{ entry.value }}</el-descriptions-item>
                 </el-descriptions>
                 <el-empty v-else :description="t('common.noData')" />
-                <MonitorCapabilityAlert :capability="detail.contextMetricCapability" :title="t('monitor.workbench.alert.contextCapabilityTitle')" />
+                <MonitorCapabilityAlert :capability="localizedContextMetricCapability" :title="t('monitor.workbench.alert.contextCapabilityTitle')" />
 
                 <el-divider content-position="left">{{ t('monitor.workbench.alert.history') }}</el-divider>
                 <el-timeline v-if="detail.history.length">
@@ -119,7 +118,7 @@
 
 <script setup lang="ts">
 /** 告警中心主页面：统一展示聚合趋势、来源分布、处理状态和带版本保护的人工处置。 */
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Loading, Refresh, Search, UserFilled, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -157,6 +156,7 @@ type AlertAction = 'takeover' | 'processing' | 'close';
 
 const { locale, t } = useI18n();
 const route = useRoute();
+const alertSources = ['CHANNEL', 'SECURITY', 'RATE', 'JOB'];
 const alertStatuses = ['OPEN', 'PROCESSING', 'RECOVERED', 'CLOSED'];
 const timeRange = ref(createMonitorTimeRange());
 const showSearch = ref(true);
@@ -173,6 +173,7 @@ const actionVisible = ref(false);
 const actionSaving = ref(false);
 const currentAction = ref<AlertAction>('takeover');
 const actionRemark = ref('');
+const detailColumnCount = ref(2);
 
 const trendDataset = computed(() => createAlertTrendDataset(response.value?.trend || [], t));
 const sourceDataset = computed(() => createAlertSourceDataset(response.value?.sourceTop || []));
@@ -192,21 +193,30 @@ const summaryCards = computed(() => (response.value?.summaries || []).map((item)
     status: item.status,
     description: item.description,
 })));
-const canProcess = computed(() => ['OPEN', 'PROCESSING'].includes(String(detail.value?.alert.status || '').toUpperCase()));
-const canClose = computed(() => String(detail.value?.alert.status || '').toUpperCase() !== 'CLOSED');
+const sourceOwnsLifecycle = computed(() => ['RATE', 'JOB'].includes(String(detail.value?.alert.sourceType || '').toUpperCase()));
+const canProcess = computed(() => !sourceOwnsLifecycle.value && ['OPEN', 'PROCESSING'].includes(String(detail.value?.alert.status || '').toUpperCase()));
+const canClose = computed(() => !sourceOwnsLifecycle.value && String(detail.value?.alert.status || '').toUpperCase() !== 'CLOSED');
 const actionTitle = computed(() => t(`monitor.workbench.alert.action.${currentAction.value}`));
-const sourceMetricEntries = computed(() => Object.entries(detail.value?.sourceMetrics || {}).map(([key, value]) => ({
-    key,
-    value: value === null || value === undefined || value === '' ? '-' : String(value),
-})));
+const sourceMetricEntries = computed(() => Object.entries(detail.value?.sourceMetrics || {})
+    // 后端 DTO 为多来源共用结构；详情只展示当前来源真正返回的指标，避免空字段淹没诊断信息。
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([key, value]) => ({ key, value: sourceMetricValue(key, value) })));
+const localizedContextMetricCapability = computed(() => {
+    const capability = detail.value?.contextMetricCapability;
+    if (!capability || capability.status !== 'NOT_CONFIGURED') return capability;
+    return { ...capability, reason: t('monitor.workbench.alert.contextNotConfigured') };
+});
 
 onMounted(async () => {
+    updateDetailColumnCount();
+    window.addEventListener('resize', updateDetailColumnCount);
     const sourceType = routeText('sourceType');
     const sourceId = routeText('sourceId');
     if (sourceType) query.sourceType = sourceType;
     await loadData();
     if (sourceType && sourceId) await openDetailById(sourceType, sourceId);
 });
+onBeforeUnmount(() => window.removeEventListener('resize', updateDetailColumnCount));
 
 async function loadData() {
     loading.value = true;
@@ -232,7 +242,19 @@ async function loadData() {
 function handleSearch() { page.value = 1; loadData(); }
 function resetQuery() { Object.assign(query, { sourceType: '', level: '', status: '', ownerAccountId: '', keyword: '' }); handleSearch(); }
 function handleRangeChange(value: MonitorTimeRangeValue) { timeRange.value = value; handleSearch(); }
+function updateDetailColumnCount() { detailColumnCount.value = window.innerWidth < 768 ? 1 : 2; }
 function statusText(value?: string) { return t(`monitor.workbench.status.${String(value || 'unknown').toLowerCase()}`, value || '-'); }
+function sourceText(value?: string) { return t(`monitor.workbench.alert.source.${String(value || 'unknown').toLowerCase()}`, value || '-'); }
+function sourceMetricLabel(key: string) { return t(`monitor.workbench.alert.metric.${key}`, key); }
+function sourceMetricValue(key: string, value: unknown) {
+    const text = String(value);
+    if (key === 'job_status' || key === 'last_run_status') return statusText(text);
+    if (key === 'health_reason') {
+        return t(`monitor.workbench.alert.healthReason.${text.toLowerCase()}`, text);
+    }
+    if (key === 'rate_type') return t(`exchange.enums.rateType.${text}`, text);
+    return text;
+}
 function actionText(value?: string) { return t(`monitor.workbench.alert.historyAction.${String(value || 'unknown').toLowerCase()}`, value || '-'); }
 function state(hasData: boolean) {
     return monitorLoadState({
