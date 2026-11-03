@@ -56,6 +56,18 @@
                         <el-descriptions-item :label="t('transaction.fields.transactionStatus')">
                             <el-tag size="small" :type="statusTagType(detail.order?.transactionStatus, statusOptions)">{{ optionText(statusOptions, detail.order?.transactionStatus) }}</el-tag>
                         </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.openApiResultCode')" :span="2">
+                            <CopyableText :value="summaryRecord?.openApiResultCode" :label="t('transaction.fields.openApiResultCode')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.internalResultMessage')" :span="2">
+                            {{ summaryRecord?.internalResultMessage || '-' }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.merchantResultMessage')" :span="2">
+                            {{ summaryRecord?.merchantResponseMessage || '-' }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.payerResultMessage')" :span="2">
+                            {{ summaryRecord?.payerResultMessage || '-' }}
+                        </el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.paymentMethodCardBrand')">
                             <PaymentLogoGroup v-if="paymentLogos(detail.order).length" :keys="paymentLogos(detail.order)" size="sm" align="start" class="transaction-detail__inline-logos" />
                             <span v-else>{{ paymentText(detail.order?.paymentMethod, detail.order?.paymentBrand) }}</span>
@@ -86,6 +98,38 @@
                         <el-descriptions-item :label="t('transaction.fields.capturedAmount')">{{ moneyText(detail.order?.capturedAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.refundedAmount')">{{ moneyText(detail.order?.refundedAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.availableRefundAmount')">{{ moneyText(detail.order?.availableRefundAmount, detail.order?.transactionCurrency, detail.order?.currencyExponent) }}</el-descriptions-item>
+                    </el-descriptions>
+                </el-tab-pane>
+
+                <el-tab-pane :label="t('transaction.detail.accessProcessing')" name="accessProcessing">
+                    <el-descriptions :column="2" border size="small">
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.accessType')">
+                            {{ accessTypeText }}
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.merchantWebsite')">
+                            <CopyableText :value="auditText(detail.order?.merchantWebsite)" :label="t('transaction.detail.accessFields.merchantWebsite')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.ingressClientIp')">
+                            <CopyableText :value="auditText(accessOperation?.ingressClientIp)" :label="t('transaction.detail.accessFields.ingressClientIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.payerIp')">
+                            <CopyableText :value="auditText(detail.payerInfo?.ipAddress)" :label="t('transaction.detail.accessFields.payerIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.traceId')">
+                            <CopyableText :value="auditText(processingTraceId)" :label="t('transaction.detail.accessFields.traceId')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorService')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorService)" :label="t('transaction.detail.accessFields.processorService')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorInstanceId')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorInstanceId)" :label="t('transaction.detail.accessFields.processorInstanceId')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorPrivateIp')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorPrivateIp)" :label="t('transaction.detail.accessFields.processorPrivateIp')" wrap />
+                        </el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.detail.accessFields.processorHostName')">
+                            <CopyableText :value="auditText(completionFlowEvent?.processorHostName)" :label="t('transaction.detail.accessFields.processorHostName')" wrap />
+                        </el-descriptions-item>
                     </el-descriptions>
                 </el-tab-pane>
 
@@ -220,14 +264,14 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { CircleCheckFilled, CircleCloseFilled, Loading, VideoPause } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { PaymentLogoGroup, safeErrorType, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
-import type { TransactionContactInfo, TransactionDetail, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
+import type { TransactionContactInfo, TransactionDetail, TransactionFlowEvent, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 import RecordList from './TransactionRecordList.vue';
 import TransactionFinanceDetail from './TransactionFinanceDetail.vue';
@@ -374,6 +418,57 @@ const focusedOperation = computed(() => {
     return undefined;
 });
 
+const accessOperation = computed(() => {
+    if (focusedOperation.value) {
+        return focusedOperation.value;
+    }
+    const operations = props.detail?.operations || [];
+    const rootTransactionId = props.detail?.order?.rootTransactionId;
+    return operations.find((item) => item.transactionId === rootTransactionId) || operations[0];
+});
+
+const accessTypeText = computed(() => {
+    const accessType = accessOperation.value?.accessType;
+    if (accessType === 'HOSTED_CHECKOUT') {
+        return t('transaction.detail.accessTypes.hostedCheckout');
+    }
+    if (accessType === 'DIRECT_API') {
+        return t('transaction.detail.accessTypes.directApi');
+    }
+    return auditText(accessType);
+});
+
+const completionFlowEvent = computed<TransactionFlowEvent | undefined>(() => {
+    const events = props.detail?.flowEvents || [];
+    const hasProcessorAudit = (event: TransactionFlowEvent) => Boolean(
+        event.processorService
+        || event.processorInstanceId
+        || event.processorHostName
+        || event.processorPrivateIp
+        || event.traceId,
+    );
+    const focusedEvents = props.focusTransactionId
+        ? events.filter((event) => event.transactionId === props.focusTransactionId)
+        : events;
+    return [...focusedEvents].reverse().find(hasProcessorAudit)
+        || [...events].reverse().find(hasProcessorAudit);
+});
+
+const processingTraceId = computed(() => {
+    if (completionFlowEvent.value?.traceId) {
+        return completionFlowEvent.value.traceId;
+    }
+    const apiLogs = props.detail?.merchantApiInteractionLogs || [];
+    const focusedLog = props.focusTransactionId
+        ? [...apiLogs].reverse().find((item) => item.transactionId === props.focusTransactionId && item.traceId)
+        : undefined;
+    return focusedLog?.traceId || [...apiLogs].reverse().find((item) => item.traceId)?.traceId;
+});
+
+function auditText(value: unknown): string {
+    return value === undefined || value === null || value === '' ? '-' : String(value);
+}
+
 const capabilityRecord = computed(() => focusedOperation.value || props.detail?.order);
 
 const summaryRecord = computed(() => focusedOperation.value || props.detail?.order);
@@ -474,26 +569,21 @@ onMounted(loadDictionaries);
 watch(locale, loadDictionaries);
 
 async function loadDictionaries() {
-    typeOptions.value = fallbackTransactionTypeOptions(t);
-    statusOptions.value = fallbackTransactionStatusOptions(t);
-    channelMatchStatusOptions.value = fallbackChannelMatchStatusOptions();
+    typeOptions.value = [];
+    statusOptions.value = [];
+    channelMatchStatusOptions.value = [];
     try {
         const [types, statuses, channelMatches] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types.length ? types : typeOptions.value;
-        statusOptions.value = statuses.length ? statuses : statusOptions.value;
-        channelMatchStatusOptions.value = channelMatches.length ? channelMatches : channelMatchStatusOptions.value;
+        typeOptions.value = types;
+        statusOptions.value = statuses;
+        channelMatchStatusOptions.value = channelMatches;
     } catch (error) {
-        console.warn('[admin-system] Failed to load transaction dictionaries, fallback options are used.', error);
+        console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
     }
-}
-
-function fallbackChannelMatchStatusOptions(): TransactionDictOption[] {
-    return ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED']
-        .map((value) => ({ label: t(`transaction.statusOption.${value}`, value), value }));
 }
 
 function paymentText(paymentMethod?: string, paymentBrand?: string) {

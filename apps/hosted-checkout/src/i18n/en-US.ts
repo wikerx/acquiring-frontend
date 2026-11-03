@@ -34,6 +34,7 @@ export default {
     country: 'Country',
     selectCountry: 'Select country',
     countryFallback: 'Country list is temporarily unavailable. Please try again later.',
+    countryRetry: 'Reload',
     state: 'State / Province',
     city: 'City',
     postal: 'Postal Code',
@@ -94,6 +95,7 @@ export default {
     failureReason: 'Failure Reason',
     failureReasonValue: 'Issuer declined',
     failureReasons: {
+      F1000: 'The transaction was declined. Please contact your card issuer or try a different payment method.',
       PAYMENT_TIMEOUT: 'The payment deadline has passed and this link can no longer be used',
       RISK_REJECTED: 'The transaction did not pass security checks',
       ROUTE_FAILED: 'No payment route is currently available',

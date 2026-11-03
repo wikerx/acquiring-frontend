@@ -141,7 +141,7 @@ async function loadData() {
     try {
         rows.value = await listShardingRules();
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] sharding rule request failed', error instanceof Error ? error.name : 'UnknownError');
         rows.value = [];
         ElMessage.error(t('common.loadFailed'));
     } finally {
@@ -172,7 +172,7 @@ async function openDetail(row: ShardingRuleRow) {
         };
         detailVisible.value = true;
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] sharding rule request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(t('common.loadFailed'));
     }
 }

@@ -86,6 +86,8 @@ export interface ExchangeBusinessRate {
 
 export interface ExchangeRateUsageSnapshot {
     id: number;
+    usageEventId?: string;
+    producerService?: string;
     rateType: string;
     usageScene: string;
     businessType: string;
@@ -96,6 +98,9 @@ export interface ExchangeRateUsageSnapshot {
     businessRateId?: number;
     rawRateId?: number;
     ruleId?: number;
+    rateSource?: string;
+    sourceQuoteDirection?: string;
+    rateEffectiveTime?: string;
     calculationDescription?: string;
     appliedTime: string;
     createTime?: string;
@@ -165,6 +170,161 @@ export interface UsageSnapshotQuery extends PageQuery {
     quoteCurrency?: string;
     appliedStartTime?: string;
     appliedEndTime?: string;
+}
+
+export type ExchangeRateVolatilityType = 'TRANSACTION_RATE' | 'SETTLEMENT_RATE';
+
+export interface ExchangeCurrencyPair {
+    baseCurrency: string;
+    quoteCurrency: string;
+}
+
+export interface ExchangeRateVolatilityQuery {
+    rateType: ExchangeRateVolatilityType;
+    currencyPairs: ExchangeCurrencyPair[];
+    startTime: string;
+    endTime: string;
+}
+
+export interface ExchangeRateVolatilityOverview {
+    rateType: ExchangeRateVolatilityType;
+    baseCurrency: string;
+    quoteCurrency: string;
+    latestRate: string;
+    minimumRate: string;
+    maximumRate: string;
+    volatilityRate: string;
+    sampleCount: number;
+    latestEffectiveTime: string;
+    alertStatus?: string;
+}
+
+export interface ExchangeRateTrendPoint {
+    businessRateId: number;
+    rate: string;
+    sourceCode: string;
+    rawRateId?: number;
+    ruleId?: number;
+    effectiveTime: string;
+    expireTime?: string;
+}
+
+export interface ExchangeRateTrendSeries {
+    rateType: ExchangeRateVolatilityType;
+    baseCurrency: string;
+    quoteCurrency: string;
+    points: ExchangeRateTrendPoint[];
+}
+
+export interface ExchangeRateAlertRule {
+    id: number;
+    ruleCode: string;
+    ruleName: string;
+    rateType: ExchangeRateVolatilityType;
+    baseCurrency: string;
+    quoteCurrency: string;
+    windowMinutes: number;
+    triggerThreshold: string;
+    recoveryThreshold: string;
+    recoveryConsecutiveCount: number;
+    minimumSampleCount: number;
+    alertLevel: string;
+    systemMandatory: number;
+    ruleStatus: number;
+    remark?: string;
+    createBy?: string;
+    createTime?: string;
+    updateBy?: string;
+    updateTime?: string;
+}
+
+export interface ExchangeRateAlertRuleQuery extends PageQuery {
+    keyword?: string;
+    rateType?: string;
+    baseCurrency?: string;
+    quoteCurrency?: string;
+    ruleStatus?: number;
+    systemMandatory?: number;
+}
+
+export interface ExchangeRateAlertRuleSaveRequest {
+    ruleName: string;
+    rateType: ExchangeRateVolatilityType;
+    baseCurrency: string;
+    quoteCurrency: string;
+    windowMinutes: number;
+    triggerThreshold: string;
+    recoveryThreshold: string;
+    recoveryConsecutiveCount: number;
+    minimumSampleCount: number;
+    alertLevel: string;
+    remark?: string;
+}
+
+export interface ExchangeRateAlertRuleImportError {
+    rowNumber: number;
+    message: string;
+}
+
+export interface ExchangeRateAlertRuleImportResult {
+    totalCount: number;
+    successCount: number;
+    failureCount: number;
+    errors: ExchangeRateAlertRuleImportError[];
+}
+
+export interface ExchangeRateAlertEvent {
+    id: number;
+    eventNo: string;
+    ruleId: number;
+    ruleCode: string;
+    ruleName: string;
+    rateType: ExchangeRateVolatilityType;
+    baseCurrency: string;
+    quoteCurrency: string;
+    alertLevel: string;
+    windowMinutes: number;
+    triggerThreshold: string;
+    recoveryThreshold: string;
+    windowStartTime: string;
+    windowEndTime: string;
+    sampleCount: number;
+    minimumRate: string;
+    minimumRateSource: string;
+    minimumBusinessRateId?: number;
+    maximumRate: string;
+    maximumRateSource: string;
+    maximumBusinessRateId?: number;
+    latestRate: string;
+    latestRateSource: string;
+    latestBusinessRateId?: number;
+    volatilityRate: string;
+    maximumVolatilityRate: string;
+    recoveryStreak: number;
+    eventStatus: string;
+    firstTriggerTime: string;
+    lastDetectedTime?: string;
+    resolvedTime?: string;
+    acknowledgedBy?: string;
+    acknowledgedTime?: string;
+    acknowledgeRemark?: string;
+    closedBy?: string;
+    closedTime?: string;
+    closeRemark?: string;
+    version: number;
+    createTime?: string;
+    updateTime?: string;
+}
+
+export interface ExchangeRateAlertEventQuery extends PageQuery {
+    eventNo?: string;
+    rateType?: string;
+    baseCurrency?: string;
+    quoteCurrency?: string;
+    eventStatus?: string;
+    acknowledgedBy?: string;
+    triggerStartTime?: string;
+    triggerEndTime?: string;
 }
 
 export async function searchExchangeSources(data: SourceQuery) {
@@ -300,4 +460,84 @@ export async function exportExchangeUsageSnapshots(data: UsageSnapshotQuery) {
 export async function getExchangeUsageSnapshot(id: number) {
     const result = await http.get<CommonResult<ExchangeRateUsageSnapshot>>(`/admin/exchange/usage-snapshots/${id}`);
     return unwrapResult(result.data);
+}
+
+export async function getExchangeRateVolatilityOverview(data: ExchangeRateVolatilityQuery) {
+    const result = await http.post<CommonResult<ExchangeRateVolatilityOverview[]>>('/admin/exchange/volatility/overview', data);
+    return unwrapResult(result.data);
+}
+
+export async function getExchangeRateVolatilityTrend(data: ExchangeRateVolatilityQuery) {
+    const result = await http.post<CommonResult<ExchangeRateTrendSeries[]>>('/admin/exchange/volatility/trend', data);
+    return unwrapResult(result.data);
+}
+
+export async function exportExchangeRateVolatility(data: ExchangeRateVolatilityQuery) {
+    await downloadExcel('/admin/exchange/volatility/export', { method: 'post', data });
+}
+
+export async function searchExchangeRateAlertRules(data: ExchangeRateAlertRuleQuery) {
+    const result = await http.post<CommonResult<PageResult<ExchangeRateAlertRule>>>('/admin/exchange/alert-rules/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getExchangeRateAlertRule(id: number) {
+    const result = await http.get<CommonResult<ExchangeRateAlertRule>>(`/admin/exchange/alert-rules/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function createExchangeRateAlertRule(data: ExchangeRateAlertRuleSaveRequest) {
+    const result = await http.post<CommonResult<ExchangeRateAlertRule>>('/admin/exchange/alert-rules', data);
+    return unwrapResult(result.data);
+}
+
+export async function updateExchangeRateAlertRule(id: number, data: ExchangeRateAlertRuleSaveRequest) {
+    const result = await http.put<CommonResult<ExchangeRateAlertRule>>(`/admin/exchange/alert-rules/${id}`, data);
+    return unwrapResult(result.data);
+}
+
+export async function deleteExchangeRateAlertRule(id: number) {
+    const result = await http.delete<CommonResult<void>>(`/admin/exchange/alert-rules/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function updateExchangeRateAlertRuleStatus(id: number, enabled: boolean) {
+    const action = enabled ? 'enable' : 'disable';
+    const result = await http.put<CommonResult<ExchangeRateAlertRule>>(`/admin/exchange/alert-rules/${id}/${action}`);
+    return unwrapResult(result.data);
+}
+
+export async function importExchangeRateAlertRules(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await http.post<CommonResult<ExchangeRateAlertRuleImportResult>>('/admin/exchange/alert-rules/import', formData);
+    return unwrapResult(result.data);
+}
+
+export async function exportExchangeRateAlertRules(data: ExchangeRateAlertRuleQuery) {
+    await downloadExcel('/admin/exchange/alert-rules/export', { method: 'post', data });
+}
+
+export async function searchExchangeRateAlertEvents(data: ExchangeRateAlertEventQuery) {
+    const result = await http.post<CommonResult<PageResult<ExchangeRateAlertEvent>>>('/admin/exchange/alert-events/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getExchangeRateAlertEvent(id: number) {
+    const result = await http.get<CommonResult<ExchangeRateAlertEvent>>(`/admin/exchange/alert-events/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function acknowledgeExchangeRateAlertEvent(id: number, version: number, remark: string) {
+    const result = await http.put<CommonResult<ExchangeRateAlertEvent>>(`/admin/exchange/alert-events/${id}/acknowledge`, { version, remark });
+    return unwrapResult(result.data);
+}
+
+export async function closeExchangeRateAlertEvent(id: number, version: number, remark: string) {
+    const result = await http.put<CommonResult<ExchangeRateAlertEvent>>(`/admin/exchange/alert-events/${id}/close`, { version, remark });
+    return unwrapResult(result.data);
+}
+
+export async function exportExchangeRateAlertEvents(data: ExchangeRateAlertEventQuery) {
+    await downloadExcel('/admin/exchange/alert-events/export', { method: 'post', data });
 }

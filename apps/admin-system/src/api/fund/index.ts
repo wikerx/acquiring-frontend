@@ -1,8 +1,10 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
-import type { DecimalValue } from '@/api/fee';
 import { downloadExcel } from '@/utils/download';
+
+/** 资金接口的金额响应和请求均使用十进制字符串，禁止降级为 JavaScript number。 */
+export type FundDecimalValue = string;
 
 export interface FundAccountQuery extends PageQuery {
     keyword?: string;
@@ -24,7 +26,7 @@ export interface FundDetailQuery extends PageQuery {
 
 export interface CurrencyBalance {
     currency: string;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
 }
 
 export interface FundAccount {
@@ -33,7 +35,7 @@ export interface FundAccount {
     merchantId: string;
     merchantName?: string | null;
     settlementCurrency: string;
-    availableBalance: DecimalValue;
+    availableBalance: FundDecimalValue;
     pendingBalances: CurrencyBalance[];
     reserveBalances: CurrencyBalance[];
     accountStatus: string;
@@ -64,9 +66,9 @@ export interface FundLedger {
     feeDetailNo?: string | null;
     currency: string;
     direction: string;
-    amount: DecimalValue;
-    balanceBefore: DecimalValue;
-    balanceAfter: DecimalValue;
+    amount: FundDecimalValue;
+    balanceBefore: FundDecimalValue;
+    balanceAfter: FundDecimalValue;
     accountSequence: number;
     feeVersionId?: number | null;
     rateSnapshotId?: number | null;
@@ -101,7 +103,7 @@ export interface FundRecharge {
     merchantId: string;
     merchantName?: string | null;
     currency: string;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
     rechargeStatus: string;
     remark: string;
     submitById?: number | null;
@@ -128,7 +130,7 @@ export interface FundRecharge {
 
 export interface FundRechargeCreateRequest {
     accountId: number;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
     requestId: string;
     remark: string;
 }
@@ -148,7 +150,7 @@ export interface FundDeduction {
     merchantId: string;
     merchantName?: string | null;
     currency: string;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
     deductionCategory: string;
     deductionStatus: string;
     reason: string;
@@ -177,7 +179,7 @@ export interface FundDeduction {
 export interface FundDeductionCreateRequest {
     accountId: number;
     deductionCategory: string;
-    amount: DecimalValue;
+    amount: FundDecimalValue;
     requestId: string;
     reason: string;
 }

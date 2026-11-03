@@ -509,10 +509,6 @@ function dedupeOptions(options: SelectOption[]) {
     });
 }
 
-function selectedPaymentMethods() {
-    return isCreateMode.value ? form.paymentMethods : [form.paymentMethod];
-}
-
 function normalizeScopeSelection(values: string[], allowedValues: string[]) {
     const normalized = Array.from(new Set((values || []).filter(Boolean)));
     if (!normalized.length) {

@@ -280,10 +280,10 @@ const mfaBindInfo = ref<AuthMfaBindInfoResponse | null>(null);
 const qrCodeDataUrl = ref('');
 const devLoginAssistEnabled = import.meta.env.DEV && import.meta.env.VITE_ADMIN_DEV_LOGIN_ASSIST !== 'false';
 const devLoginAccount = devLoginAssistEnabled
-    ? String(import.meta.env.VITE_ADMIN_DEV_LOGIN_ACCOUNT || 'admin')
+    ? String(import.meta.env.VITE_ADMIN_DEV_LOGIN_ACCOUNT || '')
     : '';
 const devLoginPassword = devLoginAssistEnabled
-    ? String(import.meta.env.VITE_ADMIN_DEV_LOGIN_PASSWORD || 'Admin@123456')
+    ? String(import.meta.env.VITE_ADMIN_DEV_LOGIN_PASSWORD || '')
     : '';
 
 const form = reactive({

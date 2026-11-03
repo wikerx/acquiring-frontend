@@ -24,7 +24,7 @@ import { useId } from 'vue';
 import TableColumnSettings from '@/components/StandardTable/TableColumnSettings.vue';
 import { useToolbarStandardTable } from '@/components/StandardTable/standardTableRegistry';
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
     showSearch?: boolean;
     showRefresh?: boolean;
 }>(), {

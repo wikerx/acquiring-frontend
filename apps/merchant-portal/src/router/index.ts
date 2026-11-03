@@ -53,7 +53,7 @@ const dynamicRouteRemovers: Array<() => void> = [];
 
 async function refreshCurrentUserIfNeeded() {
     const auth = useAuthStore();
-    if (!auth.session || auth.hydrated) {
+    if (auth.hydrated) {
         return;
     }
     try {
@@ -66,7 +66,7 @@ async function refreshCurrentUserIfNeeded() {
             return;
         }
         auth.markHydrated();
-        syncDynamicRoutes(auth.session?.menus || []);
+        syncDynamicRoutes([]);
     }
 }
 
@@ -96,7 +96,7 @@ router.beforeEach(async (to) => {
         }
     }
     if (!isPublicPath && !auth.session) {
-        return '/login';
+        return { path: '/login', query: { redirect: to.fullPath } };
     }
     if (to.path === '/' && auth.session) {
         return firstAvailableMenuPath(auth.session.menus || []);

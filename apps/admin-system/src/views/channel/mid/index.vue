@@ -699,7 +699,7 @@ function applyMetadataDefaults() {
 }
 
 function handleCountryAllChange(value: string | number | boolean) {
-    if (Boolean(value)) {
+    if (value) {
         form.countryCodes = [];
     }
 }
@@ -970,23 +970,6 @@ function parseSettlementDays(value?: string) {
     const text = String(value || 'T+1').toUpperCase().replace(/\s/g, '');
     const match = text.match(/^T\+?(\d+)$/);
     return match ? Number(match[1]) : 1;
-}
-
-function paymentScopeText(row: Pick<ChannelMidConfig, 'businessType' | 'paymentMethodScope' | 'cardBrandScope'>) {
-    const paymentMethods = splitScope(row.paymentMethodScope);
-    if (!paymentMethods.length) {
-        return '-';
-    }
-    return paymentMethods.map((method) => {
-        if (method !== 'BANK_CARD') {
-            return optionLabel(paymentOptionsFor(row.businessType), method);
-        }
-        const brands = splitScope(row.cardBrandScope).filter((brand) => brand !== 'NONE');
-        const brandText = brands.length
-            ? brands.map((brand) => optionLabel(cardBrandOptions.value, brand)).join(', ')
-            : t('channel.mid.allScope');
-        return `${optionLabel(paymentOptionsFor(row.businessType), method)} / ${brandText}`;
-    }).join('；');
 }
 
 function transactionScopeItems(businessType: string | undefined, scope?: string) {

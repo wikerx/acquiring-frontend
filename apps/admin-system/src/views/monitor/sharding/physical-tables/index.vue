@@ -218,7 +218,7 @@ async function loadData() {
         rows.value = result.records;
         total.value = result.total;
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] physical table request failed', error instanceof Error ? error.name : 'UnknownError');
         rows.value = [];
         total.value = 0;
         ElMessage.error(t('common.loadFailed'));
@@ -258,7 +258,7 @@ async function openDetail(row: ShardingPhysicalTableRow) {
         } as unknown as Record<string, unknown>;
         detailVisible.value = true;
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] physical table request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(t('common.loadFailed'));
     }
 }

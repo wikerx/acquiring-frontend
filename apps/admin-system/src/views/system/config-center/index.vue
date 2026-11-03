@@ -76,7 +76,13 @@ watch([activeTab, page, pageSize], () => { selectedRows.value = []; loadData(); 
 onMounted(() => loadData());
 
 async function loadData() { loading.value = true; try { const r = activeTab.value === 'dict' ? await searchDictTypes({ pageNo: page.value, pageSize: pageSize.value, dictName: kw(), status: ns() }) : await searchConfigs({ pageNo: page.value, pageSize: pageSize.value, configName: kw(), status: ns() }); rows.value = r.records.map((i: unknown) => nr(i as Record<string, unknown>)); total.value = r.total; } catch (e) { rows.value = []; total.value = 0; ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } finally { loading.value = false; } }
-function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
+function handleQuery() {
+    if (page.value === 1) {
+        loadData();
+    } else {
+        page.value = 1;
+    }
+}
 function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
 function openDetail(row: Record<string, unknown>) { activeRow.value = row; detailVisible.value = true; }
 function kw() { return String(query.keyword || '').trim() || undefined; }

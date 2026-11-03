@@ -17,7 +17,7 @@
             v-else
             class="external-frame"
             :src="frameUrl"
-            sandbox="allow-forms allow-scripts allow-same-origin"
+            sandbox="allow-forms allow-scripts"
             referrerpolicy="no-referrer"
             @load="handleLoad"
             @error="handleError"

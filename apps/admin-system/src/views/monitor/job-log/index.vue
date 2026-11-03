@@ -194,7 +194,7 @@ async function loadData() {
         rows.value = result.records;
         total.value = result.total;
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] job log request failed', error instanceof Error ? error.name : 'UnknownError');
         rows.value = [];
         total.value = 0;
         ElMessage.error(t('common.loadFailed'));

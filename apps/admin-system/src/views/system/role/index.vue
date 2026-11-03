@@ -190,7 +190,13 @@ watch([page, pageSize], () => { loadData(); });
 onMounted(() => { loadData(); });
 
 async function loadData() { loading.value = true; try { const r = await searchRoles({ pageNo: page.value, pageSize: pageSize.value, roleCode: tv(query.roleCode), roleName: tv(query.roleName), status: ns() }); rows.value = r.records.map(nr); total.value = r.total; } catch (e) { rows.value = []; total.value = 0; ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); } finally { loading.value = false; } }
-function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
+function handleQuery() {
+    if (page.value === 1) {
+        loadData();
+    } else {
+        page.value = 1;
+    }
+}
 function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
 function handleSelectionChange(s: RoleRow[]) { selectedRows.value = s; }
 async function handleAdd() { formMode.value = 'create'; activeRow.value = null; Object.assign(roleForm, { roleId: undefined, roleCode: '', roleName: '', dataScope: 'SELF', description: '', status: 1, sortNo: 100 }); authTreeData.value = []; authSelectAllChecked.value = false; authCheckStrictly.value = true; authAllExpanded.value = true; roleDialogVisible.value = true; nextTick(() => roleFormRef.value?.clearValidate()); if (!canAssignRolePermissions.value) return; try { const grant = await getRoleGrantTreeTemplate(); authTreeData.value = buildAuthTree(grant.menus || [], grant.permissions || []); await nextTick(); syncAuthSelectAll(); } catch { /* empty tree */ } }

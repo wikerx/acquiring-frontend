@@ -35,7 +35,11 @@
                 <strong>{{ t('trustbar.ssl') }}</strong>
                 <span>{{ t('trustbar.sslDesc') }}</span>
             </div>
-            <div class="checkout-trustbar__item checkout-trustbar__item--cards" :aria-label="t('trustbar.cards')">
+            <div
+                v-if="trustbarLogoKeys.length > 0"
+                class="checkout-trustbar__item checkout-trustbar__item--cards"
+                :aria-label="t('trustbar.cards')"
+            >
                 <PaymentLogoGroup :keys="trustbarLogoKeys" size="sm" align="start" />
             </div>
             <div v-if="session?.merchant?.displayName" class="checkout-trustbar__item checkout-trustbar__item--merchant">
@@ -188,8 +192,11 @@
                                         </button>
                                     </div>
                                 </div>
-                                <small v-if="countryLoadFailed" class="checkout-field__hint checkout-field__hint--full">
-                                    {{ t('checkout.countryFallback') }}
+                                <small v-if="countryLoadFailed" class="checkout-field__hint checkout-field__hint--full checkout-field__hint--retry">
+                                    <span>{{ t('checkout.countryFallback') }}</span>
+                                    <button type="button" :disabled="countryLoading" @click="loadCountries">
+                                        {{ t('checkout.countryRetry') }}
+                                    </button>
                                 </small>
                                 <small v-if="fieldErrors.country" class="checkout-field__hint checkout-field__hint--error">
                                     {{ fieldErrorText(fieldErrors.country) }}
@@ -360,6 +367,7 @@
                 <p class="checkout-status-description">{{ t('checkout.threeDsDescription') }}</p>
                 <iframe
                     v-if="threeDsHtml"
+                    ref="threeDsFrame"
                     :key="threeDsFrameKey"
                     :class="['checkout-three-ds-frame', { 'checkout-three-ds-frame--method': threeDsPhase === 'INITIALIZE' }]"
                     :srcdoc="threeDsHtml"
@@ -505,7 +513,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { PaymentLogoGroup, getSystemBrand, type PaymentLogoKey } from '@acquiring/shared';
+import { PaymentLogoGroup, formatDecimalAmount, getSystemBrand, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { setLocale } from './i18n';
 import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkoutConfig';
@@ -606,10 +614,6 @@ const LANGUAGE_FLAG_ASSETS: Record<CheckoutLocale, { src: string; alt: string }>
         alt: '中文',
     },
 };
-const COUNTRY_FLAG_ASSETS: Record<string, string> = {
-    USA: new URL('./assets/flags/us.svg', import.meta.url).href,
-    CHN: new URL('./assets/flags/cn.svg', import.meta.url).href,
-};
 const POLLING_MAX_ATTEMPTS = 30;
 const THREE_DS_RECOVERY_WAIT_SECONDS = 660;
 const THREE_DS_METHOD_WAIT_MS = 10_000;
@@ -637,6 +641,7 @@ const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     UNIONPAY: 'unionPay',
 };
 const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
+    F1000: 'status.failureReasons.F1000',
     PAYMENT_TIMEOUT: 'status.failureReasons.PAYMENT_TIMEOUT',
     RISK_REJECTED: 'status.failureReasons.RISK_REJECTED',
     ROUTE_FAILED: 'status.failureReasons.ROUTE_FAILED',
@@ -674,6 +679,8 @@ const countryOptions = ref<CheckoutCountryConfig[]>([]);
 const selectedCountryCode = ref(readStoredValue(COUNTRY_KEY));
 const countryDropdownOpen = ref(false);
 const countryLoadFailed = ref(false);
+const countryLoading = ref(false);
+const threeDsFrame = ref<HTMLIFrameElement | null>(null);
 const manualLanguageSelected = ref(readStoredValue(MANUAL_LOCALE_KEY) === 'true');
 const submitting = ref(false);
 const formMessageKey = ref('');
@@ -1012,13 +1019,20 @@ function writeStoredValue(key: string, value: string) {
 }
 
 async function loadCountries() {
+    countryLoading.value = true;
     try {
         const countries = await listCheckoutCountries();
+        if (countries.length === 0) {
+            throw new Error('checkout country configuration is empty');
+        }
         countryOptions.value = countries;
         countryLoadFailed.value = false;
     } catch {
         countryLoadFailed.value = true;
-        countryOptions.value = fallbackCountries();
+        countryOptions.value = [];
+        selectedCountryCode.value = '';
+    } finally {
+        countryLoading.value = false;
     }
     if (!countryOptions.value.some((country) => country.countryCode === selectedCountryCode.value)) {
         selectedCountryCode.value = countryOptions.value[0]?.countryCode || '';
@@ -1238,6 +1252,9 @@ async function refreshPaymentStatus() {
 }
 
 async function handleThreeDsReturnMessage(event: MessageEvent) {
+    if (!threeDsFrame.value || event.source !== threeDsFrame.value.contentWindow) {
+        return;
+    }
     const payload = normalizeThreeDsReturnMessage(event.data);
     if (!payload || !matchesActiveThreeDsAttempt(payload)) {
         return;
@@ -1353,6 +1370,16 @@ function clearThreeDsContinuation() {
     threeDsContinuation.value = null;
 }
 
+/**
+ * 清除支付尝试结束后不再需要的卡号、有效期和安全码。
+ */
+function clearSensitiveCardData() {
+    cardForm.cardNumber = '';
+    cardForm.expiry = '';
+    cardForm.cvc = '';
+    resetCardBinResolution();
+}
+
 function normalizeThreeDsReturnMessage(data: unknown): ThreeDsReturnMessage | null {
     if (!data || typeof data !== 'object') {
         return null;
@@ -1396,6 +1423,7 @@ function applyPageState(pageState?: string) {
         clearPaymentDeadline();
         clearPolling();
         clearThreeDsContinuation();
+        clearSensitiveCardData();
         runtimeState.value = 'success';
         startMerchantRedirectCountdown();
         return;
@@ -1403,6 +1431,7 @@ function applyPageState(pageState?: string) {
     if (state === 'FAILED_RETRYABLE' || state === 'FAILED_FINAL' || state === 'EXPIRED' || state === 'CANCELLED') {
         clearPolling();
         clearThreeDsContinuation();
+        clearSensitiveCardData();
         runtimeState.value = 'failed';
         startMerchantRedirectCountdown();
         return;
@@ -1417,6 +1446,7 @@ function applyPageState(pageState?: string) {
             return;
         }
         clearThreeDsContinuation();
+        clearSensitiveCardData();
         runtimeState.value = 'processing';
         if (!pollTimer.value) {
             startPolling(Math.ceil(THREE_DS_RECOVERY_WAIT_SECONDS / Math.max(1, pollingIntervalSeconds.value)));
@@ -1426,6 +1456,7 @@ function applyPageState(pageState?: string) {
     if (state === 'PROCESSING') {
         clearMerchantRedirect();
         clearThreeDsContinuation();
+        clearSensitiveCardData();
         runtimeState.value = 'processing';
         if (!pollTimer.value) {
             startPolling();
@@ -2006,18 +2037,22 @@ function parseOrderItems(itemsJson?: string) {
 }
 
 function formatMoney(amount?: number | string, currency = 'USD'): string {
-    const numericAmount = Number(amount ?? 0);
-    if (!Number.isFinite(numericAmount)) {
-        return `${currency} ${amount || '0.00'}`;
-    }
+    const amountText = String(amount ?? '0');
     try {
-        return new Intl.NumberFormat(language.value, {
+        const formatter = new Intl.NumberFormat(language.value, {
             style: 'currency',
             currency,
             currencyDisplay: 'code',
-        }).format(numericAmount);
+        });
+        const options = formatter.resolvedOptions();
+        return `${currency} ${formatDecimalAmount(
+            amountText,
+            language.value,
+            options.minimumFractionDigits,
+            options.maximumFractionDigits,
+        )}`;
     } catch {
-        return `${currency} ${numericAmount.toFixed(2)}`;
+        return `${currency} ${formatDecimalAmount(amountText, language.value, 2, 8)}`;
     }
 }
 
@@ -2198,29 +2233,6 @@ function submitMerchantReturnForm() {
     form.submit();
 }
 
-function fallbackCountries(): CheckoutCountryConfig[] {
-    return [
-        {
-            countryCode: 'USA',
-            countryName: 'United States',
-            countryNameLocal: 'United States',
-            flagIconUrl: COUNTRY_FLAG_ASSETS.USA,
-            defaultLanguage: 'en-US',
-            supportedLanguages: ['en-US'],
-            sortNo: 1,
-        },
-        {
-            countryCode: 'CHN',
-            countryName: 'China',
-            countryNameLocal: '中国',
-            flagIconUrl: COUNTRY_FLAG_ASSETS.CHN,
-            defaultLanguage: 'zh-CN',
-            supportedLanguages: ['zh-CN', 'en-US'],
-            sortNo: 2,
-        },
-    ];
-}
-
 function mockSession(token = 'dev-token'): HostedCheckoutSession {
     return {
         checkoutSessionId: token === 'dev-unpaid' ? 'CSDEVUNPAID202607270001' : 'CSDEV202607270001',
@@ -2319,7 +2331,7 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
                 transactionType: 'PAYMENT',
                 transactionStatus: 'SUCCESS',
                 transactionDateTime,
-                code: 'T200',
+                code: 'T0000',
                 message: 'Success',
             },
         } : undefined,
@@ -2342,7 +2354,7 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             transactionDateTime: new Date().toISOString(),
         },
         failure: {
-            reasonCode: 'ISSUER_DECLINED',
+            reasonCode: 'F1000',
             message: t('status.failedHelpDesc'),
             retryAllowed: true,
         },

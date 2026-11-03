@@ -20,10 +20,11 @@ const presentationMap = shallowRef(new Map<string, CurrencyPresentation>());
 
 const DEFAULT_ICON_KEYS: Record<string, string> = {
     AED: 'flag:AE', AUD: 'flag:AU', BRL: 'flag:BR', CAD: 'flag:CA', CHF: 'flag:CH',
-    CNY: 'flag:CN', EUR: 'flag:EU', GBP: 'flag:GB', HKD: 'flag:HK', IDR: 'flag:ID',
+    CNY: 'flag:CN', DKK: 'flag:DK', EUR: 'flag:EU', GBP: 'flag:GB', HKD: 'flag:HK', IDR: 'flag:ID',
     INR: 'flag:IN', JPY: 'flag:JP', KRW: 'flag:KR', MXN: 'flag:MX', MYR: 'flag:MY',
-    NZD: 'flag:NZ', PHP: 'flag:PH', RUB: 'flag:RU', SAR: 'flag:SA', SGD: 'flag:SG',
-    THB: 'flag:TH', TRY: 'flag:TR', TWD: 'flag:TW', USD: 'flag:US', VND: 'flag:VN',
+    MOP: 'flag:MO', NOK: 'flag:NO', NZD: 'flag:NZ', PHP: 'flag:PH', RUB: 'flag:RU',
+    SAR: 'flag:SA', SEK: 'flag:SE', SGD: 'flag:SG', THB: 'flag:TH', TRY: 'flag:TR',
+    TWD: 'flag:TW', USD: 'flag:US', VND: 'flag:VN',
     XAF: 'currency:XAF', XAG: 'currency:XAG', XAU: 'currency:XAU', XCD: 'currency:XCD',
     XOF: 'currency:XOF', XPD: 'currency:XPD', XPT: 'currency:XPT', XXX: 'currency:XXX',
     ZAR: 'flag:ZA',

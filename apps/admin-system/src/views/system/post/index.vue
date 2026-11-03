@@ -56,7 +56,7 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchPosts, createPost, updatePost, deletePost, exportPosts, type SysPost } from '@/api/system/post';
 
 const { t } = useI18n();
-interface PostRow extends SysPost { }
+type PostRow = SysPost;
 const showSearch = ref(true); const query = reactive<Record<string, unknown>>({}); const queryFormRef = ref<FormInstance>();
 const loading = ref(false); const rows = ref<PostRow[]>([]); const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const selectedRows = ref<PostRow[]>([]); const open = ref(false);
@@ -69,7 +69,13 @@ watch([page, pageSize], () => loadData());
 onMounted(() => loadData());
 
 async function loadData() { loading.value = true; try { const r = await searchPosts({ pageNo: page.value, pageSize: pageSize.value, postCode: sv(query.postCode), postName: sv(query.postName), status: nv(query.status) }); rows.value = r.records; total.value = r.total; } catch { rows.value = []; total.value = 0; } finally { loading.value = false; } }
-function handleQuery() { page.value === 1 ? loadData() : (page.value = 1); }
+function handleQuery() {
+    if (page.value === 1) {
+        loadData();
+    } else {
+        page.value = 1;
+    }
+}
 function resetQuery() { Object.keys(query).forEach(k => query[k] = ''); handleQuery(); }
 function handleSelectionChange(s: PostRow[]) { selectedRows.value = s; }
 function handleAdd() { formMode.value = 'create'; Object.assign(form, { id: undefined, postCode: '', postName: '', sortNo: 100, status: 1, remark: '' }); open.value = true; nextTick(() => formRef.value?.clearValidate()); }

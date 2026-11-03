@@ -854,12 +854,18 @@ async function submitForm() {
   try {
     if (profile.value.showRegion) {
       const payload = buildRegionPayload();
-      editingId.value ? await updateRiskRegion(editingId.value, payload) : await createRiskRegion(payload);
+      if (editingId.value) {
+        await updateRiskRegion(editingId.value, payload);
+      } else {
+        await createRiskRegion(payload);
+      }
     } else {
       const payload = buildListPayload();
-      editingId.value
-        ? await updateRiskList(current.value.moduleType, current.value.functionCode, editingId.value, payload)
-        : await createRiskList(current.value.moduleType, current.value.functionCode, payload);
+      if (editingId.value) {
+        await updateRiskList(current.value.moduleType, current.value.functionCode, editingId.value, payload);
+      } else {
+        await createRiskList(current.value.moduleType, current.value.functionCode, payload);
+      }
     }
     ElMessage.success(t('common.saveSuccess'));
     formOpen.value = false;
@@ -992,7 +998,11 @@ function isStatusUpdating(id?: number) {
 function setStatusUpdating(id: number | undefined, loading: boolean) {
   if (!id) return;
   const next = new Set(statusUpdatingIds.value);
-  loading ? next.add(id) : next.delete(id);
+  if (loading) {
+    next.add(id);
+  } else {
+    next.delete(id);
+  }
   statusUpdatingIds.value = next;
 }
 
@@ -1525,7 +1535,11 @@ function toggleContinent(group: CountryGroup | undefined, checked: boolean) {
   const selected = new Set(regionSelectedCountries.value);
   group.countries.forEach((item) => {
     const code = String(item.value);
-    checked ? selected.add(code) : selected.delete(code);
+    if (checked) {
+      selected.add(code);
+    } else {
+      selected.delete(code);
+    }
   });
   regionSelectedCountries.value = Array.from(selected);
   syncRegionCountrySelection();
@@ -1533,7 +1547,11 @@ function toggleContinent(group: CountryGroup | undefined, checked: boolean) {
 
 function toggleRegionCountry(value: string, checked: boolean) {
   const selected = new Set(regionSelectedCountries.value);
-  checked ? selected.add(value) : selected.delete(value);
+  if (checked) {
+    selected.add(value);
+  } else {
+    selected.delete(value);
+  }
   regionSelectedCountries.value = Array.from(selected);
   syncRegionCountrySelection();
 }
@@ -1571,7 +1589,11 @@ function toggleCountryListContinent(group: CountryGroup | undefined, checked: bo
   const selected = new Set(countryListSelectedCountries.value);
   group.countries.forEach((item) => {
     const code = String(item.value);
-    checked ? selected.add(code) : selected.delete(code);
+    if (checked) {
+      selected.add(code);
+    } else {
+      selected.delete(code);
+    }
   });
   countryListSelectedCountries.value = Array.from(selected);
   syncCountryListSelection();
@@ -1579,7 +1601,11 @@ function toggleCountryListContinent(group: CountryGroup | undefined, checked: bo
 
 function toggleCountryListCountry(value: string, checked: boolean) {
   const selected = new Set(countryListSelectedCountries.value);
-  checked ? selected.add(value) : selected.delete(value);
+  if (checked) {
+    selected.add(value);
+  } else {
+    selected.delete(value);
+  }
   countryListSelectedCountries.value = Array.from(selected);
   syncCountryListSelection();
 }

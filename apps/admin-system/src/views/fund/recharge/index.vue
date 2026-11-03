@@ -172,7 +172,7 @@ import { Checked, CircleCheck, CircleClose, CreditCard, Download, RefreshLeft, S
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { MerchantIdentityDisplay } from '@acquiring/shared';
+import { compareDecimalAmounts, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
 import {
     auditFundRecharge,
     createFundRecharge,
@@ -389,12 +389,13 @@ function openMerchant(merchantId: string) {
 }
 
 function validateRechargeAmount(_rule: unknown, value: string, callback: (error?: Error) => void) {
-    if (!/^\d+(\.\d+)?$/.test(String(value || ''))) {
-        callback(new Error(t('feeAccount.rechargeAmountInvalid')));
-        return;
-    }
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue) || numericValue < 100 || numericValue > 100000000) {
+    const amountText = String(value || '').trim();
+    const normalizedAmount = /^\d+(\.\d+)?$/.test(amountText)
+        ? normalizeDecimalAmount(amountText)
+        : null;
+    if (normalizedAmount === null
+        || compareDecimalAmounts(normalizedAmount, '100') < 0
+        || compareDecimalAmounts(normalizedAmount, '100000000') > 0) {
         callback(new Error(t('feeAccount.rechargeAmountInvalid')));
         return;
     }

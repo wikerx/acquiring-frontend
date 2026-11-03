@@ -255,9 +255,6 @@ import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter
 import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     ensureTransactionTimezoneOptions,
-    fallbackCardBrandOptions,
-    fallbackPaymentMethodOptions,
-    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
     type TransactionDictOption,
 } from '../shared';
@@ -283,10 +280,9 @@ const loading = ref(false);
 const errorMessage = ref('');
 const overview = ref<TransactionAnalyticsOverview>();
 const failureAnalysis = ref<TransactionAnalyticsFailure>();
-const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t)
-    .filter((item) => supportedTransactionTypes.has(item.value)));
-const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
-const paymentBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<TransactionDictOption[]>([]);
+const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const paymentBrandOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const filters = reactive({
     paymentTool: '',
@@ -485,9 +481,9 @@ async function loadFilterOptions() {
         loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
     ]);
     const supportedTypes = types.filter((item) => supportedTransactionTypes.has(item.value));
-    if (supportedTypes.length) transactionTypeOptions.value = supportedTypes;
-    if (methods.length) paymentMethodOptions.value = methods;
-    if (brands.length) paymentBrandOptions.value = brands;
+    transactionTypeOptions.value = supportedTypes;
+    paymentMethodOptions.value = methods;
+    paymentBrandOptions.value = brands;
     timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
 }
 

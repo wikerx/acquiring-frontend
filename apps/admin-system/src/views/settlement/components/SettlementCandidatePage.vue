@@ -263,7 +263,7 @@ import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { fallbackTransactionTypeOptions, loadTransactionDictOptions } from '@/views/transaction/shared';
+import { loadTransactionDictOptions } from '@/views/transaction/shared';
 import { defaultDateRange, moneyTextByExponent, requestKey, statusTagType } from '@/views/settlement/shared';
 
 const props = withDefaults(defineProps<{
@@ -289,7 +289,7 @@ const transactionRange = ref<string[]>([]);
 const expectedReleaseRange = ref<string[]>([]);
 const paymentTypeOptions = ref<SelectOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
+const transactionTypeOptions = ref<SelectOption[]>([]);
 const detailVisible = ref(false);
 const detail = ref<SettlementCandidate | null>(null);
 const submitVisible = ref(false);
@@ -333,9 +333,11 @@ async function loadDictionaries() {
         ]);
         paymentTypeOptions.value = paymentTypes;
         paymentMethodOptions.value = paymentMethods;
-        if (transactionTypes.length) transactionTypeOptions.value = transactionTypes;
+        transactionTypeOptions.value = transactionTypes;
     } catch {
-        transactionTypeOptions.value = fallbackTransactionTypeOptions(t);
+        paymentTypeOptions.value = [];
+        paymentMethodOptions.value = [];
+        transactionTypeOptions.value = [];
     }
 }
 

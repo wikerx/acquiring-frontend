@@ -1,10 +1,63 @@
-export function formatAmount(value: number | string | null | undefined, currency = 'USD') {
-    const amount = Number(value || 0);
-    return new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 2,
-    }).format(amount);
+import { formatDecimalAmount, normalizeDecimalAmount, roundDecimalAmount } from '@acquiring/shared';
+
+const CURRENCY_NUMBER_PARTS = new Set<Intl.NumberFormatPartTypes>([
+    'integer', 'group', 'decimal', 'fraction',
+]);
+
+/**
+ * 返回币种标准小数位；未知币种回退为 2 位，供金额展示使用。
+ */
+export function currencyFractionDigits(currency = 'USD', locale = 'zh-CN') {
+    try {
+        return new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: String(currency || 'USD').toUpperCase(),
+        }).resolvedOptions().maximumFractionDigits;
+    } catch {
+        return 2;
+    }
+}
+
+/**
+ * 使用十进制字符串完成货币格式化，仅借助 Intl 获取符号和排版，不让金额经过浮点数。
+ */
+export function formatAmount(
+    value: number | string | null | undefined,
+    currency = 'USD',
+    locale = 'zh-CN',
+    fractionDigits = currencyFractionDigits(currency, locale),
+) {
+    const normalized = normalizeDecimalAmount(value ?? '0');
+    if (normalized === null) return '-';
+    const normalizedCurrency = String(currency || 'USD').toUpperCase();
+    const rounded = roundDecimalAmount(normalized, fractionDigits);
+    const negative = rounded.startsWith('-');
+    const unsignedAmount = negative ? rounded.slice(1) : rounded;
+    const exactAmount = formatDecimalAmount(
+        unsignedAmount,
+        locale,
+        fractionDigits,
+        fractionDigits,
+    );
+    try {
+        const formatter = new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: normalizedCurrency,
+            minimumFractionDigits: fractionDigits,
+            maximumFractionDigits: fractionDigits,
+        });
+        let amountWritten = false;
+        return formatter.formatToParts(negative ? -1 : 1).map((part) => {
+            if (!CURRENCY_NUMBER_PARTS.has(part.type)) return part.value;
+            if (part.type === 'integer' && !amountWritten) {
+                amountWritten = true;
+                return exactAmount;
+            }
+            return '';
+        }).join('');
+    } catch {
+        return `${normalizedCurrency} ${negative ? '-' : ''}${exactAmount}`;
+    }
 }
 
 export function formatDateTime(value: string | number | Date | null | undefined) {

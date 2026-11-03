@@ -127,7 +127,7 @@ import { Checked, CircleCheck, CircleClose, Download, RefreshLeft, Remove, Searc
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { MerchantIdentityDisplay } from '@acquiring/shared';
+import { compareDecimalAmounts, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
 import { auditFundDeduction, createFundDeduction, exportFundDeductions, getFundAccount, getFundDeduction, recheckFundDeduction, rejectFundDeduction, searchFundAccounts, searchFundDeductions, type FundAccount, type FundDeduction, type FundDeductionQuery } from '@/api/fund';
 import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -258,8 +258,17 @@ function openMerchant(merchantId: string) {
     router.push({ path: '/merchant/info', query: { merchantId } });
 }
 function validateDeductionAmount(_rule: unknown, value: string, callback: (error?: Error) => void) {
-    if (!/^\d+(\.\d+)?$/.test(String(value || '')) || Number(value) <= 0 || Number(value) > 100000000) callback(new Error(t('feeAccount.deductionAmountInvalid')));
-    else callback();
+    const amountText = String(value || '').trim();
+    const normalizedAmount = /^\d+(\.\d+)?$/.test(amountText)
+        ? normalizeDecimalAmount(amountText)
+        : null;
+    if (normalizedAmount === null
+        || compareDecimalAmounts(normalizedAmount, '0') <= 0
+        || compareDecimalAmounts(normalizedAmount, '100000000') > 0) {
+        callback(new Error(t('feeAccount.deductionAmountInvalid')));
+        return;
+    }
+    callback();
 }
 function createRequestId() { return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `deduction-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function statusText(value: string) { return t(`feeAccount.deductionStatus.${value}`); }

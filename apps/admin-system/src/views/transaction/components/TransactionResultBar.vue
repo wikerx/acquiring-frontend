@@ -38,7 +38,16 @@
                                 <span v-else-if="detail.logoPlaceholder" class="transaction-summary-card__logo-placeholder"></span>
                                 <span v-else-if="detail.label" class="transaction-summary-card__detail-label">{{ detail.label }}</span>
                             </div>
-                            <div v-if="detail.amountMeta" class="transaction-summary-card__detail-body is-amount">
+                            <div v-if="detail.amountMetas?.length" class="transaction-summary-card__detail-body is-amount">
+                                <span v-if="detail.countText" class="transaction-summary-card__count">{{ detail.countText }}</span>
+                                <span class="transaction-summary-card__money-list">
+                                    <span v-for="amount in detail.amountMetas" :key="`${amount.currency}-${amount.amountText}`" class="transaction-summary-card__money">
+                                        <span v-if="amount.currency" class="transaction-summary-card__currency">{{ amount.currency }}</span>
+                                        <b>{{ amount.amountText }}</b>
+                                    </span>
+                                </span>
+                            </div>
+                            <div v-else-if="detail.amountMeta" class="transaction-summary-card__detail-body is-amount">
                                 <span v-if="detail.amountMeta.countText" class="transaction-summary-card__count">{{ detail.amountMeta.countText }}</span>
                                 <span class="transaction-summary-card__money">
                                     <span v-if="detail.amountMeta.currency" class="transaction-summary-card__currency">{{ detail.amountMeta.currency }}</span>
@@ -74,6 +83,11 @@ interface TransactionSummaryDetail {
     description: string;
     logoKeys?: PaymentLogoKey[];
     logoPlaceholder?: boolean;
+    countText?: string;
+    amountMetas?: Array<{
+        currency?: string;
+        amountText: string;
+    }>;
     amountMeta?: {
         countText?: string;
         currency?: string;
@@ -330,6 +344,7 @@ defineEmits<{
 
 .transaction-summary-card__details {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     min-width: 0;
@@ -342,6 +357,7 @@ defineEmits<{
 
 .transaction-summary-card__detail {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     min-width: 0;
@@ -377,7 +393,16 @@ defineEmits<{
 }
 
 .transaction-summary-card__detail-body.is-amount {
+    flex-wrap: wrap;
     gap: 5px;
+}
+
+.transaction-summary-card__money-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
 }
 
 .transaction-summary-card__count {

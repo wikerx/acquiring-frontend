@@ -58,11 +58,14 @@ http://localhost:5173
 本地初始化账号：
 
 ```text
-账号：admin
+账号：admin 或 scott
 密码：Admin@123456
 ```
 
-登录页会调用 `/admin/auth/verify-code/send` 获取开发验证码，并自动回填验证码输入框。
+先在 `acquiring-orchestration` 仓库执行 `scripts/bootstrap-local-dev-config.sh`。脚本会生成被 Git 忽略的
+`.env.development.local`，登录页仅在 Vite dev 模式下读取并回填上述本地种子凭据。也可通过
+`ADMIN_DEFAULT_LOGIN_ACCOUNT` 和 `ADMIN_DEFAULT_LOGIN_PASSWORD` 在首次生成前覆盖。登录页会调用
+`/admin/auth/verify-code/send` 获取开发验证码，并自动回填验证码输入框。
 
 ## Menu And Routes
 

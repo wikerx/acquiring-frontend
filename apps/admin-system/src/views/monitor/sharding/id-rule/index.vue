@@ -55,7 +55,7 @@ async function loadData() {
     try {
         data.value = await getShardingIdRule();
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] sharding id rule request failed', error instanceof Error ? error.name : 'UnknownError');
         data.value = {};
         ElMessage.error(t('common.loadFailed'));
     } finally {

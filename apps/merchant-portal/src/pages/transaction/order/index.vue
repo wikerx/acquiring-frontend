@@ -89,7 +89,7 @@
                     <div class="transaction-result-row__label">
                         <span>{{ item.label }}</span>
                     </div>
-                    <div class="transaction-result-row__content">
+                    <div v-if="item.kind === 'metric'" class="transaction-result-row__content">
                         <span v-if="item.countText" class="transaction-result-pill transaction-result-pill--count">{{ item.countText }}</span>
                         <span v-if="item.rateText" :class="['transaction-result-pill', 'transaction-result-pill--rate', `is-${item.rateTone}`]">{{ item.rateText }}</span>
                         <span v-for="amountItem in item.amounts" :key="amountItem.key" class="transaction-money-pill">
@@ -97,20 +97,15 @@
                             <b>{{ amountItem.amount }}</b>
                         </span>
                     </div>
-                </article>
-                <article class="transaction-result-row transaction-result-row--method">
-                    <div class="transaction-result-row__label">
-                        <span>{{ t('transaction.order.paymentMethodSummary') }}</span>
-                    </div>
-                    <div class="transaction-result-row__content">
+                    <div v-else class="transaction-result-row__content">
                         <template v-if="paymentSummaryItems.length">
-                            <span v-for="item in paymentSummaryItems" :key="item.key" class="transaction-method-pill" :title="item.title">
-                                <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" size="sm" align="start" fallback="text" class="transaction-method-pill__logos" />
-                                <span v-else class="transaction-method-pill__text">{{ item.label }}</span>
-                                <span class="transaction-method-pill__count">{{ item.countText }}</span>
-                                <span v-if="item.primaryAmount" class="transaction-money-pill transaction-money-pill--method">
-                                    <span class="transaction-money-pill__currency">{{ item.primaryAmount.currency }}</span>
-                                    <b>{{ item.primaryAmount.amount }}</b>
+                            <span v-for="method in paymentSummaryItems" :key="method.key" class="transaction-method-pill" :title="method.title">
+                                <PaymentLogoGroup v-if="method.logoKeys.length" :keys="method.logoKeys" size="sm" align="start" fallback="text" class="transaction-method-pill__logos" />
+                                <span v-else class="transaction-method-pill__text">{{ method.label }}</span>
+                                <span class="transaction-method-pill__count">{{ method.countText }}</span>
+                                <span v-for="amount in method.amounts" :key="amount.key" class="transaction-money-pill transaction-money-pill--method">
+                                    <span class="transaction-money-pill__currency">{{ amount.currency }}</span>
+                                    <b>{{ amount.amount }}</b>
                                 </span>
                             </span>
                         </template>
@@ -435,11 +430,11 @@
             </section>
             <section v-if="activeActionRow" class="transaction-action-section">
                 <h3>{{ t('transaction.order.refundInfo') }}</h3>
-                <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="refundSaving" :t="t" :locale="locale" />
+                <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="refundSaving" :t="t" :locale="locale" @update:model="Object.assign(refundForm, $event)" />
             </section>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" size="small" :loading="refundSaving" :disabled="refundLoading || !refundContext || Number(refundContext.availableRefundAmount) <= 0" @click="submitRefund">{{ t('transaction.order.refund') }}</el-button>
+                    <el-button type="primary" size="small" :loading="refundSaving" :disabled="refundLoading || !refundContext || !isPositiveDecimalAmount(refundContext.availableRefundAmount)" @click="submitRefund">{{ t('transaction.order.refund') }}</el-button>
                     <el-button size="small" :disabled="refundSaving" @click="refundVisible = false">{{ t('common.cancel') }}</el-button>
                 </div>
             </template>
@@ -563,7 +558,7 @@ import { ElMessage } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { RefundFields, type RefundContext, getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { RefundFields, type RefundContext, getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -578,11 +573,6 @@ import {
     cardBrandLogoKeys,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
-    fallbackCardBrandOptions,
-    fallbackPaymentMethodOptions,
-    fallbackStatusOptions,
-    fallbackTransactionStatusOptions,
-    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
     moneyText,
     rateText,
@@ -623,19 +613,19 @@ const detail = ref<TransactionDetail>();
 const detailOperation = ref<TransactionOperation | null>(null);
 const summary = ref<Awaited<ReturnType<typeof transactionApi.searchOperations>>['summary']>();
 const activeActionRow = ref<TransactionOperation | null>(null);
-const refundForm = reactive({ amount: null as number | null | undefined, currency: '', mode: 'PARTIAL', reason: '', description: '' });
+const refundForm = reactive({ amount: null as string | null | undefined, currency: '', mode: 'PARTIAL', reason: '', description: '' });
 const captureForm = reactive({ reason: '', description: '' });
 const voidForm = reactive({ reason: '', description: '' });
 const initialQueryTimeZone = merchantDefaultTimeZone();
 const query = reactive<MerchantTransactionOrderQuery>({ queryTimeZone: initialQueryTimeZone });
 const dateRange = ref<string[]>(defaultTransactionTodayRange(initialQueryTimeZone));
 const quickPreset = ref('today');
-const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
-const transactionStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
-const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
-const cardBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
-const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'reconciliation'));
-const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'settlement'));
+const transactionTypeOptions = ref<TransactionDictOption[]>([]);
+const transactionStatusOptions = ref<TransactionDictOption[]>([]);
+const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const cardBrandOptions = ref<TransactionDictOption[]>([]);
+const reconciliationStatusOptions = ref<TransactionDictOption[]>([]);
+const settlementStatusOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const canDetail = computed(() => hasPermission('merchant:transaction:order:detail'));
 const canExport = computed(() => hasPermission('merchant:transaction:order:export'));
@@ -654,6 +644,7 @@ const resultRows = computed(() => {
     return [
         {
             key: 'total',
+            kind: 'metric' as const,
             label: t('transaction.order.queryResult'),
             tone: 'total',
             countText: countText(totalCount),
@@ -661,6 +652,7 @@ const resultRows = computed(() => {
         },
         {
             key: 'success',
+            kind: 'metric' as const,
             label: t('transaction.order.successTransactions'),
             tone: 'success',
             countText: countText(successCount),
@@ -669,7 +661,18 @@ const resultRows = computed(() => {
             amounts: amountPills(summary.value?.successAmountSummaries || []),
         },
         {
+            key: 'paymentMethod',
+            kind: 'payment' as const,
+            label: t('transaction.order.paymentMethodSummary'),
+            tone: 'method',
+            countText: '',
+            rateText: '',
+            rateTone: 'primary',
+            amounts: [],
+        },
+        {
             key: 'failed',
+            kind: 'metric' as const,
             label: t('transaction.order.failedTransactions'),
             tone: 'danger',
             countText: countText(failedCount),
@@ -679,15 +682,16 @@ const resultRows = computed(() => {
         },
     ];
 });
-const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummaries || []).slice(0, 3).map((item: TransactionPaymentMethodSummary) => {
+const paymentSummaryItems = computed(() => (summary.value?.paymentMethodSummaries || []).map((item: TransactionPaymentMethodSummary) => {
     const label = paymentSummaryLabel(item);
+    const amounts = amountPills(item.amountSummaries || [], false);
     return {
         key: `${item.paymentMethod || '-'}-${item.paymentBrand || '-'}`,
         label,
         logoKeys: paymentLogos(item),
         countText: countText(item.count || 0),
-        title: `${label} ${countText(item.count || 0)}`,
-        primaryAmount: amountPills(item.amountSummaries || [])[0],
+        title: `${label} ${countText(item.count || 0)} ${amounts.map((amount) => `${amount.currency} ${amount.amount}`).join(' ')}`.trim(),
+        amounts,
     };
 }));
 const captureAmount = computed(() => labelAmountFor(activeActionRow.value, activeActionRow.value?.availableCaptureAmount ?? activeActionRow.value?.transactionAmount));
@@ -731,32 +735,32 @@ onMounted(async () => {
 });
 
 async function loadDictionaries() {
-    transactionTypeOptions.value = fallbackTransactionTypeOptions(t);
-    transactionStatusOptions.value = fallbackTransactionStatusOptions(t);
-    paymentMethodOptions.value = fallbackPaymentMethodOptions(t);
-    cardBrandOptions.value = fallbackCardBrandOptions();
-    reconciliationStatusOptions.value = fallbackStatusOptions(t, 'reconciliation');
-    settlementStatusOptions.value = fallbackStatusOptions(t, 'settlement');
+    transactionTypeOptions.value = [];
+    transactionStatusOptions.value = [];
+    paymentMethodOptions.value = [];
+    cardBrandOptions.value = [];
+    reconciliationStatusOptions.value = [];
+    settlementStatusOptions.value = [];
     timezoneOptions.value = ensureTransactionTimezoneOptions([]);
     try {
         const [types, statuses, methods, brands, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')).catch(() => []),
-            loadTransactionDictOptions('payment_method', String(locale.value || 'zh-CN')).catch(() => []),
+            loadTransactionDictOptions('acquiring_payment_method', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('card_brand', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('reconciliation_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        transactionTypeOptions.value = types.length ? types : transactionTypeOptions.value;
-        transactionStatusOptions.value = statuses.length ? statuses : transactionStatusOptions.value;
-        paymentMethodOptions.value = methods.length ? methods : paymentMethodOptions.value;
-        cardBrandOptions.value = brands.length ? brands : cardBrandOptions.value;
-        reconciliationStatusOptions.value = reconciliations.length ? reconciliations : reconciliationStatusOptions.value;
-        settlementStatusOptions.value = settlements.length ? settlements : settlementStatusOptions.value;
+        transactionTypeOptions.value = types;
+        transactionStatusOptions.value = statuses;
+        paymentMethodOptions.value = methods;
+        cardBrandOptions.value = brands;
+        reconciliationStatusOptions.value = reconciliations;
+        settlementStatusOptions.value = settlements;
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
-        console.warn('[merchant-portal] Failed to load transaction dictionaries, fallback options are used.', error);
+        console.warn('[merchant-portal] transaction dictionaries unavailable', safeErrorType(error));
     }
 }
 
@@ -768,11 +772,11 @@ async function loadData() {
         rows.value = operationSearch.page?.records || [];
         total.value = operationSearch.page?.total || 0;
         summary.value = operationSearch.summary;
-    } catch (error: any) {
+    } catch (error: unknown) {
         rows.value = [];
         total.value = 0;
         summary.value = undefined;
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.loadFailed'));
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.loadFailed')));
     } finally {
         loading.value = false;
     }
@@ -797,8 +801,8 @@ async function handleExport() {
     try {
         await transactionApi.exportOrders(buildQueryPayload());
         ElMessage.success(t('transaction.order.exportStarted'));
-    } catch (error: any) {
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.exportFailed'));
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.exportFailed')));
     } finally {
         exporting.value = false;
     }
@@ -815,10 +819,10 @@ async function openDetail(row: TransactionOperation) {
     try {
         detail.value = await transactionApi.detail(
             transactionId, transactionDateTime, rootTransactionDateTime);
-    } catch (error: any) {
+    } catch (error: unknown) {
         detail.value = undefined;
         detailOperation.value = null;
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.detailFailed'));
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.detailFailed')));
     } finally {
         detailLoading.value = false;
     }
@@ -882,8 +886,8 @@ async function submitRefund() {
         ElMessage.success(t('refundForm.submitted'));
         refundVisible.value = false;
         await loadData();
-    } catch (error: any) {
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.refundFailed'));
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.refundFailed')));
     } finally {
         refundSaving.value = false;
     }
@@ -897,8 +901,6 @@ async function submitCapture() {
             ? transactionApi.preAuthCompletion
             : transactionApi.capture;
         await action(activeActionRow.value.transactionId, {
-            amount: captureAmount.value,
-            currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(captureForm.reason, captureForm.description),
             transactionDateTime: activeActionRow.value.transactionDateTime!,
             rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
@@ -908,10 +910,10 @@ async function submitCapture() {
             : 'captureSuccess'}`));
         captureVisible.value = false;
         await loadData();
-    } catch (error: any) {
-        ElMessage.error(error?.friendlyMessage || error?.message || t(`transaction.order.${activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t(`transaction.order.${activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
             ? 'preAuthCompletionFailed'
-            : 'captureFailed'}`));
+            : 'captureFailed'}`)));
     } finally {
         actionSaving.value = false;
     }
@@ -922,8 +924,6 @@ async function submitVoid() {
     actionSaving.value = true;
     try {
         await transactionApi.voidPayment(activeActionRow.value.transactionId, {
-            amount: voidAmount.value,
-            currency: labelCurrency(activeActionRow.value),
             reason: actionReasonText(voidForm.reason, voidForm.description),
             transactionDateTime: activeActionRow.value.transactionDateTime!,
             rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
@@ -931,8 +931,8 @@ async function submitVoid() {
         ElMessage.success(t('transaction.order.voidSuccess'));
         voidVisible.value = false;
         await loadData();
-    } catch (error: any) {
-        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.order.voidFailed'));
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.voidFailed')));
     } finally {
         actionSaving.value = false;
     }
@@ -967,12 +967,9 @@ function money(value?: number | string | null, currency?: string, currencyExpone
 }
 
 function orderDisplayAmount(row?: TransactionOrder | null) {
-    const currentAmount = toNullableAmount(row?.currentAmount);
-    const transactionAmount = toNullableAmount(row?.transactionAmount);
     if (row?.transactionStatus === 'FAILED'
-        && currentAmount === 0
-        && transactionAmount !== null
-        && transactionAmount > 0) {
+        && normalizeDecimalAmount(row?.currentAmount ?? '') === '0'
+        && isPositiveDecimalAmount(row?.transactionAmount)) {
         return row?.transactionAmount;
     }
     return row?.currentAmount ?? row?.transactionAmount;
@@ -983,7 +980,7 @@ function labelMoney(row?: TransactionOperation | TransactionOrder | null, amount
 }
 
 function fullLabelAmount(row: TransactionOperation) {
-    return labelAmountFor(row, row.transactionAmount);
+    return row.labelAmount ?? row.transactionAmount ?? '0';
 }
 
 function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
@@ -1007,16 +1004,18 @@ function canRefundRow(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['PAYMENT', 'CAPTURE'].includes(row.transactionType || '')) {
         return false;
     }
-    const availableRefundAmount = toNullableAmount(row.availableRefundAmount);
-    return availableRefundAmount === null ? true : availableRefundAmount > 0;
+    return row.availableRefundAmount == null || row.availableRefundAmount === ''
+        ? true
+        : isPositiveDecimalAmount(row.availableRefundAmount);
 }
 
 function canCaptureRow(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')) {
         return false;
     }
-    const availableCaptureAmount = toNullableAmount(row.availableCaptureAmount);
-    return availableCaptureAmount === null ? true : availableCaptureAmount > 0;
+    return row.availableCaptureAmount == null || row.availableCaptureAmount === ''
+        ? true
+        : isPositiveDecimalAmount(row.availableCaptureAmount);
 }
 
 function captureActionText(row: TransactionOperation) {
@@ -1032,34 +1031,29 @@ function canVoidRow(row: TransactionOperation) {
     if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')) {
         return false;
     }
-    const capturedAmount = toNullableAmount(row.capturedAmount);
-    const refundedAmount = toNullableAmount(row.refundedAmount);
-    return (capturedAmount === null || capturedAmount === 0)
-        && (refundedAmount === null || refundedAmount === 0);
+    return isZeroOrMissing(row.capturedAmount) && isZeroOrMissing(row.refundedAmount);
 }
 
-function toNullableAmount(value?: number | string | null) {
+function isZeroOrMissing(value?: number | string | null) {
     if (value === undefined || value === null || value === '') {
-        return null;
+        return true;
     }
-    const amount = Number(value);
-    return Number.isFinite(amount) ? amount : null;
+    return normalizeDecimalAmount(value) === '0';
 }
 
 function labelAmountFor(row?: TransactionOperation | null, transactionAmount?: number | string | null) {
     if (!row) {
-        return 0;
+        return '0';
     }
-    const labelAmount = Number(row.labelAmount);
-    const sourceTransactionAmount = Number(row.transactionAmount);
-    const targetTransactionAmount = Number(transactionAmount);
-    if (Number.isFinite(labelAmount) && Number.isFinite(sourceTransactionAmount) && sourceTransactionAmount > 0 && Number.isFinite(targetTransactionAmount)) {
-        return Number((targetTransactionAmount * labelAmount / sourceTransactionAmount).toFixed(6));
+    if (row.labelAmount == null || row.transactionAmount == null || transactionAmount == null) {
+        return transactionAmount ?? row.labelAmount ?? '0';
     }
-    if (Number.isFinite(targetTransactionAmount)) {
-        return targetTransactionAmount;
-    }
-    return Number.isFinite(labelAmount) ? labelAmount : 0;
+    return proportionalDecimalAmount(
+        row.labelAmount,
+        transactionAmount,
+        row.transactionAmount,
+        row.currencyExponent ?? 2,
+    ) ?? String(transactionAmount);
 }
 
 function transactionActionReasonOptions(scope: 'capture' | 'void') {
@@ -1101,8 +1095,9 @@ function rateTone(count: number, totalCount: number, reverse = false) {
     return 'danger';
 }
 
-function amountPills(amountSummaries: TransactionAmountSummary[]) {
-    return amountSummaries.slice(0, 4).map((item) => ({
+function amountPills(amountSummaries: TransactionAmountSummary[], limit = true) {
+    const visibleAmounts = limit ? amountSummaries.slice(0, 4) : amountSummaries;
+    return visibleAmounts.map((item) => ({
         key: item.currency || '-',
         currency: item.currency || '-',
         amount: amountOnlyText(item.amount ?? 0, item.currencyExponent),
@@ -1380,10 +1375,12 @@ function assetPaymentLogos(row?: Pick<TransactionOrder | TransactionOperation | 
 }
 
 .transaction-method-pill {
+    flex-wrap: wrap;
     gap: 5px;
-    height: 24px;
+    height: auto;
+    min-height: 24px;
     border: 1px solid #edf2f7;
-    padding: 0 5px;
+    padding: 1px 5px;
     background: #ffffff;
 }
 

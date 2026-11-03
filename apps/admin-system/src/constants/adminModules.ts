@@ -17,14 +17,6 @@ const commonColumns = [
     { prop: 'updatedAt', label: '更新时间', type: 'datetime' as const, minWidth: 180 },
 ];
 
-const auditColumns = [
-    { prop: 'account', label: '账号', minWidth: 150 },
-    { prop: 'clientIp', label: '客户端 IP', minWidth: 150 },
-    { prop: 'status', label: '状态', type: 'status' as const, width: 110 },
-    { prop: 'message', label: '说明', minWidth: 180 },
-    { prop: 'createdAt', label: '发生时间', type: 'datetime' as const, minWidth: 180 },
-];
-
 const baseSearchFields = [
     { prop: 'keyword', label: '关键词', placeholder: '请输入编码或名称' },
     statusField,

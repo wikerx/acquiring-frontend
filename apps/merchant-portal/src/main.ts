@@ -8,6 +8,7 @@ import App from './App.vue';
 import i18n from './i18n';
 import { router } from './router';
 import { useAuthStore } from './stores/authStore';
+import { logout } from './api/authApi';
 import './styles/main.css';
 
 document.title = VEXRA_BRAND.systems.merchant.title;
@@ -23,10 +24,12 @@ setupIdleLogout({
         if (!auth.session) {
             return;
         }
-        auth.clearSession();
         const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        if (window.location.pathname !== '/login') {
-            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-        }
+        void logout().catch(() => undefined).finally(() => {
+            auth.clearSession();
+            if (window.location.pathname !== '/login') {
+                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+            }
+        });
     },
 });

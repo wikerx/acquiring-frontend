@@ -122,7 +122,6 @@ const parentChildLinked = ref(true);
 const grantTreeRef = ref<InstanceType<typeof ElTree>>();
 
 const flatMenus = computed(() => flattenMenus(menuTree.value));
-const allMenuIds = computed(() => flatMenus.value.map((menu) => menu.menuId));
 const displayMenuIds = computed(() => flatMenus.value.filter(isDisplayMenu).map((menu) => menu.menuId));
 const displayMenuIdSet = computed(() => new Set(displayMenuIds.value));
 const selectedDisplayMenuIds = computed(() => selectedMenuIds.value.filter((menuId) => displayMenuIdSet.value.has(menuId)));

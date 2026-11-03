@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import type { PaymentLogoKey } from '@acquiring/shared';
+import { formatDecimalAmount, roundDecimalAmount, type PaymentLogoKey } from '@acquiring/shared';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
 import type { TransactionDetail } from '@/api/transaction';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
@@ -32,28 +32,18 @@ export function moneyText(amount?: number | string | null, currency?: string, cu
     if (amount === undefined || amount === null) {
         return '-';
     }
-    const value = Number(amount);
-    if (!Number.isFinite(value)) {
-        return `${currency || ''} ${amount}`.trim();
-    }
     const digits = typeof currencyExponent === 'number' && currencyExponent >= 0
         ? Math.min(currencyExponent, 8)
-        : Math.min(resolveDecimalLength(String(amount)), 2);
-    return `${currency || ''} ${value.toLocaleString(undefined, {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-    })}`.trim();
+        : Math.max(2, Math.min(resolveDecimalLength(String(amount)), 8));
+    const rounded = roundDecimalAmount(amount, digits);
+    return `${currency || ''} ${formatDecimalAmount(rounded, undefined, digits, digits)}`.trim();
 }
 
 export function rateText(rate?: number | string | null) {
     if (rate === undefined || rate === null || rate === '') {
         return '1.00000000';
     }
-    const value = Number(rate);
-    if (!Number.isFinite(value)) {
-        return String(rate);
-    }
-    return value.toFixed(8);
+    return roundDecimalAmount(rate, 8);
 }
 
 export function tagText(options: TransactionDictOption[], value?: string) {
@@ -161,33 +151,6 @@ export function optionText(options: TransactionDictOption[], value?: string) {
     return options.find((item) => item.value === value)?.label || value;
 }
 
-export function fallbackTransactionTypeOptions(t: (key: string, fallback?: string) => string): TransactionDictOption[] {
-    return [
-        'PAYMENT',
-        'AUTHORIZATION',
-        'PRE_AUTHORIZATION',
-        'PRE_AUTH_COMPLETION',
-        'INCREMENTAL_AUTHORIZATION',
-        'CAPTURE',
-        'REFUND',
-        'VOID',
-        'QUERY',
-        'REVERSAL',
-        'CHARGEBACK',
-        'REPRESENTMENT',
-        'RETRIEVAL_REQUEST',
-    ].map((value) => ({ label: t(`transaction.type.${value}`, value), value }));
-}
-
-export function fallbackTransactionStatusOptions(t: (key: string, fallback?: string) => string): TransactionDictOption[] {
-    return [
-        { value: 'SUCCESS', listClass: 'success' },
-        { value: 'FAILED', listClass: 'danger' },
-        { value: 'PENDING', listClass: 'warning' },
-        { value: 'PROCESSING', listClass: 'primary' },
-    ].map((item) => ({ ...item, label: t(`transaction.status.${item.value}`, item.value) }));
-}
-
 export function transactionPaymentLogoKeys(paymentMethod?: string, paymentBrand?: string): PaymentLogoKey[] {
     if (paymentMethod === 'BANK_CARD') {
         return cardLogoKeys(paymentBrand);
@@ -276,7 +239,7 @@ export async function openTransactionDetail(
     try {
         detail.value = await loader(transactionId, transactionDateTime, rootTransactionDateTime);
     } catch (error) {
-        console.error(error);
+        console.error('[admin-system] transaction dictionary request failed', error instanceof Error ? error.name : 'UnknownError');
         ElMessage.error(failMessage);
     } finally {
         loading.value = false;

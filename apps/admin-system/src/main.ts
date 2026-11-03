@@ -30,10 +30,11 @@ setupIdleLogout({
         if (!user.authSession) {
             return;
         }
-        user.reset();
         const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        if (!isPublicAuthPath(window.location.pathname)) {
-            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-        }
+        void user.logout().finally(() => {
+            if (!isPublicAuthPath(window.location.pathname)) {
+                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+            }
+        });
     },
 });
