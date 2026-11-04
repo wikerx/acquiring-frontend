@@ -14,6 +14,68 @@ export interface TransactionDictOption extends SelectOption {
     extraJson?: string;
 }
 
+type TransactionOptionTranslator = (key: string, fallback?: string) => string;
+type TransactionStatusScope = 'channelMatch' | 'reconciliation' | 'settlement';
+
+const TRANSACTION_TYPE_VALUES = [
+    'PAYMENT',
+    'AUTHORIZATION',
+    'PRE_AUTHORIZATION',
+    'PRE_AUTH_COMPLETION',
+    'INCREMENTAL_AUTHORIZATION',
+    'CAPTURE',
+    'REFUND',
+    'VOID',
+    'QUERY',
+    'REVERSAL',
+    'CHARGEBACK',
+    'REPRESENTMENT',
+    'RETRIEVAL_REQUEST',
+];
+
+const TRANSACTION_STATUS_OPTIONS = [
+    { value: 'SUCCESS', listClass: 'success' },
+    { value: 'FAILED', listClass: 'danger' },
+    { value: 'PENDING', listClass: 'warning' },
+    { value: 'PROCESSING', listClass: 'primary' },
+    { value: 'AUTHORIZED', listClass: 'success' },
+    { value: 'CANCELLED', listClass: 'info' },
+    { value: 'DECLINED', listClass: 'danger' },
+    { value: 'CLOSED', listClass: 'info' },
+    { value: 'UNKNOWN', listClass: 'info' },
+];
+
+const PAYMENT_METHOD_VALUES = [
+    'BANK_CARD',
+    'PAYPAL',
+    'APPLE_PAY',
+    'GOOGLE_PAY',
+    'ALIPAY_PLUS',
+    'CASH_APP_PAY',
+    'ACH_DEBIT',
+    'BANK_TRANSFER',
+    'PIX',
+    'SPEI',
+];
+
+const CARD_BRAND_OPTIONS: TransactionDictOption[] = [
+    { label: 'Visa', value: 'VISA' },
+    { label: 'Mastercard', value: 'MASTERCARD' },
+    { label: 'American Express', value: 'AMEX' },
+    { label: 'American Express', value: 'AMERICAN_EXPRESS' },
+    { label: 'JCB', value: 'JCB' },
+    { label: 'UnionPay', value: 'UNIONPAY' },
+    { label: 'Discover', value: 'DISCOVER' },
+    { label: 'Diners Club', value: 'DINERS_CLUB' },
+    { label: 'Maestro', value: 'MAESTRO' },
+];
+
+const STATUS_VALUES_BY_SCOPE: Record<TransactionStatusScope, string[]> = {
+    channelMatch: ['NOT_REQUIRED', 'PENDING', 'MATCHED', 'MISMATCHED', 'FAILED'],
+    reconciliation: ['NOT_RECONCILED', 'RECONCILED', 'MISMATCHED'],
+    settlement: ['NOT_SETTLED', 'SETTLING', 'SETTLED', 'FAILED'],
+};
+
 const CHANNEL_MATCH_STATUS_LABELS: Record<string, Record<string, string>> = {
     'zh-CN': {
         PENDING: '未勾兑',
@@ -61,6 +123,72 @@ export async function loadTransactionDictOptions(dictType: string, locale: strin
         status: 1,
     });
     return (result.records || []).map(toDictOption).map((option) => normalizeTransactionDictOption(dictType, locale, option));
+}
+
+/**
+ * 保留远端字典的展示顺序与配置，同时用本地国际化补齐缺失项和空文案。
+ */
+export function mergeTransactionDictOptions<T extends TransactionDictOption>(
+    remoteOptions: T[],
+    fallbackOptions: T[],
+): T[] {
+    const fallbackByValue = new Map(fallbackOptions.map((item) => [item.value, item]));
+    const seen = new Set<string>();
+    const merged: T[] = [];
+    remoteOptions.forEach((item) => {
+        if (!item.value || seen.has(item.value)) {
+            return;
+        }
+        const fallback = fallbackByValue.get(item.value);
+        const option = { ...fallback, ...item } as T;
+        if (!item.label?.trim() && fallback) {
+            option.label = fallback.label;
+        }
+        seen.add(item.value);
+        merged.push(option);
+    });
+    fallbackOptions.forEach((item) => {
+        if (!seen.has(item.value)) {
+            seen.add(item.value);
+            merged.push(item);
+        }
+    });
+    return merged;
+}
+
+export function fallbackTransactionTypeOptions(t: TransactionOptionTranslator): TransactionDictOption[] {
+    return TRANSACTION_TYPE_VALUES.map((value) => ({
+        label: t(`transaction.type.${value}`, value),
+        value,
+    }));
+}
+
+export function fallbackTransactionStatusOptions(t: TransactionOptionTranslator): TransactionDictOption[] {
+    return TRANSACTION_STATUS_OPTIONS.map((item) => ({
+        ...item,
+        label: t(`transaction.status.${item.value}`, item.value),
+    }));
+}
+
+export function fallbackPaymentMethodOptions(t: TransactionOptionTranslator): TransactionDictOption[] {
+    return PAYMENT_METHOD_VALUES.map((value) => ({
+        label: t(`transaction.paymentMethod.${value}`, value),
+        value,
+    }));
+}
+
+export function fallbackCardBrandOptions(): TransactionDictOption[] {
+    return CARD_BRAND_OPTIONS.map((item) => ({ ...item }));
+}
+
+export function fallbackStatusOptions(
+    t: TransactionOptionTranslator,
+    scope: TransactionStatusScope,
+): TransactionDictOption[] {
+    return STATUS_VALUES_BY_SCOPE[scope].map((value) => ({
+        label: t(`transaction.genericStatus.${value}`, value),
+        value,
+    }));
 }
 
 export function ensureTransactionTimezoneOptions(options: SelectOption[]) {

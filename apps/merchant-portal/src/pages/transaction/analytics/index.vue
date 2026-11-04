@@ -227,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Clock, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -255,7 +255,11 @@ import TransactionTimeRangeFilter from '../components/TransactionTimeRangeFilter
 import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     ensureTransactionTimezoneOptions,
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     type TransactionDictOption,
 } from '../shared';
 
@@ -280,9 +284,10 @@ const loading = ref(false);
 const errorMessage = ref('');
 const overview = ref<TransactionAnalyticsOverview>();
 const failureAnalysis = ref<TransactionAnalyticsFailure>();
-const transactionTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentMethodOptions = ref<TransactionDictOption[]>([]);
-const paymentBrandOptions = ref<TransactionDictOption[]>([]);
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t)
+    .filter((item) => supportedTransactionTypes.has(item.value)));
+const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
+const paymentBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const filters = reactive({
     paymentTool: '',
@@ -474,6 +479,13 @@ function applyPaymentDimension(row: TransactionAnalyticsDimensionMetric) {
 }
 
 async function loadFilterOptions() {
+    const fallbackTypes = fallbackTransactionTypeOptions(t)
+        .filter((item) => supportedTransactionTypes.has(item.value));
+    const fallbackPaymentMethods = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentBrands = fallbackCardBrandOptions();
+    transactionTypeOptions.value = fallbackTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    paymentBrandOptions.value = fallbackPaymentBrands;
     const [types, methods, brands, timezones] = await Promise.all([
         loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
         loadTransactionDictOptions('acquiring_payment_method', String(locale.value || 'zh-CN')).catch(() => []),
@@ -481,9 +493,9 @@ async function loadFilterOptions() {
         loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
     ]);
     const supportedTypes = types.filter((item) => supportedTransactionTypes.has(item.value));
-    transactionTypeOptions.value = supportedTypes;
-    paymentMethodOptions.value = methods;
-    paymentBrandOptions.value = brands;
+    transactionTypeOptions.value = mergeTransactionDictOptions(supportedTypes, fallbackTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(methods, fallbackPaymentMethods);
+    paymentBrandOptions.value = mergeTransactionDictOptions(brands, fallbackPaymentBrands);
     timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
 }
 
@@ -491,6 +503,8 @@ onMounted(async () => {
     await loadFilterOptions();
     loadActiveTab();
 });
+
+watch(locale, () => void loadFilterOptions());
 </script>
 
 <style scoped>

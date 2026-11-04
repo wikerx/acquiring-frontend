@@ -2072,6 +2072,18 @@ export default {
       HOSTED_CHECKOUT: 'Hosted Checkout',
       OPEN_API: 'Direct API',
     },
+    paymentMethod: {
+      BANK_CARD: 'Bank Card',
+      PAYPAL: 'PayPal',
+      APPLE_PAY: 'Apple Pay',
+      GOOGLE_PAY: 'Google Pay',
+      ALIPAY_PLUS: 'Alipay+',
+      CASH_APP_PAY: 'Cash App Pay',
+      ACH_DEBIT: 'ACH Debit',
+      BANK_TRANSFER: 'Bank Transfer',
+      PIX: 'Pix',
+      SPEI: 'SPEI',
+    },
     timelineEvent: {
       API_ACCEPTED: 'API Accepted',
       RISK_RULE_EVALUATED: 'Risk Rule Evaluated',

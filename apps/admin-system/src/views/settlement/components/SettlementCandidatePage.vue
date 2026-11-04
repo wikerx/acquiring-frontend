@@ -246,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Plus, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -263,7 +263,13 @@ import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
 import { defaultDateRange, moneyTextByExponent, requestKey, statusTagType } from '@/views/settlement/shared';
 
 const props = withDefaults(defineProps<{
@@ -287,9 +293,9 @@ const total = ref(0);
 const eligibleRange = ref<[string, string]>(defaultDateRange());
 const transactionRange = ref<string[]>([]);
 const expectedReleaseRange = ref<string[]>([]);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const detailVisible = ref(false);
 const detail = ref<SettlementCandidate | null>(null);
 const submitVisible = ref(false);
@@ -323,7 +329,15 @@ onMounted(async () => {
     await loadData();
 });
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     try {
         const language = String(locale.value || 'zh-CN');
         const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
@@ -331,13 +345,11 @@ async function loadDictionaries() {
             loadDictOptions('card_brand', language).catch(() => []),
             loadTransactionDictOptions('transaction_type', language).catch(() => []),
         ]);
-        paymentTypeOptions.value = paymentTypes;
-        paymentMethodOptions.value = paymentMethods;
-        transactionTypeOptions.value = transactionTypes;
+        paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+        paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+        transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
     } catch {
-        paymentTypeOptions.value = [];
-        paymentMethodOptions.value = [];
-        transactionTypeOptions.value = [];
+        // 本地国际化选项已就绪，远端字典异常不阻断页面使用。
     }
 }
 

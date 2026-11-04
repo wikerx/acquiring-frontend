@@ -553,7 +553,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -573,7 +573,13 @@ import {
     cardBrandLogoKeys,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackStatusOptions,
+    fallbackTransactionStatusOptions,
+    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     moneyText,
     rateText,
     resolveTransactionQueryRange,
@@ -620,12 +626,12 @@ const initialQueryTimeZone = merchantDefaultTimeZone();
 const query = reactive<MerchantTransactionOrderQuery>({ queryTimeZone: initialQueryTimeZone });
 const dateRange = ref<string[]>(defaultTransactionTodayRange(initialQueryTimeZone));
 const quickPreset = ref('today');
-const transactionTypeOptions = ref<TransactionDictOption[]>([]);
-const transactionStatusOptions = ref<TransactionDictOption[]>([]);
-const paymentMethodOptions = ref<TransactionDictOption[]>([]);
-const cardBrandOptions = ref<TransactionDictOption[]>([]);
-const reconciliationStatusOptions = ref<TransactionDictOption[]>([]);
-const settlementStatusOptions = ref<TransactionDictOption[]>([]);
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const transactionStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
+const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
+const cardBrandOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
+const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'reconciliation'));
+const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackStatusOptions(t, 'settlement'));
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const canDetail = computed(() => hasPermission('merchant:transaction:order:detail'));
 const canExport = computed(() => hasPermission('merchant:transaction:order:export'));
@@ -734,13 +740,21 @@ onMounted(async () => {
     }
 });
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
-    transactionTypeOptions.value = [];
-    transactionStatusOptions.value = [];
-    paymentMethodOptions.value = [];
-    cardBrandOptions.value = [];
-    reconciliationStatusOptions.value = [];
-    settlementStatusOptions.value = [];
+    const fallbackTypes = fallbackTransactionTypeOptions(t);
+    const fallbackStatuses = fallbackTransactionStatusOptions(t);
+    const fallbackPaymentMethods = fallbackPaymentMethodOptions(t);
+    const fallbackCardBrands = fallbackCardBrandOptions();
+    const fallbackReconciliations = fallbackStatusOptions(t, 'reconciliation');
+    const fallbackSettlements = fallbackStatusOptions(t, 'settlement');
+    transactionTypeOptions.value = fallbackTypes;
+    transactionStatusOptions.value = fallbackStatuses;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    cardBrandOptions.value = fallbackCardBrands;
+    reconciliationStatusOptions.value = fallbackReconciliations;
+    settlementStatusOptions.value = fallbackSettlements;
     timezoneOptions.value = ensureTransactionTimezoneOptions([]);
     try {
         const [types, statuses, methods, brands, reconciliations, settlements, timezones] = await Promise.all([
@@ -752,12 +766,12 @@ async function loadDictionaries() {
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        transactionTypeOptions.value = types;
-        transactionStatusOptions.value = statuses;
-        paymentMethodOptions.value = methods;
-        cardBrandOptions.value = brands;
-        reconciliationStatusOptions.value = reconciliations;
-        settlementStatusOptions.value = settlements;
+        transactionTypeOptions.value = mergeTransactionDictOptions(types, fallbackTypes);
+        transactionStatusOptions.value = mergeTransactionDictOptions(statuses, fallbackStatuses);
+        paymentMethodOptions.value = mergeTransactionDictOptions(methods, fallbackPaymentMethods);
+        cardBrandOptions.value = mergeTransactionDictOptions(brands, fallbackCardBrands);
+        reconciliationStatusOptions.value = mergeTransactionDictOptions(reconciliations, fallbackReconciliations);
+        settlementStatusOptions.value = mergeTransactionDictOptions(settlements, fallbackSettlements);
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
         console.warn('[merchant-portal] transaction dictionaries unavailable', safeErrorType(error));

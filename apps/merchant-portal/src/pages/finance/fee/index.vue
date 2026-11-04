@@ -144,16 +144,23 @@ import { financeApi, type CurrentFee, type FeeRule } from '@/api/financeApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { loadTransactionDictOptions, type TransactionDictOption } from '@/pages/transaction/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+    type TransactionDictOption,
+} from '@/pages/transaction/shared';
 
 type FeeCategory = FeeRule['feeCategory'];
 
 const { locale, t } = useI18n();
 const loading = ref(false);
 const fee = ref<CurrentFee | null>(null);
-const transactionTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const paymentTypeOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
 let loadedDictLocale = '';
 const activeTab = ref<FeeCategory | 'RESERVE' | 'SETTLEMENT'>('TRANSACTION_FEE');
 const feeTabs = computed(() => [
@@ -196,14 +203,29 @@ function tierRuleIds(category: FeeCategory) {
 async function loadDimensionOptions() {
     const language = String(locale.value || 'zh-CN');
     if (loadedDictLocale === language) return;
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    transactionTypeOptions.value = fallbackTransactionTypes;
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
     const results = await Promise.allSettled([
         loadTransactionDictOptions('transaction_type', language),
         loadTransactionDictOptions('acquiring_payment_method', language),
         loadTransactionDictOptions('card_brand', language),
     ]);
-    transactionTypeOptions.value = settledOptions(results[0]);
-    paymentTypeOptions.value = settledOptions(results[1]);
-    paymentMethodOptions.value = settledOptions(results[2]);
+    transactionTypeOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[0]),
+        fallbackTransactionTypes,
+    );
+    paymentTypeOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[1]),
+        fallbackPaymentTypes,
+    );
+    paymentMethodOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[2]),
+        fallbackPaymentMethods,
+    );
     if (results.every((result) => result.status === 'fulfilled')) loadedDictLocale = language;
 }
 

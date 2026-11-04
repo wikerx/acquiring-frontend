@@ -991,6 +991,8 @@ export default {
             CASH_APP_PAY: 'Cash App Pay',
             ACH_DEBIT: 'ACH Debit',
             BANK_TRANSFER: '银行转账',
+            PIX: 'Pix',
+            SPEI: 'SPEI',
         },
         genericStatus: {
             NOT_REQUIRED: '无需勾兑',

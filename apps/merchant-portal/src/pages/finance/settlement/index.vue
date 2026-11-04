@@ -195,7 +195,11 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     type TransactionDictOption,
 } from '@/pages/transaction/shared';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
@@ -249,9 +253,9 @@ const componentVisible = ref(false), componentLoading = ref(false), componentTot
 const componentRows = ref<MerchantSettlementTransactionItem[]>([]);
 const componentPage = ref(1), componentPageSize = ref(10);
 const selectedTransaction = ref<MerchantSettlementTransaction | null>(null);
-const paymentTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentMethodOptions = ref<TransactionDictOption[]>([]);
-const transactionTypeOptions = ref<TransactionDictOption[]>([]);
+const paymentTypeOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
 
 onMounted(async () => {
     const linkedBatchNo = typeof route.query.settlementBatchNo === 'string'
@@ -485,15 +489,21 @@ function openReserveTransaction(row: MerchantSettlementReserveItem) {
 }
 function openReserve(row: MerchantSettlementReserveItem) { router.push({ path: '/finance/reserves', query: { settlementBatchNo: row.settlementBatchNo, reserveNo: row.reserveNo } }); }
 async function loadDimensionDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
         loadTransactionDictOptions('acquiring_payment_method', language).catch(() => []),
         loadTransactionDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
-    transactionTypeOptions.value = transactionTypes;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+    transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
 }
 function enumText(group: string, value?: string) {
     if (!value) return '-';

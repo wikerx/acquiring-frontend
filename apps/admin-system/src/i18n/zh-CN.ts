@@ -1955,6 +1955,18 @@ export default {
       HOSTED_CHECKOUT: 'Hosted Checkout',
       OPEN_API: 'Direct API',
     },
+    paymentMethod: {
+      BANK_CARD: '银行卡',
+      PAYPAL: 'PayPal',
+      APPLE_PAY: 'Apple Pay',
+      GOOGLE_PAY: 'Google Pay',
+      ALIPAY_PLUS: 'Alipay+',
+      CASH_APP_PAY: 'Cash App Pay',
+      ACH_DEBIT: 'ACH 扣款',
+      BANK_TRANSFER: '银行转账',
+      PIX: 'Pix',
+      SPEI: 'SPEI',
+    },
     timelineEvent: {
       API_ACCEPTED: 'API受理',
       RISK_RULE_EVALUATED: '风控规则评估',

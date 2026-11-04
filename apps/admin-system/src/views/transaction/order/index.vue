@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { safeErrorType } from '@acquiring/shared';
@@ -176,7 +176,11 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
+    fallbackTransactionStatusOptions,
+    fallbackTransactionStatusScopeOptions,
+    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     moneyText,
     openTransactionDetail,
     rateText,
@@ -223,11 +227,11 @@ const query = reactive({
     transactionStatus: '',
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
-const typeOptions = ref<TransactionDictOption[]>([]);
-const statusOptions = ref<TransactionDictOption[]>([]);
-const channelMatchStatusOptions = ref<TransactionDictOption[]>([]);
-const reconciliationStatusOptions = ref<TransactionDictOption[]>([]);
-const settlementStatusOptions = ref<TransactionDictOption[]>([]);
+const typeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const statusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
+const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'channelMatch'));
+const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'reconciliation'));
+const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'settlement'));
 const timezoneOptions = ref<SelectOption[]>([]);
 
 const summaryItems = computed(() => [
@@ -281,12 +285,19 @@ onMounted(async () => {
     await loadData();
 });
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
-    typeOptions.value = [];
-    statusOptions.value = [];
-    channelMatchStatusOptions.value = [];
-    reconciliationStatusOptions.value = [];
-    settlementStatusOptions.value = [];
+    const fallbackTypes = fallbackTransactionTypeOptions(t);
+    const fallbackStatuses = fallbackTransactionStatusOptions(t);
+    const fallbackChannelMatches = fallbackTransactionStatusScopeOptions(t, 'channelMatch');
+    const fallbackReconciliations = fallbackTransactionStatusScopeOptions(t, 'reconciliation');
+    const fallbackSettlements = fallbackTransactionStatusScopeOptions(t, 'settlement');
+    typeOptions.value = fallbackTypes;
+    statusOptions.value = fallbackStatuses;
+    channelMatchStatusOptions.value = fallbackChannelMatches;
+    reconciliationStatusOptions.value = fallbackReconciliations;
+    settlementStatusOptions.value = fallbackSettlements;
     try {
         const [types, statuses, channelMatches, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
@@ -296,11 +307,11 @@ async function loadDictionaries() {
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types;
-        statusOptions.value = statuses;
-        channelMatchStatusOptions.value = channelMatches;
-        reconciliationStatusOptions.value = reconciliations;
-        settlementStatusOptions.value = settlements;
+        typeOptions.value = mergeTransactionDictOptions(types, fallbackTypes);
+        statusOptions.value = mergeTransactionDictOptions(statuses, fallbackStatuses);
+        channelMatchStatusOptions.value = mergeTransactionDictOptions(channelMatches, fallbackChannelMatches);
+        reconciliationStatusOptions.value = mergeTransactionDictOptions(reconciliations, fallbackReconciliations);
+        settlementStatusOptions.value = mergeTransactionDictOptions(settlements, fallbackSettlements);
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
         console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));

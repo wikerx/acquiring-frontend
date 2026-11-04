@@ -346,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { Document, Download, Refresh, RefreshLeft, Search, Tickets, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -387,7 +387,13 @@ import { useUserStore } from '@/store/modules/user';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
 import {
     businessDateFromBusinessNo,
     decimalText,
@@ -438,9 +444,9 @@ const candidateQuery = reactive({ pageNo: 1, pageSize: 10 });
 const decisionAction = ref<DecisionAction>('approve');
 const decisionForm = reactive({ comment: '' });
 const decisionTaskResumeForm = reactive({ reason: '' });
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const decisionTitle = computed(() => t(`transaction.settlement.decisionTitle.${decisionAction.value}`));
 const decisionTaskFailureText = computed(() => {
     if (!decisionTask.value) return '';
@@ -482,16 +488,24 @@ onMounted(async () => {
 
 onBeforeUnmount(stopDecisionPolling);
 
+watch(locale, () => void loadDimensionDictionaries());
+
 async function loadDimensionDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
-    transactionTypeOptions.value = transactionTypes;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+    transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
 }
 
 function requestQuery(): SettlementReviewQuery {

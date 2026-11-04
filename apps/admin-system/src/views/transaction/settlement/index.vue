@@ -421,7 +421,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
 import {
@@ -472,7 +472,13 @@ import CopyableText from '@/views/transaction/components/CopyableText.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionResultBar from '@/views/transaction/components/TransactionResultBar.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
 import { businessDateFromBusinessNo, moneyTextByExponent, settlementFormulaText } from '@/views/settlement/shared';
 
 type CommandType = 'retry' | 'cancel' | 'reversalRequest';
@@ -559,9 +565,9 @@ const componentTotal = ref(0);
 const componentPage = ref(1);
 const componentPageSize = ref(10);
 const selectedTransaction = ref<SettlementTransactionSummary | null>(null);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const commandVisible = ref(false);
 const commandLoading = ref(false);
 const commandType = ref<CommandType>('cancel');
@@ -1342,15 +1348,21 @@ function handlePageSizeChange() {
 }
 
 async function loadDimensionDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
-    transactionTypeOptions.value = transactionTypes;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+    transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
 }
 
 onMounted(async () => {
@@ -1368,6 +1380,8 @@ onMounted(async () => {
     await loadData();
     if (linkedBatchNo) await openLinkedBatchDetail(linkedBatchNo);
 });
+
+watch(locale, () => void loadDimensionDictionaries());
 </script>
 
 <style scoped>

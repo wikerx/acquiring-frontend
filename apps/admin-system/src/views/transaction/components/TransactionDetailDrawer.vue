@@ -271,7 +271,7 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
 import type { TransactionContactInfo, TransactionDetail, TransactionFlowEvent, TransactionOperation, TransactionOrder, TransactionPayerInfo } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, loadTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, cardDisplayText, fallbackTransactionStatusOptions, fallbackTransactionStatusScopeOptions, fallbackTransactionTypeOptions, loadTransactionDictOptions, mergeTransactionDictOptions, moneyText, optionText, rateText, statusTagType, transactionPaymentLogoKeys, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 import RecordList from './TransactionRecordList.vue';
 import TransactionFinanceDetail from './TransactionFinanceDetail.vue';
@@ -293,9 +293,9 @@ const emit = defineEmits<{
 const { t, locale } = useI18n();
 const userStore = useUserStore();
 const activeTab = ref('base');
-const typeOptions = ref<TransactionDictOption[]>([]);
-const statusOptions = ref<TransactionDictOption[]>([]);
-const channelMatchStatusOptions = ref<TransactionDictOption[]>([]);
+const typeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const statusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
+const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'channelMatch'));
 const canViewFinance = computed(() => [
     'clearing:record:detail',
     'reconciliation:record:detail',
@@ -569,18 +569,21 @@ onMounted(loadDictionaries);
 watch(locale, loadDictionaries);
 
 async function loadDictionaries() {
-    typeOptions.value = [];
-    statusOptions.value = [];
-    channelMatchStatusOptions.value = [];
+    const fallbackTypes = fallbackTransactionTypeOptions(t);
+    const fallbackStatuses = fallbackTransactionStatusOptions(t);
+    const fallbackChannelMatches = fallbackTransactionStatusScopeOptions(t, 'channelMatch');
+    typeOptions.value = fallbackTypes;
+    statusOptions.value = fallbackStatuses;
+    channelMatchStatusOptions.value = fallbackChannelMatches;
     try {
         const [types, statuses, channelMatches] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')),
             loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types;
-        statusOptions.value = statuses;
-        channelMatchStatusOptions.value = channelMatches;
+        typeOptions.value = mergeTransactionDictOptions(types, fallbackTypes);
+        statusOptions.value = mergeTransactionDictOptions(statuses, fallbackStatuses);
+        channelMatchStatusOptions.value = mergeTransactionDictOptions(channelMatches, fallbackChannelMatches);
     } catch (error) {
         console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
     }

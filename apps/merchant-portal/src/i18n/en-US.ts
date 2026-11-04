@@ -991,6 +991,8 @@ export default {
             CASH_APP_PAY: 'Cash App Pay',
             ACH_DEBIT: 'ACH Debit',
             BANK_TRANSFER: 'Bank Transfer',
+            PIX: 'Pix',
+            SPEI: 'SPEI',
         },
         genericStatus: {
             NOT_REQUIRED: 'Not required',

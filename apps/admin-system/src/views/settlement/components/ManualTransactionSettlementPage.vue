@@ -410,7 +410,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     Check,
     Clock,
@@ -443,6 +443,11 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
 import { moneyTextByExponent, requestKey } from '@/views/settlement/shared';
 
 interface PreviewErrorState {
@@ -467,8 +472,8 @@ const scopeForm = reactive({
     reason: '',
 });
 const profiles = ref<SettlementProfile[]>([]);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
 const profilesLoading = ref(false);
 const previewing = ref(false);
 const starting = ref(false);
@@ -617,15 +622,21 @@ onMounted(async () => {
 
 onBeforeUnmount(stopPolling);
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
         loadCurrencyPresentations().catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
 }
 
 async function handleMerchantChange(value: string | string[]) {
