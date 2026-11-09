@@ -113,14 +113,14 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
-import { TableRowActions, type TableRowAction } from '@acquiring/shared';
+import { useRoute, useRouter } from 'vue-router';
+import { TableRowActions, type TableRowAction, userFacingErrorMessage } from '@acquiring/shared';
 import { useUserStore } from '@/store/modules/user';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
-import { exportMerchantNotifications, getMerchantNotificationDeliveryLogs, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
+import { getMerchantNotificationDeliveryLogs, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, submitMerchantNotificationExportTask, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionRecordList from '../components/TransactionRecordList.vue';
@@ -134,6 +134,7 @@ import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensu
  */
 const { t, locale } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
 const canNotificationDetail = userStore.hasPermission('transaction:merchant-notification:detail');
 const canNotificationRetry = userStore.hasPermission('transaction:merchant-notification:retry');
@@ -220,10 +221,31 @@ async function loadData() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportMerchantNotifications(buildQuery());
+        const task = await submitMerchantNotificationExportTask({
+            requestId: createExportRequestId('merchant-notification'),
+            query: buildQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t('common.exportFailed')));
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function buildQuery(pageNo?: number, currentPageSize?: number): MerchantNotificationQuery {

@@ -954,6 +954,17 @@ export async function exportTransactionOperations(data: TransactionPageQuery) {
     await downloadExcel('/admin/transactions/operations/export', { data });
 }
 
+export async function submitTransactionOperationExportTask(data: {
+    requestId: string;
+    query: TransactionPageQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/operations/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchTransactionOperationsWithSummary(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<TransactionOperationSearchResult>>('/admin/transactions/operations/search-with-summary', data);
     return unwrapResult(result.data);
@@ -1168,6 +1179,17 @@ export async function getMerchantNotificationDeliveryLogs(
 
 export async function exportMerchantNotifications(data: MerchantNotificationQuery) {
     await downloadExcel('/admin/transactions/merchant-notifications/export', { data });
+}
+
+export async function submitMerchantNotificationExportTask(data: {
+    requestId: string;
+    query: MerchantNotificationQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/merchant-notifications/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function retryMerchantNotification(data: MerchantNotificationRetryRequest) {

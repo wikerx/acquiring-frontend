@@ -56,17 +56,22 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { CurrencyAmountDisplay, DirectionTag } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { exportSettlementReserveItems, searchSettlementReserveItems, type SettlementReserveItem, type SettlementReserveItemQuery } from '@/api/settlement';
+import {
+    searchSettlementReserveItems,
+    submitSettlementReserveItemExportTask,
+    type SettlementReserveItem,
+    type SettlementReserveItemQuery,
+} from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { businessDateFromBusinessNo, defaultDateRange } from '@/views/settlement/shared';
+import { businessDateFromBusinessNo, defaultDateRange, requestKey } from '@/views/settlement/shared';
 
 const { locale, t, te } = useI18n();
 const route = useRoute();
@@ -82,7 +87,28 @@ onMounted(async()=>{query.settlementBatchNo=routeText('settlementBatchNo');query
 async function loadData(){loading.value=true;try{const result=await searchSettlementReserveItems(requestQuery());rows.value=result.records||[];total.value=result.total||0}catch(error){showError(error)}finally{loading.value=false}}
 function handleSearch(){query.pageNo=1;loadData()}
     function handleReset(){Object.assign(query,{settlementBatchNo:undefined,merchantId:undefined,reserveNo:undefined,reserveActionNo:undefined,sourceTransactionId:undefined,merchantOrderNo:undefined,reserveStatus:undefined,actionType:undefined,currency:undefined,pageNo:1});dateRange.value=defaultDateRange();transactionTimeRange.value=[];expectedReleaseDateRange.value=[];loadData()}
-async function handleExport(){exporting.value=true;try{await exportSettlementReserveItems(requestQuery())}catch(error){showError(error)}finally{exporting.value=false}}
+async function handleExport(){
+    exporting.value = true;
+    try {
+        const task = await submitSettlementReserveItemExportTask({
+            requestId: requestKey('settlement-reserve-item-export'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        showError(error, 'common.exportFailed');
+    } finally {
+        exporting.value = false;
+    }
+}
 function openDetail(row:SettlementReserveItem){detail.value=row;detailVisible.value=true}
 function openMerchant(merchantId:string){router.push({path:'/merchant/info',query:{merchantId}})}
 function openAccount(row:SettlementReserveItem){router.push({path:'/fund/account',query:{merchantId:row.merchantId,accountNo:row.accountNo||undefined}})}
@@ -92,7 +118,12 @@ function fundAccountText(row:SettlementReserveItem){return row.accountNo||`#${ro
 function routeText(key:string){const value=route.query[key];return typeof value==='string'&&value.trim()?value.trim():undefined}
 function enumText(group:string,value?:string){if(!value)return '-';const key=`transaction.settlement.${group}.${value}`;return te(key)?t(key):value}
 function reserveStatusType(value?:string){if(value==='RELEASED'||value==='RETURNED')return 'success';if(value==='HELD'||value==='PARTIALLY_RETURNED'||value==='RELEASABLE')return 'warning';if(value==='FROZEN')return 'danger';if(value==='REVERSED')return 'info';return 'primary'}
-function showError(error:unknown){ElMessage.error((error as {friendlyMessage?:string})?.friendlyMessage||(error instanceof Error?error.message:t('common.loadFailed')))}
+function showError(error:unknown, key = 'common.loadFailed') {
+    ElMessage.error(
+        (error as { friendlyMessage?: string })?.friendlyMessage
+        || (error instanceof Error ? error.message : t(key)),
+    );
+}
 </script>
 
 <style scoped>

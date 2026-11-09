@@ -7,7 +7,11 @@ export type ExportTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' |
 export type ExportTaskType =
     | 'ADMIN_OPERATIONAL_WORK_ITEM'
     | 'ADMIN_TRANSACTION_ORDER'
-    | 'ADMIN_REFUND';
+    | 'ADMIN_TRANSACTION_OPERATION'
+    | 'ADMIN_MERCHANT_NOTIFICATION'
+    | 'ADMIN_REFUND'
+    | 'ADMIN_SETTLEMENT_TRANSACTION'
+    | 'ADMIN_SETTLEMENT_RESERVE';
 
 export interface ExportTaskQuery {
     taskType?: ExportTaskType | '';

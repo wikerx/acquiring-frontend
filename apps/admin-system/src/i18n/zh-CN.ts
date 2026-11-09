@@ -227,6 +227,10 @@ export default {
       type: {
         ADMIN_OPERATIONAL_WORK_ITEM: '统一运营待办',
         ADMIN_TRANSACTION_ORDER: '交易主单',
+        ADMIN_TRANSACTION_OPERATION: '交易操作流水',
+        ADMIN_MERCHANT_NOTIFICATION: '商户通知记录',
+        ADMIN_SETTLEMENT_TRANSACTION: '结算交易明细',
+        ADMIN_SETTLEMENT_RESERVE: '保证金结算明细',
         ADMIN_REFUND: '退款管理',
       },
       status: {

@@ -229,6 +229,10 @@ export default {
       type: {
         ADMIN_OPERATIONAL_WORK_ITEM: 'Operational Work Items',
         ADMIN_TRANSACTION_ORDER: 'Transaction Orders',
+        ADMIN_TRANSACTION_OPERATION: 'Transaction Operations',
+        ADMIN_MERCHANT_NOTIFICATION: 'Merchant Notifications',
+        ADMIN_SETTLEMENT_TRANSACTION: 'Settlement Transactions',
+        ADMIN_SETTLEMENT_RESERVE: 'Settlement Reserves',
         ADMIN_REFUND: 'Refund Management',
       },
       status: {

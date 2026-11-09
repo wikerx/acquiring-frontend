@@ -3,6 +3,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 /** 保留数据库 DATETIME(3) 路由值，仅转换为 Spring MVC 接收的 ISO LocalDateTime。 */
 function normalizeSettlementTransactionDateTimeParam(value: string) {
@@ -840,6 +841,17 @@ export async function exportSettlementResultItems(data: SettlementResultItemQuer
     await downloadExcel('/admin/settlement/result-items/export', { data });
 }
 
+export async function submitSettlementResultItemExportTask(data: {
+    requestId: string;
+    query: SettlementResultItemQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/result-items/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReserveItems(data: SettlementReserveItemQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReserveItem>>>(
         '/admin/settlement/reserve-items/search', data,
@@ -868,6 +880,17 @@ export async function searchSettlementReserveItemsByTransaction(
 
 export async function exportSettlementReserveItems(data: SettlementReserveItemQuery) {
     await downloadExcel('/admin/settlement/reserve-items/export', { data });
+}
+
+export async function submitSettlementReserveItemExportTask(data: {
+    requestId: string;
+    query: SettlementReserveItemQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/reserve-items/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function searchSettlementPostings(data: SettlementPostingQuery) {

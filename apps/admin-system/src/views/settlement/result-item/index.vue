@@ -56,17 +56,17 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { CurrencyAmountDisplay, DirectionTag, PaymentMethodDisplay, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { exportSettlementResultItems, searchSettlementResultItemComponents, searchSettlementResultItems, type SettlementResultItem, type SettlementResultItemQuery, type SettlementTransactionSummary } from '@/api/settlement';
+import { searchSettlementResultItemComponents, searchSettlementResultItems, submitSettlementResultItemExportTask, type SettlementResultItem, type SettlementResultItemQuery, type SettlementTransactionSummary } from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { businessDateFromBusinessNo, defaultDateRange, rateText } from '@/views/settlement/shared';
+import { businessDateFromBusinessNo, defaultDateRange, rateText, requestKey } from '@/views/settlement/shared';
 
 const { locale, t, te } = useI18n();
 const route = useRoute();
@@ -95,7 +95,28 @@ function requestQuery(): SettlementResultItemQuery { return { ...query, settleme
 async function loadData() { loading.value = true; try { const result = await searchSettlementResultItems(requestQuery()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error, 'common.loadFailed'); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; void loadData(); }
 function handleReset() { Object.assign(query, { settlementBatchNo: undefined, merchantId: undefined, merchantOrderNo: undefined, sourceTransactionId: undefined, resultItemType: undefined, direction: undefined, targetCurrency: undefined, pageNo: 1 }); dateRange.value = defaultDateRange(); transactionTimeRange.value = []; void loadData(); }
-async function handleExport() { exporting.value = true; try { await exportSettlementResultItems(requestQuery()); } catch (error) { showError(error, 'common.exportFailed'); } finally { exporting.value = false; } }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitSettlementResultItemExportTask({
+            requestId: requestKey('settlement-result-item-export'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        showError(error, 'common.exportFailed');
+    } finally {
+        exporting.value = false;
+    }
+}
 async function openComponents(row: SettlementTransactionSummary) { selectedTransaction.value = row; componentVisible.value = true; componentPage.value = 1; componentRows.value = []; await loadComponents(); }
 async function loadComponents() { const row = selectedTransaction.value; if (!row || componentLoading.value) return; componentLoading.value = true; try { const result = await searchSettlementResultItemComponents(row.settlementBatchNo, row.sourceTransactionId, componentPage.value, componentPageSize.value); componentRows.value = result.records || []; componentTotal.value = result.total || 0; } catch (error) { showError(error, 'transaction.settlement.componentLoadFailed'); } finally { componentLoading.value = false; } }
 function resetComponentPage() { componentPage.value = 1; void loadComponents(); }

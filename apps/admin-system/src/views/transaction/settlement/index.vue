@@ -422,7 +422,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
 import {
     CurrencyDisplay,
@@ -454,11 +454,11 @@ import {
     type SettlementResultSummaryLine,
 } from '@/api/transaction';
 import {
-    exportSettlementReserveItems,
-    exportSettlementResultItems,
     searchSettlementResultItemComponents,
     searchSettlementReserveItems,
     searchSettlementResultItems,
+    submitSettlementReserveItemExportTask,
+    submitSettlementResultItemExportTask,
     submitSettlementReversal,
     type SettlementReserveItem,
     type SettlementResultItem,
@@ -886,7 +886,11 @@ function resetTransactionItemsFilter() {
 async function exportTransactionItems() {
     transactionExporting.value = true;
     try {
-        await exportSettlementResultItems(transactionItemQuery());
+        const task = await submitSettlementResultItemExportTask({
+            requestId: createExportRequestId('settlement-transaction'),
+            query: transactionItemQuery(),
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {
@@ -989,12 +993,35 @@ function resetComponentPage() {
 async function exportReserveItems() {
     reserveExporting.value = true;
     try {
-        await exportSettlementReserveItems(reserveItemQuery());
+        const task = await submitSettlementReserveItemExportTask({
+            requestId: createExportRequestId('settlement-reserve'),
+            query: reserveItemQuery(),
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {
         reserveExporting.value = false;
     }
+}
+
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function openMerchant(merchantId: string) {
