@@ -194,6 +194,7 @@ export interface TradeBlackSaveRequest {
 }
 
 export interface EvaluationQuery extends PageQuery {
+    riskRecordNo?: string;
     merchantId?: string;
     merchantOrderNo?: string;
     paymentOrderNo?: string;
@@ -201,6 +202,33 @@ export interface EvaluationQuery extends PageQuery {
     riskLevel?: string;
     evaluationStartTime?: string;
     evaluationEndTimeExclusive?: string;
+}
+
+export type EvaluationDetailQuery = PageQuery;
+
+export interface EvaluationDetail {
+    id: string;
+    risk_record_no: string;
+    module_type?: string;
+    function_code?: string;
+    function_name?: string;
+    rule_id?: string;
+    hit_element?: string;
+    hit_value_masked?: string;
+    risk_level?: string;
+    decision_result?: string;
+    reason_code?: string;
+    decision_reason?: string;
+    decision_time?: string;
+    time_window_seconds?: number;
+    threshold_count?: number;
+    elements_json?: string;
+    current_count?: string;
+    stage_code?: string;
+    stage_name?: string;
+    stage_order?: number;
+    match_result?: string;
+    decision_effect?: string;
 }
 
 export async function getRiskFunctions() {
@@ -360,5 +388,13 @@ export async function getEvaluationHits(riskRecordNo: string) {
 
 export async function getEvaluationDetails(riskRecordNo: string) {
     const result = await http.get<CommonResult<Record<string, unknown>[]>>(`/admin/risk/record/evaluations/${riskRecordNo}/details`);
+    return unwrapResult(result.data);
+}
+
+export async function pageEvaluationDetails(riskRecordNo: string, data: EvaluationDetailQuery = {}) {
+    const result = await http.post<CommonResult<PageResult<EvaluationDetail>>>(
+        `/admin/risk/record/evaluations/${riskRecordNo}/details/page`,
+        data,
+    );
     return unwrapResult(result.data);
 }

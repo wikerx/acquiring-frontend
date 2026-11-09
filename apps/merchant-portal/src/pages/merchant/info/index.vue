@@ -101,7 +101,7 @@
                                     <el-descriptions-item :label="t('merchantInfo.legalName')">{{ currentProfile.merchantName || '-' }}</el-descriptions-item>
                                     <el-descriptions-item label="MCC">{{ profile.merchantCategoryCode || '-' }}</el-descriptions-item>
                                     <el-descriptions-item :label="t('merchantInfo.country')">{{ profile.countryCode || '-' }}</el-descriptions-item>
-                                    <el-descriptions-item :label="t('merchantInfo.settlementCurrency')">{{ profile.settlementCurrency || '-' }}</el-descriptions-item>
+                                    <el-descriptions-item :label="t('merchantInfo.settlementCurrency')"><CurrencyDisplay :currency="profile.settlementCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                                     <el-descriptions-item :label="t('merchantInfo.riskLevel')">{{ riskLevelText(profile.riskLevel) }}</el-descriptions-item>
                                 </el-descriptions>
                             </section>
@@ -339,6 +339,7 @@ import {
     User,
 } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { CurrencyDisplay } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import {
     merchantInfoApi,
@@ -352,7 +353,7 @@ import {
 import { setLocale } from '@/i18n';
 import { hasPermission } from '@/utils/permission';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const profile = ref<MerchantProfile>();
 const workspace = ref<MerchantProfileWorkspace>();
 const quickFormRef = ref<FormInstance>();

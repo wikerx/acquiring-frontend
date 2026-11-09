@@ -4533,7 +4533,13 @@ body {
     font-weight: 650;
 }
 
-.merchant-home-amount-table__row b {
+.merchant-home-amount-currency {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.merchant-home-amount-currency .currency-display__content strong {
     color: #275fbb;
     font-size: 11px;
 }

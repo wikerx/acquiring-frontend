@@ -19,9 +19,11 @@ const PAYMENT_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
     CASH_APP_PAY: ['cashAppPay'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
+    UPI: ['upi'],
     PIX: ['pix'],
     SPEI: ['spei'],
     BTC_ON_CHAIN: ['bitcoin'],
+    PYUSD: ['pyusd'],
 };
 
 const CARD_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
@@ -30,6 +32,7 @@ const CARD_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
     JCB: ['jcb'],
     MAESTRO: ['maestro'],
     AMEX: ['americanExpress'],
+    AMERICAN_EXPRESS: ['americanExpress'],
     DINERS_CLUB: ['dinersClub'],
     DISCOVER: ['discover'],
     UNIONPAY: ['unionPay'],

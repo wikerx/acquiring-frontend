@@ -8,14 +8,24 @@
         <section class="simulation-section simulation-section--input">
             <div class="simulation-section__title"><span>1</span><h2>{{ $t('feeAccount.simulationInputTitle') }}</h2></div>
             <el-form label-position="top" class="simulation-form">
-                <div class="simulation-form__grid">
+                <div
+                    class="simulation-form__grid"
+                    :class="{ 'simulation-form__grid--without-card-brand': form.paymentType !== 'BANK_CARD' }"
+                >
                     <el-form-item class="simulation-form__merchant" :label="$t('feeAccount.merchant')" required><MerchantRemoteSelect v-model="form.merchantId" @change="selectMerchantPlan" /></el-form-item>
                     <el-form-item :label="$t('feeAccount.transactionType')" required><FeeDictSelect v-model="form.transactionType" dict-type="transaction_type" @change="handleTransactionTypeChange" /></el-form-item>
                     <el-form-item :label="$t('feeAccount.paymentType')" required><FeeDictSelect v-model="form.paymentType" dict-type="acquiring_payment_method" @change="handlePaymentTypeChange" /></el-form-item>
-                    <el-form-item :label="$t('feeAccount.paymentMethod')" required><FeeDictSelect v-model="form.paymentMethod" dict-type="card_brand" allow-all :disabled="form.paymentType !== 'BANK_CARD'" @change="invalidateResult" /></el-form-item>
+                    <el-form-item v-if="form.paymentType === 'BANK_CARD'" :label="$t('feeAccount.cardBrand')" required>
+                        <FeeDictSelect
+                            v-model="form.paymentMethod"
+                            dict-type="card_brand"
+                            :placeholder="$t('feeAccount.selectCardBrand')"
+                            @change="invalidateResult"
+                        />
+                    </el-form-item>
                     <el-form-item class="simulation-form__amount" :label="$t('feeAccount.currencyAmount')" required>
                         <div class="currency-amount-control">
-                            <CurrencySelect v-model="form.labelCurrency" width="116px" code-only :placeholder="$t('feeAccount.currency')" :aria-label="$t('feeAccount.currency')" @change="invalidateResult" />
+                            <CurrencySelect v-model="form.labelCurrency" width="148px" :placeholder="$t('feeAccount.currency')" :aria-label="$t('feeAccount.currency')" @change="invalidateResult" />
                             <el-input v-model="form.labelAmount" inputmode="decimal" :placeholder="$t('feeAccount.amount')" :aria-label="$t('feeAccount.amount')" @input="invalidateResult" />
                         </div>
                     </el-form-item>
@@ -36,12 +46,12 @@
             <el-empty v-if="!result" :description="$t('feeAccount.simulationEmpty')" :image-size="84" />
             <template v-else>
                 <div class="result-summary-band">
-                    <div class="result-summary-band__metric result-summary-band__primary"><span>{{ $t('feeAccount.estimatedNetSettlement') }}</span><strong><BaseAmount :value="result.estimatedNetSettlementUsd" currency="USD" currency-display="code" :fraction-digits="2" /></strong></div>
-                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.estimatedTotalFee') }}</span><strong><BaseAmount :value="result.finalFeeUsd" currency="USD" currency-display="code" :fraction-digits="2" /></strong></div>
-                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.reserveAmount') }}</span><strong><BaseAmount :value="result.reserveAmountLabel" :currency="result.reserveAmountCurrency" currency-display="code" :fraction-digits="2" /></strong></div>
+                    <div class="result-summary-band__metric result-summary-band__primary"><span>{{ $t('feeAccount.estimatedNetSettlement') }}</span><strong><CurrencyAmountDisplay :amount="result.estimatedNetSettlementUsd" currency="USD" :locale="String(locale)" size="md" emphasized /></strong></div>
+                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.estimatedTotalFee') }}</span><strong><CurrencyAmountDisplay :amount="result.finalFeeUsd" currency="USD" :locale="String(locale)" size="md" emphasized /></strong></div>
+                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.reserveAmount') }}</span><strong><CurrencyAmountDisplay :amount="result.reserveAmountLabel" :currency="result.reserveAmountCurrency" :locale="String(locale)" size="md" emphasized /></strong></div>
                     <div class="result-summary-band__context">
                         <div><span>{{ $t('feeAccount.simulationNo') }}</span><strong>{{ result.simulationNo }}</strong></div>
-                        <div><span>{{ $t('feeAccount.settlementRate') }}</span><strong>{{ form.labelCurrency }} / USD = {{ result.labelToUsdRate }}</strong></div>
+                        <div><span>{{ $t('feeAccount.settlementRate') }}</span><strong class="settlement-rate-display"><CurrencyPairDisplay :base-currency="form.labelCurrency" quote-currency="USD" :locale="String(locale)" /> = {{ formatExchangeRate(result.labelToUsdRate, String(locale)) }}</strong></div>
                     </div>
                     <el-button :icon="RefreshLeft" plain type="primary" @click="resetSimulation">{{ $t('feeAccount.recalculate') }}</el-button>
                 </div>
@@ -64,8 +74,8 @@
                 </div>
 
                 <div class="result-context-grid">
-                    <div><span>{{ $t('feeAccount.transactionType') }}</span><strong>{{ transactionTypeText(form.transactionType) }}</strong></div>
-                    <div class="result-context-grid__payment"><span>{{ $t('feeAccount.paymentTypeMethod') }}</span><PaymentMethodDisplay :payment-types="paymentTypeItems(form.paymentType)" :payment-methods="paymentMethodItems(form.paymentMethod)" :all-card-brands-label="$t('feeAccount.allPaymentMethods')" align="start" /></div>
+                    <div><span>{{ $t('feeAccount.transactionType') }}</span><strong><TransactionTypeDisplay :value="form.transactionType" :label="transactionTypeText(form.transactionType)" align="start" /></strong></div>
+                    <div class="result-context-grid__payment"><span>{{ $t('feeAccount.paymentTypeMethod') }}</span><PaymentMethodDisplay :payment-types="paymentTypeItems(form.paymentType)" :payment-methods="paymentMethodItems(form.paymentMethod, form.paymentType)" :all-card-brands-label="$t('feeAccount.allPaymentMethods')" align="start" /></div>
                     <div><span>{{ $t('feeAccount.rateSourceRecord') }}</span><strong>{{ result.settlementRateSource }}<template v-if="result.settlementRateId"> / #{{ result.settlementRateId }}</template></strong></div>
                     <div><span>{{ $t('feeAccount.rateEffectiveTime') }}</span><strong><BaseDateTime :value="result.rateEffectiveTime" /></strong></div>
                     <div><span>{{ $t('feeAccount.valuationTime') }}</span><strong><BaseDateTime :value="result.rateValuationTime" /></strong></div>
@@ -105,10 +115,10 @@
                 </el-table-column>
                 <el-table-column prop="simulationNo" :label="$t('feeAccount.simulationNo')" min-width="190" fixed="left" align="center" />
                 <el-table-column prop="merchantId" :label="$t('feeAccount.merchantId')" min-width="150" align="center" />
-                <el-table-column :label="$t('feeAccount.transactionType')" min-width="140" align="center"><template #default="{ row }">{{ transactionTypeText(row.transactionType) }}</template></el-table-column>
+                <el-table-column :label="$t('feeAccount.transactionType')" min-width="160" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="transactionTypeText(row.transactionType)" /></template></el-table-column>
                 <el-table-column :label="$t('feeAccount.paymentTypeMethod')" min-width="280" align="center">
                     <template #default="{ row }">
-                        <PaymentMethodDisplay :payment-types="paymentTypeItems(row.paymentType)" :payment-methods="paymentMethodItems(row.paymentMethod)" :all-card-brands-label="$t('feeAccount.allPaymentMethods')" />
+                        <PaymentMethodDisplay :payment-types="paymentTypeItems(row.paymentType)" :payment-methods="paymentMethodItems(row.paymentMethod, row.paymentType)" :all-card-brands-label="$t('feeAccount.allPaymentMethods')" />
                     </template>
                 </el-table-column>
                 <el-table-column :label="$t('feeAccount.riskUsage')" min-width="310" align="center">
@@ -121,10 +131,10 @@
                         <el-tag v-if="row.detailSnapshotStatus === 'LEGACY_INCOMPLETE'" type="warning" effect="plain" size="small" class="legacy-status-tag">{{ $t('feeAccount.detailSnapshotIncomplete') }}</el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column :label="$t('feeAccount.labelAmount')" min-width="150" align="right"><template #default="scope"><BaseAmount :value="scope.row.labelAmount" :currency="scope.row.labelCurrency" currency-display="code" :fraction-digits="2" /></template></el-table-column>
-                <el-table-column :label="$t('feeAccount.feeTotal')" min-width="145" align="right"><template #default="scope"><BaseAmount :value="scope.row.finalFeeUsd" currency="USD" currency-display="code" :fraction-digits="2" /></template></el-table-column>
-                <el-table-column :label="$t('feeAccount.reserveAmount')" min-width="145" align="right"><template #default="scope"><BaseAmount :value="scope.row.reserveAmountLabel" :currency="scope.row.reserveAmountCurrency" currency-display="code" :fraction-digits="2" /></template></el-table-column>
-                <el-table-column :label="$t('feeAccount.estimatedNetSettlement')" min-width="165" align="right"><template #default="scope"><BaseAmount :value="scope.row.estimatedNetSettlementUsd" currency="USD" currency-display="code" :fraction-digits="2" /></template></el-table-column>
+                <el-table-column :label="$t('feeAccount.labelAmount')" min-width="170" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.labelAmount" :currency="scope.row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
+                <el-table-column :label="$t('feeAccount.feeTotal')" min-width="165" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
+                <el-table-column :label="$t('feeAccount.reserveAmount')" min-width="165" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.reserveAmountLabel" :currency="scope.row.reserveAmountCurrency" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
+                <el-table-column :label="$t('feeAccount.estimatedNetSettlement')" min-width="185" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.estimatedNetSettlementUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
                 <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="120" align="center" />
                 <el-table-column :label="$t('common.createTime')" min-width="170" align="center"><template #default="scope"><BaseDateTime :value="scope.row.createTime" /></template></el-table-column>
             </StandardTable>
@@ -137,7 +147,7 @@
 import { computed, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Clock, Download, Operation, RefreshLeft, Search } from '@element-plus/icons-vue';
-import { AnalyticsChart, formatDecimalAmount, PaymentMethodDisplay, roundDecimalAmount } from '@acquiring/shared';
+import { AnalyticsChart, CurrencyAmountDisplay, formatDecimalAmount, formatExchangeRate, PaymentMethodDisplay, roundDecimalAmount, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import {
     exportSimulationRecords,
@@ -151,13 +161,13 @@ import {
     type FeeSimulationRecordQuery,
     type FeeSimulationResult,
 } from '@/api/fee';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, optionLabel, type SelectOption } from '@/views/channel/shared';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
+import CurrencyPairDisplay from '@/views/exchange/CurrencyPairDisplay.vue';
 import FeeDictSelect from '@/views/fee/components/FeeDictSelect.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import FeeSimulationDetailTable from './FeeSimulationDetailTable.vue';
@@ -235,7 +245,7 @@ const feeCompositionOption = computed(() => ({
     title: {
         text: result.value ? `USD ${formatTwoDecimal(result.value.finalFeeUsd)}` : '-',
         subtext: t('feeAccount.estimatedTotalFee'),
-        left: '38%',
+        left: '32%',
         top: '38%',
         textAlign: 'center',
         textStyle: { color: '#243044', fontSize: 18, fontWeight: 700 },
@@ -243,18 +253,18 @@ const feeCompositionOption = computed(() => ({
     },
     legend: {
         orient: 'vertical',
-        right: 0,
+        right: 4,
         top: 'middle',
         itemWidth: 10,
         itemHeight: 10,
-        itemGap: 12,
+        itemGap: 10,
         textStyle: { color: '#5d6878', fontSize: 12 },
     },
     series: [{
         name: t('feeAccount.feeComposition'),
         type: 'pie',
-        radius: ['44%', '64%'],
-        center: ['38%', '50%'],
+        radius: ['40%', '58%'],
+        center: ['32%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: { borderColor: '#fff', borderWidth: 3, borderRadius: 3 },
         label: { show: false },
@@ -267,7 +277,7 @@ function formatTwoDecimal(value: string | number) {
     return formatDecimalAmount(
         roundDecimalAmount(value, 2),
         String(locale.value || 'zh-CN'),
-        2,
+        0,
         2,
     );
 }
@@ -275,7 +285,7 @@ function formatTwoDecimal(value: string | number) {
 watch(() => locale.value, loadDimensionOptions, { immediate: true });
 
 function emptySimulation(): FeeSimulationInput {
-    return { merchantId: '', feeCategory: 'TRANSACTION_FEE', transactionType: 'PAYMENT', paymentType: 'BANK_CARD', paymentMethod: 'ALL', riskServiceType: 'NONE', riskServiceTypes: [], labelAmount: '100', labelCurrency: 'USD', monthlyCountBefore: 0, monthlyAmountUsdBefore: '0' };
+    return { merchantId: '', feeCategory: 'TRANSACTION_FEE', transactionType: 'PAYMENT', paymentType: 'BANK_CARD', paymentMethod: '', riskServiceType: 'NONE', riskServiceTypes: [], labelAmount: '100', labelCurrency: 'USD', monthlyCountBefore: 0, monthlyAmountUsdBefore: '0' };
 }
 function applySelectedPlan(plan: FeePlanDetail | null) {
     selectedPlan.value = plan;
@@ -291,7 +301,8 @@ async function selectMerchantPlan(value: string | string[]) {
 }
 
 function handlePaymentTypeChange(value: string | string[]) {
-    if (!Array.isArray(value) && value !== 'BANK_CARD') form.value.paymentMethod = 'ALL';
+    if (Array.isArray(value)) return;
+    form.value.paymentMethod = value === 'BANK_CARD' ? '' : 'ALL';
     invalidateResult();
 }
 
@@ -350,8 +361,9 @@ function paymentTypeItems(value?: string) {
     return value ? [{ value, label: optionLabel(paymentTypeOptions.value, value) }] : [];
 }
 
-function paymentMethodItems(value?: string) {
+function paymentMethodItems(value?: string, paymentType?: string) {
     if (!value) return [];
+    if (value === 'ALL' && paymentType !== 'BANK_CARD') return [];
     return [{
         value,
         label: value === 'ALL' ? t('feeAccount.allPaymentMethods') : optionLabel(paymentMethodOptions.value, value),
@@ -367,7 +379,9 @@ function invalidateResult() { result.value = null; }
 async function calculate() {
     if (!form.value.merchantId) return ElMessage.warning(t('feeAccount.selectMerchant'));
     if (!selectedVersion.value) return ElMessage.warning(t('feeAccount.merchantFeeNotConfigured'));
-    if (!form.value.transactionType || !form.value.paymentType || !form.value.paymentMethod) return ElMessage.warning(t('feeAccount.completeMatchDimensions'));
+    if (!form.value.transactionType || !form.value.paymentType) return ElMessage.warning(t('feeAccount.completeMatchDimensions'));
+    if (form.value.paymentType === 'BANK_CARD' && !form.value.paymentMethod) return ElMessage.warning(t('feeAccount.selectCardBrand'));
+    if (form.value.paymentType !== 'BANK_CARD') form.value.paymentMethod = 'ALL';
     syncFeeCategoryFromTransactionType(form.value.transactionType);
     if (form.value.feeCategory === 'RISK_FEE' && !form.value.riskServiceTypes.length) return ElMessage.warning(t('feeAccount.simulationRiskRequired'));
     if (!/^[A-Za-z]{3}$/.test(form.value.labelCurrency)) return ElMessage.warning(t('feeAccount.invalidCurrency'));
@@ -411,9 +425,10 @@ function resetRecordQuery() { recordQuery.value = { pageNo: 1, pageSize: recordQ
 .simulation-section__title > span { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; background: var(--el-color-primary); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 2px 5px rgb(37 99 235 / 22%); }
 .simulation-section__title h2 { margin: 0; color: var(--simulation-ink); font-size: 15px; font-weight: 600; }
 .simulation-form__grid { display: grid; grid-template-columns: minmax(220px, 1.25fr) repeat(3, minmax(150px, 1fr)) minmax(270px, 1.35fr); gap: 0 16px; }
+.simulation-form__grid--without-card-brand { grid-template-columns: minmax(220px, 1.25fr) repeat(2, minmax(150px, 1fr)) minmax(270px, 1.35fr); }
 .simulation-form__grid > .el-form-item { min-width: 0; margin-bottom: 14px; }
 .simulation-form :deep(.el-select), .simulation-form :deep(.el-input-number), .simulation-form :deep(.el-segmented) { width: 100%; }
-.currency-amount-control { display: grid; grid-template-columns: 116px minmax(0, 1fr); width: 100%; }
+.currency-amount-control { display: grid; grid-template-columns: 148px minmax(0, 1fr); width: 100%; }
 .currency-amount-control :deep(.exchange-currency-select .el-select__wrapper) { border-radius: 3px 0 0 3px; }
 .currency-amount-control :deep(.el-input__wrapper) { margin-left: -1px; border-radius: 0 3px 3px 0; }
 .currency-amount-control :deep(.el-select__wrapper.is-focused), .currency-amount-control :deep(.el-input__wrapper.is-focus) { position: relative; z-index: 1; }
@@ -436,7 +451,7 @@ function resetRecordQuery() { recordQuery.value = { pageNo: 1, pageSize: recordQ
 .result-summary-band__context strong { min-width: 0; margin-top: 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; text-align: right; }
 .result-summary-band > .el-button { align-self: center; margin: 0 16px; }
 .result-content-heading { width: max-content; margin: 0 0 14px 48px; padding: 0 10px 9px; border-bottom: 2px solid var(--el-color-primary); color: var(--el-color-primary); font-size: 14px; font-weight: 600; }
-.result-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.result-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(360px, 22vw, 400px); gap: 18px; align-items: start; }
 .fee-detail-area { min-width: 0; }
 .fee-detail-total { display: flex; align-items: center; justify-content: flex-end; gap: 22px; min-height: 42px; padding: 8px 16px; border: 1px solid var(--simulation-border); border-top: 0; background: #f7f9fc; color: var(--simulation-ink); }
 .fee-detail-total span { font-size: 13px; font-weight: 600; }

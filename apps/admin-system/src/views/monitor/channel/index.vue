@@ -8,7 +8,19 @@
             <el-form-item :label="t('monitor.workbench.fields.channelCode')"><el-input v-model.trim="query.channelCode" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.requestScene')"><el-input v-model.trim="query.requestScene" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.currency')"><el-input v-model.trim="query.currency" clearable @keyup.enter="handleSearch" /></el-form-item>
-            <el-form-item :label="t('monitor.workbench.fields.paymentMethod')"><el-input v-model.trim="query.paymentMethod" clearable @keyup.enter="handleSearch" /></el-form-item>
+            <el-form-item :label="t('monitor.workbench.fields.paymentMethod')">
+                <el-select v-model="query.paymentMethod" clearable filterable :placeholder="t('common.pleaseSelect')">
+                    <template v-if="selectedPaymentMethodLogoKeys.length" #prefix>
+                        <PaymentLogoGroup :keys="selectedPaymentMethodLogoKeys" size="sm" :wrap="false" />
+                    </template>
+                    <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value">
+                        <div class="monitor-payment-option">
+                            <PaymentLogoGroup v-if="paymentMethodLogoKeys(item).length" :keys="paymentMethodLogoKeys(item)" size="sm" :wrap="false" />
+                            <span>{{ item.label }}</span>
+                        </div>
+                    </el-option>
+                </el-select>
+            </el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.errorCode')"><el-input v-model.trim="query.errorCode" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('common.status')">
                 <el-select v-model="query.status" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
@@ -77,8 +89,9 @@
 
 <script setup lang="ts">
 /** 渠道健康监控主页面：展示成功率、延迟、错误原因和支付方式聚合。 */
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Refresh, Search, View } from '@element-plus/icons-vue';
+import { getPaymentLogo, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -87,6 +100,7 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { MonitorChartGrid, MonitorChartPanel, MonitorTimeRangeSelector, type MonitorChartClickEvent } from '@/components/MonitorChart';
 import { MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { searchMonitorChannels, type ChannelAggregateItem, type ChannelMonitorResponse } from '@/api/monitor/workbench';
+import { loadDictOptions, paymentLogoKeys, type SelectOption } from '@/views/channel/shared';
 import {
     createChannelErrorDataset,
     createChannelLatencyDataset,
@@ -122,6 +136,11 @@ const query = reactive({
 });
 const detailVisible = ref(false);
 const detail = ref<ChannelAggregateItem>();
+const paymentMethodOptions = ref<SelectOption[]>([]);
+const selectedPaymentMethodLogoKeys = computed(() => {
+    const option = paymentMethodOptions.value.find((item) => item.value === query.paymentMethod);
+    return option ? paymentMethodLogoKeys(option) : [];
+});
 
 const successDataset = computed(() => createChannelSuccessRateDataset(response.value?.successRateTrend || [], t));
 const latencyDataset = computed(() => createChannelLatencyDataset(response.value?.latencyTrend || [], t));
@@ -139,7 +158,18 @@ const summaryCards = computed(() => (response.value?.summaries || []).map((item)
     description: item.description,
 })));
 
-onMounted(() => loadData());
+onMounted(async () => {
+    await Promise.all([loadPaymentMethodOptions(), loadData()]);
+});
+
+watch(locale, () => void loadPaymentMethodOptions());
+
+async function loadPaymentMethodOptions() {
+    paymentMethodOptions.value = await loadDictOptions(
+        'acquiring_payment_method',
+        String(locale.value || 'zh-CN'),
+    ).catch(() => []);
+}
 
 async function loadData() {
     loading.value = true;
@@ -188,6 +218,9 @@ function filterPaymentMethod(event: MonitorChartClickEvent) {
 }
 function openDetail(row: ChannelAggregateItem) { detail.value = row; detailVisible.value = true; }
 function statusText(value?: string) { return t(`monitor.workbench.status.${String(value || 'unknown').toLowerCase()}`, value || '-'); }
+function paymentMethodLogoKeys(option: SelectOption): PaymentLogoKey[] {
+    return paymentLogoKeys(option.value, option).filter((key) => Boolean(getPaymentLogo(key).asset));
+}
 function state(hasData: boolean) {
     return monitorLoadState({
         loading: loading.value,
@@ -201,4 +234,6 @@ function state(hasData: boolean) {
 <style scoped>
 .monitor-workbench-page__charts { margin-bottom: 16px; }
 .search-form :deep(.el-input) { width: 190px; }
+.monitor-payment-option { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.monitor-payment-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

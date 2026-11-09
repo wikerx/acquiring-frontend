@@ -1,5 +1,5 @@
 import { systemApi, type DictDataItem } from '@/api/systemApi';
-import { formatDecimalAmount, roundDecimalAmount, type PaymentLogoKey } from '@acquiring/shared';
+import { formatExchangeRate, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
 import { formatDateTimeInTimeZone } from '@/utils/format';
 
 export const DEFAULT_TRANSACTION_QUERY_TIME_ZONE = 'Asia/Shanghai';
@@ -52,8 +52,11 @@ const PAYMENT_METHOD_VALUES = [
     'GOOGLE_PAY',
     'ALIPAY_PLUS',
     'CASH_APP_PAY',
+    'BTC_ON_CHAIN',
+    'PYUSD',
     'ACH_DEBIT',
     'BANK_TRANSFER',
+    'UPI',
     'PIX',
     'SPEI',
 ];
@@ -98,8 +101,11 @@ const PAYMENT_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
     CASH_APP_PAY: ['cashAppPay'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
+    UPI: ['upi'],
     PIX: ['pix'],
     SPEI: ['spei'],
+    BTC_ON_CHAIN: ['bitcoin'],
+    PYUSD: ['pyusd'],
 };
 
 const CARD_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
@@ -265,16 +271,11 @@ export function transactionPaymentLogoKeys(
 
 export function moneyText(amount?: number | string | null, currency?: string, currencyExponent?: number | null) {
     if (amount === undefined || amount === null || amount === '') return '-';
-    const digits = typeof currencyExponent === 'number' && currencyExponent >= 0
-        ? Math.min(currencyExponent, 8)
-        : Math.max(2, Math.min(resolveDecimalLength(String(amount)), 8));
-    const rounded = roundDecimalAmount(amount, digits);
-    return `${currency || ''} ${formatDecimalAmount(rounded, undefined, digits, digits)}`.trim();
+    return `${currency || ''} ${formatMoneyAmount(amount, 'zh-CN', currencyExponent)}`.trim();
 }
 
 export function rateText(rate?: number | string | null) {
-    if (rate === undefined || rate === null || rate === '') return '1.00000000';
-    return roundDecimalAmount(rate, 8);
+    return formatExchangeRate(rate, 'zh-CN');
 }
 
 export function splitDateRange(range: string[]) {
@@ -341,11 +342,6 @@ function normalizeTransactionDictOption(dictType: string, locale: string, option
     const labels = CHANNEL_MATCH_STATUS_LABELS[locale] || CHANNEL_MATCH_STATUS_LABELS[locale.split('-')[0]];
     const label = labels?.[option.value];
     return label ? { ...option, label } : option;
-}
-
-function resolveDecimalLength(value: string) {
-    const decimal = value.split('.')[1];
-    return decimal ? decimal.replace(/0+$/, '').length : 0;
 }
 
 function resolveZonedNow(timeZone: string) {

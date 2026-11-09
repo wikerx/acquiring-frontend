@@ -54,6 +54,19 @@ export interface SettlementProfileUpdateRequest {
     businessTimeZone: string;
     dailyCutoffTime: string;
     expectedVersion: number;
+    requestKey: string;
+    reason: string;
+}
+
+export interface SettlementProfileCreateRequest {
+    requestKey: string;
+    merchantId: string;
+    settlementAccountId: number;
+    targetCurrency: string;
+    businessTimeZone: string;
+    dailyCutoffTime: string;
+    processingMode: string;
+    reason: string;
 }
 
 export interface SettlementCandidateQuery extends PageQuery {
@@ -878,6 +891,13 @@ export async function searchSettlementProfiles(data: SettlementProfileQuery) {
 export async function getSettlementProfile(settlementProfileNo: string) {
     const result = await http.get<CommonResult<SettlementProfile>>(
         `/admin/settlement/profiles/${encodeURIComponent(settlementProfileNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function createSettlementProfile(data: SettlementProfileCreateRequest) {
+    const result = await http.post<CommonResult<SettlementProfile>>(
+        '/admin/settlement/profiles', data,
     );
     return unwrapResult(result.data);
 }

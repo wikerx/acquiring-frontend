@@ -37,7 +37,7 @@
             </el-table-column>
             <el-table-column prop="accountNo" :label="$t('feeAccount.accountNo')" min-width="180" align="center" show-overflow-tooltip />
             <el-table-column :label="$t('feeAccount.rechargeAmount')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column :label="$t('common.status')" width="135" align="center">
                 <template #default="{ row }"><el-tag :type="statusType(row.rechargeStatus)">{{ statusText(row.rechargeStatus) }}</el-tag></template>
@@ -101,7 +101,7 @@
             <el-form ref="actionFormRef" :model="actionForm" :rules="actionRules" label-width="94px" class="dialog-form action-form">
                 <el-form-item :label="$t('feeAccount.rechargeNo')">{{ actionTarget?.rechargeNo }}</el-form-item>
                 <el-form-item :label="$t('feeAccount.rechargeAmount')">
-                    <BaseAmount v-if="actionTarget" :value="actionTarget.amount" :currency="actionTarget.currency" currency-display="code" />
+                    <CurrencyAmountDisplay v-if="actionTarget" :amount="actionTarget.amount" :currency="actionTarget.currency" :locale="String(locale)" emphasized />
                 </el-form-item>
                 <el-form-item :label="$t('feeAccount.reviewComment')" prop="comment">
                     <el-input v-model.trim="actionForm.comment" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('feeAccount.reviewCommentPlaceholder')" />
@@ -119,7 +119,7 @@
             <div v-if="detail" class="recharge-detail">
                 <section class="recharge-amount-band">
                     <span>{{ $t('feeAccount.rechargeAmount') }}</span>
-                    <strong><BaseAmount :value="detail.amount" :currency="detail.currency" currency-display="code" /></strong>
+                    <strong><CurrencyAmountDisplay :amount="detail.amount" :currency="detail.currency" :locale="String(locale)" emphasized /></strong>
                     <el-tag :type="statusType(detail.rechargeStatus)">{{ statusText(detail.rechargeStatus) }}</el-tag>
                 </section>
                 <section class="review-band is-submit">
@@ -129,7 +129,7 @@
                         <el-descriptions-item :label="$t('feeAccount.requestId')">{{ detail.requestId }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ detail.accountNo }}</el-descriptions-item>
-                        <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')">{{ detail.currency }}</el-descriptions-item>
+                        <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')"><CurrencyDisplay :currency="detail.currency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="$t('common.remark')" :span="2">{{ detail.remark }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.submitter')">{{ detail.submitByName || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="$t('feeAccount.submitTime')"><BaseDateTime :value="detail.submitTime" /></el-descriptions-item>
@@ -172,7 +172,7 @@ import { Checked, CircleCheck, CircleClose, CreditCard, Download, RefreshLeft, S
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { compareDecimalAmounts, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
+import { compareDecimalAmounts, CurrencyAmountDisplay, CurrencyDisplay, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
 import {
     auditFundRecharge,
     createFundRecharge,
@@ -186,7 +186,6 @@ import {
     type FundRecharge,
     type FundRechargeQuery,
 } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -195,7 +194,7 @@ import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteS
 
 type ActionMode = 'audit' | 'recheck' | 'reject';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const rechargeStatuses = ['PENDING_AUDIT', 'PENDING_RECHECK', 'POSTED', 'REJECTED'];

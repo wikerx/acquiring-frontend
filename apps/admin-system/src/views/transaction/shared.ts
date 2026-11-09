@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { formatDecimalAmount, roundDecimalAmount, type PaymentLogoKey } from '@acquiring/shared';
+import { formatExchangeRate, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
 import type { TransactionDetail } from '@/api/transaction';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
@@ -57,8 +57,11 @@ const PAYMENT_METHOD_VALUES = [
     'GOOGLE_PAY',
     'ALIPAY_PLUS',
     'CASH_APP_PAY',
+    'BTC_ON_CHAIN',
+    'PYUSD',
     'ACH_DEBIT',
     'BANK_TRANSFER',
+    'UPI',
     'PIX',
     'SPEI',
 ];
@@ -94,18 +97,11 @@ export function moneyText(amount?: number | string | null, currency?: string, cu
     if (amount === undefined || amount === null) {
         return '-';
     }
-    const digits = typeof currencyExponent === 'number' && currencyExponent >= 0
-        ? Math.min(currencyExponent, 8)
-        : Math.max(2, Math.min(resolveDecimalLength(String(amount)), 8));
-    const rounded = roundDecimalAmount(amount, digits);
-    return `${currency || ''} ${formatDecimalAmount(rounded, undefined, digits, digits)}`.trim();
+    return `${currency || ''} ${formatMoneyAmount(amount, 'zh-CN', currencyExponent)}`.trim();
 }
 
 export function rateText(rate?: number | string | null) {
-    if (rate === undefined || rate === null || rate === '') {
-        return '1.00000000';
-    }
-    return roundDecimalAmount(rate, 8);
+    return formatExchangeRate(rate, 'zh-CN');
 }
 
 export function tagText(options: TransactionDictOption[], value?: string) {
@@ -372,11 +368,6 @@ export async function openTransactionDetail(
     } finally {
         loading.value = false;
     }
-}
-
-function resolveDecimalLength(value: string) {
-    const decimal = value.split('.')[1];
-    return decimal ? decimal.replace(/0+$/, '').length : 0;
 }
 
 function normalizeMaskedCard(value: string) {

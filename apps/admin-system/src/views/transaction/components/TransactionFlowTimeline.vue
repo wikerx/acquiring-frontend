@@ -3,18 +3,27 @@
         <header class="transaction-flow__toolbar">
             <div class="transaction-flow__heading">
                 <h3>{{ t('transaction.detail.flow.title') }}</h3>
+                <TransactionTypeDisplay v-if="selectedOperationType" :value="selectedOperationType" :label="selectedOperationTypeLabel" icon-only />
                 <span :title="selectedTransactionId === 'ALL' ? undefined : selectedTransactionId">{{ selectedOperationLabel }}</span>
                 <span v-if="visibleCount" class="transaction-flow__count">{{ recordCount(visibleCount) }}</span>
             </div>
             <div class="transaction-flow__actions">
                 <el-select v-model="selectedTransactionId" size="small" class="transaction-flow__operation-select" :aria-label="t('transaction.detail.flow.operation')" :title="selectedTransactionId === 'ALL' ? undefined : selectedTransactionId">
+                    <template #prefix>
+                        <TransactionTypeDisplay v-if="selectedOperationType" :value="selectedOperationType" :label="selectedOperationTypeLabel" icon-only />
+                    </template>
                     <el-option value="ALL" :label="t('transaction.detail.flow.allOperations')" />
                     <el-option
                         v-for="option in operationOptions"
                         :key="option.value"
                         :value="option.value"
                         :label="option.label"
-                    />
+                    >
+                        <span class="transaction-flow__operation-option">
+                            <TransactionTypeDisplay v-if="option.transactionType" :value="option.transactionType" :label="option.transactionTypeLabel" icon-only />
+                            <span>{{ option.label }}</span>
+                        </span>
+                    </el-option>
                 </el-select>
                 <el-radio-group v-model="viewMode" size="small" :aria-label="t('transaction.detail.flow.viewMode')">
                     <el-radio-button value="key">{{ t('transaction.detail.flow.keyEvents') }}</el-radio-button>
@@ -28,9 +37,7 @@
             <div v-if="operationGroups.length === 1" class="transaction-flow__stages" :aria-label="t('transaction.detail.flow.stages')">
                 <div v-for="stage in stageOverview" :key="stage.key" class="transaction-flow__stage" :class="[`is-${stage.tone}`, { 'is-linked': stage.linked }]">
                     <span class="transaction-flow__stage-node" aria-hidden="true">
-                        <svg v-if="stage.tone === 'success'" class="transaction-flow__stage-check" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                            <path d="M11.7 20.2c1.5-.8 3.6-1.4 4.6-.8 1.3.8 1.9 2.3 2.3 3.9 2.8-5.7 6.2-10.2 9.5-11.4 1.3-.5 2.8-.3 4.2.1-5.3 4.3-9.6 11-13.9 17.4-.8-4.4-3.2-7-6.9-9.2Z" fill="currentColor" />
-                        </svg>
+                        <TransactionSuccessCheckIcon v-if="stage.tone === 'success'" class="transaction-flow__stage-check" />
                         <el-icon v-else-if="stage.tone === 'danger'"><CloseBold /></el-icon>
                         <el-icon v-else-if="stage.tone === 'warning'"><Clock /></el-icon>
                         <el-icon v-else><Minus /></el-icon>
@@ -43,6 +50,7 @@
 
             <div v-for="group in operationGroups" :key="group.key" class="transaction-flow__operation">
                 <div v-if="selectedTransactionId === 'ALL' && operationGroups.length > 1" class="transaction-flow__operation-heading">
+                    <TransactionTypeDisplay v-if="group.transactionType" :value="group.transactionType" :label="group.transactionTypeLabel" icon-only />
                     <strong>{{ group.label }}</strong>
                     <span>{{ recordCount(group.count) }}</span>
                 </div>
@@ -72,7 +80,20 @@
                                 >
                                     <time>{{ displayRecordTime(entry.time) }}</time>
                                     <span class="transaction-flow__event-name"><i aria-hidden="true"></i><strong>{{ timelineTitle(entry.row) }}</strong></span>
-                                    <span class="transaction-flow__event-content">{{ timelineContent(entry.row) }}</span>
+                                    <span class="transaction-flow__event-content">
+                                        <template v-if="hasTimelineAmount(entry.row)">
+                                            <span v-if="entry.row.changeReason">{{ entry.row.changeReason }}</span>
+                                            <CurrencyAmountDisplay
+                                                :amount="timelineAmount(entry.row)"
+                                                :currency="timelineAmountCurrency(entry.row)"
+                                                :exponent="detail.order?.currencyExponent"
+                                                :locale="String(locale)"
+                                                size="xs"
+                                                emphasized
+                                            />
+                                        </template>
+                                        <template v-else>{{ timelineContent(entry.row) }}</template>
+                                    </span>
                                     <el-tag size="small" :type="timelineTagType(entry.tone)" effect="light">{{ timelineStatusText(entry.row) }}</el-tag>
                                     <el-icon class="transaction-flow__chevron" :class="{ 'is-collapsed': !isEventExpanded(entry.key) }"><ArrowDown /></el-icon>
                                 </button>
@@ -97,6 +118,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ArrowDown, Clock, CloseBold, Minus } from '@element-plus/icons-vue';
+import { CurrencyAmountDisplay, TransactionTypeDisplay } from '@acquiring/shared';
 import type { TransactionDetail, TransactionOperation } from '@/api/transaction';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import {
@@ -105,6 +127,7 @@ import {
     optionText,
     type TransactionDictOption,
 } from '../shared';
+import TransactionSuccessCheckIcon from './TransactionSuccessCheckIcon.vue';
 
 type TimelineRow = Record<string, unknown>;
 type TimelineSource = 'flow' | 'risk' | 'status' | 'amount';
@@ -134,6 +157,8 @@ interface TimelinePhase {
 interface TimelineOperationGroup {
     key: string;
     label: string;
+    transactionType: string;
+    transactionTypeLabel: string;
     count: number;
     phases: TimelinePhase[];
 }
@@ -180,15 +205,21 @@ const operationOptions = computed(() => {
         ...props.detail.operations.map((operation) => operation.transactionId),
         ...timelineEntries.value.map((entry) => entry.transactionId),
     ])];
-    return ids.map((value) => ({
-        value: value || '__UNLINKED__',
-        label: value ? operationLabel(operationMap.value.get(value), value) : t('transaction.detail.flow.unlinked'),
-    }));
+    return ids.map((value) => {
+        const operation = value ? operationMap.value.get(value) : undefined;
+        return {
+            value: value || '__UNLINKED__',
+            label: value ? operationLabel(operation, value) : t('transaction.detail.flow.unlinked'),
+            transactionType: operation?.transactionType || '',
+            transactionTypeLabel: operation ? optionText(props.typeOptions, operation.transactionType) : '',
+        };
+    });
 });
 
 watch([() => props.detail, () => props.focusTransactionId], () => {
     const focus = props.focusTransactionId || '';
-    selectedTransactionId.value = focus && operationOptions.value.some((option) => option.value === focus) ? focus : 'ALL';
+    const currentPageContainsFocus = focus && timelineEntries.value.some((entry) => entry.transactionId === focus);
+    selectedTransactionId.value = currentPageContainsFocus ? focus : 'ALL';
     viewMode.value = 'key';
     collapsedPhaseKeys.value = [];
     expandedEventKeys.value = [];
@@ -224,6 +255,8 @@ const operationGroups = computed<TimelineOperationGroup[]>(() => {
         return [{
             key: id,
             label: transactionId ? operationLabel(operationMap.value.get(transactionId), transactionId) : t('transaction.detail.flow.unlinked'),
+            transactionType: operationMap.value.get(transactionId)?.transactionType || '',
+            transactionTypeLabel: optionText(props.typeOptions, operationMap.value.get(transactionId)?.transactionType),
             count: entries.length,
             phases,
         }];
@@ -257,6 +290,12 @@ const allPhasesCollapsed = computed(() => operationGroups.value.length > 0
 const selectedOperationLabel = computed(() => selectedTransactionId.value === 'ALL'
     ? t('transaction.detail.flow.allOperations')
     : operationOptions.value.find((option) => option.value === selectedTransactionId.value)?.label || '');
+const selectedOperationType = computed(() => selectedTransactionId.value === 'ALL'
+    ? ''
+    : operationOptions.value.find((option) => option.value === selectedTransactionId.value)?.transactionType || '');
+const selectedOperationTypeLabel = computed(() => selectedTransactionId.value === 'ALL'
+    ? ''
+    : operationOptions.value.find((option) => option.value === selectedTransactionId.value)?.transactionTypeLabel || '');
 
 function operationLabel(operation: TransactionOperation | undefined, transactionId: string) {
     if (!operation) return `${t('transaction.fields.transactionId')} · ${transactionId}`;
@@ -404,6 +443,18 @@ function timelineContent(row: TimelineRow) {
     return String(row.changeReason || row.eventContent || row.eventMessage || row.failReasonMessage || row.errorMessage || '-');
 }
 
+function hasTimelineAmount(row: TimelineRow) {
+    return (Boolean(row.amountChangeId || row.changeType) && isPresent(row.changeAmount));
+}
+
+function timelineAmount(row: TimelineRow) {
+    return row.changeAmount as number | string | null | undefined;
+}
+
+function timelineAmountCurrency(row: TimelineRow) {
+    return String(row.amountCurrency || props.detail.order?.transactionCurrency || '');
+}
+
 function timelineStatusObjectText(value: unknown) {
     const normalized = String(value || 'STATUS').toUpperCase();
     return t(`transaction.timelineStatusObject.${normalized}`, normalized);
@@ -532,6 +583,8 @@ function isPresent(value: unknown) {
 .transaction-flow__count { font-variant-numeric: tabular-nums; }
 .transaction-flow__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .transaction-flow__operation-select { flex: 0 0 420px; width: 420px; }
+.transaction-flow__operation-option { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.transaction-flow__operation-option > span:last-child { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
 .transaction-flow__stages { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(160px, 1fr); overflow-x: auto; border: 1px solid #dfe9f8; border-radius: 6px; padding: 19px 12px 16px; background: #f8fbff; }
 .transaction-flow__stage { position: relative; display: grid; justify-items: center; gap: 3px; min-width: 0; text-align: center; }
 .transaction-flow__stage:not(:last-child)::after { position: absolute; top: 19px; left: calc(50% + 26px); width: calc(100% - 52px); height: 3px; background: #d6e2f2; content: ''; }
@@ -581,7 +634,7 @@ function isPresent(value: unknown) {
 .transaction-flow__event.is-neutral .transaction-flow__event-name i { background: var(--el-text-color-placeholder); }
 .transaction-flow__event-name strong, .transaction-flow__event-content { min-width: 0; overflow-wrap: anywhere; }
 .transaction-flow__event-name strong { font-weight: 600; }
-.transaction-flow__event-content { color: var(--el-text-color-secondary); font-size: 12px; line-height: 18px; }
+.transaction-flow__event-content { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--el-text-color-secondary); font-size: 12px; line-height: 18px; }
 .transaction-flow__event-row .el-tag { justify-self: end; white-space: nowrap; }
 .transaction-flow__event-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 18px; margin: 0; padding: 12px 15px 14px 167px; border-top: 1px solid var(--el-border-color-lighter); background: #f9fbfe; }
 .transaction-flow__event-details > div { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 7px; min-width: 0; font-size: 12px; line-height: 18px; }

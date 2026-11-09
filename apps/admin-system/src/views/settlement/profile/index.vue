@@ -28,6 +28,11 @@
         </el-form>
 
         <el-row :gutter="10" class="mb8">
+            <el-col :span="1.5">
+                <el-button v-hasPermi="'settlement:profile:create'" type="primary" plain :icon="Plus" @click="openCreate">
+                    {{ t('transaction.settlement.createProfile') }}
+                </el-button>
+            </el-col>
             <el-col class="right-toolbar">
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
             </el-col>
@@ -110,6 +115,66 @@
             </el-descriptions>
         </el-drawer>
 
+        <el-dialog v-model="createVisible" :title="t('transaction.settlement.createProfile')" width="680px" destroy-on-close>
+            <el-alert :title="t('transaction.settlement.createProfileHint')" type="info" show-icon :closable="false" />
+            <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="128px" class="profile-command-form">
+                <el-form-item :label="t('transaction.settlement.merchant')" prop="merchantId">
+                    <MerchantRemoteSelect v-model="createForm.merchantId" @change="handleCreateMerchantChange" />
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.settlementAccount')" prop="settlementAccountId">
+                    <el-select
+                        v-model="createForm.settlementAccountId"
+                        filterable
+                        :loading="accountLoading"
+                        :disabled="!createForm.merchantId"
+                        :placeholder="createForm.merchantId ? t('transaction.settlement.selectSettlementAccount') : t('transaction.settlement.selectMerchantFirst')"
+                        @change="handleCreateAccountChange"
+                    >
+                        <el-option
+                            v-for="account in eligibleAccounts"
+                            :key="account.id"
+                            :value="account.id"
+                            :label="`${account.accountNo} · ${account.settlementCurrency}`"
+                        >
+                            <div class="account-option">
+                                <span>{{ account.accountNo }}</span>
+                                <CurrencyDisplay :currency="account.settlementCurrency" size="xs" />
+                            </div>
+                        </el-option>
+                    </el-select>
+                    <div v-if="createForm.merchantId && !accountLoading && eligibleAccounts.length === 0" class="field-hint field-hint--warning">
+                        {{ t('transaction.settlement.noEligibleSettlementAccount') }}
+                    </div>
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.targetCurrency')">
+                    <CurrencyDisplay v-if="createForm.targetCurrency" :currency="createForm.targetCurrency" size="xs" />
+                    <span v-else class="field-placeholder">{{ t('transaction.settlement.currencyFromAccount') }}</span>
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.processingMode')" prop="processingMode">
+                    <el-segmented v-model="createForm.processingMode" :options="modeOptions" block />
+                </el-form-item>
+                <div class="mode-explanation">
+                    <strong>{{ modeText(createForm.processingMode) }}</strong>
+                    <span>{{ t(`transaction.settlement.processingModeDescription.${createForm.processingMode}`) }}</span>
+                </div>
+                <el-form-item :label="t('transaction.settlement.businessTimeZone')" prop="businessTimeZone">
+                    <el-input v-model.trim="createForm.businessTimeZone" placeholder="Asia/Shanghai" maxlength="64" />
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.dailyCutoffTime')" prop="dailyCutoffTime">
+                    <el-time-picker v-model="createForm.dailyCutoffTime" value-format="HH:mm:ss" format="HH:mm:ss" />
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.changeReason')" prop="reason">
+                    <el-input v-model.trim="createForm.reason" type="textarea" :rows="3" maxlength="400" show-word-limit :placeholder="t('transaction.settlement.profileReasonPlaceholder')" />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="primary" :loading="saving" @click="saveNewProfile">{{ t('common.save') }}</el-button>
+                    <el-button @click="createVisible = false">{{ t('common.cancel') }}</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
         <el-dialog v-model="editVisible" :title="t('transaction.settlement.editProfile')" width="640px" destroy-on-close>
             <el-alert :title="t('transaction.settlement.profileIdentityReadonly')" type="info" show-icon :closable="false" />
             <div v-if="editing" class="profile-identity">
@@ -117,19 +182,22 @@
                 <div><span>{{ t('transaction.settlement.settlementAccount') }}</span><strong>{{ editing.settlementAccountNo || editing.settlementAccountId }}</strong></div>
                 <div><span>{{ t('transaction.settlement.targetCurrency') }}</span><CurrencyDisplay :currency="editing.targetCurrency" size="xs" /></div>
             </div>
-            <el-form :model="editForm" label-width="112px" class="profile-edit-form">
-                <el-form-item :label="t('transaction.settlement.processingMode')" required>
+            <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="112px" class="profile-edit-form">
+                <el-form-item :label="t('transaction.settlement.processingMode')" prop="processingMode">
                     <el-segmented v-model="editForm.processingMode" :options="modeOptions" block />
                 </el-form-item>
                 <div class="mode-explanation">
                     <strong>{{ modeText(editForm.processingMode) }}</strong>
                     <span>{{ t(`transaction.settlement.processingModeDescription.${editForm.processingMode}`) }}</span>
                 </div>
-                <el-form-item :label="t('transaction.settlement.businessTimeZone')" required>
-                    <el-input v-model.trim="editForm.businessTimeZone" placeholder="Asia/Shanghai" />
+                <el-form-item :label="t('transaction.settlement.businessTimeZone')" prop="businessTimeZone">
+                    <el-input v-model.trim="editForm.businessTimeZone" placeholder="Asia/Shanghai" maxlength="64" />
                 </el-form-item>
-                <el-form-item :label="t('transaction.settlement.dailyCutoffTime')" required>
+                <el-form-item :label="t('transaction.settlement.dailyCutoffTime')" prop="dailyCutoffTime">
                     <el-time-picker v-model="editForm.dailyCutoffTime" value-format="HH:mm:ss" format="HH:mm:ss" />
+                </el-form-item>
+                <el-form-item :label="t('transaction.settlement.changeReason')" prop="reason">
+                    <el-input v-model.trim="editForm.reason" type="textarea" :rows="3" maxlength="400" show-word-limit :placeholder="t('transaction.settlement.profileReasonPlaceholder')" />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -143,15 +211,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { Edit, RefreshLeft, Search, View } from '@element-plus/icons-vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { Edit, Plus, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { CurrencyDisplay, MerchantIdentityDisplay } from '@acquiring/shared';
 import { loadCurrencyPresentations } from '@/api/base/currency';
+import { searchFundAccounts, type FundAccount } from '@/api/fund';
 import {
-    getSettlementProfile, searchSettlementProfiles, updateSettlementProfile,
+    createSettlementProfile, getSettlementProfile, searchSettlementProfiles, updateSettlementProfile,
     type SettlementProfile, type SettlementProfileQuery,
 } from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -169,15 +239,42 @@ const profileStatuses = ['ACTIVE', 'SUSPENDED', 'RETIRED'];
 const showSearch = ref(true);
 const loading = ref(false);
 const saving = ref(false);
+const accountLoading = ref(false);
 const rows = ref<SettlementProfile[]>([]);
 const total = ref(0);
 const detailVisible = ref(false);
 const detail = ref<SettlementProfile | null>(null);
+const createVisible = ref(false);
+const createFormRef = ref<FormInstance>();
+const eligibleAccounts = ref<FundAccount[]>([]);
 const editVisible = ref(false);
+const editFormRef = ref<FormInstance>();
 const editing = ref<SettlementProfile | null>(null);
 const query = reactive<SettlementProfileQuery>({ pageNo: 1, pageSize: 10 });
-const editForm = reactive({ processingMode: 'AUTO_POST', businessTimeZone: '', dailyCutoffTime: '' });
+const createForm = reactive({
+    requestKey: '', merchantId: '', settlementAccountId: undefined as number | undefined,
+    targetCurrency: '', processingMode: 'AUTO_POST', businessTimeZone: 'Asia/Shanghai',
+    dailyCutoffTime: '00:00:00', reason: '',
+});
+const editForm = reactive({
+    requestKey: '', processingMode: 'AUTO_POST', businessTimeZone: '', dailyCutoffTime: '', reason: '',
+});
 const modeOptions = computed(() => processingModes.map((value) => ({ value, label: modeText(value) })));
+const requiredRule = computed(() => ({ required: true, message: t('transaction.settlement.fieldRequired'), trigger: 'change' }));
+const createRules = computed<FormRules>(() => ({
+    merchantId: [requiredRule.value],
+    settlementAccountId: [requiredRule.value],
+    processingMode: [requiredRule.value],
+    businessTimeZone: [requiredRule.value],
+    dailyCutoffTime: [requiredRule.value],
+    reason: [{ required: true, message: t('transaction.settlement.profileReasonRequired'), trigger: 'blur' }],
+}));
+const editRules = computed<FormRules>(() => ({
+    processingMode: [requiredRule.value],
+    businessTimeZone: [requiredRule.value],
+    dailyCutoffTime: [requiredRule.value],
+    reason: [{ required: true, message: t('transaction.settlement.profileReasonRequired'), trigger: 'blur' }],
+}));
 
 onMounted(() => {
     void loadCurrencyPresentations().catch(() => undefined);
@@ -227,25 +324,98 @@ async function openDetail(row: SettlementProfile) {
     catch (error) { ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed')); }
 }
 
+function openCreate() {
+    Object.assign(createForm, {
+        requestKey: commandRequestKey('create'),
+        merchantId: '',
+        settlementAccountId: undefined,
+        targetCurrency: '',
+        processingMode: 'AUTO_POST',
+        businessTimeZone: 'Asia/Shanghai',
+        dailyCutoffTime: '00:00:00',
+        reason: '',
+    });
+    eligibleAccounts.value = [];
+    createVisible.value = true;
+    nextTick(() => createFormRef.value?.clearValidate());
+}
+
+async function handleCreateMerchantChange(value: string | string[]) {
+    const merchantId = Array.isArray(value) ? '' : value;
+    createForm.settlementAccountId = undefined;
+    createForm.targetCurrency = '';
+    eligibleAccounts.value = [];
+    if (!merchantId) return;
+    accountLoading.value = true;
+    try {
+        const result = await searchFundAccounts({
+            keyword: merchantId,
+            accountStatus: 'NORMAL',
+            pageNo: 1,
+            pageSize: 100,
+        });
+        eligibleAccounts.value = (result.records || []).filter((account) => (
+            account.merchantId === merchantId
+            && account.accountStatus === 'NORMAL'
+            && account.settlementAllowed
+        ));
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        accountLoading.value = false;
+    }
+}
+
+function handleCreateAccountChange(accountId?: number) {
+    const account = eligibleAccounts.value.find((item) => item.id === accountId);
+    createForm.targetCurrency = account?.settlementCurrency || '';
+}
+
+async function saveNewProfile() {
+    const valid = await createFormRef.value?.validate().catch(() => false);
+    if (!valid || !createForm.settlementAccountId || !createForm.targetCurrency) return;
+    saving.value = true;
+    try {
+        const created = await createSettlementProfile({
+            requestKey: createForm.requestKey,
+            merchantId: createForm.merchantId,
+            settlementAccountId: createForm.settlementAccountId,
+            targetCurrency: createForm.targetCurrency,
+            businessTimeZone: createForm.businessTimeZone,
+            dailyCutoffTime: createForm.dailyCutoffTime,
+            processingMode: createForm.processingMode,
+            reason: createForm.reason,
+        });
+        ElMessage.success(t('transaction.settlement.profileCreated'));
+        createVisible.value = false;
+        await showCommittedProfile(created);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.operationFailed'));
+    } finally {
+        saving.value = false;
+    }
+}
+
 async function openEdit(row: SettlementProfile) {
     try {
         editing.value = await getSettlementProfile(row.settlementProfileNo);
         Object.assign(editForm, {
+            requestKey: commandRequestKey('version'),
             processingMode: editing.value.processingMode,
             businessTimeZone: editing.value.businessTimeZone,
             dailyCutoffTime: editableTime(editing.value.dailyCutoffTime),
+            reason: '',
         });
         editVisible.value = true;
+        nextTick(() => editFormRef.value?.clearValidate());
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     }
 }
 
 async function saveProfile() {
-    if (!editing.value || !editForm.processingMode || !editForm.businessTimeZone || !editForm.dailyCutoffTime) {
-        ElMessage.warning(t('transaction.settlement.requiredFields'));
-        return;
-    }
+    const valid = await editFormRef.value?.validate().catch(() => false);
+    if (!valid || !editing.value) return;
     try {
         await ElMessageBox.confirm(
             t('transaction.settlement.profileUpdateConfirm'),
@@ -257,20 +427,37 @@ async function saveProfile() {
     }
     saving.value = true;
     try {
-        await updateSettlementProfile(editing.value.settlementProfileNo, {
+        const updated = await updateSettlementProfile(editing.value.settlementProfileNo, {
             processingMode: editForm.processingMode,
             businessTimeZone: editForm.businessTimeZone,
             dailyCutoffTime: editForm.dailyCutoffTime,
             expectedVersion: editing.value.version,
+            requestKey: editForm.requestKey,
+            reason: editForm.reason,
         });
         ElMessage.success(t('transaction.settlement.profileUpdated'));
         editVisible.value = false;
-        await loadData();
+        await showCommittedProfile(updated);
     } catch (error) {
         if (error !== 'cancel') ElMessage.error(error instanceof Error ? error.message : t('common.operationFailed'));
     } finally {
         saving.value = false;
     }
+}
+
+async function showCommittedProfile(profile: SettlementProfile) {
+    if (query.settlementProfileNo && query.settlementProfileNo !== profile.settlementProfileNo) {
+        query.settlementProfileNo = undefined;
+    }
+    await loadData();
+    detail.value = profile;
+    detailVisible.value = true;
+}
+
+function commandRequestKey(action: 'create' | 'version') {
+    const random = globalThis.crypto?.randomUUID?.()
+        || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return `SP-${action === 'create' ? 'C' : 'V'}-${random}`;
 }
 
 function openMerchant(merchantId: string) { router.push({ path: '/merchant/info', query: { merchantId } }); }
@@ -315,6 +502,12 @@ function editableTime(value?: string) { return value ? value.slice(0, 8) : ''; }
 .profile-identity span { color: var(--el-text-color-secondary); font-size: 12px; }
 .profile-identity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-edit-form :deep(.el-segmented), .profile-edit-form :deep(.el-date-editor) { width: 100%; }
+.profile-command-form { margin-top: 18px; }
+.profile-command-form :deep(.el-select), .profile-command-form :deep(.el-input), .profile-command-form :deep(.el-segmented), .profile-command-form :deep(.el-date-editor) { width: 100%; }
+.account-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
+.field-hint { width: 100%; margin-top: 6px; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.5; }
+.field-hint--warning { color: var(--el-color-warning-dark-2); }
+.field-placeholder { color: var(--el-text-color-placeholder); }
 .mode-explanation { display: grid; gap: 4px; margin: -6px 0 18px 112px; padding: 10px 12px; border-left: 3px solid var(--el-color-primary); background: var(--el-fill-color-light); font-size: 13px; }
 .mode-explanation span { color: var(--el-text-color-secondary); line-height: 1.55; }
 @media (max-width: 720px) {

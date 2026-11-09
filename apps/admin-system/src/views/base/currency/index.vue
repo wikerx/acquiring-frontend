@@ -35,7 +35,17 @@
       <el-table-column prop="chineseName" :label="$t('base.currency.chineseName')" min-width="160" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="englishName" :label="$t('base.currency.englishName')" min-width="180" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="fractionDigits" :label="$t('base.currency.minorUnit')" width="80" align="center" />
-      <el-table-column prop="minimumAmount" :label="$t('base.currency.minAmount')" width="100" align="center" />
+      <el-table-column :label="$t('base.currency.minAmount')" min-width="150" align="center">
+        <template #default="{ row }">
+          <CurrencyAmountDisplay
+            :amount="row.minimumAmount"
+            :currency="row.alpha3Code"
+            :exponent="row.fractionDigits"
+            :locale="String(locale)"
+            align="center"
+          />
+        </template>
+      </el-table-column>
       <el-table-column :label="$t('common.status')" width="80" align="center">
         <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'base:currency:changeStatus'" /></template>
       </el-table-column>
@@ -105,12 +115,12 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { CurrencyDisplay, suggestedCurrencyIconKey } from '@acquiring/shared';
+import { CurrencyAmountDisplay, CurrencyDisplay, suggestedCurrencyIconKey } from '@acquiring/shared';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, exportCurrencies, loadCurrencyPresentations, type IsoCurrency } from '@/api/base/currency';
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const showSearch = ref(true); const loading = ref(false);
 const rows = ref<IsoCurrency[]>([]); const sel = ref<IsoCurrency[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);

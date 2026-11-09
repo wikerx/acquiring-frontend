@@ -40,20 +40,14 @@
             <el-table-column prop="channelCode" :label="t('channel.info.channelCode')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelCnName" :label="t('channel.info.channelCnName')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelEnName" :label="t('channel.info.channelEnName')" min-width="180" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="t('channel.info.acquiringMethods')" min-width="180" align="center">
+            <el-table-column prop="acquiringPaymentMethods" :label="t('channel.info.acquiringMethods')" min-width="220" align="center">
                 <template #default="{ row }">
-                    <div class="logo-line">
-                        <PaymentLogoGroup :keys="paymentKeys(row.acquiringPaymentMethods)" fallback="text" size="sm" />
-                        <span v-if="!row.acquiringPaymentMethods?.length">-</span>
-                    </div>
+                    <ChannelPaymentScopeDisplay :keys="paymentKeys(row.acquiringPaymentMethods)" :label="t('channel.info.acquiringMethods')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.info.payoutMethods')" min-width="160" align="center">
+            <el-table-column prop="payoutPaymentMethods" :label="t('channel.info.payoutMethods')" min-width="220" align="center">
                 <template #default="{ row }">
-                    <div class="logo-line">
-                        <PaymentLogoGroup :keys="paymentKeys(row.payoutPaymentMethods)" fallback="text" size="sm" />
-                        <span v-if="!row.payoutPaymentMethods?.length">-</span>
-                    </div>
+                    <ChannelPaymentScopeDisplay :keys="paymentKeys(row.payoutPaymentMethods)" :label="t('channel.info.payoutMethods')" />
                 </template>
             </el-table-column>
             <el-table-column label="3DS" width="80" align="center">
@@ -241,6 +235,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
 import { createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo, type ChannelMetadataSchema } from '@/api/channel';
 import { loadDictOptions, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
 
@@ -717,11 +712,6 @@ function secondsText(value?: number) {
 
 .channel-form__sort :deep(.el-input-number) {
     width: 180px;
-}
-
-.logo-line {
-    display: flex;
-    justify-content: center;
 }
 
 .detail-logo-line {

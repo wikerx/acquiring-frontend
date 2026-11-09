@@ -273,16 +273,22 @@
       v-model:visible="detailVisible"
       :merchant="detailMerchant"
       :can-edit="canEditMerchant"
-      :can-activate="canChangeMerchantStatus"
+      :can-activate="canActivateMerchant"
       :can-view-fee="canViewMerchantFee"
       :can-bind-channel="canBindMerchantChannel"
       :can-view-fund="canViewFundAccount"
+      :can-view-settlement="canViewSettlementProfile"
+      :can-view-risk="canViewRiskConfiguration"
+      :can-view-technical="canViewTechnicalAccess"
       :action-loading="profileActionLoading"
       :document-busy-id="documentBusyId"
       @edit="openForm('edit', detailMerchant)"
       @configure-fee="goToMerchantFee(detailMerchant?.merchantId)"
       @bind-channel="goToMerchantChannel(detailMerchant?.merchantId)"
       @fund-account="goToFundAccount(detailMerchant?.merchantId)"
+      @settlement-profile="goToSettlementProfile(detailMerchant?.merchantId)"
+      @risk-configuration="goToRiskConfiguration(detailMerchant?.merchantId)"
+      @technical-access="goToTechnicalAccess(detailMerchant?.merchantId)"
       @submit-review="submitCurrentMerchantReview"
       @review="reviewCurrentMerchant"
       @activate="activateCurrentMerchant"
@@ -1108,11 +1114,15 @@
   const canViewMaterialLogs = userStore.hasPermission('merchant:material:logs');
   const canEditMerchant = userStore.hasPermission('merchant:info:edit');
   const canChangeMerchantStatus = userStore.hasPermission('merchant:info:changeStatus');
+  const canActivateMerchant = userStore.hasPermission('merchant:info:activate');
   const canManageMerchantKey = userStore.hasPermission('merchant:key:manage');
   const canViewMerchantMaterial = userStore.hasPermission('merchant:material:view');
   const canViewMerchantFee = userStore.hasPermission('fee:merchant:list');
   const canViewFundAccount = userStore.hasPermission('fund:account:list');
   const canBindMerchantChannel = userStore.hasPermission('channel:mid-binding:list');
+  const canViewSettlementProfile = userStore.hasPermission('settlement:profile:list');
+  const canViewRiskConfiguration = userStore.hasPermission('risk:rule:merchantLimit');
+  const canViewTechnicalAccess = userStore.hasPermission('merchant:ip-whitelist:list');
   const responsePrivateKeyAvailable = computed(
     () => materialSummary.value?.merchantResponsePrivateKeyAvailable === true,
   );
@@ -1213,6 +1223,24 @@
     if (!merchantId) return;
     detailVisible.value = false;
     void router.push({ path: '/channel/merchant-mid-binding', query: { merchantId } });
+  }
+
+  function goToSettlementProfile(merchantId?: string) {
+    if (!merchantId) return;
+    detailVisible.value = false;
+    void router.push({ path: '/settlement/profiles', query: { merchantId } });
+  }
+
+  function goToRiskConfiguration(merchantId?: string) {
+    if (!merchantId) return;
+    detailVisible.value = false;
+    void router.push({ path: '/risk/rule/merchant-limit', query: { merchantId } });
+  }
+
+  function goToTechnicalAccess(merchantId?: string) {
+    if (!merchantId) return;
+    detailVisible.value = false;
+    void router.push({ path: '/merchant/ip-whitelist', query: { merchantId } });
   }
 
   async function saveMerchantProfile(payload: {

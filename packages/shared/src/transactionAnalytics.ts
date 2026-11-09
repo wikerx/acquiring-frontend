@@ -1,3 +1,5 @@
+import { formatMoneyAmount } from './amount';
+
 export interface TransactionAnalyticsQuery {
     beginTime: string;
     endTime: string;
@@ -259,29 +261,18 @@ export function analyticsNumber(value: number | string | null | undefined): numb
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** 按币种精度展示成功金额，不在前端执行跨币种合计。 */
+/** 按统一的两位金额精度展示成功金额，不在前端执行跨币种合计。 */
 export function formatAnalyticsAmount(metric: TransactionAnalyticsAmountMetric, locale?: string): string {
     return `${metric.currency || 'UNKNOWN'} ${formatAnalyticsAmountValue(metric, locale)}`;
 }
 
 /** 仅格式化金额数值，供币种、金额、笔数三段式胶囊复用。 */
 export function formatAnalyticsAmountValue(metric: TransactionAnalyticsAmountMetric, locale?: string): string {
-    const exponent = Math.min(8, Math.max(0, metric.currencyExponent ?? 2));
-    const amountText = String(metric.amount ?? '').trim();
-    const decimalMatch = /^(-?)(\d+)(?:\.(\d+))?$/.exec(amountText);
-    if (decimalMatch) {
-        const [, sign, integerText, fractionText = ''] = decimalMatch;
-        const groupedInteger = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
-            .format(BigInt(`${sign}${integerText}`));
-        const significantFractionLength = fractionText.replace(/0+$/, '').length;
-        const displayExponent = Math.min(8, Math.max(exponent, significantFractionLength));
-        if (displayExponent === 0) return groupedInteger;
-        const decimalSeparator = new Intl.NumberFormat(locale).formatToParts(1.1)
-            .find((part) => part.type === 'decimal')?.value ?? '.';
-        return `${groupedInteger}${decimalSeparator}${fractionText.padEnd(displayExponent, '0').slice(0, displayExponent)}`;
-    }
-    const amount = analyticsNumber(metric.amount);
-    return new Intl.NumberFormat(locale, { minimumFractionDigits: exponent, maximumFractionDigits: exponent }).format(amount);
+    return formatMoneyAmount(
+        metric.amount,
+        locale || 'zh-CN',
+        metric.currencyExponent,
+    );
 }
 
 export function formatAnalyticsAmounts(metrics: TransactionAnalyticsAmountMetric[], locale?: string): string {

@@ -124,7 +124,7 @@
       <el-table-column :label="t('exchange.alertRule.thresholds')" min-width="145" align="center"
         ><template #default="{ row }"
           ><span class="numeric-value"
-            >&gt; {{ row.triggerThreshold }}% / &lt; {{ row.recoveryThreshold }}%</span
+            >&gt; {{ percentageText(row.triggerThreshold) }} / &lt; {{ percentageText(row.recoveryThreshold) }}</span
           ></template
         ></el-table-column
       >
@@ -239,12 +239,12 @@
           rateTypeText(detail.rateType)
         }}</el-descriptions-item
         ><el-descriptions-item :label="t('exchange.fields.currencyPair')"
-          >{{ detail.baseCurrency }}/{{ detail.quoteCurrency }}</el-descriptions-item
+          ><span v-if="detail.baseCurrency === 'ALL'" class="scope-all">{{ t('exchange.placeholders.allCurrenciesShort') }}</span><CurrencyPairDisplay v-else :base-currency="detail.baseCurrency" :quote-currency="detail.quoteCurrency" :locale="String(locale)" /></el-descriptions-item
         >
         <el-descriptions-item :label="t('exchange.alertRule.triggerThreshold')"
-          >{{ detail.triggerThreshold }}%</el-descriptions-item
+          >{{ percentageText(detail.triggerThreshold) }}</el-descriptions-item
         ><el-descriptions-item :label="t('exchange.alertRule.recoveryThreshold')"
-          >{{ detail.recoveryThreshold }}%</el-descriptions-item
+          >{{ percentageText(detail.recoveryThreshold) }}</el-descriptions-item
         >
         <el-descriptions-item :label="t('exchange.alertRule.window')">{{
           windowText(detail.windowMinutes)
@@ -437,6 +437,7 @@
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import type { FormInstance, FormRules } from 'element-plus';
   import { ElMessage, ElMessageBox } from 'element-plus';
+  import { formatPercentageRate } from '@acquiring/shared';
   import {
     Delete,
     Download,
@@ -509,6 +510,10 @@
     alertLevel: 'WARNING',
     remark: '',
   });
+
+  function percentageText(value?: string | number | null) {
+    return formatPercentageRate(value, String(locale.value));
+  }
   const rateTypeOptions = computed(() =>
     ['TRANSACTION_RATE', 'SETTLEMENT_RATE'].map((value) => ({
       value,

@@ -1,5 +1,6 @@
 /** 结算页面纯展示辅助：格式化后端冻结事实和枚举，不承担金额、币种、汇率或状态机计算。 */
 import type { TagProps } from 'element-plus';
+import { formatExchangeRate, formatMoneyAmount } from '@acquiring/shared';
 
 const SETTLEMENT_FORMULA_I18N_KEYS: Record<string, string> = {
     'principal converted once with the immutable batch rate':
@@ -18,37 +19,27 @@ const SETTLEMENT_FORMULA_I18N_KEYS: Record<string, string> = {
         'transaction.settlement.formulaDescription.reversalOpposite',
 };
 
-export function decimalText(value?: number | string | null) {
-    if (value === undefined || value === null || value === '') return '-';
-    const text = String(value);
-    const match = /^([+-]?)(\d+)(\.\d+)?$/.exec(text);
-    return match ? `${match[1]}${match[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${match[3] || ''}` : text;
+export function rateText(value?: number | string | null, locale = 'zh-CN') {
+    return formatExchangeRate(value, locale);
 }
 
-export function moneyText(value?: number | string | null, currency?: string) {
+export function moneyText(
+    value?: number | string | null,
+    currency?: string,
+    exponent?: number | null,
+    locale = 'zh-CN',
+) {
     return value === undefined || value === null || value === ''
-        ? '-' : `${currency || ''} ${decimalText(value)}`.trim();
+        ? '-' : `${currency || ''} ${formatMoneyAmount(value, locale, exponent)}`.trim();
 }
 
-/** 按 ISO exponent 格式化数据库权威金额；若存在超出 exponent 的非零尾数则保留原精度。 */
+/** 按 ISO exponent 格式化数据库权威金额，界面展示最多保留两位小数。 */
 export function moneyTextByExponent(
     value?: number | string | null,
     currency?: string,
     exponent?: number | null,
 ) {
-    if (value === undefined || value === null || value === '') return '-';
-    const text = String(value);
-    const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
-    if (!match || exponent === undefined || exponent === null || exponent < 0 || exponent > 8) {
-        return moneyText(value, currency);
-    }
-    const fraction = match[3] || '';
-    const extra = fraction.slice(exponent);
-    if (/[1-9]/.test(extra)) return moneyText(value, currency);
-    const integer = match[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const normalizedFraction = fraction.slice(0, exponent).padEnd(exponent, '0');
-    const amount = `${match[1]}${integer}${exponent ? `.${normalizedFraction}` : ''}`;
-    return `${currency || ''} ${amount}`.trim();
+    return moneyText(value, currency, exponent);
 }
 
 export function defaultDateRange(days = 29): [string, string] {

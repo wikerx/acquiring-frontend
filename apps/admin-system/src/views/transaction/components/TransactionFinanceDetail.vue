@@ -22,13 +22,13 @@
                                 v{{ clearingDetail.summary.clearingRevision || 0 }}
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.grossAmount')" class-name="transaction-finance-detail__money-cell">
-                                {{ amountText(clearingDetail.summary.grossLabelAmount, clearingDetail.summary.labelCurrency) }}
+                                <CurrencyAmountDisplay :amount="clearingDetail.summary.grossLabelAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" emphasized />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.platformFee')" class-name="transaction-finance-detail__money-cell">
-                                {{ amountText(clearingDetail.summary.platformFeeAmount, clearingDetail.summary.labelCurrency) }}
+                                <CurrencyAmountDisplay :amount="clearingDetail.summary.platformFeeAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.reserveAmount')" class-name="transaction-finance-detail__money-cell">
-                                {{ amountText(clearingDetail.summary.reserveAmount, clearingDetail.summary.labelCurrency) }}
+                                <CurrencyAmountDisplay :amount="clearingDetail.summary.reserveAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.settlementStatus')">
                                 {{ statusText(clearingDetail.summary.settlementStatus) }}
@@ -70,10 +70,10 @@
                                     </template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.calculationBasis')" min-width="160" align="right">
-                                    <template #default="{ row }">{{ amountText(row.basisAmount, row.basisCurrency) }}</template>
+                                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.basisAmount" :currency="row.basisCurrency" :locale="String(locale)" align="end" /></template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.clearingAmount')" min-width="160" align="right">
-                                    <template #default="{ row }"><strong>{{ amountText(row.amount, row.currency, row.currencyExponent) }}</strong></template>
+                                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" emphasized /></template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.recordStatus')" width="130" align="center">
                                     <template #default="{ row }">{{ enumText('clearing.recordStatusValue', row.recordStatus) }}</template>
@@ -103,13 +103,13 @@
                                     </template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.retainedAmount')" min-width="150" align="right">
-                                    <template #default="{ row }">{{ amountText(row.retainedAmount, row.reserveCurrency, row.reserveCurrencyExponent) }}</template>
+                                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.retainedAmount" :currency="row.reserveCurrency" :exponent="row.reserveCurrencyExponent" :locale="String(locale)" align="end" /></template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.returnedAmount')" min-width="150" align="right">
-                                    <template #default="{ row }">{{ amountText(row.returnedAmount, row.reserveCurrency, row.reserveCurrencyExponent) }}</template>
+                                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.returnedAmount" :currency="row.reserveCurrency" :exponent="row.reserveCurrencyExponent" :locale="String(locale)" align="end" /></template>
                                 </el-table-column>
                                 <el-table-column :label="t('transaction.clearing.remainingAmount')" min-width="150" align="right">
-                                    <template #default="{ row }"><strong>{{ amountText(row.remainingAmount, row.reserveCurrency, row.reserveCurrencyExponent) }}</strong></template>
+                                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.reserveCurrency" :exponent="row.reserveCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
                                 </el-table-column>
                                 <el-table-column prop="expectedReserveReleaseDate" :label="t('transaction.clearing.expectedReleaseDate')" width="150" align="center" />
                             </StandardTable>
@@ -156,7 +156,9 @@
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.fields.transactionType')" width="140" align="center">
-                                <template #default="{ row }">{{ enumText('settlement.transactionTypeValue', row.transactionType) }}</template>
+                                <template #default="{ row }">
+                                    <TransactionTypeDisplay :value="row.transactionType" :label="optionText(typeOptions, row.transactionType)" />
+                                </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.fields.reconciliationStatus')" width="150" align="center">
                                 <template #default="{ row }">
@@ -230,13 +232,13 @@
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="160" align="right">
-                                <template #default="{ row }">{{ amountText(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right">
-                                <template #default="{ row }">{{ decimalText(row.directRate) }}</template>
+                                <template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="160" align="right">
-                                <template #default="{ row }"><strong>{{ amountText(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
                             </el-table-column>
                             <el-table-column prop="businessDate" :label="t('transaction.settlement.businessDate')" width="130" align="center" />
                         </StandardTable>
@@ -291,10 +293,10 @@
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.postingAmount')" min-width="160" align="right">
-                                <template #default="{ row }">{{ amountText(row.amount, row.currency, row.currencyExponent) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.remainingAmount')" min-width="160" align="right">
-                                <template #default="{ row }"><strong>{{ amountText(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" emphasized /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.reserveStatus')" min-width="140" align="center">
                                 <template #default="{ row }">{{ enumText('settlement.reserveStatusValue', row.reserveStatus) }}</template>
@@ -328,7 +330,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Refresh } from '@element-plus/icons-vue';
-import { DirectionTag } from '@acquiring/shared';
+import { CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import {
     getSettlementReconciliationRecordsByTransaction,
@@ -347,8 +349,8 @@ import {
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { useUserStore } from '@/store/modules/user';
-import { decimalText, moneyTextByExponent } from '@/views/settlement/shared';
-import { statusOptionTagType } from '../shared';
+import { rateText } from '@/views/settlement/shared';
+import { optionText, statusOptionTagType, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 
 type FinanceSection = 'clearing' | 'reconciliation' | 'settlement' | 'reserve';
@@ -358,9 +360,10 @@ const props = defineProps<{
     detail: TransactionDetail;
     focusTransactionId?: string;
     displayTimeZone: string;
+    typeOptions: TransactionDictOption[];
 }>();
 
-const { t, te } = useI18n();
+const { t, te, locale } = useI18n();
 const userStore = useUserStore();
 const canViewClearing = computed(() => userStore.hasPermission('clearing:record:detail'));
 const canViewReconciliation = computed(() => userStore.hasPermission('reconciliation:record:detail'));
@@ -579,10 +582,6 @@ function handleReservePageChange() {
     loadReserve(true);
 }
 
-function amountText(value?: number | string | null, currency?: string, exponent?: number | null) {
-    return moneyTextByExponent(value, currency, exponent);
-}
-
 function enumText(group: string, value?: string) {
     if (!value) return '-';
     const key = `transaction.${group}.${value}`;
@@ -622,7 +621,6 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 .transaction-finance-detail__summary :deep(.transaction-finance-detail__money-cell) {
-    text-align: right;
     font-variant-numeric: tabular-nums;
 }
 

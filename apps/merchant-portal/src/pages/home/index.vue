@@ -57,6 +57,7 @@
                             :items="fundAccount ? [{ currency: fundAccount.settlementCurrency, amount: fundAccount.availableBalance }] : []"
                             :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="green"
                         />
                     </div>
@@ -72,6 +73,7 @@
                             :items="fundAccount?.pendingBalances || []"
                             :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="blue"
                         />
                     </div>
@@ -87,6 +89,7 @@
                             :items="fundAccount?.reserveBalances || []"
                             :fallback-currency="fundAccount?.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="amber"
                         />
                     </div>
@@ -171,7 +174,10 @@
                             <span>{{ t('transactionAnalytics.successCount') }}</span>
                         </div>
                         <div v-for="item in amountComparisonRows" :key="`${item.currency}:${item.currencyExponent}`" class="merchant-home-amount-table__row">
-                            <b>{{ item.currency || chartLabels.unknown }}</b>
+                            <span class="merchant-home-amount-currency">
+                                <CurrencyDisplay v-if="item.currency" :currency="item.currency" :locale="String(locale)" size="xs" />
+                                <span v-else>{{ chartLabels.unknown }}</span>
+                            </span>
                             <strong>{{ formatComparisonAmount(item, 'current') }}</strong>
                             <span class="merchant-home-amount-delta" :class="`is-${amountComparisonSentiment(item)}`">
                                 {{ amountComparisonArrow(item) }} {{ amountComparisonLabel(item) }}
@@ -187,7 +193,10 @@
                             <span>{{ t('transactionAnalytics.successCount') }}</span>
                         </div>
                         <div v-for="item in overview.successAmounts" :key="`${item.currency}:${item.currencyExponent}`" class="merchant-home-amount-table__row">
-                            <b>{{ item.currency || chartLabels.unknown }}</b>
+                            <span class="merchant-home-amount-currency">
+                                <CurrencyDisplay v-if="item.currency" :currency="item.currency" :locale="String(locale)" size="xs" />
+                                <span v-else>{{ chartLabels.unknown }}</span>
+                            </span>
                             <strong>{{ formatAnalyticsAmountValue(item, locale) }}</strong>
                             <span>{{ formatCount(item.successCount) }}{{ t('transactionAnalytics.countUnit') }}</span>
                         </div>
@@ -298,6 +307,7 @@ import {
 import {
     AnalyticsChart,
     CurrencyAmountPills,
+    CurrencyDisplay,
     analyticsNumber,
     createAnalyticsTrendOption,
     createTransactionAnalyticsRange,

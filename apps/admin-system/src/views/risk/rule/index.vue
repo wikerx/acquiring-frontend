@@ -47,12 +47,28 @@
         </el-form-item>
         <el-form-item :label="$t('risk.rule.paymentMethod')">
           <el-select v-model="query.paymentMethod" :placeholder="t('risk.common.placeholderSelect')" filterable clearable class="query-select" @change="handleThreeDsQueryPaymentMethodChange">
-            <el-option v-for="item in threeDsQueryPaymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <template v-if="selectedThreeDsQueryPaymentMethodLogoKeys.length" #prefix>
+              <PaymentLogoGroup :keys="selectedThreeDsQueryPaymentMethodLogoKeys" size="sm" :wrap="false" />
+            </template>
+            <el-option v-for="item in threeDsQueryPaymentMethodOptions" :key="item.value" :label="item.label" :value="item.value">
+              <div class="risk-payment-option">
+                <PaymentLogoGroup v-if="threeDsPaymentMethodLogoKeys(item.value).length" :keys="threeDsPaymentMethodLogoKeys(item.value)" size="sm" :wrap="false" />
+                <span>{{ item.label }}</span>
+              </div>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item v-if="showThreeDsQueryCardBrandField" :label="$t('risk.common.cardBrand')">
           <el-select v-model="query.cardBrand" :placeholder="t('risk.common.placeholderSelect')" filterable clearable class="query-select">
-            <el-option v-for="item in threeDsQueryCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <template v-if="selectedThreeDsQueryCardBrandLogoKeys.length" #prefix>
+              <PaymentLogoGroup :keys="selectedThreeDsQueryCardBrandLogoKeys" size="sm" :wrap="false" />
+            </template>
+            <el-option v-for="item in threeDsQueryCardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+              <div class="risk-payment-option">
+                <PaymentLogoGroup v-if="threeDsCardBrandLogoKeys(item.value).length" :keys="threeDsCardBrandLogoKeys(item.value)" size="sm" :wrap="false" />
+                <span>{{ item.label }}</span>
+              </div>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item :label="$t('risk.rule.triggerAction')">
@@ -237,9 +253,48 @@
             <el-col :span="12"><el-form-item :label="$t('risk.rule.channelCode')" prop="channelCode"><el-select v-model="form.channelCode" filterable style="width:100%" @change="handleThreeDsFormChannelChange"><el-option v-for="item in threeDsChannelOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="12"><el-form-item :label="$t('risk.rule.paymentMethod')" prop="paymentMethod"><el-select v-model="form.paymentMethod" filterable style="width:100%" @change="handleThreeDsFormPaymentMethodChange"><el-option v-for="item in threeDsFormPaymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
-            <el-col v-if="showThreeDsFormCardBrandField && formMode === 'add'" :span="12"><el-form-item :label="$t('risk.common.cardBrand')" prop="cardBrands"><el-select v-model="form.cardBrands" multiple collapse-tags collapse-tags-tooltip filterable style="width:100%" @change="normalizeThreeDsFormCardBrand"><el-option v-for="item in threeDsFormCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
-            <el-col v-if="showThreeDsFormCardBrandField && formMode === 'edit'" :span="12"><el-form-item :label="$t('risk.common.cardBrand')" prop="cardBrand"><el-select v-model="form.cardBrand" filterable style="width:100%" @change="normalizeThreeDsFormCardBrand"><el-option v-for="item in threeDsFormCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('risk.rule.paymentMethod')" prop="paymentMethod">
+                <el-select v-model="form.paymentMethod" filterable style="width:100%" @change="handleThreeDsFormPaymentMethodChange">
+                  <template v-if="selectedThreeDsFormPaymentMethodLogoKeys.length" #prefix>
+                    <PaymentLogoGroup :keys="selectedThreeDsFormPaymentMethodLogoKeys" size="sm" :wrap="false" />
+                  </template>
+                  <el-option v-for="item in threeDsFormPaymentMethodOptions" :key="item.value" :label="item.label" :value="item.value">
+                    <div class="risk-payment-option">
+                      <PaymentLogoGroup v-if="threeDsPaymentMethodLogoKeys(item.value).length" :keys="threeDsPaymentMethodLogoKeys(item.value)" size="sm" :wrap="false" />
+                      <span>{{ item.label }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col v-if="showThreeDsFormCardBrandField && formMode === 'add'" :span="12">
+              <el-form-item :label="$t('risk.common.cardBrand')" prop="cardBrands">
+                <el-select v-model="form.cardBrands" multiple collapse-tags collapse-tags-tooltip filterable style="width:100%" @change="normalizeThreeDsFormCardBrand">
+                  <el-option v-for="item in threeDsFormCardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                    <div class="risk-payment-option">
+                      <PaymentLogoGroup v-if="threeDsCardBrandLogoKeys(item.value).length" :keys="threeDsCardBrandLogoKeys(item.value)" size="sm" :wrap="false" />
+                      <span>{{ item.label }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col v-if="showThreeDsFormCardBrandField && formMode === 'edit'" :span="12">
+              <el-form-item :label="$t('risk.common.cardBrand')" prop="cardBrand">
+                <el-select v-model="form.cardBrand" filterable style="width:100%" @change="normalizeThreeDsFormCardBrand">
+                  <template v-if="selectedThreeDsFormCardBrandLogoKeys.length" #prefix>
+                    <PaymentLogoGroup :keys="selectedThreeDsFormCardBrandLogoKeys" size="sm" :wrap="false" />
+                  </template>
+                  <el-option v-for="item in threeDsFormCardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                    <div class="risk-payment-option">
+                      <PaymentLogoGroup v-if="threeDsCardBrandLogoKeys(item.value).length" :keys="threeDsCardBrandLogoKeys(item.value)" size="sm" :wrap="false" />
+                      <span>{{ item.label }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="8"><el-form-item :label="$t('risk.rule.amountMatchType')" prop="amountMatchType"><el-select v-model="form.amountMatchType" style="width:100%" @change="handleThreeDsAmountMatchTypeChange"><el-option v-for="item in threeDsAmountMatchTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col>
@@ -422,7 +477,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { CircleCheck, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import type { UploadFile } from 'element-plus';
-import { PaymentLogoGroup, PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
+import { PaymentLogoGroup, PaymentLogoMark, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -530,6 +585,10 @@ const threeDsCardBrandTextOptions = computed(() => [
   { label: t('risk.rule.allDimension'), value: ALL_DIMENSION },
   ...allThreeDsCardBrandOptions.value,
 ]);
+const selectedThreeDsQueryPaymentMethodLogoKeys = computed(() => threeDsPaymentMethodLogoKeys(query.paymentMethod));
+const selectedThreeDsQueryCardBrandLogoKeys = computed(() => threeDsCardBrandLogoKeys(query.cardBrand));
+const selectedThreeDsFormPaymentMethodLogoKeys = computed(() => threeDsPaymentMethodLogoKeys(form.paymentMethod));
+const selectedThreeDsFormCardBrandLogoKeys = computed(() => threeDsCardBrandLogoKeys(form.cardBrand));
 const showThreeDsFormCardBrandField = computed(() => form.paymentMethod === BANK_CARD_PAYMENT_METHOD);
 const showThreeDsQueryCardBrandField = computed(() => query.paymentMethod === BANK_CARD_PAYMENT_METHOD);
 const threeDsAmountMatchTypeOptions = computed(() => [
@@ -1531,12 +1590,9 @@ function merchantLimitAmountValue(amount: number | string | undefined | null) {
 }
 
 function merchantLimitAmountDisplay(amount: number | string | undefined | null) {
-  const value = merchantLimitAmountValue(amount);
-  return value == null ? undefined : new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0,
-    useGrouping: false,
-  }).format(value);
+  return amount == null || amount === ''
+    ? undefined
+    : formatMoneyAmount(amount, String(locale.value || 'zh-CN'));
 }
 
 function hasValidMerchantLimitAmountScale(amount: number | string | undefined | null) {
@@ -1936,6 +1992,28 @@ function threeDsPaymentCardBrandLogos(row: Pick<RiskRecord, 'paymentMethod' | 'c
   return paymentLogoKeys(row.paymentMethod, allThreeDsPaymentMethodOptions.value.find((item) => item.value === row.paymentMethod));
 }
 
+function threeDsPaymentMethodLogoKeys(value?: string | number): PaymentLogoKey[] {
+  const paymentMethod = String(value || '');
+  if (!paymentMethod || paymentMethod === ALL_DIMENSION) {
+    return [];
+  }
+  return paymentLogoKeys(
+    paymentMethod,
+    allThreeDsPaymentMethodOptions.value.find((item) => item.value === paymentMethod),
+  );
+}
+
+function threeDsCardBrandLogoKeys(value?: string | number): PaymentLogoKey[] {
+  const cardBrand = String(value || '');
+  if (!cardBrand || cardBrand === ALL_DIMENSION) {
+    return [];
+  }
+  return cardLogoKeys(
+    cardBrand,
+    allThreeDsCardBrandOptions.value.find((item) => item.value === cardBrand),
+  );
+}
+
 function threeDsPaymentCardBrandText(row: Pick<RiskRecord, 'paymentMethod' | 'cardBrand'>) {
   const paymentText = threeDsPaymentMethodText(row.paymentMethod);
   if (row.paymentMethod !== BANK_CARD_PAYMENT_METHOD) {
@@ -1991,11 +2069,7 @@ function amountDisplay(amount: number | string | undefined | null) {
   if (amount == null || amount === '') {
     return '-';
   }
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-    useGrouping: false,
-  }).format(Number(amount));
+  return formatMoneyAmount(amount, String(locale.value || 'zh-CN'));
 }
 
 function scopeText(value?: string) {
@@ -2288,6 +2362,19 @@ function frequencyWindowUnitLabel(value: string) {
   align-items: center;
   justify-content: center;
   min-width: 0;
+}
+
+.risk-payment-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.risk-payment-option > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .frequency-elements {

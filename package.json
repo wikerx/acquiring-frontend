@@ -25,12 +25,15 @@
     "build:checkout": "npm --workspace @acquiring/hosted-checkout run build",
     "build:hosted-checkout": "npm --workspace @acquiring/hosted-checkout run build",
     "build:cashier": "npm run build:checkout",
+    "test:amount": "npm --workspace @acquiring/shared run test:amount",
+    "test:e2e:merchant": "playwright test e2e/merchant-transaction-notification.spec.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint apps packages --max-warnings=0",
     "format": "prettier --write \"{apps,packages}/**/*.{ts,vue,css,md,json}\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "autoprefixer": "^10.4.21",
     "eslint": "^10.14.0",

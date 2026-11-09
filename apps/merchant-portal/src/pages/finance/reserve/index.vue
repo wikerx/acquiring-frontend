@@ -28,8 +28,8 @@
                 <el-table-column prop="reserveNo" :label="t('settlement.reserveNo')" min-width="190" align="center"><template #default="{ row }"><span class="identifier-text" :title="row.reserveNo">{{ row.reserveNo }}</span></template></el-table-column>
                 <el-table-column prop="merchantOrderNo" :label="t('settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                 <el-table-column :label="t('settlement.actionTypeLabel')" min-width="140" align="center"><template #default="{ row }"><el-tag effect="plain">{{ enumText('actionType', row.actionType) }}</el-tag></template></el-table-column>
-                <el-table-column :label="t('settlement.amount')" min-width="140" align="right"><template #default="{ row }">{{ money(row.amount, row.currency, row.currencyExponent) }}</template></el-table-column>
-                <el-table-column :label="t('settlement.remainingAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ money(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template></el-table-column>
+                <el-table-column :label="t('settlement.amount')" min-width="170" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                <el-table-column :label="t('settlement.remainingAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
                 <el-table-column :label="t('settlement.reserveStatusLabel')" min-width="126" align="center"><template #default="{ row }"><el-tag :type="reserveStatusType(row.reserveStatus)" effect="plain">{{ enumText('reserveStatus', row.reserveStatus) }}</el-tag></template></el-table-column>
                 <el-table-column prop="sourceTransactionId" :label="t('settlement.transactionId')" min-width="205" align="center" show-overflow-tooltip><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
                 <el-table-column prop="settlementBatchNo" :label="t('settlement.batchNo')" min-width="210" align="center" show-overflow-tooltip><template #default="{ row }"><el-button v-if="row.settlementBatchNo" link type="primary" @click="openBatch(row.settlementBatchNo)">{{ row.settlementBatchNo }}</el-button><span v-else>-</span></template></el-table-column>
@@ -46,9 +46,9 @@
                 <div class="reserve-detail__identity"><strong>{{ detail.reserveActionNo }}</strong><el-tag :type="reserveStatusType(detail.reserveStatus)" effect="plain">{{ enumText('reserveStatus', detail.reserveStatus) }}</el-tag></div>
                 <el-alert class="reserve-detail__status-help" type="info" :closable="false" show-icon :title="enumText('reserveStatusDescription', detail.reserveStatus)" />
                 <section class="reserve-flow">
-                    <div><span>{{ t('settlement.retainedAmount') }}</span><strong>{{ money(detail.retainedAmount, detail.currency, detail.currencyExponent) }}</strong></div>
-                    <div><span>{{ t('settlement.releasedAmount') }}</span><strong>{{ money(detail.releasedAmount, detail.currency, detail.currencyExponent) }}</strong></div>
-                    <div class="is-current"><span>{{ t('settlement.remainingAmount') }}</span><strong>{{ money(detail.remainingAmount, detail.currency, detail.currencyExponent) }}</strong></div>
+                    <div><span>{{ t('settlement.retainedAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.retainedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div>
+                    <div><span>{{ t('settlement.releasedAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.releasedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div>
+                    <div class="is-current"><span>{{ t('settlement.remainingAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.remainingAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div>
                 </section>
                 <el-descriptions :column="detailDescriptionColumns" border size="small" class="reserve-detail__descriptions">
                     <el-descriptions-item :label="t('settlement.reserveNo')">{{ detail.reserveNo }}</el-descriptions-item>
@@ -57,11 +57,11 @@
                     <el-descriptions-item :label="t('settlement.transactionId')"><el-button v-if="detail.sourceTransactionId" link type="primary" @click="openTransaction(detail)">{{ detail.sourceTransactionId }}</el-button><span v-else>-</span></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.batchNo')" :span="2"><el-button v-if="detail.settlementBatchNo" link type="primary" @click="openBatch(detail.settlementBatchNo)">{{ detail.settlementBatchNo }}</el-button><span v-else>-</span></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.direction')"><DirectionTag :direction="detail.direction" :label="enumText('direction', detail.direction)" /></el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.amount')">{{ money(detail.amount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.returnedAmount')">{{ money(detail.returnedAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.debitAdjustmentAmount')">{{ money(detail.debitAdjustmentAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.creditAdjustmentAmount')">{{ money(detail.creditAdjustmentAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('settlement.reversedAmount')">{{ money(detail.reversedAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.amount')"><CurrencyAmountDisplay :amount="detail.amount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.returnedAmount')"><CurrencyAmountDisplay :amount="detail.returnedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.debitAdjustmentAmount')"><CurrencyAmountDisplay :amount="detail.debitAdjustmentAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.creditAdjustmentAmount')"><CurrencyAmountDisplay :amount="detail.creditAdjustmentAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('settlement.reversedAmount')"><CurrencyAmountDisplay :amount="detail.reversedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.businessDate')">{{ detail.businessDate }}</el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.expectedReleaseDate')">{{ detail.expectedReleaseDate || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('settlement.actionTime')"><BaseDateTime :value="detail.actionTime" /></el-descriptions-item>
@@ -75,7 +75,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { DirectionTag, formatDecimalAmount } from '@acquiring/shared';
+import { CurrencyAmountDisplay, DirectionTag } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -135,7 +135,6 @@ function openTransaction(row: MerchantSettlementReserveItem) {
 }
 function openBatch(settlementBatchNo: string) { router.push({ path: '/finance/settlements', query: { settlementBatchNo } }); }
 function enumText(group: string, value?: string) { if (!value) return '-'; const key = `settlement.${group}Value.${value}`; return te(key) ? t(key) : value; }
-function money(value?: string | number | null, currency?: string, exponent?: number | null) { if (value === undefined || value === null || value === '') return '-'; const digits = typeof exponent === 'number' ? Math.min(Math.max(exponent, 0), 8) : 2; return `${currency || ''} ${formatDecimalAmount(value, String(locale.value), digits, digits)}`.trim(); }
 function routeText(key: string) { const value = route.query[key]; return typeof value === 'string' && value.trim() ? value.trim() : undefined; }
 function reserveStatusType(value?: string) { if (value === 'RELEASED' || value === 'RETURNED') return 'success'; if (value === 'HELD' || value === 'PARTIALLY_RETURNED' || value === 'RELEASABLE') return 'warning'; if (value === 'FROZEN') return 'danger'; if (value === 'REVERSED') return 'info'; return 'primary'; }
 function syncDetailDescriptionColumns() { detailDescriptionColumns.value = window.innerWidth <= 640 ? 1 : 2; }

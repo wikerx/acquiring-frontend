@@ -61,7 +61,7 @@
           collapse-tags
           collapse-tags-tooltip
           :max-collapse-tags="2"
-          :placeholder="t('exchange.volatility.allPairs')"
+          :placeholder="t('exchange.volatility.selectComparisonPairs')"
           :disabled="loading || !pairOptions.length"
         >
           <el-option
@@ -107,6 +107,29 @@
               })
             }}
           </span>
+          <div class="comparison-pairs" :aria-label="t('exchange.volatility.selectedComparisons')">
+            <span class="comparison-pairs__label">{{ t('exchange.volatility.selectedComparisons') }}</span>
+            <template v-if="selectedPairRows.length">
+              <el-tag
+                v-for="row in selectedPairRows"
+                :key="row.pairKey"
+                closable
+                effect="plain"
+                @close="removeComparison(row.pairKey)"
+              >
+                <CurrencyPairDisplay
+                  :base-currency="row.baseCurrency"
+                  :quote-currency="row.quoteCurrency"
+                  :locale="String(locale)"
+                  size="xs"
+                />
+              </el-tag>
+              <el-button text type="primary" size="small" @click="clearComparisons">
+                {{ t('exchange.volatility.clearComparisons') }}
+              </el-button>
+            </template>
+            <span v-else class="comparison-pairs__empty">{{ t('exchange.volatility.noComparisonSelected') }}</span>
+          </div>
         </div>
         <div class="chart-actions">
           <el-radio-group v-model="displayMode" size="small">
@@ -127,9 +150,7 @@
         :option="chartOption"
         :loading="loading"
         :empty="!filteredTrendSeries.length || !canQueryTrend"
-        :empty-text="
-          canQueryTrend ? t('common.noData') : t('exchange.volatility.noTrendPermission')
-        "
+        :empty-text="chartEmptyText"
         :aria-label="t('exchange.volatility.chartTitle')"
         height="420px"
       />
@@ -141,17 +162,39 @@
           <h2>{{ t('exchange.volatility.overviewTitle') }}</h2>
           <p>{{ t('exchange.volatility.overviewSubtitle') }}</p>
         </div>
-        <span v-if="lastQueryTime" class="last-query-time">
-          {{ t('exchange.volatility.lastUpdated') }}: {{ lastQueryTime }}
-        </span>
+        <div class="overview-actions">
+          <el-radio-group v-model="overviewMode" size="small">
+            <el-radio-button value="WATCHED">{{ t('exchange.volatility.watchedPairs') }} ({{ watchedRows.length }})</el-radio-button>
+            <el-radio-button value="ALERTING">{{ t('exchange.volatility.alertingPairs') }} ({{ alertingRows.length }})</el-radio-button>
+            <el-radio-button value="ALL">{{ t('common.all') }} ({{ overviewRows.length }})</el-radio-button>
+          </el-radio-group>
+          <span v-if="lastQueryTime" class="last-query-time">
+            {{ t('exchange.volatility.lastUpdated') }}: {{ lastQueryTime }}
+          </span>
+        </div>
       </div>
       <StandardTable
         table-key="exchange-volatility-overview"
-        :data="filteredOverviewRows"
+        :data="displayOverviewRows"
         row-key="pairKey"
         size="small"
+        :empty-text="overviewEmptyText"
       >
-        <el-table-column :label="t('exchange.fields.currencyPair')" min-width="150" align="center">
+        <el-table-column :label="t('exchange.volatility.watch')" width="58" align="center" fixed="left">
+          <template #default="{ row }">
+            <el-tooltip :content="watchActionText(row.pairKey)" placement="top">
+              <el-button
+                text
+                circle
+                :type="watchedPairSet.has(row.pairKey) ? 'warning' : 'info'"
+                :icon="watchedPairSet.has(row.pairKey) ? StarFilled : Star"
+                :aria-label="watchActionText(row.pairKey)"
+                @click="toggleWatch(row.pairKey)"
+              />
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('exchange.fields.currencyPair')" min-width="164" align="center" fixed="left">
           <template #default="{ row }">
             <CurrencyPairDisplay
               :base-currency="row.baseCurrency"
@@ -162,17 +205,25 @@
         </el-table-column>
         <el-table-column :label="t('exchange.volatility.latestRate')" min-width="130" align="right">
           <template #default="{ row }">
-            <strong class="numeric-value">{{ row.latestRate }}</strong>
+            <strong class="numeric-value">{{ formatRate(row.latestRate) }}</strong>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('exchange.volatility.rangeChange')" min-width="126" align="right">
+          <template #default="{ row }">
+            <span :class="['range-change', trendClass(row.changeRate)]">
+              <el-icon><component :is="trendIcon(row.changeRate)" /></el-icon>
+              <strong>{{ formatChangeRate(row.changeRate) }}</strong>
+            </span>
           </template>
         </el-table-column>
         <el-table-column :label="t('exchange.volatility.minimumRate')" min-width="130" align="right">
           <template #default="{ row }">
-            <span class="numeric-value">{{ row.minimumRate }}</span>
+            <span class="numeric-value">{{ formatRate(row.minimumRate) }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('exchange.volatility.maximumRate')" min-width="130" align="right">
           <template #default="{ row }">
-            <span class="numeric-value">{{ row.maximumRate }}</span>
+            <span class="numeric-value">{{ formatRate(row.maximumRate) }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -182,7 +233,7 @@
         >
           <template #default="{ row }">
             <strong :class="['numeric-value', Number(row.volatilityRate) > 3 ? 'is-alert' : '']">
-              {{ row.volatilityRate }}%
+              {{ formatVolatilityRate(row.volatilityRate) }}
             </strong>
           </template>
         </el-table-column>
@@ -192,6 +243,7 @@
           min-width="100"
           align="right"
         />
+        <el-table-column prop="latestSourceCode" :label="t('exchange.volatility.latestSource')" min-width="142" align="center" show-overflow-tooltip />
         <el-table-column :label="t('exchange.volatility.alertStatus')" min-width="110" align="center">
           <template #default="{ row }">
             <el-tag :type="alertTagType(row.alertStatus)" size="small" effect="plain">
@@ -211,8 +263,8 @@
 
 <script setup lang="ts">
   import { computed, onMounted, reactive, ref } from 'vue';
-  import { AnalyticsChart, resolveCurrencyPresentation } from '@acquiring/shared';
-  import { Download, InfoFilled, Refresh, Search } from '@element-plus/icons-vue';
+  import { AnalyticsChart, formatExchangeRate, formatPercentageValue, resolveCurrencyPresentation } from '@acquiring/shared';
+  import { Bottom, Download, InfoFilled, Minus, Refresh, Search, Star, StarFilled, Top } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
   import {
     exportExchangeRateVolatility,
@@ -230,15 +282,25 @@
   import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 
   type DisplayMode = 'ACTUAL' | 'RELATIVE';
-  type OverviewRow = ExchangeRateVolatilityOverview & { pairKey: string };
+  type OverviewMode = 'WATCHED' | 'ALERTING' | 'ALL';
+  type OverviewRow = ExchangeRateVolatilityOverview & {
+    pairKey: string;
+    latestSourceCode?: string;
+    changeRate: number;
+  };
+  type WatchState = Record<ExchangeRateVolatilityType, string[]>;
+
+  const WATCH_STORAGE_KEY = 'vexra.admin.exchange.volatility.watch-pairs.v1';
 
   const { locale, t } = useI18n();
   const userStore = useUserStore();
   const loading = ref(false);
   const displayMode = ref<DisplayMode>('RELATIVE');
+  const overviewMode = ref<OverviewMode>('WATCHED');
   const selectedPreset = ref(72);
   const timeRange = ref<[string, string]>(rangeForHours(72));
   const selectedPairKeys = ref<string[]>([]);
+  const watchState = ref<WatchState>(readWatchState());
   const lastQueryTime = ref('');
   const query = reactive<{ rateType: ExchangeRateVolatilityType }>({
     rateType: 'TRANSACTION_RATE',
@@ -269,13 +331,29 @@
     })),
   );
   const selectedPairSet = computed(() => new Set(selectedPairKeys.value));
-  const filteredOverviewRows = computed(() => {
-    if (!selectedPairKeys.value.length) return overviewRows.value;
-    return overviewRows.value.filter((row) => selectedPairSet.value.has(row.pairKey));
+  const watchedPairKeys = computed(() => watchState.value[query.rateType] || []);
+  const watchedPairSet = computed(() => new Set(watchedPairKeys.value));
+  const watchedRows = computed(() => overviewRows.value.filter((row) => watchedPairSet.value.has(row.pairKey)));
+  const alertingRows = computed(() => overviewRows.value.filter((row) => isAlerting(row)));
+  const displayOverviewRows = computed(() => {
+    if (overviewMode.value === 'WATCHED') return watchedRows.value;
+    if (overviewMode.value === 'ALERTING') return alertingRows.value;
+    return overviewRows.value;
   });
+  const selectedPairRows = computed(() => overviewRows.value.filter((row) => selectedPairSet.value.has(row.pairKey)));
   const filteredTrendSeries = computed(() => {
-    if (!selectedPairKeys.value.length) return trendSeries.value;
+    if (!selectedPairKeys.value.length) return [];
     return trendSeries.value.filter((series) => selectedPairSet.value.has(pairKey(series)));
+  });
+  const chartEmptyText = computed(() => {
+    if (!canQueryTrend.value) return t('exchange.volatility.noTrendPermission');
+    if (!selectedPairKeys.value.length) return t('exchange.volatility.selectPairsForChart');
+    return t('common.noData');
+  });
+  const overviewEmptyText = computed(() => {
+    if (overviewMode.value === 'WATCHED') return t('exchange.volatility.noWatchedPairs');
+    if (overviewMode.value === 'ALERTING') return t('exchange.volatility.noAlertingPairs');
+    return t('common.noData');
   });
   const chartColors = [
     '#2563eb',
@@ -344,7 +422,7 @@
         nameTextStyle: { color: '#64748b', padding: [0, 0, 6, 0] },
         axisLabel: {
           color: '#64748b',
-          formatter: displayMode.value === 'RELATIVE' ? '{value}%' : '{value}',
+          formatter: displayMode.value === 'RELATIVE' ? '{value}%' : formatRate,
         },
         splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } },
       },
@@ -400,11 +478,15 @@
     ],
   }));
 
-  onMounted(loadData);
+  onMounted(() => {
+    selectedPairKeys.value = [...watchedPairKeys.value];
+    if (!watchedPairKeys.value.length) overviewMode.value = 'ALL';
+    void loadData();
+  });
 
   /**
-   * 空币种对是后端约定的“查询全部币种对”，页面再用本地多选做即时筛选。
-   * 这样首次进入即可看全量趋势，也避免每次勾选图例都重复请求接口。
+   * 空币种对是后端约定的“查询全部币种对”。页面始终加载全量摘要供关注、预警和全部视图使用，
+   * 趋势图只展示用户明确选择的币种对，避免默认几十条曲线互相遮挡。
    */
   async function loadData() {
     const request: ExchangeRateVolatilityQuery = {
@@ -419,11 +501,8 @@
         getExchangeRateVolatilityOverview(request),
         canQueryTrend.value ? getExchangeRateVolatilityTrend(request) : Promise.resolve([]),
       ]);
-      overviewRows.value = overview.map((row) => ({
-        ...row,
-        pairKey: pairKey(row),
-      }));
       trendSeries.value = trend;
+      overviewRows.value = overview.map((row) => enrichOverviewRow(row, trend));
       selectedPairKeys.value = selectedPairKeys.value.filter((key) =>
         overviewRows.value.some((row) => row.pairKey === key),
       );
@@ -438,7 +517,9 @@
   }
 
   function handleRateTypeChange() {
-    selectedPairKeys.value = [];
+    selectedPairKeys.value = [...watchedPairKeys.value];
+    overviewMode.value = watchedPairKeys.value.length ? 'WATCHED' : 'ALL';
+    void loadData();
   }
 
   function handlePresetChange(value: string | number | boolean | undefined) {
@@ -456,7 +537,8 @@
   function resetQuery() {
     query.rateType = 'TRANSACTION_RATE';
     displayMode.value = 'RELATIVE';
-    selectedPairKeys.value = [];
+    selectedPairKeys.value = [...watchState.value.TRANSACTION_RATE];
+    overviewMode.value = selectedPairKeys.value.length ? 'WATCHED' : 'ALL';
     selectedPreset.value = 72;
     timeRange.value = rangeForHours(72);
     void loadData();
@@ -492,6 +574,101 @@
 
   function pairKey(pair: ExchangeCurrencyPair) {
     return `${pair.baseCurrency}/${pair.quoteCurrency}`;
+  }
+
+  function enrichOverviewRow(
+    row: ExchangeRateVolatilityOverview,
+    seriesList: ExchangeRateTrendSeries[],
+  ): OverviewRow {
+    const key = pairKey(row);
+    const points = [...(seriesList.find((series) => pairKey(series) === key)?.points || [])]
+      .sort((left, right) => left.effectiveTime.localeCompare(right.effectiveTime));
+    const firstRate = Number(points[0]?.rate || 0);
+    const latestPoint = points.at(-1);
+    const latestRate = Number(latestPoint?.rate || row.latestRate || 0);
+    return {
+      ...row,
+      pairKey: key,
+      latestSourceCode: latestPoint?.sourceCode || '-',
+      changeRate: firstRate === 0 ? 0 : ((latestRate - firstRate) / firstRate) * 100,
+    };
+  }
+
+  function toggleWatch(key: string) {
+    const current = new Set(watchedPairKeys.value);
+    if (current.has(key)) current.delete(key);
+    else current.add(key);
+    watchState.value = { ...watchState.value, [query.rateType]: [...current] };
+    persistWatchState();
+    if (current.has(key) && !selectedPairSet.value.has(key)) {
+      selectedPairKeys.value = [...selectedPairKeys.value, key];
+    }
+  }
+
+  function removeComparison(key: string) {
+    selectedPairKeys.value = selectedPairKeys.value.filter((item) => item !== key);
+  }
+
+  function clearComparisons() {
+    selectedPairKeys.value = [];
+  }
+
+  function watchActionText(key: string) {
+    return watchedPairSet.value.has(key)
+      ? t('exchange.volatility.removeWatch')
+      : t('exchange.volatility.addWatch');
+  }
+
+  function isAlerting(row: OverviewRow) {
+    return ['OPEN', 'ACKNOWLEDGED'].includes(row.alertStatus || '')
+      || Number(row.volatilityRate || 0) >= 3;
+  }
+
+  function trendIcon(changeRate: number) {
+    if (changeRate > 0) return Top;
+    if (changeRate < 0) return Bottom;
+    return Minus;
+  }
+
+  function trendClass(changeRate: number) {
+    if (changeRate > 0) return 'is-up';
+    if (changeRate < 0) return 'is-down';
+    return 'is-flat';
+  }
+
+  function formatChangeRate(changeRate: number) {
+    const prefix = changeRate > 0 ? '+' : '';
+    return `${prefix}${formatVolatilityValue(changeRate)}%`;
+  }
+
+  function formatVolatilityRate(value?: string | number | null) {
+    if (value === undefined || value === null || String(value).trim() === '') return '-';
+    return `${formatVolatilityValue(value)}%`;
+  }
+
+  function formatVolatilityValue(value: string | number) {
+    return formatPercentageValue(value, String(locale.value), '-', 4);
+  }
+
+  function formatRate(value?: string | number | null) {
+    return formatExchangeRate(value, String(locale.value));
+  }
+
+  function readWatchState(): WatchState {
+    const fallback: WatchState = { TRANSACTION_RATE: [], SETTLEMENT_RATE: [] };
+    try {
+      const stored = JSON.parse(localStorage.getItem(WATCH_STORAGE_KEY) || '{}') as Partial<WatchState>;
+      return {
+        TRANSACTION_RATE: Array.isArray(stored.TRANSACTION_RATE) ? stored.TRANSACTION_RATE.filter((item): item is string => typeof item === 'string') : [],
+        SETTLEMENT_RATE: Array.isArray(stored.SETTLEMENT_RATE) ? stored.SETTLEMENT_RATE.filter((item): item is string => typeof item === 'string') : [],
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function persistWatchState() {
+    localStorage.setItem(WATCH_STORAGE_KEY, JSON.stringify(watchState.value));
   }
 
   function formatTooltip(payload: unknown) {
@@ -545,8 +722,8 @@
     return `
       <div style="display: grid; grid-template-columns: minmax(154px, 1.35fr) minmax(88px, 1fr) 88px minmax(76px, 0.8fr); align-items: center; gap: 10px; min-height: 38px; padding: 7px 12px; border-bottom: 1px solid #eef2f7; white-space: nowrap;">
         <strong style="overflow: hidden; color: #1e293b; text-overflow: ellipsis;">${escapeHtml(pair)}</strong>
-        <span style="overflow: hidden; font-family: SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-overflow: ellipsis;">${escapeHtml(item.data.rawRate || '-')}</span>
-        <strong style="color: ${trend.color}; font-variant-numeric: tabular-nums; text-align: right;">${trend.icon} ${Math.abs(change).toFixed(4)}%</strong>
+        <span style="overflow: hidden; font-family: SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-overflow: ellipsis;">${escapeHtml(formatRate(item.data.rawRate))}</span>
+        <strong style="color: ${trend.color}; font-variant-numeric: tabular-nums; text-align: right;">${trend.icon} ${formatVolatilityRate(Math.abs(change))}</strong>
         <span style="overflow: hidden; color: #64748b; text-align: right; text-overflow: ellipsis;" title="${escapeHtml(item.data.sourceCode || '-')}">${escapeHtml(item.data.sourceCode || '-')}</span>
       </div>`;
   }
@@ -646,6 +823,25 @@
     font-weight: 500;
   }
 
+  .comparison-pairs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .comparison-pairs__label,
+  .comparison-pairs__empty {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+  }
+
+  .comparison-pairs :deep(.el-tag) {
+    height: 28px;
+    border-radius: 4px;
+  }
+
   .chart-section,
   .overview-section {
     min-width: 0;
@@ -686,6 +882,13 @@
     align-items: flex-end;
   }
 
+  .overview-actions {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .numeric-value {
     font-family: 'SFMono-Regular', Consolas, monospace;
     font-variant-numeric: tabular-nums;
@@ -693,6 +896,26 @@
 
   .numeric-value.is-alert {
     color: var(--el-color-danger);
+  }
+
+  .range-change {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .range-change.is-up {
+    color: #dc2626;
+  }
+
+  .range-change.is-down {
+    color: #059669;
+  }
+
+  .range-change.is-flat {
+    color: var(--el-text-color-secondary);
   }
 
   @media (max-width: 900px) {
@@ -747,6 +970,24 @@
 
     .last-query-time {
       align-self: flex-start;
+    }
+
+    .overview-actions {
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .overview-actions :deep(.el-radio-group) {
+      display: flex;
+      width: 100%;
+    }
+
+    .overview-actions :deep(.el-radio-button) {
+      flex: 1 1 0;
+    }
+
+    .overview-actions :deep(.el-radio-button__inner) {
+      width: 100%;
     }
   }
 </style>

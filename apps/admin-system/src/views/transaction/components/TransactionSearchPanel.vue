@@ -4,7 +4,7 @@
         class="transaction-search-panel"
         :class="{ 'is-advanced-visible': advancedVisible }"
     >
-        <div class="transaction-search-panel__head">
+        <div v-if="showHeader" class="transaction-search-panel__head">
             <div>
                 <strong>{{ title }}</strong>
                 <span>{{ description }}</span>
@@ -70,9 +70,11 @@ withDefaults(defineProps<{
     resetText: string;
     labelWidth?: string;
     inlineTime?: boolean;
+    showHeader?: boolean;
 }>(), {
     labelWidth: '104px',
     inlineTime: false,
+    showHeader: true,
 });
 
 defineEmits<{

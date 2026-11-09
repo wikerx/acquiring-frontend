@@ -982,8 +982,24 @@ body {
 }
 
 .checkout-status-icon--processing {
-    background: rgb(249 115 22 / 10%);
-    color: #f97316;
+    background: rgb(37 99 235 / 10%);
+    color: #2563eb;
+}
+
+.checkout-status-icon--pending {
+    background: rgb(245 158 11 / 10%);
+    color: #d97706;
+}
+
+.checkout-status-icon--asset {
+    background: transparent;
+}
+
+.checkout-status-icon--asset img {
+    display: block;
+    width: 104px;
+    height: 104px;
+    object-fit: contain;
 }
 
 .checkout-status-card h1 {
@@ -1002,7 +1018,11 @@ body {
 }
 
 .checkout-status-title--processing {
-    color: #f97316;
+    color: #2563eb;
+}
+
+.checkout-status-title--pending {
+    color: #b45309;
 }
 
 .checkout-status-title--blocked {
@@ -1105,8 +1125,13 @@ body {
 }
 
 .checkout-status-message--processing {
-    background: rgb(249 115 22 / 8%);
-    color: #c2410c;
+    background: rgb(37 99 235 / 8%);
+    color: #1d4ed8;
+}
+
+.checkout-status-message--pending {
+    background: rgb(245 158 11 / 10%);
+    color: #92400e;
 }
 
 .checkout-status-message--blocked {
@@ -1178,6 +1203,15 @@ body {
     margin: 0;
     font-size: 13px;
     line-height: 1.7;
+}
+
+.checkout-processing-box--pending {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fde68a;
+}
+
+.checkout-processing-box--pending strong {
+    color: #92400e;
 }
 
 .checkout-status-actions {

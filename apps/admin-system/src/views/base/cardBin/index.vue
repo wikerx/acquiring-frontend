@@ -76,7 +76,12 @@
         <template #default="{ row }"><el-tag size="small" effect="plain">{{ row.binLength }}</el-tag></template>
       </el-table-column>
       <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="128" align="center" :show-overflow-tooltip="true">
-        <template #default="{ row }"><span>{{ row.cardBrandName || row.cardBrand }}</span></template>
+        <template #default="{ row }">
+          <div class="card-brand-value">
+            <PaymentLogoMark v-if="cardBrandLogoKeyByValue(row.cardBrand)" :logo-key="cardBrandLogoKeyByValue(row.cardBrand)" size="sm" compact fallback="text" />
+            <span v-else>{{ row.cardBrandName || row.cardBrand || '-' }}</span>
+          </div>
+        </template>
       </el-table-column>
       <el-table-column prop="cardSubBrand" :label="$t('base.cardBin.cardSubBrand')" min-width="150" align="center" :show-overflow-tooltip="true" />
       <el-table-column :label="$t('base.cardBin.cardType')" width="112" align="center">
@@ -203,7 +208,12 @@
         <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ detailRow.cardBinStart }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardBinEnd')">{{ detailRow.cardBinEnd }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.binLength')">{{ detailRow.binLength }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('base.cardBin.cardBrand')">{{ detailRow.cardBrandName || detailRow.cardBrand }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('base.cardBin.cardBrand')">
+          <div class="card-brand-value card-brand-value--start">
+            <PaymentLogoMark v-if="cardBrandLogoKeyByValue(detailRow.cardBrand)" :logo-key="cardBrandLogoKeyByValue(detailRow.cardBrand)" size="sm" compact fallback="text" />
+            <span v-else>{{ detailRow.cardBrandName || detailRow.cardBrand || '-' }}</span>
+          </div>
+        </el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardSubBrand')">{{ detailRow.cardSubBrand || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardType')">{{ detailRow.cardTypeName || detailRow.cardType }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardLevel')">{{ detailRow.cardLevel || '-' }}</el-descriptions-item>
@@ -241,7 +251,12 @@
         </el-alert>
         <el-descriptions v-if="matchResult.bestMatch" :title="$t('base.cardBin.bestMatch')" :column="1" border class="one-column-detail">
           <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ matchResult.bestMatch.cardBinStart }}</el-descriptions-item>
-          <el-descriptions-item :label="$t('base.cardBin.cardBrand')">{{ matchResult.bestMatch.cardBrandName || matchResult.bestMatch.cardBrand }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.cardBin.cardBrand')">
+            <div class="card-brand-value card-brand-value--start">
+              <PaymentLogoMark v-if="cardBrandLogoKeyByValue(matchResult.bestMatch.cardBrand)" :logo-key="cardBrandLogoKeyByValue(matchResult.bestMatch.cardBrand)" size="sm" compact fallback="text" />
+              <span v-else>{{ matchResult.bestMatch.cardBrandName || matchResult.bestMatch.cardBrand || '-' }}</span>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.cardType')">{{ matchResult.bestMatch.cardTypeName || matchResult.bestMatch.cardType }}</el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.issuerCountry')">{{ matchResult.bestMatch.issuerCountryName || '-' }}</el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.issuerBank')">{{ matchResult.bestMatch.issuerBank || '-' }}</el-descriptions-item>
@@ -250,7 +265,14 @@
           <el-table-column prop="cardBinStart" :label="$t('base.cardBin.cardBinStart')" width="128" align="center" />
           <el-table-column prop="cardBinEnd" :label="$t('base.cardBin.cardBinEnd')" width="128" align="center" />
           <el-table-column prop="binLength" :label="$t('base.cardBin.binLength')" width="90" align="center" />
-          <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="120" align="center"><template #default="{ row }">{{ row.cardBrandName || row.cardBrand }}</template></el-table-column>
+          <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="120" align="center">
+            <template #default="{ row }">
+              <div class="card-brand-value">
+                <PaymentLogoMark v-if="cardBrandLogoKeyByValue(row.cardBrand)" :logo-key="cardBrandLogoKeyByValue(row.cardBrand)" size="sm" compact fallback="text" />
+                <span v-else>{{ row.cardBrandName || row.cardBrand || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column :label="$t('base.cardBin.cardType')" width="110" align="center"><template #default="{ row }">{{ row.cardTypeName || row.cardType }}</template></el-table-column>
           <el-table-column prop="issuerCountryName" :label="$t('base.cardBin.issuerCountry')" min-width="150" align="center" />
           <el-table-column prop="issuerBank" :label="$t('base.cardBin.issuerBank')" min-width="180" align="center" :show-overflow-tooltip="true" />
@@ -654,6 +676,17 @@ function countryFlagByValue(value?: string): string {
   max-width: 38px;
   max-height: 14px;
   object-fit: contain;
+}
+
+.card-brand-value {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-brand-value--start {
+  justify-content: flex-start;
 }
 
 .option-flag {

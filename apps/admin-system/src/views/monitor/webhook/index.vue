@@ -70,7 +70,21 @@
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('monitor.workbench.webhook.detailTitle')" size="lg" :loading="detailLoading">
             <TransactionRecordList :rows="detail?.notification ? [detail.notification] : []" :display-time-zone="timeRange.timezone" />
             <el-divider content-position="left">{{ t('monitor.workbench.webhook.deliveryAttempts') }}</el-divider>
-            <TransactionRecordList :rows="detail?.deliveryLogs || []" variant="callback" :display-time-zone="timeRange.timezone" />
+            <div v-loading="deliveryLogsLoading">
+                <TransactionRecordList :rows="deliveryLogs" variant="callback" :display-time-zone="timeRange.timezone" />
+                <div class="pagination-container" v-show="deliveryLogTotal > 0">
+                    <el-pagination
+                        v-model:current-page="deliveryLogPage"
+                        v-model:page-size="deliveryLogPageSize"
+                        :total="deliveryLogTotal"
+                        :page-sizes="[10, 20, 50, 100]"
+                        layout="total, sizes, prev, pager, next, jumper"
+                        background
+                        @size-change="handleDeliveryLogSizeChange"
+                        @current-change="loadDeliveryLogs"
+                    />
+                </div>
+            </div>
         </CommonDetailDrawer>
     </div>
 </template>
@@ -94,7 +108,7 @@ import {
 } from '@/components/MonitorChart';
 import { MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { searchMonitorWebhooks, type WebhookItem, type WebhookMonitorResponse } from '@/api/monitor/workbench';
-import { getMerchantNotificationDetail, retryMerchantNotification, type MerchantNotificationDetail } from '@/api/transaction';
+import { getMerchantNotificationDeliveryLogs, getMerchantNotificationDetail, retryMerchantNotification, type MerchantNotificationDetail, type TransactionRecord } from '@/api/transaction';
 import TransactionRecordList from '../../transaction/components/TransactionRecordList.vue';
 import {
     createMonitorTimeRange,
@@ -125,6 +139,13 @@ const query = reactive<{ merchantId: string; transactionId: string; eventType: s
 const detailVisible = ref(false);
 const detailLoading = ref(false);
 const detail = ref<MerchantNotificationDetail>();
+const deliveryLogs = ref<TransactionRecord[]>([]);
+const deliveryLogsLoading = ref(false);
+const deliveryLogPage = ref(1);
+const deliveryLogPageSize = ref(10);
+const deliveryLogTotal = ref(0);
+const detailNotifyId = ref('');
+const detailTransactionDateTime = ref('');
 const retryingTransactionId = ref('');
 
 const successDataset = computed(() => createWebhookSuccessRateDataset(response.value?.successRateTrend || [], t));
@@ -191,14 +212,49 @@ async function openDetail(row: WebhookItem) {
     detailVisible.value = true;
     detailLoading.value = true;
     detail.value = undefined;
+    deliveryLogs.value = [];
+    deliveryLogTotal.value = 0;
+    deliveryLogPage.value = 1;
+    detailNotifyId.value = row.eventId;
+    detailTransactionDateTime.value = row.transactionDateTime;
     try {
-        detail.value = await getMerchantNotificationDetail(row.eventId, row.transactionDateTime);
+        const [notificationDetail] = await Promise.all([
+            getMerchantNotificationDetail(row.eventId, row.transactionDateTime),
+            loadDeliveryLogs(),
+        ]);
+        detail.value = notificationDetail;
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
         detailVisible.value = false;
     } finally {
         detailLoading.value = false;
     }
+}
+
+async function loadDeliveryLogs() {
+    if (!detailNotifyId.value || !detailTransactionDateTime.value) return;
+    deliveryLogsLoading.value = true;
+    try {
+        const result = await getMerchantNotificationDeliveryLogs(
+            detailNotifyId.value,
+            detailTransactionDateTime.value,
+            deliveryLogPage.value,
+            deliveryLogPageSize.value,
+        );
+        deliveryLogs.value = result.records || [];
+        deliveryLogTotal.value = result.total || 0;
+    } catch (error) {
+        deliveryLogs.value = [];
+        deliveryLogTotal.value = 0;
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        deliveryLogsLoading.value = false;
+    }
+}
+
+function handleDeliveryLogSizeChange() {
+    deliveryLogPage.value = 1;
+    void loadDeliveryLogs();
 }
 
 function canRetry(row: WebhookItem) {

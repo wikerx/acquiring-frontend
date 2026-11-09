@@ -10,6 +10,7 @@
             :size="size"
             :variant="variant"
             :fallback="fallback"
+            :appearance="appearance"
             compact
         />
     </div>
@@ -33,6 +34,7 @@ const props = withDefaults(
         align?: 'start' | 'center' | 'end';
         wrap?: boolean;
         fallback?: 'hide' | 'text';
+        appearance?: 'normalized' | 'legacy';
     }>(),
     {
         size: 'md',
@@ -40,6 +42,7 @@ const props = withDefaults(
         align: 'start',
         wrap: true,
         fallback: 'hide',
+        appearance: 'normalized',
     },
 );
 

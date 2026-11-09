@@ -13,12 +13,28 @@
             </el-form-item>
             <el-form-item :label="t('channel.common.paymentMethod')">
                 <el-select v-model="query.paymentMethod" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in currentPaymentOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template v-if="selectedQueryPaymentLogoKeys.length" #prefix>
+                        <PaymentLogoGroup :keys="selectedQueryPaymentLogoKeys" size="sm" :wrap="false" />
+                    </template>
+                    <el-option v-for="item in currentPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                        <div class="channel-option-display">
+                            <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                            <span>{{ item.label }}</span>
+                        </div>
+                    </el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.cardBrand')">
                 <el-select v-model="query.cardBrand" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template v-if="selectedQueryCardBrandLogoKeys.length" #prefix>
+                        <PaymentLogoGroup :keys="selectedQueryCardBrandLogoKeys" size="sm" :wrap="false" />
+                    </template>
+                    <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                        <div class="channel-option-display">
+                            <PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                            <span>{{ item.label }}</span>
+                        </div>
+                    </el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.status')">
@@ -46,34 +62,32 @@
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
                 <template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template>
             </el-table-column>
-            <el-table-column :label="t('channel.capability.paymentScope')" min-width="230" align="center">
+            <el-table-column prop="paymentMethod" :label="t('channel.capability.paymentScope')" min-width="230" align="center">
                 <template #default="{ row }">
-                    <PaymentLogoGroup v-if="paymentScopeLogo(row).length" :keys="paymentScopeLogo(row)" fallback="text" size="sm" align="center" />
-                    <span v-else>{{ optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod) }}</span>
+                    <ChannelPaymentScopeDisplay
+                        :keys="paymentScopeLogo(row)"
+                        :label="t('channel.capability.paymentScope')"
+                        :empty-text="optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod)"
+                    />
                 </template>
             </el-table-column>
             <el-table-column :label="t('channel.common.transactionType')" min-width="260" align="center">
                 <template #default="{ row }">
-                    <div v-if="transactionTypeItems(row).length" class="tag-list">
-                        <el-tag v-for="item in transactionTypeItems(row)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
-                    </div>
-                    <span v-else>-</span>
+                    <ChannelTransactionScopeDisplay
+                        :items="transactionTypeItems(row)"
+                        :label="t('channel.common.transactionType')"
+                    />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.capability.allowedAndDefaultCurrencies')" min-width="240" align="center">
+            <el-table-column prop="currencyCodes" :label="t('channel.capability.allowedAndDefaultCurrencies')" min-width="280" align="center">
                 <template #default="{ row }">
-                    <div v-if="orderedCurrencyCodes(row).length" class="tag-list currency-tag-list">
-                        <el-tag
-                            v-for="currency in orderedCurrencyCodes(row)"
-                            :key="currency"
-                            size="small"
-                            effect="plain"
-                            :type="currency === row.defaultTransactionCurrency ? 'success' : 'info'"
-                        >
-                            {{ currency }}<span v-if="currency === row.defaultTransactionCurrency" class="currency-default-mark">{{ t('channel.capability.defaultBadge') }}</span>
-                        </el-tag>
-                    </div>
-                    <span v-else>-</span>
+                    <ChannelCurrencyScopeDisplay
+                        :currencies="orderedCurrencyCodes(row)"
+                        :default-currency="row.defaultTransactionCurrency"
+                        :default-label="t('channel.capability.defaultBadge')"
+                        :label="t('channel.capability.allowedAndDefaultCurrencies')"
+                        :locale="String(locale)"
+                    />
                 </template>
             </el-table-column>
             <el-table-column label="3DS" width="90" align="center">
@@ -120,26 +134,29 @@
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.transactionType')">
                     <div v-if="transactionTypeItems(detailRow).length" class="tag-list tag-list-left">
-                        <el-tag v-for="item in transactionTypeItems(detailRow)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
+                        <TransactionTypeDisplay v-for="item in transactionTypeItems(detailRow)" :key="item.value" :value="item.value" :label="item.label" />
                     </div>
                     <span v-else>-</span>
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.currencies')">
                     <div v-if="orderedCurrencyCodes(detailRow).length" class="tag-list tag-list-left currency-tag-list">
-                        <el-tag
+                        <span
                             v-for="currency in orderedCurrencyCodes(detailRow)"
                             :key="currency"
-                            size="small"
-                            effect="plain"
-                            :type="currency === detailRow.defaultTransactionCurrency ? 'success' : 'info'"
+                            class="currency-tag-list__item"
+                            :class="{ 'is-default': currency === detailRow.defaultTransactionCurrency }"
                         >
-                            {{ currency }}<span v-if="currency === detailRow.defaultTransactionCurrency" class="currency-default-mark">{{ t('channel.capability.defaultBadge') }}</span>
-                        </el-tag>
+                            <CurrencyDisplay :currency="currency" :locale="String(locale)" size="xs" variant="soft" />
+                            <span v-if="currency === detailRow.defaultTransactionCurrency" class="currency-default-badge">
+                                <el-icon><Check /></el-icon>
+                                {{ t('channel.capability.defaultBadge') }}
+                            </span>
+                        </span>
                     </div>
                     <span v-else>-</span>
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.capability.defaultTransactionCurrency')">
-                    <el-tag v-if="detailRow.defaultTransactionCurrency" size="small" type="success" effect="plain">{{ detailRow.defaultTransactionCurrency }}</el-tag>
+                    <CurrencyDisplay v-if="detailRow.defaultTransactionCurrency" :currency="detailRow.defaultTransactionCurrency" :locale="String(locale)" size="sm" variant="soft" />
                     <span v-else>-</span>
                 </el-descriptions-item>
                 <el-descriptions-item label="3DS">
@@ -170,27 +187,46 @@
                 </el-form-item>
                 <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethods">
                     <el-select v-model="form.paymentMethods" multiple collapse-tags filterable style="width:100%" :disabled="isEditMode" @change="handlePaymentChange">
-                        <el-option v-for="item in paymentOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value" />
+                        <el-option v-for="item in paymentOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="channel-option-display">
+                                <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.transactionType')" prop="transactionTypes">
                     <el-select v-model="form.transactionTypes" multiple filterable style="width:100%" @change="handleTransactionTypeChange">
-                        <el-option v-for="item in transactionOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value" />
+                        <template #label="{ value, label }">
+                            <TransactionTypeDisplay :value="String(value)" :label="String(label)" align="start" />
+                        </template>
+                        <el-option v-for="item in transactionOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value">
+                            <TransactionTypeDisplay :value="item.value" :label="item.label" align="start" />
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.currencies')" prop="currencyCodes">
                     <el-select v-model="form.currencyCodes" multiple filterable :reserve-keyword="false" style="width:100%" :loading="currencyLoading" :placeholder="t('channel.capability.currencyPlaceholder')" @change="handleCurrencyCodesChange">
-                        <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
+                        <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
+                            <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.capability.defaultTransactionCurrency')" prop="defaultTransactionCurrency">
                     <el-select v-model="form.defaultTransactionCurrency" filterable style="width:100%" :disabled="!form.currencyCodes.length" :placeholder="t('channel.capability.defaultCurrencyPlaceholder')" @change="handleDefaultCurrencyChange">
-                        <el-option v-for="item in allowedCurrencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code" />
+                        <el-option v-for="item in allowedCurrencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
+                            <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
                     <el-select v-model="form.cardBrands" multiple filterable style="width:100%">
-                        <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="channel-option-display">
+                                <PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item v-if="canConfigure3ds" :label="t('channel.info.support3ds')"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
@@ -212,13 +248,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { Check, Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { CurrencyDisplay, PaymentLogoGroup, TransactionTypeDisplay, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
+import ChannelTransactionScopeDisplay from '@/views/channel/components/ChannelTransactionScopeDisplay.vue';
 import {
     createChannelCapability,
     deleteChannelCapability,
@@ -312,6 +351,14 @@ const rules: FormRules = {
 };
 
 const currentPaymentOptions = computed(() => paymentOptionsFor(query.businessType || 'ACQUIRING'));
+const selectedQueryPaymentLogoKeys = computed(() => {
+    const option = currentPaymentOptions.value.find((item) => item.value === query.paymentMethod);
+    return option ? paymentLogoKeys(option.value, option) : [];
+});
+const selectedQueryCardBrandLogoKeys = computed(() => {
+    const option = cardBrandOptions.value.find((item) => item.value === query.cardBrand);
+    return option ? cardLogoKeys(option.value, option) : [];
+});
 const isEditMode = computed(() => formMode.value === 'edit');
 const selectedChannel = computed(() => channelOptions.value.find((item) => item.id === form.channelId));
 const formBusinessOptions = computed(() => businessOptions.value.filter((item) => isBusinessSupportedByChannel(item.value, selectedChannel.value)));
@@ -707,9 +754,54 @@ function canRowConfigure3ds(row: Pick<ChannelCapability, 'channelId' | 'business
     min-height: 24px;
 }
 
-.currency-default-mark {
-    margin-left: 4px;
-    font-size: 11px;
+.currency-tag-list__item,
+.channel-option-display {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.currency-tag-list__item {
+    gap: 4px;
+    padding: 2px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+}
+
+.currency-tag-list__item.is-default {
+    padding-right: 7px;
+    border-color: #a7dfc2;
+    background: #f0faf5;
+}
+
+.currency-tag-list__item.is-default :deep(.currency-display--soft) {
+    border-color: transparent;
+    background: transparent;
+}
+
+.currency-default-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #167252;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.currency-default-badge .el-icon {
+    font-size: 12px;
+}
+
+.channel-option-display {
+    gap: 8px;
+}
+
+.channel-option-display > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 </style>

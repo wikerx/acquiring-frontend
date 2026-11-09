@@ -8,7 +8,7 @@
                 <el-descriptions-item v-if="showMerchant" :label="$t('feeAccount.merchantId')">{{ plan.merchantId || '-' }}</el-descriptions-item>
                 <el-descriptions-item v-if="showMerchant" :label="$t('feeAccount.merchantName')">{{ plan.merchantName || '-' }}</el-descriptions-item>
                 <el-descriptions-item v-if="showMerchant" :label="$t('feeAccount.settlementCurrency')">
-                    <el-tag effect="plain" type="primary">{{ plan.settlementCurrency || '-' }}</el-tag>
+                    <CurrencyDisplay :currency="plan.settlementCurrency" :locale="String(locale)" size="xs" variant="soft" />
                 </el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.configurationOriginLabel')">{{ originText(plan.originType) }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')" :span="3">{{ plan.remark || '-' }}</el-descriptions-item>
@@ -31,7 +31,7 @@
                             <el-descriptions-item :label="$t('feeAccount.reviewerLabel')">{{ version.reviewByName || '-' }}</el-descriptions-item>
                             <el-descriptions-item :label="$t(version.versionStatus === 'DRAFT' ? 'feeAccount.lastSavedTime' : 'feeAccount.effectiveTime')"><BaseDateTime :value="version.versionStatus === 'DRAFT' ? version.submitTime : version.effectiveTime" /></el-descriptions-item>
                             <el-descriptions-item v-if="showMerchant" :label="$t('feeAccount.settlementCurrency')">
-                                <el-tag v-if="version.settlementCurrency" effect="plain" size="small" type="primary">{{ version.settlementCurrency }}</el-tag>
+                                <CurrencyDisplay v-if="version.settlementCurrency" :currency="version.settlementCurrency" :locale="String(locale)" size="xs" variant="soft" />
                                 <span v-else>-</span>
                             </el-descriptions-item>
                             <el-descriptions-item :label="$t('feeAccount.reviewCommentLabel')" :span="3">{{ version.reviewComment || '-' }}</el-descriptions-item>
@@ -60,16 +60,16 @@
                                                         <template #default="{ row: tier }">{{ tier.upperBound ?? $t('feeAccount.unlimited') }}</template>
                                                     </el-table-column>
                                                     <el-table-column :label="$t('feeAccount.percentageRate')" min-width="130" align="right">
-                                                        <template #default="{ row: tier }">{{ rateText(tier.percentageRate) }}</template>
+                                                        <template #default="{ row: tier }"><PercentageRateDisplay :value="tier.percentageRate" :locale="String(locale)" align="end" /></template>
                                                     </el-table-column>
                                                     <el-table-column :label="$t('feeAccount.fixedUsd')" min-width="120" align="right">
-                                                        <template #default="{ row: tier }">{{ usdText(tier.fixedAmountUsd) }}</template>
+                                                        <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.fixedAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                                     </el-table-column>
                                                     <el-table-column :label="$t('feeAccount.minimumUsd')" min-width="120" align="right">
-                                                        <template #default="{ row: tier }">{{ usdText(tier.minimumAmountUsd) }}</template>
+                                                        <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.minimumAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                                     </el-table-column>
                                                     <el-table-column :label="$t('feeAccount.maximumUsd')" min-width="120" align="right">
-                                                        <template #default="{ row: tier }">{{ usdText(tier.maximumAmountUsd) }}</template>
+                                                        <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.maximumAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                                     </el-table-column>
                                                 </el-table>
                                             </div>
@@ -82,19 +82,19 @@
                                     <el-table-column v-if="tab.name === 'RISK_FEE'" :label="$t('feeAccount.chargeTrigger')" min-width="150" align="center">
                                         <template #default="scope">{{ chargeTriggerText(scope.row.chargeTrigger) }}</template>
                                     </el-table-column>
-                                    <el-table-column :label="$t('feeAccount.transactionType')" min-width="150" align="center">
+                                    <el-table-column :label="$t('feeAccount.transactionType')" min-width="300" align="center">
                                         <template #default="scope">
-                                            <div class="fee-dimension-tags">
-                                                <el-tag v-for="item in transactionTypeItems(scope.row)" :key="item.value" effect="plain" size="small">{{ item.label }}</el-tag>
-                                            </div>
+                                            <ChannelTransactionScopeDisplay
+                                                :items="transactionTypeItems(scope.row)"
+                                                :label="$t('feeAccount.transactionType')"
+                                            />
                                         </template>
                                     </el-table-column>
-                                    <el-table-column :label="$t('feeAccount.paymentMethod')" min-width="310" align="center">
+                                    <el-table-column :label="$t('feeAccount.paymentMethod')" min-width="260" align="center">
                                         <template #default="scope">
-                                            <PaymentMethodDisplay
-                                                :payment-types="paymentTypeItems(scope.row)"
-                                                :payment-methods="paymentMethodItems(scope.row)"
-                                                :all-card-brands-label="allCardBrandsLabel(scope.row)"
+                                            <ChannelPaymentScopeDisplay
+                                                :keys="paymentScopeKeys(scope.row)"
+                                                :label="$t('feeAccount.paymentMethod')"
                                             />
                                         </template>
                                     </el-table-column>
@@ -110,7 +110,7 @@
                             </el-tab-pane>
                             <el-tab-pane :label="$t('feeAccount.reserveSettings')" name="RESERVE">
                                 <el-descriptions :column="2" size="small" border>
-                                    <el-descriptions-item :label="$t('feeAccount.reserveRate')">{{ version.reserveRate }}%</el-descriptions-item>
+                                    <el-descriptions-item :label="$t('feeAccount.reserveRate')"><PercentageRateDisplay :value="version.reserveRate" :locale="String(locale)" emphasized /></el-descriptions-item>
                                     <el-descriptions-item :label="$t('feeAccount.reserveDelayDays')">{{ settlementCycle(version.reserveDelayUnit || 'D', version.reserveDelayDays) }}</el-descriptions-item>
                                 </el-descriptions>
                             </el-tab-pane>
@@ -129,6 +129,12 @@
                                     <el-descriptions v-else :column="2" border size="small" class="fee-fx-summary">
                                         <el-descriptions-item :label="$t('feeAccount.feeMode')"><el-tag effect="plain" type="primary" size="small">{{ $t('feeAccount.standard') }}</el-tag></el-descriptions-item>
                                         <el-descriptions-item :label="$t('feeAccount.billingRule')">{{ feeFormula(firstRuleFor(version, 'SETTLEMENT_FX_FEE')!) }}</el-descriptions-item>
+                                        <el-descriptions-item :label="$t('feeAccount.transactionType')" :span="2">
+                                            <ChannelTransactionScopeDisplay
+                                                :items="transactionTypeItems(firstRuleFor(version, 'SETTLEMENT_FX_FEE')!)"
+                                                :label="$t('feeAccount.transactionType')"
+                                            />
+                                        </el-descriptions-item>
                                         <el-descriptions-item :label="$t('common.remark')" :span="2">{{ firstRuleFor(version, 'SETTLEMENT_FX_FEE')?.remark || '-' }}</el-descriptions-item>
                                     </el-descriptions>
                                 </div>
@@ -143,11 +149,25 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { PaymentMethodDisplay } from '@acquiring/shared';
+import {
+    CurrencyAmountDisplay,
+    CurrencyDisplay,
+    PercentageRateDisplay,
+    formatMoneyAmount,
+    type PaymentLogoKey,
+} from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import type { FeePlanDetail, FeeRule, FeeVersion } from '@/api/fee';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
-import { loadDictOptions, optionLabel, type SelectOption } from '@/views/channel/shared';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
+import ChannelTransactionScopeDisplay from '@/views/channel/components/ChannelTransactionScopeDisplay.vue';
+import {
+    cardLogoKeys,
+    loadDictOptions,
+    optionLabel,
+    paymentLogoKeys,
+    type SelectOption,
+} from '@/views/channel/shared';
 import { feeFormula, frequencyText, originText, planStatusType, settlementCycle, statusText, versionStatusType } from '@/views/fee/shared';
 
 const props = withDefaults(defineProps<{
@@ -237,7 +257,10 @@ function chargeTriggerText(trigger?: FeeRule['chargeTrigger']) {
 }
 
 function transactionTypeItems(rule: FeeRule) {
-    return dimensionItems(rule.transactionTypes, rule.transactionType, transactionTypeOptions.value);
+    return dimensionItems(rule.transactionTypes, rule.transactionType, transactionTypeOptions.value)
+        .map((item) => item.value === 'ALL'
+            ? { ...item, label: t('feeAccount.allTransactionTypes') }
+            : item);
 }
 
 function paymentTypeItems(rule: FeeRule) {
@@ -248,10 +271,25 @@ function paymentMethodItems(rule: FeeRule) {
     return dimensionItems(rule.paymentMethods, rule.paymentMethod, paymentMethodOptions.value, true);
 }
 
-function allCardBrandsLabel(rule: FeeRule) {
-    const bankCardLabel = paymentTypeItems(rule).find((item) => item.value === 'BANK_CARD')?.label
-        || t('feeAccount.paymentMethod');
-    return t('transactionAnalytics.allCardBrands', { method: bankCardLabel });
+function paymentScopeKeys(rule: FeeRule) {
+    const keys: PaymentLogoKey[] = [];
+    for (const paymentType of paymentTypeItems(rule)) {
+        const typeOption = paymentTypeOptions.value.find((item) => item.value === paymentType.value);
+        if (paymentType.value !== 'BANK_CARD') {
+            keys.push(...paymentLogoKeys(paymentType.value, typeOption));
+            continue;
+        }
+        const methods = paymentMethodItems(rule).filter((item) => item.value !== '-');
+        if (!methods.length || methods.some((item) => item.value === 'ALL')) {
+            keys.push(...paymentLogoKeys(paymentType.value, typeOption));
+            continue;
+        }
+        for (const method of methods) {
+            const methodOption = paymentMethodOptions.value.find((item) => item.value === method.value);
+            keys.push(...cardLogoKeys(method.value, methodOption));
+        }
+    }
+    return [...new Set(keys)];
 }
 
 function dimensionItems(batchValues: string[] | undefined, compatibleValue: string | undefined,
@@ -268,7 +306,9 @@ function dimensionItems(batchValues: string[] | undefined, compatibleValue: stri
 function billingRuleText(rule: FeeRule) {
     if (rule.feeCategory !== 'RISK_FEE') return feeFormula(rule);
     if (rule.chargeTrigger === 'NO_CHARGE') return t('feeAccount.chargeTriggerType.noCharge');
-    return t('feeAccount.riskFixedFormula', { amount: rule.fixedAmountUsd || 0 });
+    return t('feeAccount.riskFixedFormula', {
+        amount: formatMoneyAmount(rule.fixedAmountUsd || 0, String(locale.value)),
+    });
 }
 
 function feeModeText(rule: FeeRule) {
@@ -283,13 +323,6 @@ function tierMetricText(rule: FeeRule) {
         : t('feeAccount.tierAmountFormula');
 }
 
-function rateText(value?: string | number | null) {
-    return value === null || value === undefined || value === '' ? '-' : `${value}%`;
-}
-
-function usdText(value?: string | number | null) {
-    return value === null || value === undefined || value === '' ? '-' : `USD ${value}`;
-}
 </script>
 
 <style scoped>
@@ -305,9 +338,6 @@ function usdText(value?: string | number | null) {
 .fee-tier-detail__heading strong { color: #27344a; font-size: 13px; }
 .fee-tier-detail__heading span { color: #697386; font-size: 12px; }
 :deep(.fee-standard-row .el-table__expand-icon) { visibility: hidden; pointer-events: none; }
-.fee-dimension-tags { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; min-height: 24px; }
-.fee-dimension-tags :deep(.el-tag) { max-width: 100%; }
-.fee-dimension-tags :deep(.el-tag__content) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fee-fx-detail { display: grid; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6ebf2; }
 .fee-fx-detail__head { display: grid; gap: 4px; }
 .fee-fx-detail__head strong { color: #27344a; font-size: 13px; }

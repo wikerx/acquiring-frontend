@@ -14,6 +14,15 @@
         @focus="loadDefaultOptions"
         @update:model-value="handleChange"
     >
+        <template v-if="!codeOnly" #label="{ value }">
+            <CurrencyDisplay
+                v-if="selectedCurrencyCode(value) !== 'ALL'"
+                :currency="selectedCurrencyCode(value)"
+                :locale="String(locale)"
+                size="xs"
+            />
+            <span v-else>{{ t('exchange.placeholders.allCurrenciesOption') }}</span>
+        </template>
         <el-option v-for="item in displayOptions" :key="item.alpha3Code" :label="currencyLabel(item)" :value="item.alpha3Code">
             <CurrencyDisplay
                 v-if="item.alpha3Code !== 'ALL'"
@@ -117,6 +126,10 @@ function currencyLabel(item: IsoCurrency) {
 
 function normalizeCode(value?: string) {
     return (value || '').trim().toUpperCase();
+}
+
+function selectedCurrencyCode(value: unknown) {
+    return normalizeCode(String(value || ''));
 }
 
 function deduplicateOptions(items: IsoCurrency[]) {

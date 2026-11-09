@@ -18,7 +18,7 @@
             <el-table-column prop="originalBatchNo" :label="t('transaction.settlement.originalBatchNo')" min-width="205" align="center"><template #default="{ row }"><el-button link type="primary" @click="openBatch(row.originalBatchNo)">{{ row.originalBatchNo }}</el-button></template></el-table-column>
             <el-table-column prop="reversalBatchNo" :label="t('transaction.settlement.reversalBatchNo')" min-width="205" align="center"><template #default="{ row }"><el-button v-if="row.reversalBatchNo" link type="primary" @click="openBatch(row.reversalBatchNo)">{{ row.reversalBatchNo }}</el-button><span v-else>-</span></template></el-table-column>
             <el-table-column prop="merchantId" :label="t('transaction.fields.merchantId')" min-width="140" align="center"><template #default="{ row }"><el-button link type="primary" @click="openMerchant(row.merchantId)">{{ row.merchantId }}</el-button></template></el-table-column>
-            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="164" align="right"><template #default="{row}">{{ moneyTextByExponent(row.netAmount,row.targetCurrency,row.targetCurrencyExponent) }}</template></el-table-column>
+            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="194" align="right"><template #default="{row}"><CurrencyAmountDisplay :amount="row.netAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column :label="t('common.status')" min-width="132" align="center"><template #default="{row}"><el-tag size="small" effect="plain" :type="statusTagType(row.reversalStatus)">{{ statusText(row.reversalStatus) }}</el-tag></template></el-table-column>
             <el-table-column prop="submittedByAccountName" :label="t('transaction.settlement.submitter')" min-width="126" align="center" />
             <el-table-column prop="decidedByAccountName" :label="t('transaction.settlement.reviewer')" min-width="126" align="center" />
@@ -38,7 +38,7 @@
                 <el-descriptions-item :label="t('transaction.settlement.originalBatchNo')"><el-button link type="primary" @click="openBatch(detail.reversal.originalBatchNo)">{{ detail.reversal.originalBatchNo }}</el-button></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.reversalBatchNo')"><el-button v-if="detail.reversal.reversalBatchNo" link type="primary" @click="openBatch(detail.reversal.reversalBatchNo)">{{ detail.reversal.reversalBatchNo }}</el-button><span v-else>-</span></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.fields.merchantId')"><el-button link type="primary" @click="openMerchant(detail.reversal.merchantId)">{{ detail.reversal.merchantId }}</el-button></el-descriptions-item>
-                <el-descriptions-item :label="t('transaction.settlement.netAmount')">{{ moneyTextByExponent(detail.reversal.netAmount,detail.reversal.targetCurrency,detail.reversal.targetCurrencyExponent) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('transaction.settlement.netAmount')"><CurrencyAmountDisplay :amount="detail.reversal.netAmount" :currency="detail.reversal.targetCurrency" :exponent="detail.reversal.targetCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.submitter')">{{ detail.reversal.submittedByAccountName||'-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.reviewer')">{{ detail.reversal.decidedByAccountName||'-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.clearing.reason')" :span="2">{{ detail.reversal.submitReason||'-' }}</el-descriptions-item>
@@ -71,6 +71,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { Plus, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { CurrencyAmountDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { decideSettlementReversal,getSettlementReversal,searchSettlementReversals,submitSettlementReversal,type SettlementReversal,type SettlementReversalDetail,type SettlementReversalQuery } from '@/api/settlement';
@@ -78,8 +79,8 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { defaultDateRange,moneyTextByExponent,requestKey,statusTagType } from '@/views/settlement/shared';
-const {t,te}=useI18n();const router=useRouter();const statuses=['PENDING_APPROVAL','APPROVED','REJECTED'];
+import { defaultDateRange,requestKey,statusTagType } from '@/views/settlement/shared';
+const {t,te,locale}=useI18n();const router=useRouter();const statuses=['PENDING_APPROVAL','APPROVED','REJECTED'];
 const showSearch=ref(true),loading=ref(false),detailVisible=ref(false),createVisible=ref(false),decisionVisible=ref(false),submitting=ref(false),deciding=ref(false);
 const rows=ref<SettlementReversal[]>([]),total=ref(0),detail=ref<SettlementReversalDetail|null>(null),selected=ref<SettlementReversal|null>(null);
 const dateRange=ref<[string,string]>(defaultDateRange());const query=reactive<SettlementReversalQuery>({beginSubmittedDate:'',endSubmittedDate:'',pageNo:1,pageSize:10});

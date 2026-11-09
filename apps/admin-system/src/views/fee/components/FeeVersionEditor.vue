@@ -69,25 +69,29 @@
                                     </el-select>
                                 </el-form-item>
                             </el-col>
-                            <el-col :xs="24" :sm="12" :lg="6">
+                            <el-col :xs="24" :sm="12" :lg="rule.feeCategory === 'RISK_FEE' ? 5 : 6">
                                 <el-form-item :label="$t('feeAccount.ruleName')">
                                     <el-input v-model="rule.ruleName" maxlength="128" clearable :placeholder="$t('feeAccount.ruleNamePlaceholder')" />
                                 </el-form-item>
                             </el-col>
-                            <el-col :xs="24" :sm="12" :lg="6">
+                            <el-col :xs="24" :sm="12" :lg="rule.feeCategory === 'RISK_FEE' ? 6 : 7">
                                 <el-form-item :label="$t('feeAccount.transactionType')" required>
-                                    <FeeDictSelect v-model="rule.transactionTypes" dict-type="transaction_type" multiple :placeholder="$t('feeAccount.multipleSelectPlaceholder')" />
+                                    <FeeDictSelect
+                                        v-model="rule.transactionTypes"
+                                        dict-type="transaction_type"
+                                        multiple
+                                        :placeholder="$t('feeAccount.multipleSelectPlaceholder')"
+                                    />
                                 </el-form-item>
                             </el-col>
-                            <el-col :xs="24" :sm="24" :lg="12">
-                                <div class="fee-payment-field-pair">
-                                    <el-form-item :label="$t('feeAccount.paymentType')" required>
-                                        <FeeDictSelect v-model="rule.paymentTypes" dict-type="acquiring_payment_method" multiple :placeholder="$t('feeAccount.multipleSelectPlaceholder')" @change="handlePaymentTypeChange(rule)" />
-                                    </el-form-item>
-                                    <el-form-item :label="$t('feeAccount.paymentMethod')" required>
-                                        <FeeDictSelect v-model="rule.paymentMethods" dict-type="card_brand" multiple allow-all :disabled="!hasBankCard(rule)" :placeholder="$t('feeAccount.multipleSelectPlaceholder')" @change="handlePaymentMethodChange(rule)" />
-                                    </el-form-item>
-                                </div>
+                            <el-col :xs="24" :sm="24" :lg="rule.feeCategory === 'RISK_FEE' ? 7 : 11">
+                                <el-form-item :label="$t('feeAccount.paymentMethod')" required>
+                                    <FeePaymentMethodSelect
+                                        v-model:payment-types="rule.paymentTypes"
+                                        v-model:payment-methods="rule.paymentMethods"
+                                        :placeholder="$t('feeAccount.multipleSelectPlaceholder')"
+                                    />
+                                </el-form-item>
                             </el-col>
 
                             <template v-if="rule.feeCategory === 'RISK_FEE'">
@@ -167,6 +171,18 @@
                                 <el-button :icon="Delete" type="danger" link @click="removeRule(settlementFxRule)">{{ $t('common.delete') }}</el-button>
                             </div>
                             <el-row :gutter="14">
+                                <el-col :span="24">
+                                    <el-form-item :label="$t('feeAccount.transactionType')" required>
+                                        <FeeDictSelect
+                                            v-model="settlementFxRule.transactionTypes"
+                                            dict-type="transaction_type"
+                                            multiple
+                                            compatible-all
+                                            :all-label="$t('feeAccount.allTransactionTypes')"
+                                            :placeholder="$t('feeAccount.multipleSelectPlaceholder')"
+                                        />
+                                    </el-form-item>
+                                </el-col>
                                 <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.percentageRate')" required><el-input v-model="settlementFxRule.percentageRate" inputmode="decimal"><template #append>%</template></el-input></el-form-item></el-col>
                                 <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.fixedFeeUsd')" required><el-input v-model="settlementFxRule.fixedAmountUsd" inputmode="decimal"><template #prepend>USD</template></el-input></el-form-item></el-col>
                                 <el-col :xs="24" :sm="12" :lg="6"><el-form-item :label="$t('feeAccount.minimumFeeUsd')"><el-input v-model="settlementFxRule.minimumAmountUsd" clearable inputmode="decimal"><template #prepend>USD</template></el-input></el-form-item></el-col>
@@ -195,6 +211,7 @@ import { useI18n } from 'vue-i18n';
 import type { FeeRuleInput, FeeVersionInput } from '@/api/fee';
 import { compareDecimal, createEmptyRule, createRiskRule, createSettlementFxRule } from '@/views/fee/shared';
 import FeeDictSelect from '@/views/fee/components/FeeDictSelect.vue';
+import FeePaymentMethodSelect from '@/views/fee/components/FeePaymentMethodSelect.vue';
 
 type FeeCategory = FeeRuleInput['feeCategory'];
 type FeeMode = FeeRuleInput['feeMode'];
@@ -284,8 +301,9 @@ function addRule(category: FeeCategory) {
         ElMessage.warning(t('feeAccount.validation.mixedFeeModes'));
         return;
     }
-    const rule = category === 'RISK_FEE' ? createRiskRule(nextRiskServiceType()) : createEmptyRule();
-    rule.feeCategory = category;
+    const rule = category === 'RISK_FEE'
+        ? createRiskRule(nextRiskServiceType())
+        : createEmptyRule(category);
     rule.feeMode = category === 'RISK_FEE' ? 'STANDARD' : lockedMode(category) || activeModes.value[category];
     if (rule.feeMode === 'TIER') {
         rule.tierMetric = 'COUNT';
@@ -368,8 +386,6 @@ function handleModeChange(category: FeeCategory, mode: FeeMode) {
 }
 
 function isBlankRule(rule: FeeRuleInput) {
-    const paymentMethodsAreBlank = !rule.paymentMethods.length
-        || rule.paymentMethods.length === 1 && rule.paymentMethods[0] === 'ALL';
     const amountsAreBlank = [rule.percentageRate, rule.fixedAmountUsd,
         rule.minimumAmountUsd, rule.maximumAmountUsd]
         .every((value) => value === null || value === undefined || String(value).trim() === '');
@@ -380,31 +396,10 @@ function isBlankRule(rule: FeeRuleInput) {
             rule.tiers[0].minimumAmountUsd, rule.tiers[0].maximumAmountUsd]
             .every((value) => value === null || value === undefined || String(value).trim() === '');
     return !rule.ruleName?.trim()
-        && !rule.transactionTypes.length
         && !rule.paymentTypes.length
-        && paymentMethodsAreBlank
         && amountsAreBlank
         && tiersAreBlank
         && !rule.remark?.trim();
-}
-
-function hasBankCard(rule: FeeRuleInput) {
-    return rule.paymentTypes.includes('BANK_CARD');
-}
-
-function handlePaymentTypeChange(rule: FeeRuleInput) {
-    if (!hasBankCard(rule) || !rule.paymentMethods.length) {
-        rule.paymentMethods = ['ALL'];
-    }
-}
-
-function handlePaymentMethodChange(rule: FeeRuleInput) {
-    if (rule.paymentMethods.length <= 1 || !rule.paymentMethods.includes('ALL')) {
-        return;
-    }
-    rule.paymentMethods = rule.paymentMethods.at(-1) === 'ALL'
-        ? ['ALL']
-        : rule.paymentMethods.filter((item) => item !== 'ALL');
 }
 
 function addTier(rule: FeeRuleInput) {
@@ -471,7 +466,8 @@ function synchronizeSettlementUnit() {
 </script>
 
 <style scoped>
-.fee-version-editor { display: grid; gap: 18px; }
+.fee-version-editor { display: grid; min-width: 0; gap: 18px; }
+.fee-config-tabs, .fee-editor-section { min-width: 0; }
 .fee-config-tabs :deep(.el-tabs__header) { margin: 0 0 16px; }
 .fee-config-tabs :deep(.el-tabs__item) { min-width: 116px; padding: 0 16px; text-align: center; }
 .fee-tab-label { display: inline-flex; align-items: center; gap: 7px; }
@@ -493,7 +489,6 @@ function synchronizeSettlementUnit() {
 .fee-rule-block__identity { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .fee-rule-block__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fee-rule-block__head strong { color: #27344a; font-size: 13px; }
-.fee-payment-field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .fee-cycle-input { display: grid; grid-template-columns: minmax(88px, 1fr) minmax(92px, 1fr); gap: 8px; width: 100%; }
 .fee-tier-table { margin-top: 2px; padding-top: 12px; border-top: 1px dashed #d9e1ea; }
 .fee-tier-table__head { margin-bottom: 10px; color: #667085; font-size: 12px; }
@@ -509,5 +504,5 @@ function synchronizeSettlementUnit() {
 .fee-change-section { padding: 16px 16px 2px; border: 1px solid #dbe3ef; border-radius: 6px; background: #f8fafc; }
 :deep(.el-form-item) { margin-bottom: 14px; }
 :deep(.el-select), :deep(.el-input-number), :deep(.el-segmented) { width: 100%; }
-@media (max-width: 720px) { .fee-mode-toolbar { align-items: stretch; flex-direction: column; } .fee-mode-toolbar__control { align-items: stretch; flex-direction: column; gap: 7px; } .fee-payment-field-pair { grid-template-columns: 1fr; gap: 0; } .fee-rule-block { padding: 12px 10px; } .fee-config-tabs :deep(.el-tabs__item) { min-width: 0; padding: 0 10px; } }
+@media (max-width: 720px) { .fee-mode-toolbar { align-items: stretch; flex-direction: column; } .fee-mode-toolbar__control { align-items: stretch; flex-direction: column; gap: 7px; } .fee-rule-block { padding: 12px 10px; } .fee-config-tabs :deep(.el-tabs__item) { min-width: 0; padding: 0 10px; } }
 </style>

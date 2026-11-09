@@ -69,13 +69,13 @@
                 </template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" /></template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.balanceBefore')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.balanceBefore" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceBefore" :currency="row.currency" :locale="String(locale)" align="end" /></template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.balanceAfter')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.balanceAfter" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceAfter" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="115" align="center" />
             <el-table-column prop="reviewerName" :label="$t('feeAccount.reviewer')" width="115" align="center" />
@@ -114,7 +114,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyAmountDisplay, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -124,7 +124,6 @@ import {
     type FundDetailQuery,
     type FundLedger,
 } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';

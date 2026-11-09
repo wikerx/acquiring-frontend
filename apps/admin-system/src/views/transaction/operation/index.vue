@@ -27,12 +27,14 @@
             </el-form-item>
             <el-form-item :label="t('transaction.fields.transactionType')">
                 <el-select v-model="query.transactionType" :placeholder="t('common.pleaseSelect')" clearable>
-                    <el-option v-for="item in typeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template #prefix><TransactionTypeDisplay v-if="query.transactionType" :value="query.transactionType" icon-only /></template>
+                    <el-option v-for="item in activeTypeOptions" :key="item.value" :label="item.label" :value="item.value"><TransactionTypeDisplay :value="item.value" :label="item.label" align="start" /></el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('transaction.fields.transactionStatus')">
                 <el-select v-model="query.transactionStatus" :placeholder="t('common.pleaseSelect')" clearable>
-                    <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template #prefix><TransactionStatusDisplay v-if="query.transactionStatus" :value="query.transactionStatus" icon-only /></template>
+                    <el-option v-for="item in activeStatusOptions" :key="item.value" :label="item.label" :value="item.value"><TransactionStatusDisplay :value="item.value" :label="item.label" align="start" /></el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('transaction.fields.channelCode')">
@@ -42,32 +44,13 @@
             </el-form-item>
             <template #advanced>
                 <el-form-item :label="t('transaction.fields.paymentMethod')">
-                    <el-select v-model="query.paymentMethod" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
-                    </el-select>
-                </el-form-item>
-                <el-form-item :label="t('transaction.fields.cardBrand')">
-                    <el-select v-model="query.paymentBrand" class="transaction-brand-select" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <template #prefix>
-                            <PaymentLogoGroup
-                                v-if="selectedPaymentBrandLogoKeys.length"
-                                :keys="selectedPaymentBrandLogoKeys"
-                                size="sm"
-                                fallback="text"
-                                class="transaction-brand-select__prefix"
-                            />
-                        </template>
-                        <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                    <el-select v-model="paymentQueryValue" :placeholder="t('common.pleaseSelect')" clearable filterable>
+                        <template #prefix><PaymentLogoGroup v-if="selectedPaymentQueryOption?.logoKeys.length" :keys="selectedPaymentQueryOption.logoKeys" size="sm" :wrap="false" /></template>
+                        <el-option v-for="item in paymentQueryOptions" :key="item.value" :label="item.label" :value="item.value">
                             <div class="transaction-brand-option">
-                                <PaymentLogoGroup
-                                    v-if="cardBrandOptionLogoKeys(item).length"
-                                    :keys="cardBrandOptionLogoKeys(item)"
-                                    size="sm"
-                                    fallback="text"
-                                    class="transaction-brand-option__logo"
-                                />
+                                <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" size="sm" :wrap="false" class="transaction-brand-option__logo" />
                                 <span>{{ item.label }}</span>
-                                <small>{{ item.value }}</small>
+                                <small>{{ item.displayCode }}</small>
                             </div>
                         </el-option>
                     </el-select>
@@ -110,7 +93,12 @@
             </template>
         </TransactionSearchPanel>
 
-        <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
+        <TransactionResultBar
+            class="transaction-operation-summary"
+            :items="summaryItems"
+            @toggle-search="showSearch = !showSearch"
+            @refresh="loadData"
+        />
 
         <el-row class="mb8 transaction-table-toolbar">
             <el-col :span="1.5">
@@ -140,20 +128,20 @@
                     <CopyableText :value="row.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionType')" width="144" align="center">
-                <template #default="{ row }"><el-tag size="small" effect="plain">{{ tagText(typeOptions, row.transactionType) }}</el-tag></template>
+            <el-table-column :label="t('transaction.fields.transactionType')" width="176" align="center">
+                <template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="tagText(typeOptions, row.transactionType)" /></template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.labelAmount')" width="150" align="center">
-                <template #default="{ row }"><span class="transaction-page__money-cell">{{ moneyText(row.labelAmount, row.labelCurrency, row.currencyExponent) }}</span></template>
+            <el-table-column :label="t('transaction.fields.labelAmount')" width="176" align="center">
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.labelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="center" /></template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionAmount')" width="150" align="center">
-                <template #default="{ row }"><span class="transaction-page__money-cell">{{ moneyText(row.transactionAmount, row.transactionCurrency, row.currencyExponent) }}</span></template>
+            <el-table-column :label="t('transaction.fields.transactionAmount')" width="176" align="center">
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.transactionAmount" :currency="row.transactionCurrency" :exponent="row.currencyExponent" :locale="String(locale)" align="center" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.transactionRate')" width="128" align="center">
                 <template #default="{ row }"><span class="transaction-page__money-cell">{{ rateText(row.transactionRate) }}</span></template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionStatus')" width="118" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusTagType(row.transactionStatus, statusOptions)">{{ tagText(statusOptions, row.transactionStatus) }}</el-tag></template>
+            <el-table-column :label="t('transaction.fields.transactionStatus')" width="136" align="center">
+                <template #default="{ row }"><TransactionStatusDisplay :value="row.transactionStatus" :label="tagText(statusOptions, row.transactionStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="128" align="center">
                 <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.channelMatchStatus)">{{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}</el-tag></template>
@@ -282,6 +270,7 @@
             v-model:visible="detailVisible"
             :title="t('transaction.detail.title')"
             :detail="detail"
+            detail-scope="operations"
             :focus-transaction-id="selectedDetailTransactionId"
             :display-time-zone="query.queryTimeZone"
             :loading="detailLoading"
@@ -303,11 +292,11 @@
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.transactionAmount') }}</dt>
-                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
                     </div>
                 </dl>
             </section>
@@ -338,11 +327,11 @@
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
-                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
                     </div>
                 </dl>
             </section>
@@ -350,7 +339,7 @@
                 <h3>{{ captureDialogInfo }}</h3>
                 <div class="transaction-action-amount-card">
                     <span>{{ t('transaction.fields.availableCaptureAmount') }}</span>
-                    <strong>{{ labelMoneyText(selectedOperation, availableCaptureLabelAmount(selectedOperation)) }}</strong>
+                    <CurrencyAmountDisplay :amount="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
                     <em>{{ captureFullAmountText }}</em>
                 </div>
                 <el-form :model="captureForm" label-position="top" class="transaction-action-form">
@@ -393,11 +382,11 @@
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><el-tag size="small" :type="statusTagType(selectedOperation.transactionStatus, statusOptions)" effect="light">{{ optionText(statusOptions, selectedOperation.transactionStatus) }}</el-tag></dd>
+                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
                     </div>
                     <div>
                         <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
-                        <dd class="transaction-action-money">{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</dd>
+                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
                     </div>
                 </dl>
             </section>
@@ -405,7 +394,7 @@
                 <h3>{{ t('transaction.actions.voidInfo') }}</h3>
                 <div class="transaction-action-amount-card transaction-action-amount-card--warning">
                     <span>{{ t('transaction.actions.voidAmount') }}</span>
-                    <strong>{{ labelMoneyText(selectedOperation, fullLabelAmount(selectedOperation)) }}</strong>
+                    <CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
                     <em>{{ t('transaction.actions.fullVoidOnly') }}</em>
                 </div>
                 <el-form :model="voidForm" label-position="top" class="transaction-action-form">
@@ -440,7 +429,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { RefundFields, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { CurrencyAmountDisplay, RefundFields, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -464,7 +453,7 @@ import {
     type TransactionPaymentMethodSummary,
 } from '@/api/transaction';
 import type { ChannelOption } from '@/api/channel';
-import { loadChannelOptions, loadDictOptions, type SelectOption } from '@/views/channel/shared';
+import { cardLogoKeys, loadChannelOptions, loadDictOptions, paymentLogoKeys, type SelectOption } from '@/views/channel/shared';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
@@ -494,7 +483,6 @@ import {
     responseTooltip,
     splitDateRange,
     statusOptionTagType,
-    statusTagType,
     tagText,
     transactionPaymentLogoKeys,
     type TransactionDictOption,
@@ -551,16 +539,60 @@ const query = reactive({
 });
 const typeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
 const statusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
+const activeTypeOptions = ref<TransactionDictOption[]>([]);
+const activeStatusOptions = ref<TransactionDictOption[]>([]);
 const channelOptions = ref<ChannelOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
 const cardBrandOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const activePaymentMethodOptions = ref<SelectOption[]>([]);
+const activeCardBrandOptions = ref<SelectOption[]>([]);
 const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'channelMatch'));
 const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'reconciliation'));
 const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'settlement'));
 const merchantNotificationStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'merchantNotification'));
 const timezoneOptions = ref<SelectOption[]>([]);
-const selectedPaymentBrandLogoKeys = computed(() => cardBrandOptionLogoKeys(
-    cardBrandOptions.value.find((item) => item.value === query.paymentBrand),
+
+interface PaymentQueryOption {
+    value: string;
+    label: string;
+    displayCode: string;
+    paymentMethod: string;
+    paymentBrand: string;
+    logoKeys: PaymentLogoKey[];
+}
+
+const paymentQueryOptions = computed<PaymentQueryOption[]>(() => activePaymentMethodOptions.value.flatMap((method) => {
+    if (method.value !== 'BANK_CARD') {
+        return [{
+            value: method.value,
+            label: method.label,
+            displayCode: method.value,
+            paymentMethod: method.value,
+            paymentBrand: '',
+            logoKeys: paymentLogoKeys(method.value, method),
+        }];
+    }
+    return activeCardBrandOptions.value.map((brand) => ({
+        value: `BANK_CARD:${brand.value}`,
+        label: brand.label,
+        displayCode: brand.value,
+        paymentMethod: 'BANK_CARD',
+        paymentBrand: brand.value,
+        logoKeys: cardLogoKeys(brand.value, brand),
+    }));
+}));
+const paymentQueryValue = computed({
+    get: () => query.paymentMethod === 'BANK_CARD' && query.paymentBrand
+        ? `BANK_CARD:${query.paymentBrand}`
+        : query.paymentMethod,
+    set: (value: string) => {
+        const selected = paymentQueryOptions.value.find((item) => item.value === value);
+        query.paymentMethod = selected?.paymentMethod || '';
+        query.paymentBrand = selected?.paymentBrand || '';
+    },
+});
+const selectedPaymentQueryOption = computed(() => paymentQueryOptions.value.find(
+    (item) => item.value === paymentQueryValue.value,
 ));
 const refundForm = reactive({
     amount: null as string | null | undefined,
@@ -724,31 +756,42 @@ async function loadDictionaries() {
     const fallbackMerchantNotifications = fallbackTransactionStatusScopeOptions(t, 'merchantNotification');
     typeOptions.value = fallbackTypes;
     statusOptions.value = fallbackStatuses;
+    activeTypeOptions.value = [];
+    activeStatusOptions.value = [];
     channelOptions.value = [];
     paymentMethodOptions.value = fallbackPaymentMethods;
     cardBrandOptions.value = fallbackCardBrands;
+    activePaymentMethodOptions.value = [];
+    activeCardBrandOptions.value = [];
     channelMatchStatusOptions.value = fallbackChannelMatches;
     reconciliationStatusOptions.value = fallbackReconciliations;
     settlementStatusOptions.value = fallbackSettlements;
     merchantNotificationStatusOptions.value = fallbackMerchantNotifications;
     try {
         const [types, statuses, channels, paymentMethods, cardBrands, channelMatches, reconciliations, settlements, merchantNotificationStatuses, timezones] = await Promise.all([
-            loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
-            loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN')),
-            loadChannelOptions(),
-            loadDictOptions('acquiring_payment_method', String(locale.value || 'zh-CN')),
-            loadDictOptions('card_brand', String(locale.value || 'zh-CN')),
+            loadFilterOptions('transaction_type', () => loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN'))),
+            loadFilterOptions('transaction_status', () => loadTransactionDictOptions('transaction_status', String(locale.value || 'zh-CN'))),
+            loadChannelOptions().catch((error) => {
+                console.warn('[admin-system] transaction channel options unavailable', safeErrorType(error));
+                return [];
+            }),
+            loadFilterOptions('acquiring_payment_method', () => loadDictOptions('acquiring_payment_method', String(locale.value || 'zh-CN'))),
+            loadFilterOptions('card_brand', () => loadDictOptions('card_brand', String(locale.value || 'zh-CN'))),
             loadTransactionDictOptions('channel_match_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('reconciliation_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadTransactionDictOptions('merchant_notification_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = mergeTransactionDictOptions(types, fallbackTypes);
-        statusOptions.value = mergeTransactionDictOptions(statuses, fallbackStatuses);
+        activeTypeOptions.value = mergeTransactionDictOptions(types, []);
+        activeStatusOptions.value = mergeTransactionDictOptions(statuses, []);
+        typeOptions.value = mergeTransactionDictOptions(activeTypeOptions.value, fallbackTypes);
+        statusOptions.value = mergeTransactionDictOptions(activeStatusOptions.value, fallbackStatuses);
         channelOptions.value = channels;
-        paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
-        cardBrandOptions.value = mergeTransactionDictOptions(cardBrands, fallbackCardBrands);
+        activePaymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, []);
+        activeCardBrandOptions.value = mergeTransactionDictOptions(cardBrands, []);
+        paymentMethodOptions.value = mergeTransactionDictOptions(activePaymentMethodOptions.value, fallbackPaymentMethods);
+        cardBrandOptions.value = mergeTransactionDictOptions(activeCardBrandOptions.value, fallbackCardBrands);
         channelMatchStatusOptions.value = mergeTransactionDictOptions(channelMatches, fallbackChannelMatches);
         reconciliationStatusOptions.value = mergeTransactionDictOptions(reconciliations, fallbackReconciliations);
         settlementStatusOptions.value = mergeTransactionDictOptions(settlements, fallbackSettlements);
@@ -760,6 +803,18 @@ async function loadDictionaries() {
     } catch (error) {
         console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
         timezoneOptions.value = ensureTransactionTimezoneOptions([]);
+    }
+}
+
+async function loadFilterOptions<T extends SelectOption>(
+    dictType: string,
+    loader: () => Promise<T[]>,
+): Promise<T[]> {
+    try {
+        return await loader();
+    } catch (error) {
+        console.warn(`[admin-system] active dictionary unavailable: ${dictType}`, safeErrorType(error));
+        return [];
     }
 }
 
@@ -862,10 +917,6 @@ function openMerchant(merchantId: string) {
 
 function paymentLogos(row: TransactionOperation): PaymentLogoKey[] {
     return transactionPaymentLogoKeys(row.paymentMethod, row.paymentBrand);
-}
-
-function cardBrandOptionLogoKeys(option?: SelectOption): PaymentLogoKey[] {
-    return transactionPaymentLogoKeys('BANK_CARD', option?.value);
 }
 
 function canRefund(row: TransactionOperation) {
@@ -1165,12 +1216,8 @@ function labelCurrency(row?: TransactionOperation | null) {
     return row?.labelCurrency || row?.transactionCurrency || '';
 }
 
-function labelMoneyText(row?: TransactionOperation | null, amount?: number | string | null) {
-    return moneyText(amount, labelCurrency(row), row?.currencyExponent);
-}
-
 function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
-    return moneyText(amount, undefined, row?.currencyExponent);
+    return moneyText(amount, undefined, row?.labelCurrencyExponent);
 }
 
 function fullLabelAmount(row: TransactionOperation) {
@@ -1189,7 +1236,7 @@ function proportionalLabelAmount(row: TransactionOperation, transactionAmount?: 
         row.labelAmount,
         transactionAmount,
         row.transactionAmount,
-        row.currencyExponent ?? 2,
+        row.labelCurrencyExponent ?? 2,
     ) ?? String(transactionAmount);
 }
 
@@ -1544,6 +1591,23 @@ async function refreshAfterAction(row: TransactionOperation) {
     color: var(--el-color-danger);
     font-size: 12px;
     line-height: 18px;
+}
+
+/* 支付方式汇总的信息密度更高，桌面端为左侧保留更多横向空间。 */
+.transaction-operation-summary :deep(.transaction-result-bar__summary) {
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+}
+
+@media (max-width: 1440px) {
+    .transaction-operation-summary :deep(.transaction-result-bar__summary) {
+        grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+    }
+}
+
+@media (max-width: 980px) {
+    .transaction-operation-summary :deep(.transaction-result-bar__summary) {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 640px) {

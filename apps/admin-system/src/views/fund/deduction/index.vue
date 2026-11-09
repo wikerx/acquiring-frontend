@@ -45,7 +45,7 @@
                 <template #default="{ row }"><el-tag :type="categoryType(row.deductionCategory)" effect="light">{{ categoryText(row.deductionCategory) }}</el-tag></template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.deductionAmount')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column :label="$t('common.status')" width="135" align="center">
                 <template #default="{ row }"><el-tag :type="statusType(row.deductionStatus)">{{ statusText(row.deductionStatus) }}</el-tag></template>
@@ -79,7 +79,7 @@
                     </el-select>
                 </el-form-item>
                 <div v-if="selectedAccount" class="account-snapshot">
-                    <div><span>{{ $t('feeAccount.availableBalance') }}</span><strong><BaseAmount :value="selectedAccount.availableBalance" :currency="selectedAccount.settlementCurrency" currency-display="code" /></strong></div>
+                    <div><span>{{ $t('feeAccount.availableBalance') }}</span><strong><CurrencyAmountDisplay :amount="selectedAccount.availableBalance" :currency="selectedAccount.settlementCurrency" :locale="String(locale)" emphasized /></strong></div>
                     <el-tag :type="selectedAccount.accountStatus === 'CLOSED' ? 'danger' : selectedAccount.accountStatus === 'FROZEN' ? 'warning' : 'success'">{{ $t(`feeAccount.status.${selectedAccount.accountStatus}`) }}</el-tag>
                 </div>
                 <el-form-item :label="$t('feeAccount.deductionCategory')" prop="deductionCategory">
@@ -98,7 +98,7 @@
             <el-alert :title="actionNotice" :type="actionMode === 'reject' ? 'warning' : 'info'" :closable="false" show-icon />
             <el-form ref="actionFormRef" :model="actionForm" :rules="actionRules" label-width="94px" class="dialog-form action-form">
                 <el-form-item :label="$t('feeAccount.deductionNo')">{{ actionTarget?.deductionNo }}</el-form-item>
-                <el-form-item :label="$t('feeAccount.deductionAmount')"><BaseAmount v-if="actionTarget" :value="actionTarget.amount" :currency="actionTarget.currency" currency-display="code" /></el-form-item>
+                <el-form-item :label="$t('feeAccount.deductionAmount')"><CurrencyAmountDisplay v-if="actionTarget" :amount="actionTarget.amount" :currency="actionTarget.currency" :locale="String(locale)" emphasized /></el-form-item>
                 <el-form-item :label="$t('feeAccount.reviewComment')" prop="comment"><el-input v-model.trim="actionForm.comment" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('feeAccount.reviewCommentPlaceholder')" /></el-form-item>
             </el-form>
             <template #footer><el-button :type="actionMode === 'reject' ? 'danger' : 'primary'" :loading="submitting" @click="submitAction">{{ actionConfirmText }}</el-button><el-button @click="actionVisible = false">{{ $t('common.cancel') }}</el-button></template>
@@ -106,7 +106,7 @@
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('feeAccount.deductionDetailTitle')" size="lg">
             <div v-loading="detailLoading" class="deduction-detail">
-                <section v-if="detail" class="deduction-amount-band"><span>{{ $t('feeAccount.deductionAmount') }}</span><strong><BaseAmount :value="detail.amount" :currency="detail.currency" currency-display="code" /></strong><el-tag :type="statusType(detail.deductionStatus)">{{ statusText(detail.deductionStatus) }}</el-tag></section>
+                <section v-if="detail" class="deduction-amount-band"><span>{{ $t('feeAccount.deductionAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.amount" :currency="detail.currency" :locale="String(locale)" emphasized /></strong><el-tag :type="statusType(detail.deductionStatus)">{{ statusText(detail.deductionStatus) }}</el-tag></section>
                 <section v-if="detail" class="review-band is-submit"><h4>{{ $t('feeAccount.deductionInformation') }}</h4><el-descriptions :column="2" size="small">
                     <el-descriptions-item :label="$t('feeAccount.deductionNo')">{{ detail.deductionNo }}</el-descriptions-item><el-descriptions-item :label="$t('feeAccount.requestId')">{{ detail.requestId }}</el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
@@ -127,9 +127,8 @@ import { Checked, CircleCheck, CircleClose, Download, RefreshLeft, Remove, Searc
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { compareDecimalAmounts, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
+import { compareDecimalAmounts, CurrencyAmountDisplay, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
 import { auditFundDeduction, createFundDeduction, exportFundDeductions, getFundAccount, getFundDeduction, recheckFundDeduction, rejectFundDeduction, searchFundAccounts, searchFundDeductions, type FundAccount, type FundDeduction, type FundDeductionQuery } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';

@@ -6,9 +6,13 @@
                     <div class="record-card__identity">
                         <span class="record-card__type">{{ recordTypeText(row) }}</span>
                         <CopyableText :value="recordIdentity(row, index)" :label="recordTypeText(row)" wrap />
-                        <el-tag v-if="transactionTypeText(row)" size="small" effect="plain" class="record-card__transaction-type">
-                            {{ transactionTypeText(row) }}
-                        </el-tag>
+                        <TransactionTypeDisplay
+                            v-if="transactionTypeValue(row)"
+                            class="record-card__transaction-type"
+                            :value="transactionTypeValue(row)"
+                            :label="transactionTypeText(row)"
+                            align="start"
+                        />
                     </div>
                     <div class="record-card__status">
                         <el-tag v-if="statusText(row)" size="small" :type="statusTagType(row)" effect="light">{{ statusText(row) }}</el-tag>
@@ -40,8 +44,20 @@
                     </section>
                 </div>
 
+                <div v-if="canLoadPayload(row)" class="record-list__payload-action">
+                    <el-button
+                        type="primary"
+                        plain
+                        size="small"
+                        :loading="Boolean(row.detailPayloadLoading)"
+                        @click="emit('load-payload', row)"
+                    >
+                        {{ $t('transaction.detail.loadMaskedPayload') }}
+                    </el-button>
+                </div>
+
                 <el-alert
-                    v-else
+                    v-if="!rawBlocks(row).length && !canLoadPayload(row)"
                     class="record-list__empty-raw"
                     :title="$t('transaction.detail.noRawPayload')"
                     type="info"
@@ -63,9 +79,10 @@
 </template>
 
 <script setup lang="ts">
+import { TransactionTypeDisplay, formatMoneyAmount } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
-import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE } from '../shared';
+import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, optionText, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
 
 const props = defineProps<{
@@ -73,9 +90,14 @@ const props = defineProps<{
     variant?: 'channel' | 'callback' | 'merchantApi';
     displayTimeZone?: string;
     showInternalSnapshot?: boolean;
+    typeOptions?: TransactionDictOption[];
 }>();
 
-const { t } = useI18n();
+const emit = defineEmits<{
+    'load-payload': [row: Record<string, unknown>];
+}>();
+
+const { locale, t } = useI18n();
 
 function recordKey(row: Record<string, unknown>, index: number) {
     return `${String(row.channelRecordId || row.id || row.requestId || row.callbackId || row.notifyId || row.interactionLogId || index)}-${index}`;
@@ -141,6 +163,10 @@ function statusTagType(row: Record<string, unknown>) {
 
 function prettyJson(row: Record<string, unknown>) {
     return JSON.stringify(row, null, 2);
+}
+
+function canLoadPayload(row: Record<string, unknown>) {
+    return row.detailPayloadAvailable === true && Boolean(row.detailRecordType && row.detailRecordId);
 }
 
 function rawBlocks(row: Record<string, unknown>) {
@@ -261,7 +287,10 @@ function requestAmountText(row: Record<string, unknown>) {
     if (row.requestAmount === undefined || row.requestAmount === null || row.requestAmount === '') {
         return '';
     }
-    return [row.requestAmount, row.requestCurrency].filter(Boolean).join(' ');
+    return [
+        row.requestCurrency,
+        formatMoneyAmount(row.requestAmount as string | number, String(locale.value || 'zh-CN')),
+    ].filter(Boolean).join(' ');
 }
 
 function statusDisplayText(...values: unknown[]) {
@@ -457,17 +486,16 @@ function recordType(row: Record<string, unknown>) {
 }
 
 function recordTypeText(row: Record<string, unknown>) {
-    const baseText = t(`transaction.detail.recordType.${recordType(row)}`);
-    const typeText = transactionTypeText(row);
-    if (!typeText) {
-        return baseText;
-    }
-    return `${baseText} ${typeText}`;
+    return t(`transaction.detail.recordType.${recordType(row)}`);
 }
 
 function transactionTypeText(row: Record<string, unknown>) {
-    const value = String(row.transactionType || row.parsedTransactionType || row.apiOperation || row.channelEventType || '');
-    return value ? t(`transaction.type.${value}`, value) : '';
+    const value = transactionTypeValue(row);
+    return value ? optionText(props.typeOptions || [], value) : '';
+}
+
+function transactionTypeValue(row: Record<string, unknown>) {
+    return String(row.transactionType || row.parsedTransactionType || row.apiOperation || row.channelEventType || '');
 }
 
 function formatRawValue(value: unknown) {
@@ -555,8 +583,6 @@ function formatRawValue(value: unknown) {
 
 .record-card__transaction-type {
     flex: 0 0 auto;
-    border-radius: 999px;
-    font-weight: 700;
 }
 
 .record-card__status {
@@ -655,6 +681,16 @@ function formatRawValue(value: unknown) {
 
 .record-list__empty-raw {
     margin-bottom: 12px;
+}
+
+.record-list__payload-action {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: 1px dashed var(--el-border-color);
+    border-radius: 6px;
+    padding: 18px;
+    background: var(--el-fill-color-extra-light);
 }
 
 .record-list__raw-block {

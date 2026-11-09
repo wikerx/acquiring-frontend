@@ -23,10 +23,14 @@
                 <el-table-column :label="t('common.status')" min-width="130" align="center"><template #default="{ row }"><el-tag :type="statusType(row.batchStatus)" effect="plain">{{ enumText('batchStatus', row.batchStatus) }}</el-tag></template></el-table-column>
                 <el-table-column prop="transactionCount" :label="t('settlement.transactionCount')" width="100" align="center" />
                 <el-table-column prop="candidateCount" :label="t('settlement.settlementItemCount')" width="112" align="center" />
-                <el-table-column :label="t('settlement.netAmount')" min-width="160" align="right"><template #default="{ row }"><strong>{{ money(row.netAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></template></el-table-column>
+                <el-table-column :label="t('settlement.netAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.netAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
                 <el-table-column :label="t('settlement.netDirection')" width="106" align="center"><template #default="{ row }"><DirectionTag :direction="row.netDirection" :label="enumText('direction', row.netDirection)" /></template></el-table-column>
                 <el-table-column :label="t('settlement.postedTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.postedTime" :source-time-zone="row.businessTimeZone" /></template></el-table-column>
-                <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="470" fixed="right" align="center"><template #default="{ row }"><el-button v-if="canDetail" link type="primary" :icon="View" @click="openDetail(row)">{{ t('common.detail') }}</el-button><el-button v-if="canViewSummaries" link type="primary" :icon="Tickets" @click="openSummary(row)">{{ t('settlement.summary') }}</el-button><el-button v-if="canVoucher" link type="primary" :icon="Document" @click="openVoucher(row)">{{ t('settlement.voucher') }}</el-button><el-button v-if="canViewTransactions" link type="primary" @click="openTransactions(row)">{{ t('settlement.transactionItems') }}</el-button><el-button v-if="canViewReserves" link type="primary" @click="openReserves(row)">{{ t('settlement.reserveItems') }}</el-button></template></el-table-column>
+                <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="144" fixed="right" align="center">
+                    <template #default="{ row }">
+                        <TableRowActions :actions="settlementRowActions()" :more-label="t('common.more')" @select="handleSettlementRowAction($event, row)" />
+                    </template>
+                </el-table-column>
             </StandardTable>
             <div v-show="total > 0" class="pagination-container"><el-pagination v-model:current-page="query.pageNo" v-model:page-size="query.pageSize" :total="total" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next, jumper" background @current-change="loadBatches" @size-change="handleSearch" /></div>
         </section>
@@ -46,7 +50,7 @@
                                 <el-descriptions-item :label="t('settlement.settlementCurrency')"><CurrencyDisplay :currency="detail.batch.targetCurrency" :locale="documentLocale" size="xs" /></el-descriptions-item>
                                 <el-descriptions-item :label="t('settlement.transactionCount')">{{ detail.batch.transactionCount }}</el-descriptions-item>
                                 <el-descriptions-item :label="t('settlement.settlementItemCount')">{{ detail.batch.candidateCount }}</el-descriptions-item>
-                                <el-descriptions-item :label="t('settlement.netAmount')"><strong>{{ money(detail.batch.netAmount, detail.batch.targetCurrency, detail.batch.targetCurrencyExponent) }}</strong></el-descriptions-item>
+                                <el-descriptions-item :label="t('settlement.netAmount')"><CurrencyAmountDisplay :amount="detail.batch.netAmount" :currency="detail.batch.targetCurrency" :exponent="detail.batch.targetCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                                 <el-descriptions-item :label="t('settlement.createdTime')"><BaseDateTime :value="detail.batch.createTime" :source-time-zone="detail.batch.businessTimeZone" /></el-descriptions-item>
                                 <el-descriptions-item :label="t('settlement.postedTime')"><BaseDateTime :value="detail.batch.postedTime" :source-time-zone="detail.batch.businessTimeZone" /></el-descriptions-item>
                             </el-descriptions>
@@ -68,12 +72,12 @@
                             </div>
                             <el-table v-if="summaryRows.length || summaryLoading" v-loading="summaryLoading" :data="summaryRows" border size="small">
                                 <el-table-column :label="t('settlement.paymentMethod')" min-width="240" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentType', row.paymentType)" :payment-methods="dimensionItems('paymentMethod', row.paymentMethod)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.transactionType')" min-width="140" align="center"><template #default="{ row }">{{ enumText('transactionType', row.transactionType) }}</template></el-table-column>
+                                <el-table-column :label="t('settlement.transactionType')" min-width="160" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionType', row.transactionType)" /></template></el-table-column>
                                 <el-table-column :label="t('settlement.resultItemType')" min-width="160" align="center"><template #default="{ row }">{{ enumText('resultItemType', row.resultItemType) }}</template></el-table-column>
                                 <el-table-column :label="t('settlement.feeCategory')" min-width="150" align="center"><template #default="{ row }">{{ enumText('feeCategory', row.feeCategory) }}</template></el-table-column>
                                 <el-table-column :label="t('settlement.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('direction', row.direction)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ money(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                                <el-table-column :label="t('settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ money(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                                <el-table-column :label="t('settlement.sourceAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.targetAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                                 <el-table-column prop="transactionCount" :label="t('settlement.transactionCount')" width="100" align="center" />
                             </el-table>
                             <el-empty v-else-if="summaryLoaded" :description="t('settlement.summaryEmpty')" :image-size="72" />
@@ -97,9 +101,9 @@
                                 <el-table-column prop="sourceTransactionId" :label="t('settlement.transactionId')" min-width="205" fixed="left" align="center"><template #default="{ row }"><el-button link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button></template></el-table-column>
                                 <el-table-column prop="merchantOrderNo" :label="t('settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                                 <el-table-column :label="t('settlement.paymentMethod')" min-width="220" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentType', row.paymentType)" :payment-methods="dimensionItems('paymentMethod', row.paymentMethod)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ enumText('transactionType', row.transactionType) }}</template></el-table-column>
-                                <el-table-column :label="t('settlement.sourceAmount')" min-width="145" align="right"><template #default="{ row }">{{ money(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                                <el-table-column :label="t('settlement.netAmount')" min-width="160" align="right"><template #default="{ row }"><div class="settlement-net-amount"><DirectionTag :direction="row.netDirection" :label="enumText('direction', row.netDirection)" /><strong>{{ money(row.netTargetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></div></template></el-table-column>
+                                <el-table-column :label="t('settlement.transactionType')" min-width="160" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionType', row.transactionType)" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.netAmount')" min-width="210" align="right"><template #default="{ row }"><div class="settlement-net-amount"><DirectionTag :direction="row.netDirection" :label="enumText('direction', row.netDirection)" /><CurrencyAmountDisplay :amount="row.netTargetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
                                 <el-table-column :label="t('settlement.componentCount')" width="112" align="center"><template #default="{ row }"><el-button link type="primary" @click="openComponents(row)">{{ row.componentCount }}</el-button></template></el-table-column>
                                 <el-table-column :label="t('settlement.transactionTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.sourceTransactionDateTime" :source-time-zone="activeBatch.businessTimeZone" /></template></el-table-column>
                             </el-table>
@@ -129,8 +133,8 @@
                                 <el-table-column prop="merchantOrderNo" :label="t('settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                                 <el-table-column prop="sourceTransactionId" :label="t('settlement.transactionId')" min-width="205" align="center"><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openReserveTransaction(row)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
                                 <el-table-column :label="t('settlement.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('direction', row.direction)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.amount')" min-width="145" align="right"><template #default="{ row }">{{ money(row.amount, row.currency, row.currencyExponent) }}</template></el-table-column>
-                                <el-table-column :label="t('settlement.remainingAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ money(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template></el-table-column>
+                                <el-table-column :label="t('settlement.amount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.remainingAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
                                 <el-table-column :label="t('settlement.reserveStatusLabel')" min-width="130" align="center"><template #default="{ row }">{{ enumText('reserveStatus', row.reserveStatus) }}</template></el-table-column>
                                 <el-table-column prop="expectedReleaseDate" :label="t('settlement.expectedReleaseDate')" width="138" align="center" />
                                 <el-table-column :label="t('settlement.actionTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.actionTime" :source-time-zone="activeBatch.businessTimeZone" /></template></el-table-column>
@@ -151,9 +155,9 @@
                 <el-table-column :label="t('settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemType', row.resultItemType) }}</template></el-table-column>
                 <el-table-column :label="t('settlement.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategory', row.feeCategory) }}</template></el-table-column>
                 <el-table-column :label="t('settlement.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('direction', row.direction)" /></template></el-table-column>
-                <el-table-column :label="t('settlement.sourceAmount')" min-width="145" align="right"><template #default="{ row }">{{ money(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                 <el-table-column :label="t('settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ rate(row.directRate) }}</template></el-table-column>
-                <el-table-column :label="t('settlement.targetAmount')" min-width="145" align="right"><template #default="{ row }">{{ money(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('settlement.targetAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                 <el-table-column :label="t('settlement.appliedLimit')" min-width="126" align="center"><template #default="{ row }">{{ enumText('appliedLimit', row.appliedLimit) }}</template></el-table-column>
             </el-table>
             <el-empty v-if="!componentLoading && !componentRows.length" :description="t('settlement.componentEmpty')" />
@@ -167,14 +171,18 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import {
+    CurrencyAmountDisplay,
     CurrencyDisplay,
     DirectionTag,
     downloadSettlementVoucherPdf,
-    formatDecimalAmount,
+    formatExchangeRate,
     formatSettlementVoucherAmount,
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
+    TableRowActions,
+    TransactionTypeDisplay,
+    type TableRowAction,
     type SettlementVoucherDocument,
     type SettlementVoucherStatusTone,
 } from '@acquiring/shared';
@@ -283,6 +291,24 @@ onMounted(async () => {
 });
 
 watch(locale, () => void loadDimensionDictionaries());
+
+function settlementRowActions(): TableRowAction[] {
+    return [
+        { key: 'detail', label: t('common.detail'), icon: View, visible: canDetail },
+        { key: 'summary', label: t('settlement.summary'), icon: DataAnalysis, visible: canViewSummaries },
+        { key: 'voucher', label: t('settlement.voucher'), icon: Document, visible: canVoucher },
+        { key: 'transactions', label: t('settlement.transactionItems'), icon: Memo, visible: canViewTransactions },
+        { key: 'reserves', label: t('settlement.reserveItems'), icon: Lock, visible: canViewReserves },
+    ];
+}
+
+function handleSettlementRowAction(action: string, row: MerchantSettlementBatch) {
+    if (action === 'detail') void openDetail(row);
+    else if (action === 'summary') void openSummary(row);
+    else if (action === 'voucher') void openVoucher(row);
+    else if (action === 'transactions') void openTransactions(row);
+    else if (action === 'reserves') void openReserves(row);
+}
 
 function batchRequest(): MerchantSettlementBatchQuery { return { ...query, beginBusinessDate: businessDateRange.value[0], endBusinessDate: businessDateRange.value[1] }; }
 async function loadBatches() { loading.value = true; try { const result = await searchMerchantSettlementBatches(batchRequest()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error); } finally { loading.value = false; } }
@@ -646,8 +672,7 @@ function voucherTime(value?: string | number | Date, businessTimeZone?: string) 
 function batchVoucherTone(status?: string): SettlementVoucherStatusTone {
     return status === 'POSTED' ? 'success' : status === 'REVERSED' ? 'info' : 'warning';
 }
-function money(value?: string | number | null, currency?: string, exponent?: number | null) { if (value === undefined || value === null || value === '') return '-'; const digits = typeof exponent === 'number' ? Math.min(Math.max(exponent, 0), 8) : 2; return `${currency || ''} ${formatDecimalAmount(value, String(locale.value), digits, 8)}`.trim(); }
-function rate(value?: string | number | null) { return value === undefined || value === null || value === '' ? '-' : formatDecimalAmount(value, String(locale.value), 8, 16); }
+function rate(value?: string | number | null) { return formatExchangeRate(value, String(locale.value)); }
 function statusType(value?: string) { if (value === 'POSTED') return 'success'; if (['FAILED_RETRYABLE','MANUAL_REVIEW'].includes(value || '')) return 'danger'; if (['CANCELLED','REVERSED'].includes(value || '')) return 'info'; return 'warning'; }
 function businessDateFromBusinessNo(value?: string) { const match = /^[A-Z]{2}(\d{4})(\d{2})(\d{2})-/.exec(value || ''); return match ? `${match[1]}-${match[2]}-${match[3]}` : undefined; }
 function defaultDateRange(): [string,string] { const end = new Date(), begin = new Date(); begin.setDate(begin.getDate() - 30); const text = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; return [text(begin), text(end)]; }

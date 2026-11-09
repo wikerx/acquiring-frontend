@@ -6,6 +6,7 @@
             `payment-logo-mark--${logo.kind}`,
             `payment-logo-mark--${size}`,
             `payment-logo-mark--${variant}`,
+            `payment-logo-mark--${appearance}`,
             `payment-logo-mark--${fallbackMode}`,
             { 'is-compact': compact, 'has-asset': Boolean(logo.asset) },
         ]"
@@ -34,12 +35,14 @@ const props = withDefaults(
         variant?: 'default' | 'footer';
         compact?: boolean;
         fallback?: 'hide' | 'text';
+        appearance?: 'normalized' | 'legacy';
     }>(),
     {
         size: 'md',
         variant: 'default',
         compact: false,
         fallback: 'hide',
+        appearance: 'normalized',
     },
 );
 
@@ -51,34 +54,50 @@ const shouldRender = computed(() => Boolean(logo.value.asset) || props.fallback 
 <style scoped>
 .payment-logo-mark {
     --payment-logo-height: 24px;
+    --payment-logo-width: calc(var(--payment-logo-height) + var(--payment-logo-height));
 
     display: inline-flex;
     align-items: center;
     justify-content: center;
     height: var(--payment-logo-height);
-    max-width: 92px;
+    max-width: 100%;
     white-space: nowrap;
     line-height: 1;
 }
 
-.payment-logo-mark--sm {
-    --payment-logo-height: 22px;
+.payment-logo-mark.has-asset:not(.payment-logo-mark--security) {
+    width: var(--payment-logo-width);
+    flex: 0 0 var(--payment-logo-width);
+}
+
+.payment-logo-mark--legacy.has-asset:not(.payment-logo-mark--security) {
+    width: auto;
+    max-width: 92px;
+    flex: 0 1 auto;
+}
+
+.payment-logo-mark--legacy.payment-logo-mark--sm {
     max-width: 82px;
 }
 
-/* Discover 横向字标宽高比明显高于其他卡品牌，紧凑场景按视觉体量单独收敛。 */
-.payment-logo-mark--sm[data-logo-key='discover'] {
+.payment-logo-mark--legacy.payment-logo-mark--sm[data-logo-key='discover'] {
     max-width: 52px;
 }
 
-.payment-logo-mark--lg {
-    --payment-logo-height: 24px;
+.payment-logo-mark--legacy.payment-logo-mark--lg {
     max-width: 96px;
+}
+
+.payment-logo-mark--sm {
+    --payment-logo-height: 22px;
+}
+
+.payment-logo-mark--lg {
+    --payment-logo-height: 28px;
 }
 
 .payment-logo-mark--footer {
     --payment-logo-height: 30px;
-    max-width: 138px;
 }
 
 .payment-logo-mark--footer.payment-logo-mark--wallet {
@@ -96,10 +115,19 @@ const shouldRender = computed(() => Boolean(logo.value.asset) || props.fallback 
 
 .payment-logo-mark__asset {
     display: block;
-    width: auto;
-    max-width: 100%;
+    width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+.payment-logo-mark--legacy .payment-logo-mark__asset {
+    width: auto;
+    max-width: 100%;
+}
+
+.payment-logo-mark--security .payment-logo-mark__asset {
+    width: auto;
+    max-width: 100%;
 }
 
 .payment-logo-mark__text {

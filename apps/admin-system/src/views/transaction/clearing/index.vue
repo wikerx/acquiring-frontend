@@ -76,8 +76,8 @@
                 </template>
             </el-table-column>
             <el-table-column prop="merchantId" :label="t('transaction.fields.merchantId')" min-width="130" align="center" />
-            <el-table-column :label="t('transaction.fields.transactionType')" min-width="136" align="center">
-                <template #default="{ row }">{{ transactionTypeText(row.transactionType) }}</template>
+            <el-table-column :label="t('transaction.fields.transactionType')" min-width="170" align="center">
+                <template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="transactionTypeText(row.transactionType)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.clearingStatus')" width="128" align="center">
                 <template #default="{ row }">
@@ -90,16 +90,16 @@
                 <template #default="{ row }">v{{ row.clearingRevision || 0 }}</template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.transactionLabelAmount')" min-width="148" align="right">
-                <template #default="{ row }"><span class="clearing-page__money">{{ exactMoney(row.labelAmount, row.labelCurrency) }}</span></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.labelAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.grossAmount')" min-width="148" align="right">
-                <template #default="{ row }"><span class="clearing-page__money">{{ exactMoney(row.grossLabelAmount, row.labelCurrency) }}</span></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.platformFee')" min-width="148" align="right">
-                <template #default="{ row }"><span class="clearing-page__money">{{ exactMoney(row.platformFeeAmount, row.labelCurrency) }}</span></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.reserveAmount')" min-width="148" align="right">
-                <template #default="{ row }"><span class="clearing-page__money">{{ exactMoney(row.reserveAmount, row.labelCurrency) }}</span></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.settlementStatus')" min-width="132" align="center">
                 <template #default="{ row }">{{ settlementStatusText(row.settlementStatus) }}</template>
@@ -155,7 +155,11 @@
 
         <el-drawer v-model="detailVisible" :title="t('transaction.clearing.detailTitle')" size="92%" destroy-on-close>
             <div v-loading="detailLoading" class="clearing-detail">
-                <template v-if="detail?.summary">
+                <div v-if="detailError" class="clearing-detail__error">
+                    <el-alert type="error" :closable="false" show-icon :title="t('transaction.clearing.detailLoadFailed')" />
+                    <el-button :icon="Refresh" @click="reloadDetailSummary">{{ t('common.refresh') }}</el-button>
+                </div>
+                <template v-else-if="detail?.summary">
                     <div class="clearing-detail__identity">
                         <div>
                             <span>{{ t('transaction.fields.transactionId') }}</span>
@@ -168,14 +172,16 @@
 
                     <el-descriptions :column="4" border size="small" class="clearing-detail__summary">
                         <el-descriptions-item :label="t('transaction.fields.merchantId')">{{ detail.summary.merchantId || '-' }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.fields.transactionType')">{{ transactionTypeText(detail.summary.transactionType) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.transactionType')">
+                            <TransactionTypeDisplay :value="detail.summary.transactionType" :label="transactionTypeText(detail.summary.transactionType)" align="start" />
+                        </el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.financeStateId')">{{ detail.summary.financeStateId || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.revision')">v{{ detail.summary.clearingRevision || 0 }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.feePlan')">{{ feePlanText(detail.summary) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.transactionLabelAmount')">{{ exactMoney(detail.summary.labelAmount, detail.summary.labelCurrency) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.grossAmount')">{{ exactMoney(detail.summary.grossLabelAmount, detail.summary.labelCurrency) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.platformFee')">{{ exactMoney(detail.summary.platformFeeAmount, detail.summary.labelCurrency) }}</el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.reserveAmount')">{{ exactMoney(detail.summary.reserveAmount, detail.summary.labelCurrency) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.clearing.transactionLabelAmount')"><CurrencyAmountDisplay :amount="detail.summary.labelAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.clearing.grossAmount')"><CurrencyAmountDisplay :amount="detail.summary.grossLabelAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.clearing.platformFee')"><CurrencyAmountDisplay :amount="detail.summary.platformFeeAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.clearing.reserveAmount')"><CurrencyAmountDisplay :amount="detail.summary.reserveAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.settlementStatus')">{{ settlementStatusText(detail.summary.settlementStatus) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.settlementEligibleDate')">{{ detail.summary.settlementEligibleDate || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.nextRetryTime')"><BaseDateTime :value="detail.summary.nextRetryTime" /></el-descriptions-item>
@@ -198,9 +204,13 @@
                                 <span class="clearing-ledger__marker"></span>
                                 <strong>{{ t('transaction.clearing.transactionLedger') }}</strong>
                             </div>
-                            <el-tag size="small" type="primary" effect="plain">{{ detail.transactionDetails?.length || 0 }}</el-tag>
+                            <el-tag size="small" type="primary" effect="plain">{{ transactionDetailTotal }}</el-tag>
                         </div>
-                        <el-table :data="detail.transactionDetails || []" border size="small" empty-text="-">
+                        <div v-if="transactionDetailError" class="clearing-detail__error">
+                            <el-alert type="error" :closable="false" show-icon :title="t('transaction.clearing.transactionDetailLoadFailed')" />
+                            <el-button :icon="Refresh" @click="loadTransactionDetails">{{ t('common.refresh') }}</el-button>
+                        </div>
+                        <el-table v-else v-loading="transactionDetailLoading" :data="transactionDetailRows" border size="small" empty-text="-">
                             <el-table-column type="expand" width="42">
                                 <template #default="{ row }">
                                     <div class="clearing-ledger__formula">
@@ -222,27 +232,39 @@
                                 <template #default="{ row }"><DirectionTag :direction="row.direction" :label="directionText(row.direction)" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.calculationBasis')" min-width="154" align="right">
-                                <template #default="{ row }">{{ exactMoney(row.basisAmount, row.basisCurrency) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.basisAmount" :currency="row.basisCurrency" :locale="String(locale)" size="xs" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.feeTerms')" min-width="230">
                                 <template #default="{ row }">
                                     <div class="clearing-ledger__terms">
                                         <span v-if="hasValue(row.percentageRate)">{{ t('transaction.clearing.percentageRate') }} {{ percentageText(row.percentageRate) }}</span>
-                                        <span v-if="hasValue(row.fixedAmountUsd)">{{ t('transaction.clearing.fixedAmountUsd') }} {{ exactMoney(row.fixedAmountUsd, 'USD') }}</span>
-                                        <span v-if="hasValue(row.minimumAmountUsd)">{{ t('transaction.clearing.minimumAmountUsd') }} {{ exactMoney(row.minimumAmountUsd, 'USD') }}</span>
-                                        <span v-if="hasValue(row.maximumAmountUsd)">{{ t('transaction.clearing.maximumAmountUsd') }} {{ exactMoney(row.maximumAmountUsd, 'USD') }}</span>
+                                        <div v-if="hasValue(row.fixedAmountUsd)" class="clearing-ledger__term"><span>{{ t('transaction.clearing.fixedAmountUsd') }}</span><CurrencyAmountDisplay :amount="row.fixedAmountUsd" currency="USD" :locale="String(locale)" size="xs" /></div>
+                                        <div v-if="hasValue(row.minimumAmountUsd)" class="clearing-ledger__term"><span>{{ t('transaction.clearing.minimumAmountUsd') }}</span><CurrencyAmountDisplay :amount="row.minimumAmountUsd" currency="USD" :locale="String(locale)" size="xs" /></div>
+                                        <div v-if="hasValue(row.maximumAmountUsd)" class="clearing-ledger__term"><span>{{ t('transaction.clearing.maximumAmountUsd') }}</span><CurrencyAmountDisplay :amount="row.maximumAmountUsd" currency="USD" :locale="String(locale)" size="xs" /></div>
                                         <span v-if="row.appliedLimit">{{ t('transaction.clearing.appliedLimit') }} {{ appliedLimitText(row.appliedLimit) }}</span>
                                         <span v-if="!hasFeeTerms(row)">-</span>
                                     </div>
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.clearingAmount')" min-width="154" align="right">
-                                <template #default="{ row }"><strong class="clearing-page__money">{{ exactMoney(row.amount, row.currency) }}</strong></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" size="xs" align="end" emphasized /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.recordStatus')" width="126" align="center">
                                 <template #default="{ row }">{{ recordStatusText(row.recordStatus) }}</template>
                             </el-table-column>
                         </el-table>
+                        <div v-if="transactionDetailTotal > 0" class="clearing-detail__pagination">
+                            <el-pagination
+                                v-model:current-page="transactionDetailPage"
+                                v-model:page-size="transactionDetailPageSize"
+                                :total="transactionDetailTotal"
+                                :page-sizes="[10, 20, 50, 100]"
+                                layout="total, sizes, prev, pager, next, jumper"
+                                background
+                                @size-change="handleTransactionDetailPageSizeChange"
+                                @current-change="loadTransactionDetails"
+                            />
+                        </div>
                     </section>
 
                     <section class="clearing-ledger clearing-ledger--reserve">
@@ -251,9 +273,13 @@
                                 <span class="clearing-ledger__marker"></span>
                                 <strong>{{ t('transaction.clearing.reserveLedger') }}</strong>
                             </div>
-                            <el-tag size="small" type="warning" effect="plain">{{ detail.reserveDetails?.length || 0 }}</el-tag>
+                            <el-tag size="small" type="warning" effect="plain">{{ reserveDetailTotal }}</el-tag>
                         </div>
-                        <el-table :data="detail.reserveDetails || []" border size="small" empty-text="-">
+                        <div v-if="reserveDetailError" class="clearing-detail__error">
+                            <el-alert type="error" :closable="false" show-icon :title="t('transaction.clearing.reserveDetailLoadFailed')" />
+                            <el-button :icon="Refresh" @click="loadReserveDetails">{{ t('common.refresh') }}</el-button>
+                        </div>
+                        <el-table v-else v-loading="reserveDetailLoading" :data="reserveDetailRows" border size="small" empty-text="-">
                             <el-table-column type="expand" width="42">
                                 <template #default="{ row }">
                                     <div class="clearing-ledger__formula">
@@ -270,25 +296,37 @@
                                 <template #default="{ row }"><DirectionTag :direction="row.direction" :label="directionText(row.direction)" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.calculationBasis')" min-width="154" align="right">
-                                <template #default="{ row }">{{ exactMoney(row.basisAmount, row.reserveCurrency) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.basisAmount" :currency="row.reserveCurrency" :locale="String(locale)" size="xs" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.reserveRate')" min-width="108" align="right">
                                 <template #default="{ row }">{{ percentageText(row.reserveRate) }}</template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.retainedAmount')" min-width="142" align="right">
-                                <template #default="{ row }">{{ exactMoney(row.retainedAmount, row.reserveCurrency) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.retainedAmount" :currency="row.reserveCurrency" :locale="String(locale)" size="xs" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.returnedAmount')" min-width="142" align="right">
-                                <template #default="{ row }">{{ exactMoney(row.returnedAmount, row.reserveCurrency) }}</template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.returnedAmount" :currency="row.reserveCurrency" :locale="String(locale)" size="xs" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.clearing.remainingAmount')" min-width="142" align="right">
-                                <template #default="{ row }"><strong class="clearing-page__money">{{ exactMoney(row.remainingAmount, row.reserveCurrency) }}</strong></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.reserveCurrency" :locale="String(locale)" size="xs" align="end" emphasized /></template>
                             </el-table-column>
                             <el-table-column prop="expectedReserveReleaseDate" :label="t('transaction.clearing.expectedReleaseDate')" min-width="144" align="center" />
                             <el-table-column :label="t('transaction.clearing.recordStatus')" width="126" align="center">
                                 <template #default="{ row }">{{ recordStatusText(row.recordStatus) }}</template>
                             </el-table-column>
                         </el-table>
+                        <div v-if="reserveDetailTotal > 0" class="clearing-detail__pagination">
+                            <el-pagination
+                                v-model:current-page="reserveDetailPage"
+                                v-model:page-size="reserveDetailPageSize"
+                                :total="reserveDetailTotal"
+                                :page-sizes="[10, 20, 50, 100]"
+                                layout="total, sizes, prev, pager, next, jumper"
+                                background
+                                @size-change="handleReserveDetailPageSizeChange"
+                                @current-change="loadReserveDetails"
+                            />
+                        </div>
                     </section>
                 </template>
                 <el-empty v-else-if="!detailLoading" :description="t('transaction.clearing.detailEmpty')" />
@@ -406,8 +444,9 @@
 import { Refresh } from '@element-plus/icons-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { DirectionTag } from '@acquiring/shared';
+import { CurrencyAmountDisplay, DirectionTag, formatPercentageRate, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
@@ -418,8 +457,11 @@ import {
     retryClearingRecord,
     reviewClearingRecord,
     searchClearingRecords,
+    searchClearingReserveDetails,
+    searchClearingTransactionDetails,
     type ClearingBatchRecalculateResponse,
     type ClearingRecordDetail,
+    type ClearingReserveLine,
     type ClearingRecordSummary,
     type ClearingRecalculationOptions,
     type ClearingRecalculationVersionOption,
@@ -435,6 +477,9 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     resolveTransactionQueryRange,
     splitDateRange,
 } from '@/views/transaction/shared';
@@ -444,7 +489,8 @@ type ActionType = 'retry' | 'review' | 'recalculate';
 const MAX_RECALCULATION_BATCH_SIZE = 20;
 const RETRYABLE_STATUSES = new Set(['PENDING', 'FAILED', 'WAITING_SOURCE', 'MANUAL_REVIEW']);
 const TERMINAL_STATUSES = new Set(['CLEARED', 'NOT_REQUIRED']);
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const route = useRoute();
 const userStore = useUserStore();
 const showSearch = ref(true);
 const loading = ref(false);
@@ -455,9 +501,24 @@ const pageSize = ref(10);
 const quickPreset = ref('today');
 const dateRange = ref(defaultTransactionTodayRange());
 const timezoneOptions = ensureTransactionTimezoneOptions([]);
+const transactionTypeOptions = ref(fallbackTransactionTypeOptions(t));
 const detailVisible = ref(false);
 const detailLoading = ref(false);
+const detailError = ref(false);
 const detail = ref<ClearingRecordDetail | null>(null);
+const detailIdentity = ref<Pick<ClearingRecordSummary, 'transactionId' | 'transactionDateTime'> | null>(null);
+const transactionDetailLoading = ref(false);
+const transactionDetailError = ref(false);
+const transactionDetailRows = ref<ClearingTransactionLine[]>([]);
+const transactionDetailTotal = ref(0);
+const transactionDetailPage = ref(1);
+const transactionDetailPageSize = ref(10);
+const reserveDetailLoading = ref(false);
+const reserveDetailError = ref(false);
+const reserveDetailRows = ref<ClearingReserveLine[]>([]);
+const reserveDetailTotal = ref(0);
+const reserveDetailPage = ref(1);
+const reserveDetailPageSize = ref(10);
 const actionVisible = ref(false);
 const actionLoading = ref(false);
 const actionType = ref<ActionType>('retry');
@@ -469,6 +530,9 @@ const recalculationOptions = ref<ClearingRecalculationOptions | null>(null);
 const batchResultVisible = ref(false);
 const batchResult = ref<ClearingBatchRecalculateResponse | null>(null);
 let recalculationOptionsRequestId = 0;
+let detailRequestId = 0;
+let transactionDetailRequestId = 0;
+let reserveDetailRequestId = 0;
 const query = reactive({
     merchantId: '',
     transactionId: '',
@@ -568,17 +632,135 @@ function handleReset() {
     loadData();
 }
 
-async function openDetail(row: ClearingRecordSummary) {
+async function openDetail(row: Pick<ClearingRecordSummary, 'transactionId' | 'transactionDateTime'>) {
+    const requestId = ++detailRequestId;
+    transactionDetailRequestId += 1;
+    reserveDetailRequestId += 1;
     detailVisible.value = true;
+    detailIdentity.value = { ...row };
     detailLoading.value = true;
+    detailError.value = false;
     detail.value = null;
+    transactionDetailRows.value = [];
+    transactionDetailLoading.value = false;
+    transactionDetailTotal.value = 0;
+    transactionDetailPage.value = 1;
+    transactionDetailError.value = false;
+    reserveDetailRows.value = [];
+    reserveDetailLoading.value = false;
+    reserveDetailTotal.value = 0;
+    reserveDetailPage.value = 1;
+    reserveDetailError.value = false;
     try {
-        detail.value = await getClearingRecordDetail(row.transactionId, row.transactionDateTime);
+        const result = await getClearingRecordDetail(row.transactionId, row.transactionDateTime);
+        if (requestId !== detailRequestId) return;
+        detail.value = result;
+        void Promise.all([loadTransactionDetails(), loadReserveDetails()]);
     } catch (error: any) {
+        if (requestId !== detailRequestId) return;
+        detailError.value = true;
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.clearing.detailLoadFailed'));
     } finally {
-        detailLoading.value = false;
+        if (requestId === detailRequestId) detailLoading.value = false;
     }
+}
+
+async function reloadDetailSummary() {
+    if (!detailIdentity.value) return;
+    await openDetail(detailIdentity.value);
+}
+
+async function loadTransactionDetails() {
+    const identity = detailIdentity.value;
+    if (!identity) return;
+    const requestId = ++transactionDetailRequestId;
+    transactionDetailLoading.value = true;
+    transactionDetailError.value = false;
+    try {
+        const result = await searchClearingTransactionDetails(
+            identity.transactionId,
+            identity.transactionDateTime,
+            transactionDetailPage.value,
+            transactionDetailPageSize.value,
+        );
+        if (requestId !== transactionDetailRequestId
+            || detailIdentity.value?.transactionId !== identity.transactionId
+            || detailIdentity.value?.transactionDateTime !== identity.transactionDateTime) return;
+        transactionDetailRows.value = result.records || [];
+        transactionDetailTotal.value = result.total || 0;
+    } catch {
+        if (requestId !== transactionDetailRequestId) return;
+        transactionDetailRows.value = [];
+        transactionDetailTotal.value = 0;
+        transactionDetailError.value = true;
+    } finally {
+        if (requestId === transactionDetailRequestId) transactionDetailLoading.value = false;
+    }
+}
+
+async function loadReserveDetails() {
+    const identity = detailIdentity.value;
+    if (!identity) return;
+    const requestId = ++reserveDetailRequestId;
+    reserveDetailLoading.value = true;
+    reserveDetailError.value = false;
+    try {
+        const result = await searchClearingReserveDetails(
+            identity.transactionId,
+            identity.transactionDateTime,
+            reserveDetailPage.value,
+            reserveDetailPageSize.value,
+        );
+        if (requestId !== reserveDetailRequestId
+            || detailIdentity.value?.transactionId !== identity.transactionId
+            || detailIdentity.value?.transactionDateTime !== identity.transactionDateTime) return;
+        reserveDetailRows.value = result.records || [];
+        reserveDetailTotal.value = result.total || 0;
+    } catch {
+        if (requestId !== reserveDetailRequestId) return;
+        reserveDetailRows.value = [];
+        reserveDetailTotal.value = 0;
+        reserveDetailError.value = true;
+    } finally {
+        if (requestId === reserveDetailRequestId) reserveDetailLoading.value = false;
+    }
+}
+
+function handleTransactionDetailPageSizeChange() {
+    transactionDetailPage.value = 1;
+    void loadTransactionDetails();
+}
+
+function handleReserveDetailPageSizeChange() {
+    reserveDetailPage.value = 1;
+    void loadReserveDetails();
+}
+
+function routeQueryText(name: string) {
+    const value = route.query[name];
+    return Array.isArray(value) ? value[0] || '' : typeof value === 'string' ? value : '';
+}
+
+/**
+ * 统一待办携带清分事实发生日，先收窄分片查询范围，再打开对应清分详情。
+ */
+function applyRoutedFilters() {
+    const transactionId = routeQueryText('transactionId');
+    const transactionDateTime = routeQueryText('transactionDateTime');
+    const clearingStatus = routeQueryText('clearingStatus');
+    if (transactionId) query.transactionId = transactionId;
+    if (clearingStatus) query.clearingStatus = clearingStatus;
+    const transactionDate = transactionDateTime.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(transactionDate)) return;
+    quickPreset.value = '';
+    dateRange.value = [`${transactionDate}T00:00:00`, `${transactionDate}T23:59:59`];
+}
+
+async function openRoutedDetail() {
+    const transactionId = routeQueryText('transactionId');
+    const transactionDateTime = routeQueryText('transactionDateTime');
+    if (!transactionId || !transactionDateTime) return;
+    await openDetail({ transactionId, transactionDateTime });
 }
 
 function openAction(type: ActionType, row: ClearingRecordSummary) {
@@ -771,7 +953,13 @@ function clearingStatusTagType(value?: string) {
 }
 
 function transactionTypeText(value?: string) {
-    return value ? t(`transaction.type.${value}`, value) : '-';
+    return value ? transactionTypeOptions.value.find((item) => item.value === value)?.label || value : '-';
+}
+
+async function loadTransactionTypeOptions() {
+    const fallbackOptions = fallbackTransactionTypeOptions(t);
+    const remoteOptions = await loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []);
+    transactionTypeOptions.value = mergeTransactionDictOptions(remoteOptions, fallbackOptions);
 }
 
 function settlementStatusText(value?: string) {
@@ -811,21 +999,8 @@ function reserveItemName(action?: string, fallback?: string) {
     return action ? t(`transaction.clearing.itemName.RESERVE_${action}`, fallback || action) : fallback || '-';
 }
 
-function exactMoney(amount?: number | string | null, currency?: string) {
-    if (!hasValue(amount)) return '-';
-    return `${currency || ''} ${decimalText(amount)}`.trim();
-}
-
-function decimalText(value?: number | string | null) {
-    if (!hasValue(value)) return '-';
-    const text = String(value);
-    const match = /^([+-]?)(\d+)(\.\d+)?$/.exec(text);
-    if (!match) return text;
-    return `${match[1]}${match[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${match[3] || ''}`;
-}
-
 function percentageText(value?: number | string | null) {
-    return hasValue(value) ? `${decimalText(value)}%` : '-';
+    return formatPercentageRate(value, String(locale.value || 'zh-CN'));
 }
 
 function versionOptionText(option: ClearingRecalculationVersionOption) {
@@ -872,16 +1047,14 @@ function quarterKey(value: Date) {
     return value.getFullYear() * 10 + Math.floor(value.getMonth() / 3) + 1;
 }
 
-onMounted(loadData);
+onMounted(async () => {
+    applyRoutedFilters();
+    await Promise.all([loadTransactionTypeOptions(), loadData()]);
+    await openRoutedDetail();
+});
 </script>
 
 <style scoped>
-.clearing-page__money {
-    color: var(--el-text-color-primary);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
 .transaction-page__table {
     border-radius: 6px;
     overflow: hidden;
@@ -955,6 +1128,23 @@ onMounted(loadData);
     margin-top: 12px;
 }
 
+.clearing-detail__error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.clearing-detail__error :deep(.el-alert) {
+    flex: 1;
+}
+
+.clearing-detail__pagination {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 12px;
+    overflow-x: auto;
+}
+
 .clearing-ledger {
     margin-top: 20px;
 }
@@ -997,6 +1187,13 @@ onMounted(loadData);
     color: var(--el-text-color-secondary);
     font-size: 12px;
     line-height: 17px;
+}
+
+.clearing-ledger__term {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
 .clearing-ledger__formula {

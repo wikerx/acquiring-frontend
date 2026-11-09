@@ -9,10 +9,11 @@ const CURRENCY_NUMBER_PARTS = new Set<Intl.NumberFormatPartTypes>([
  */
 export function currencyFractionDigits(currency = 'USD', locale = 'zh-CN') {
     try {
-        return new Intl.NumberFormat(locale, {
+        const maximumFractionDigits = new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: String(currency || 'USD').toUpperCase(),
         }).resolvedOptions().maximumFractionDigits;
+        return Math.min(maximumFractionDigits ?? 2, 2);
     } catch {
         return 2;
     }
@@ -36,14 +37,14 @@ export function formatAmount(
     const exactAmount = formatDecimalAmount(
         unsignedAmount,
         locale,
-        fractionDigits,
+        0,
         fractionDigits,
     );
     try {
         const formatter = new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: normalizedCurrency,
-            minimumFractionDigits: fractionDigits,
+            minimumFractionDigits: 0,
             maximumFractionDigits: fractionDigits,
         });
         let amountWritten = false;

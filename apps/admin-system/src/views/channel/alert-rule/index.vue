@@ -52,6 +52,7 @@
                 <template #default="{ row }">
                     <div class="scope-cell">
                         <PaymentLogoGroup v-if="paymentScopeLogo(row).length" :keys="paymentScopeLogo(row)" size="sm" align="center" />
+                        <span v-else>{{ scopeText(row.paymentMethod, row.cardBrand) }}</span>
                     </div>
                 </template>
             </el-table-column>
@@ -82,7 +83,10 @@
                 <el-descriptions-item :label="t('channel.alert.ruleName')">{{ detailRow.ruleName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.capability.paymentScope')">{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.capability.paymentScope')">
+                    <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" size="sm" align="start" />
+                    <span v-else>{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.ruleType')">{{ optionLabel(ruleTypeOptions, detailRow.ruleType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.windowMinutes')">{{ detailRow.windowMinutes }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.threshold')">{{ thresholdText(detailRow) }}</el-descriptions-item>
@@ -126,14 +130,27 @@
                         </el-form-item>
                         <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
                             <el-select v-model="form.paymentMethod" filterable style="width:100%" :disabled="formMode === 'edit' || !form.businessType" @change="handlePaymentChange">
+                                <template v-if="selectedFormPaymentLogoKeys.length" #prefix>
+                                    <PaymentLogoGroup :keys="selectedFormPaymentLogoKeys" size="sm" :wrap="false" />
+                                </template>
                                 <el-option :label="t('channel.common.all')" value="ALL" />
-                                <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
                             <el-select v-model="form.cardBrands" multiple filterable collapse-tags collapse-tags-tooltip style="width:100%" @change="handleCardBrandsChange">
                                 <el-option :label="t('channel.common.all')" value="ALL" />
-                                <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.alert.ruleType')" prop="ruleTypes">
@@ -411,10 +428,29 @@ const formPaymentOptions = computed(() => {
         .filter((item) => item.businessType === form.businessType)
         .map((item) => item.paymentMethod);
     const source = form.businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
-    return source.filter((item) => values.includes(item.value));
+    const options = source.filter((item) => values.includes(item.value));
+    if (formMode.value !== 'edit' || !form.paymentMethod || form.paymentMethod === 'ALL') {
+        return options;
+    }
+    const currentOption = source.find((item) => item.value === form.paymentMethod);
+    return dedupeSelectOptions(currentOption ? [currentOption, ...options] : options);
 });
-const formCardBrandOptions = computed(() => cardBrandOptions.value.filter((item) => optionCardBrands.value.includes(item.value)));
+const formCardBrandOptions = computed(() => {
+    const options = cardBrandOptions.value.filter((item) => optionCardBrands.value.includes(item.value));
+    if (formMode.value !== 'edit') {
+        return options;
+    }
+    const currentOptions = cardBrandOptions.value.filter((item) => form.cardBrands.includes(item.value));
+    return dedupeSelectOptions([...currentOptions, ...options]);
+});
 const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const selectedFormPaymentLogoKeys = computed(() => {
+    if (!form.paymentMethod || form.paymentMethod === 'ALL') {
+        return [];
+    }
+    const option = formPaymentOptions.value.find((item) => item.value === form.paymentMethod);
+    return paymentLogoKeys(form.paymentMethod, option);
+});
 const selectedRules = computed(() => form.ruleTypes.map((ruleType) => form.rules[ruleType]).filter(Boolean));
 
 onMounted(async () => {
@@ -543,6 +579,17 @@ function resetForm() {
     activeRuleType.value = '';
     optionPaymentMethods.value = [];
     optionCardBrands.value = [];
+}
+
+function dedupeSelectOptions(options: SelectOption[]) {
+    const seen = new Set<string>();
+    return options.filter((item) => {
+        if (seen.has(item.value)) {
+            return false;
+        }
+        seen.add(item.value);
+        return true;
+    });
 }
 
 async function handleChannelChange() {
@@ -1124,6 +1171,19 @@ function mergeTemplateOptions(current: ChannelAlertEmailTemplateOption[], incomi
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+}
+
+.channel-option-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.channel-option-display > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 @media (max-width: 820px) {

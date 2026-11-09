@@ -50,8 +50,8 @@
 
         <section v-if="runtimeState === 'loading'" class="checkout-status-shell">
             <article class="checkout-status-card">
-                <div class="checkout-status-icon checkout-status-icon--processing">
-                    <span>...</span>
+                <div class="checkout-status-icon checkout-status-icon--processing checkout-status-icon--asset">
+                    <img :src="processingStatusIcon" alt="" aria-hidden="true" />
                 </div>
                 <p class="checkout-status-eyebrow">{{ t('status.processingEyebrow') }}</p>
                 <h1 class="checkout-status-title--processing">{{ t('checkout.loadingTitle') }}</h1>
@@ -405,8 +405,8 @@
                     <span class="checkout-success-visual__ring"></span>
                     <span class="checkout-success-visual__check">✓</span>
                 </div>
-                <div v-else :class="['checkout-status-icon', `checkout-status-icon--${statusViewState}`]">
-                    <span>{{ localizedStatusConfig.icon }}</span>
+                <div v-else :class="['checkout-status-icon', 'checkout-status-icon--asset', `checkout-status-icon--${statusViewState}`]">
+                    <img :src="resultStatusIcon" alt="" aria-hidden="true" />
                 </div>
                 <p class="checkout-status-eyebrow">{{ localizedStatusConfig.eyebrow }}</p>
                 <h1 :class="`checkout-status-title--${statusViewState}`">{{ localizedStatusConfig.title }}</h1>
@@ -452,7 +452,13 @@
                     </ul>
                 </div>
 
-                <div v-if="statusViewState === 'processing'" class="checkout-processing-box">
+                <div v-if="statusViewState === 'pending'" class="checkout-processing-box checkout-processing-box--pending">
+                    <span>{{ t('status.pendingEstimateLabel') }}</span>
+                    <strong>{{ t('status.pendingEstimate') }}</strong>
+                    <p>{{ t('status.pendingHint') }}</p>
+                </div>
+
+                <div v-else-if="statusViewState === 'processing'" class="checkout-processing-box">
                     <span>{{ t('status.estimatedCompletion') }}</span>
                     <strong>{{ t('status.processingEstimate') }}</strong>
                     <p>{{ t('status.processingHint') }}</p>
@@ -468,12 +474,12 @@
                         {{ t('status.failedPrimary') }}
                     </button>
                     <button
-                        v-else-if="statusViewState === 'processing'"
+                        v-else-if="statusViewState === 'processing' || statusViewState === 'pending'"
                         class="checkout-status-button checkout-status-button--primary"
                         type="button"
                         @click="refreshPaymentStatus"
                     >
-                        {{ t('status.processingPrimary') }}
+                        {{ localizedStatusConfig.primaryAction }}
                     </button>
                     <button
                         v-else-if="hasMerchantRedirect"
@@ -493,7 +499,7 @@
                         {{ receiptDownloading ? t('status.downloadingReceipt') : t('status.downloadReceipt') }}
                     </button>
                     <button
-                        v-if="hasMerchantRedirect && (statusViewState === 'processing' || (statusViewState === 'failed' && retryAvailable))"
+                        v-if="hasMerchantRedirect && (statusViewState === 'processing' || statusViewState === 'pending' || (statusViewState === 'failed' && retryAvailable))"
                         class="checkout-status-button checkout-status-button--secondary"
                         type="button"
                         @click="submitMerchantReturnForm"
@@ -513,7 +519,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { PaymentLogoGroup, formatDecimalAmount, getSystemBrand, type PaymentLogoKey } from '@acquiring/shared';
+import { PaymentLogoGroup, formatMoneyAmount, getSystemBrand, resolveTransactionStatusIcon, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { setLocale } from './i18n';
 import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkoutConfig';
@@ -536,8 +542,8 @@ import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
 import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
 import { resolveMerchantPostUrl } from './utils/urlSecurity';
 
-type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'processing' | 'blocked';
-type CheckoutStatusViewState = 'success' | 'failed' | 'processing' | 'blocked';
+type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
+type CheckoutStatusViewState = 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutLocale = 'en-US' | 'zh-CN';
 
 interface PaymentOption {
@@ -667,10 +673,24 @@ const statusViewState = computed<CheckoutStatusViewState>(() => {
     if (runtimeState.value === 'failed') {
         return 'failed';
     }
+    if (runtimeState.value === 'pending') {
+        return 'pending';
+    }
     if (runtimeState.value === 'blocked') {
         return 'blocked';
     }
     return 'processing';
+});
+
+const processingStatusIcon = resolveTransactionStatusIcon('PROCESSING');
+const resultStatusIcon = computed(() => {
+    if (statusViewState.value === 'failed') {
+        return resolveTransactionStatusIcon('FAILED');
+    }
+    if (statusViewState.value === 'pending') {
+        return resolveTransactionStatusIcon('PENDING');
+    }
+    return processingStatusIcon;
 });
 const session = ref<HostedCheckoutSession | null>(null);
 const paymentResult = ref<HostedCheckoutPaymentResult | null>(null);
@@ -736,7 +756,9 @@ const order = computed(() => session.value?.order);
 const checkoutInfo = computed(() => session.value?.checkout);
 const latestPageState = computed(() => paymentResult.value?.pageState || session.value?.pageState || '');
 const statusChipText = computed(() => readablePageState(
-    runtimeState.value === 'processing' ? 'PROCESSING' : latestPageState.value,
+    runtimeState.value === 'processing' || runtimeState.value === 'pending'
+        ? runtimeState.value.toUpperCase()
+        : latestPageState.value,
 ));
 const orderReferenceText = computed(() => (
     order.value?.orderNo
@@ -918,6 +940,17 @@ const localizedStatusConfig = computed(() => {
             secondaryAction: t('status.blockedSecondary'),
         };
     }
+    if (statusViewState.value === 'pending') {
+        return {
+            icon: 'clock',
+            eyebrow: t('status.pendingEyebrow'),
+            title: t('status.pendingTitle'),
+            description: t('status.pendingDescription'),
+            message: t('status.pendingMessage'),
+            primaryAction: t('status.pendingPrimary'),
+            secondaryAction: t('status.pendingSecondary'),
+        };
+    }
     return {
         icon: '...',
         eyebrow: t('status.processingEyebrow'),
@@ -1061,6 +1094,10 @@ async function initializeCheckout() {
         }
         if (token === 'dev-processing') {
             handlePaymentResult(mockProcessingResult());
+            return;
+        }
+        if (token === 'dev-pending') {
+            handlePaymentResult(mockPendingResult());
             return;
         }
         if (token === 'dev-3ds-recovery') {
@@ -1213,6 +1250,10 @@ async function refreshPaymentStatus() {
             handlePaymentResult(mockProcessingResult());
             return;
         }
+        if (routeToken.value === 'dev-pending') {
+            handlePaymentResult(mockPendingResult());
+            return;
+        }
         if (runtimeState.value === 'threeDs') {
             return;
         }
@@ -1234,15 +1275,19 @@ async function refreshPaymentStatus() {
                 handlePaymentResult(mockProcessingResult());
                 return;
             }
+            if (routeToken.value === 'dev-pending') {
+                handlePaymentResult(mockPendingResult());
+                return;
+            }
             devStatusPolls.value += 1;
             handlePaymentResult(devStatusPolls.value >= 2 ? mockSuccessResult() : mockProcessingResult());
             return;
         }
-        if (runtimeState.value === 'processing') {
+        if (runtimeState.value === 'processing' || runtimeState.value === 'pending') {
             paymentResult.value = {
                 checkoutSessionId: session.value.checkoutSessionId,
                 checkoutAttemptId: paymentResult.value?.checkoutAttemptId,
-                pageState: 'PROCESSING',
+                pageState: runtimeState.value === 'pending' ? 'PENDING' : 'PROCESSING',
                 failure: {
                     reasonCode: 'CHANNEL_RESPONSE_INVALID',
                 },
@@ -1463,6 +1508,16 @@ function applyPageState(pageState?: string) {
         }
         return;
     }
+    if (state === 'PENDING') {
+        clearMerchantRedirect();
+        clearThreeDsContinuation();
+        clearSensitiveCardData();
+        runtimeState.value = 'pending';
+        if (!pollTimer.value) {
+            startPolling();
+        }
+        return;
+    }
     blockCheckout('checkout.invalidLink');
 }
 
@@ -1639,14 +1694,16 @@ function startPolling(maxAttempts = POLLING_MAX_ATTEMPTS) {
 function scheduleNextPoll() {
     clearPolling();
     if (pollAttempts.value >= pollAttemptLimit.value) {
-        runtimeState.value = 'processing';
+        if (runtimeState.value === 'threeDs') {
+            runtimeState.value = 'processing';
+        }
         return;
     }
     const delayMs = Math.max(1, pollingIntervalSeconds.value) * 1000;
     pollTimer.value = window.setTimeout(async () => {
         pollAttempts.value += 1;
         await refreshPaymentStatus();
-        if (runtimeState.value === 'processing' || runtimeState.value === 'threeDs') {
+        if (runtimeState.value === 'processing' || runtimeState.value === 'pending' || runtimeState.value === 'threeDs') {
             scheduleNextPoll();
         }
     }, delayMs);
@@ -2045,14 +2102,13 @@ function formatMoney(amount?: number | string, currency = 'USD'): string {
             currencyDisplay: 'code',
         });
         const options = formatter.resolvedOptions();
-        return `${currency} ${formatDecimalAmount(
+        return `${currency} ${formatMoneyAmount(
             amountText,
             language.value,
-            options.minimumFractionDigits,
             options.maximumFractionDigits,
         )}`;
     } catch {
-        return `${currency} ${formatDecimalAmount(amountText, language.value, 2, 8)}`;
+        return `${currency} ${formatMoneyAmount(amountText, language.value)}`;
     }
 }
 
@@ -2299,6 +2355,28 @@ function mockProcessingResult(): HostedCheckoutPaymentResult {
     };
 }
 
+function mockPendingResult(): HostedCheckoutPaymentResult {
+    return {
+        checkoutSessionId: session.value?.checkoutSessionId || 'CSDEV202607270001',
+        checkoutAttemptId: 'CADEVPENDING202607270001',
+        pageState: 'PENDING',
+        result: {
+            amount: order.value?.amount || '49.97',
+            currency: order.value?.currency || 'USD',
+            merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
+            paymentMethod: selectedMethod.value?.label || 'Bank Card',
+            cardBrand: 'VISA',
+            cardNumberMasked: '**** 1111',
+            transactionId: 'TXDEVPENDING202607270001',
+            transactionDateTime: new Date().toISOString(),
+        },
+        polling: {
+            intervalSeconds: 2,
+            maxIntervalSeconds: 5,
+        },
+    };
+}
+
 function mockSuccessResult(): HostedCheckoutPaymentResult {
     const cardNumber = digitsOnly(cardForm.cardNumber);
     const transactionId = `TXDEV${Date.now()}`;
@@ -2363,7 +2441,7 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
 
 function isDevToken(token: string): boolean {
     return import.meta.env.DEV
-        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-success-redirect', 'dev-failed', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
+        && ['dev-token', 'dev-unpaid', 'dev-success', 'dev-success-redirect', 'dev-failed', 'dev-pending', 'dev-processing', 'dev-3ds', 'dev-3ds-recovery'].includes(token);
 }
 
 applyLocale(resolveInitialLocale(), false);

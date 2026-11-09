@@ -32,7 +32,9 @@
         <StandardTable table-key="exchange-usage-snapshot" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="115" align="center"><template #default="{ row }"><el-tag size="small" effect="plain" :type="rateTypeTagType(row.rateType)">{{ optionLabel(rateTypeOptions, row.rateType) }}</el-tag></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usageScene')" min-width="90" align="center"><template #default="{ row }"><span class="scene-label">{{ optionLabel(usageSceneOptions, row.usageScene) }}</span></template></el-table-column>
-            <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="150" align="center" :show-overflow-tooltip="true"><template #default="{ row }"><span class="code-label table-code-label">{{ row.businessType || '-' }}</span></template></el-table-column>
+            <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="150" align="center" :show-overflow-tooltip="true">
+                <template #default="{ row }"><TransactionTypeDisplay :value="row.businessType" :label="businessTypeText(row.businessType)" /></template>
+            </el-table-column>
             <el-table-column prop="businessNo" :label="$t('exchange.fields.businessNo')" min-width="175" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="155" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usedRate')" min-width="130" align="right"><template #default="{ row }"><strong class="rate-value">{{ formatRate(row.usedRate) }}</strong></template></el-table-column>
@@ -62,7 +64,7 @@
                         <el-descriptions :column="1" border size="small">
                             <el-descriptions-item :label="$t('exchange.fields.usageEventId')"><span class="code-label code-label--wrap">{{ detailRow.usageEventId || '-' }}</span></el-descriptions-item>
                             <el-descriptions-item :label="$t('exchange.fields.producerService')">{{ detailRow.producerService || '-' }}</el-descriptions-item>
-                            <el-descriptions-item :label="$t('exchange.fields.businessType')">{{ detailRow.businessType || '-' }}</el-descriptions-item>
+                            <el-descriptions-item :label="$t('exchange.fields.businessType')"><TransactionTypeDisplay :value="detailRow.businessType" :label="businessTypeText(detailRow.businessType)" align="start" /></el-descriptions-item>
                             <el-descriptions-item :label="$t('exchange.fields.businessNo')">{{ detailRow.businessNo || '-' }}</el-descriptions-item>
                         </el-descriptions>
                     </section>
@@ -99,7 +101,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { FULL_DAY_RANGE_DEFAULT_TIMES, TransactionTypeDisplay, resolveTransactionTypeIcon } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { Download, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -194,6 +196,11 @@ function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' |
     if (rateType === 'CLEARING_RATE') return 'warning';
     return 'info';
 }
+
+function businessTypeText(value?: string) {
+    if (!value) return '-';
+    return resolveTransactionTypeIcon(value) ? t(`transaction.type.${value}`, value) : value;
+}
 </script>
 
 <style scoped>
@@ -213,11 +220,6 @@ function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' |
 .calculation-description {
     overflow-wrap: anywhere;
     white-space: pre-wrap;
-}
-
-.table-code-label {
-    font-size: 12px;
-    white-space: nowrap;
 }
 
 .rate-evidence {

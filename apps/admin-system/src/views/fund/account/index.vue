@@ -36,9 +36,11 @@
                     <MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" />
                 </template>
             </el-table-column>
-            <el-table-column prop="settlementCurrency" :label="$t('feeAccount.settlementCurrency')" width="105" align="center" />
+            <el-table-column :label="$t('feeAccount.settlementCurrency')" width="105" align="center">
+                <template #default="{ row }"><CurrencyDisplay :currency="row.settlementCurrency" :locale="String(locale)" size="xs" /></template>
+            </el-table-column>
             <el-table-column :label="$t('feeAccount.availableBalance')" min-width="155" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.availableBalance" :currency="row.settlementCurrency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.availableBalance" :currency="row.settlementCurrency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column :label="$t('common.status')" width="130" align="center">
                 <template #default="{ row }"><el-tag :type="accountStatusType(row.accountStatus)">{{ accountStatusText(row.accountStatus) }}</el-tag></template>
@@ -80,7 +82,7 @@
                     <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2">
                         <MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" />
                     </el-descriptions-item>
-                    <el-descriptions-item :label="$t('feeAccount.settlementCurrency')">{{ detail.settlementCurrency }}</el-descriptions-item>
+                    <el-descriptions-item :label="$t('feeAccount.settlementCurrency')"><CurrencyDisplay :currency="detail.settlementCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                     <el-descriptions-item :label="$t('common.status')"><el-tag :type="accountStatusType(detail.accountStatus)">{{ accountStatusText(detail.accountStatus) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.negativeReverseRestriction')"><el-tag :type="detail.reverseRestricted ? 'danger' : 'success'">{{ detail.reverseRestricted ? $t('feeAccount.restricted') : $t('feeAccount.normal') }}</el-tag></el-descriptions-item>
                 </el-descriptions>
@@ -101,6 +103,7 @@
                             :items="[{ currency: detail.settlementCurrency, amount: detail.availableBalance }]"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="green"
                             variant="balance"
                         />
@@ -113,6 +116,7 @@
                             :items="detail.pendingBalances"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="blue"
                             variant="balance"
                         />
@@ -125,6 +129,7 @@
                             :items="detail.reserveBalances"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="amber"
                             variant="balance"
                         />
@@ -169,13 +174,13 @@
                             <template #default="{ row }"><DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.balanceBefore')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.balanceBefore" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceBefore" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.balanceAfter')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.balanceAfter" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceAfter" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
                         </el-table-column>
                         <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="115" align="center" />
                         <el-table-column prop="reviewerName" :label="$t('feeAccount.reviewer')" width="115" align="center" />
@@ -222,7 +227,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-import { CurrencyAmountPills, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyAmountDisplay, CurrencyAmountPills, CurrencyDisplay, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Remove, Search, Unlock, View } from '@element-plus/icons-vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
@@ -242,7 +247,6 @@ import {
     type FundDetailQuery,
     type FundLedger,
 } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';

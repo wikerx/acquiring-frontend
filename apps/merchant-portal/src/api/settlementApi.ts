@@ -235,8 +235,8 @@ export interface MerchantClearingReserveLine {
 
 export interface MerchantClearingDetail {
     summary: MerchantClearingSummary;
-    transactionDetails: MerchantClearingTransactionLine[];
-    reserveDetails: MerchantClearingReserveLine[];
+    transactionDetails?: MerchantClearingTransactionLine[];
+    reserveDetails?: MerchantClearingReserveLine[];
 }
 
 export async function searchMerchantSettlementBatches(data: MerchantSettlementBatchQuery) {
@@ -326,6 +326,46 @@ export async function getMerchantClearingDetailByTransaction(
         {
             params: {
                 transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchMerchantClearingTransactionLinesByTransaction(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<MerchantClearingTransactionLine>>>(
+        `/merchant/settlements/clearing-records/transactions/${encodeURIComponent(transactionId)}`
+            + '/transaction-details',
+        {
+            params: {
+                transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchMerchantClearingReserveLinesByTransaction(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<MerchantClearingReserveLine>>>(
+        `/merchant/settlements/clearing-records/transactions/${encodeURIComponent(transactionId)}`
+            + '/reserve-details',
+        {
+            params: {
+                transactionDateTime: normalizeSettlementTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
             },
         },
     );

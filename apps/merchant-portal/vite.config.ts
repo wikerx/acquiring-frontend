@@ -7,6 +7,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url)),
+            '@acquiring/shared/legacy': fileURLToPath(
+                new URL('../../packages/shared/src/legacy.ts', import.meta.url),
+            ),
             '@acquiring/shared': fileURLToPath(
                 new URL('../../packages/shared/src/index.ts', import.meta.url),
             ),

@@ -28,7 +28,7 @@ const displayValue = computed(() => {
         ?? currencyFractionDigits(props.currency, currentLocale);
     const amount = roundDecimalAmount(props.value, digits);
     if (props.currencyDisplay === 'code') {
-        const formattedAmount = formatDecimalAmount(amount, currentLocale, digits, digits);
+        const formattedAmount = formatDecimalAmount(amount, currentLocale, 0, digits);
         return `${String(props.currency || 'USD').toUpperCase()} ${formattedAmount}`;
     }
     return formatAmount(amount, props.currency, currentLocale, digits);

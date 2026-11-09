@@ -181,11 +181,24 @@ export default {
     processingMessage: 'Do not close the page. The final result may refresh automatically.',
     processingPrimary: 'Refresh Status',
     processingSecondary: 'Return to Merchant',
+    pendingEyebrow: 'Awaiting confirmation',
+    pendingTitle: 'Payment Pending',
+    pendingDescription:
+      'Your payment request has been received, but the final result is not yet available.',
+    pendingMessage:
+      'Do not submit another payment. Keep this page open or refresh later to check the final result.',
+    pendingPrimary: 'Refresh Status',
+    pendingSecondary: 'Return to Merchant',
+    pendingEstimateLabel: 'Current status',
+    pendingEstimate: 'Awaiting confirmation',
+    pendingHint:
+      'The bank or payment provider is still processing this transaction. The page will update after confirmation.',
   },
   pageState: {
     PAYABLE: 'Ready to pay',
     THREE_DS_REQUIRED: 'Authentication required',
     PROCESSING: 'Processing',
+    PENDING: 'Pending',
     SUCCEEDED: 'Succeeded',
     FAILED_RETRYABLE: 'Failed, retry available',
     FAILED_FINAL: 'Failed',

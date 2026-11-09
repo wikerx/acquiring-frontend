@@ -97,7 +97,7 @@
         min-width="125"
         align="right"
         ><template #default="{ row }"
-          ><strong class="numeric-value is-alert">{{ row.volatilityRate }}%</strong></template
+          ><strong class="numeric-value is-alert">{{ volatilityText(row.volatilityRate) }}</strong></template
         ></el-table-column
       >
       <el-table-column
@@ -105,7 +105,7 @@
         min-width="130"
         align="right"
         ><template #default="{ row }"
-          ><span class="numeric-value">{{ row.maximumVolatilityRate }}%</span></template
+          ><span class="numeric-value">{{ volatilityText(row.maximumVolatilityRate) }}</span></template
         ></el-table-column
       >
       <el-table-column :label="t('exchange.alertRule.alertLevel')" min-width="100" align="center"
@@ -187,7 +187,7 @@
       <template v-if="detail">
         <section class="detail-section">
           <h3>{{ t('exchange.alertEvent.eventFacts') }}</h3>
-          <el-descriptions :column="2" border size="small">
+          <el-descriptions class="alert-detail-descriptions" :column="2" border size="small">
             <el-descriptions-item :label="t('exchange.alertEvent.eventNo')">{{
               detail.eventNo
             }}</el-descriptions-item
@@ -206,52 +206,61 @@
               rateTypeText(detail.rateType)
             }}</el-descriptions-item
             ><el-descriptions-item :label="t('exchange.fields.currencyPair')"
-              >{{ detail.baseCurrency }}/{{ detail.quoteCurrency }}</el-descriptions-item
+              ><CurrencyPairDisplay :base-currency="detail.baseCurrency" :quote-currency="detail.quoteCurrency" :locale="String(locale)" /></el-descriptions-item
             >
             <el-descriptions-item :label="t('exchange.alertRule.triggerThreshold')"
-              >{{ detail.triggerThreshold }}%</el-descriptions-item
+              >{{ percentageText(detail.triggerThreshold) }}</el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertRule.recoveryThreshold')"
-              >{{ detail.recoveryThreshold }}%</el-descriptions-item
+              >{{ percentageText(detail.recoveryThreshold) }}</el-descriptions-item
             >
           </el-descriptions>
         </section>
         <section class="detail-section">
           <h3>{{ t('exchange.alertEvent.windowEvidence') }}</h3>
-          <el-descriptions :column="2" border size="small">
+          <el-descriptions class="alert-detail-descriptions" :column="2" border size="small">
             <el-descriptions-item :label="t('exchange.alertEvent.windowStart')"
               ><BaseDateTime :value="detail.windowStartTime" /></el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertEvent.windowEnd')"
               ><BaseDateTime :value="detail.windowEndTime"
             /></el-descriptions-item>
             <el-descriptions-item :label="t('exchange.alertEvent.minimumEvidence')"
-              ><span class="numeric-value">{{ detail.minimumRate }}</span> ·
-              {{ detail.minimumRateSource }} · #{{
-                detail.minimumBusinessRateId || '-'
-              }}</el-descriptions-item
+              ><span class="numeric-value">{{
+                evidenceText(
+                  detail.minimumRate,
+                  detail.minimumRateSource,
+                  detail.minimumBusinessRateId,
+                )
+              }}</span></el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertEvent.maximumEvidence')"
-              ><span class="numeric-value">{{ detail.maximumRate }}</span> ·
-              {{ detail.maximumRateSource }} · #{{
-                detail.maximumBusinessRateId || '-'
-              }}</el-descriptions-item
+              ><span class="numeric-value">{{
+                evidenceText(
+                  detail.maximumRate,
+                  detail.maximumRateSource,
+                  detail.maximumBusinessRateId,
+                )
+              }}</span></el-descriptions-item
             >
             <el-descriptions-item :label="t('exchange.alertEvent.latestEvidence')"
-              ><span class="numeric-value">{{ detail.latestRate }}</span> ·
-              {{ detail.latestRateSource }} · #{{
-                detail.latestBusinessRateId || '-'
-              }}</el-descriptions-item
+              ><span class="numeric-value">{{
+                evidenceText(
+                  detail.latestRate,
+                  detail.latestRateSource,
+                  detail.latestBusinessRateId,
+                )
+              }}</span></el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertRule.minimumSamples')">{{
               detail.sampleCount
             }}</el-descriptions-item>
             <el-descriptions-item :label="t('exchange.alertEvent.currentVolatility')"
-              >{{ detail.volatilityRate }}%</el-descriptions-item
+              >{{ volatilityText(detail.volatilityRate) }}</el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertEvent.maximumVolatility')"
-              >{{ detail.maximumVolatilityRate }}%</el-descriptions-item
+              >{{ volatilityText(detail.maximumVolatilityRate) }}</el-descriptions-item
             >
           </el-descriptions>
         </section>
         <section class="detail-section">
           <h3>{{ t('exchange.alertEvent.lifecycle') }}</h3>
-          <el-descriptions :column="2" border size="small">
+          <el-descriptions class="alert-detail-descriptions" :column="2" border size="small">
             <el-descriptions-item :label="t('exchange.alertEvent.triggerTime')"
               ><BaseDateTime :value="detail.firstTriggerTime" /></el-descriptions-item
             ><el-descriptions-item :label="t('exchange.alertEvent.lastDetectedTime')"
@@ -328,7 +337,9 @@
   import type { FormInstance, FormRules } from 'element-plus';
   import { ElMessage } from 'element-plus';
   import { Check, CircleClose, Download, Refresh, Search, View } from '@element-plus/icons-vue';
+  import { formatExchangeRate, formatPercentageRate } from '@acquiring/shared';
   import { useI18n } from 'vue-i18n';
+  import { useRoute } from 'vue-router';
   import {
     acknowledgeExchangeRateAlertEvent,
     closeExchangeRateAlertEvent,
@@ -346,6 +357,7 @@
 
   type ActionMode = 'acknowledge' | 'close';
   const { locale, t } = useI18n();
+  const route = useRoute();
   const showSearch = ref(true),
     loading = ref(false),
     detailVisible = ref(false),
@@ -385,7 +397,12 @@
     remark: [{ required: true, message: t('exchange.alertEvent.remarkRequired'), trigger: 'blur' }],
   }));
 
-  onMounted(loadData);
+  onMounted(() => {
+    const linkedEventNo = routeText('eventNo');
+    if (linkedEventNo) query.eventNo = linkedEventNo;
+    applyLinkedDateRange(routeText('sourceOccurredAt'));
+    void loadData();
+  });
   async function loadData() {
     loading.value = true;
     try {
@@ -416,6 +433,15 @@
     });
     triggerRange.value = rangeForHours(72);
     handleSearch();
+  }
+  function routeText(name: string) {
+    const value = route.query[name];
+    return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+  }
+  function applyLinkedDateRange(value: string) {
+    const date = value.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    triggerRange.value = [`${date}T00:00:00`, `${date}T23:59:59`];
   }
   async function openDetail(row: ExchangeRateAlertEvent) {
     detailVisible.value = true;
@@ -474,6 +500,17 @@
   function statusText(value?: string) {
     return value ? t(`exchange.alertEvent.status.${value}`, value) : '-';
   }
+  function percentageText(value?: string | number | null) {
+    return formatPercentageRate(value, String(locale.value));
+  }
+  function volatilityText(value?: string | number | null) {
+    return formatPercentageRate(value, String(locale.value), '-', 4);
+  }
+  function evidenceText(rate?: string, source?: string, businessRateId?: number) {
+    const parts = [formatExchangeRate(rate, String(locale.value)), source || '-'];
+    if (businessRateId != null) parts.push(`#${businessRateId}`);
+    return parts.join(' · ');
+  }
   function statusTagType(value: string): 'danger' | 'warning' | 'success' | 'info' {
     if (value === 'OPEN') return 'danger';
     if (value === 'ACKNOWLEDGED') return 'warning';
@@ -508,6 +545,20 @@
     border-left: 3px solid var(--el-color-primary);
     font-size: 14px;
     letter-spacing: 0;
+  }
+  :deep(.alert-detail-descriptions .el-descriptions__table) {
+    width: 100%;
+    table-layout: fixed;
+  }
+  :deep(.alert-detail-descriptions .el-descriptions__label) {
+    width: 140px;
+    min-width: 140px;
+    white-space: normal;
+  }
+  :deep(.alert-detail-descriptions .el-descriptions__content) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .action-alert {
     margin-bottom: 16px;
