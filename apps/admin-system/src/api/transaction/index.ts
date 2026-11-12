@@ -1264,6 +1264,17 @@ export async function exportChannelMatchAbnormalities(data: ChannelMatchAbnormal
     await downloadExcel('/admin/transactions/channel-match-abnormalities/export', { data });
 }
 
+export async function submitChannelMatchAbnormalExportTask(data: {
+    requestId: string;
+    query: ChannelMatchAbnormalQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/channel-match-abnormalities/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function claimChannelMatchAbnormality(
     eventId: string,
     data: { transactionDateTime: string; expectedVersion: number; assigneeAccountId?: string; assigneeName?: string },

@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface CardBinQuery extends PageQuery {
     cardBin?: string;
@@ -138,6 +139,14 @@ export async function exportCardBins(data: CardBinQuery = {}) {
         method: 'post',
         data,
     });
+}
+
+export async function submitCardBinExportTask(data: { requestId: string; query: CardBinQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/base/card-bin/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function pageCardBinImportBatches(data: CardBinQuery = {}) {

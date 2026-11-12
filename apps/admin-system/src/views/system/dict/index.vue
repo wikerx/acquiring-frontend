@@ -12,7 +12,7 @@
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'system:dict:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'system:dict:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'system:dict:remove'">{{ $t('common.delete') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:dict:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'system:dict:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:dict:refresh'">{{ $t('system.config.refreshCache') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
@@ -97,11 +97,12 @@ import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchDictTypes, searchDictData, createDictType, updateDictType, deleteDictType, exportDictTypes, refreshDictCache, type SysDictData, type SysDictType } from '@/api/system/dict';
+import { searchDictTypes, searchDictData, createDictType, updateDictType, deleteDictType, submitDictTypeExportTask, refreshDictCache, type SysDictData, type SysDictType } from '@/api/system/dict';
 
 const { t } = useI18n();
 const router = useRouter();
 const showSearch = ref(true); const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<SysDictType[]>([]); const sel = ref<SysDictType[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ dictName: '', dictType: '', bizDomain: '', status: undefined as number | undefined });
@@ -167,18 +168,30 @@ async function handleDelete(target: SysDictType | SysDictType[]) {
 }
 async function handleRefreshCache() { try { await refreshDictCache(); ElMessage.success(t('common.success')); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); } }
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportDictTypes({
-      pageNo: page.value,
-      pageSize: pageSize.value,
-      dictName: query.dictName || undefined,
-      dictType: query.dictType || undefined,
-      bizDomain: query.bizDomain || undefined,
-      status: query.status,
+    const task = await submitDictTypeExportTask({
+      requestId: `dict-type-export-${globalThis.crypto.randomUUID()}`,
+      query: {
+        dictName: query.dictName || undefined,
+        dictType: query.dictType || undefined,
+        bizDomain: query.bizDomain || undefined,
+        status: query.status,
+      },
     });
-    ElMessage.success(t('common.export'));
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (e: any) {
     ElMessage.error(e?.message || t('common.loadFailed'));
+  } finally {
+    exporting.value = false;
   }
 }
 

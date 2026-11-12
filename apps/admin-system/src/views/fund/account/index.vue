@@ -20,7 +20,7 @@
 
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5">
-                <el-button v-hasPermi="'fund:account:export'" type="warning" plain :icon="Download" size="small" @click="handleExport">
+                <el-button v-hasPermi="'fund:account:export'" type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport">
                     {{ $t('common.export') }}
                 </el-button>
             </el-col>
@@ -162,7 +162,7 @@
                     </el-form>
                     <el-row :gutter="10" class="mb8">
                         <el-col :span="1.5">
-                            <el-button v-hasPermi="'fund:ledger:export'" type="warning" plain :icon="Download" size="small" @click="handleLedgerExport">{{ $t('common.export') }}</el-button>
+                            <el-button v-hasPermi="'fund:ledger:export'" type="warning" plain :icon="Download" size="small" :loading="ledgerExporting" @click="handleLedgerExport">{{ $t('common.export') }}</el-button>
                         </el-col>
                         <el-col class="ledger-heading">{{ $t('feeAccount.balanceLedger') }}</el-col>
                     </el-row>
@@ -229,18 +229,18 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { CurrencyAmountDisplay, CurrencyAmountPills, CurrencyDisplay, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Remove, Search, Unlock, View } from '@element-plus/icons-vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     closeFundAccount,
-    exportFundAccounts,
-    exportFundLedgers,
     freezeFundAccount,
     getFundAccount,
     reopenFundAccount,
     searchFundAccounts,
     searchFundLedgers,
+    submitFundAccountExportTask,
+    submitFundLedgerExportTask,
     unfreezeFundAccount,
     type FundAccount,
     type FundAccountQuery,
@@ -276,6 +276,8 @@ const accountStatuses = ['NORMAL', 'FROZEN', 'CLOSED'].map((value) => ({
 }));
 
 const loading = ref(false);
+const exporting = ref(false);
+const ledgerExporting = ref(false);
 const detailLoading = ref(false);
 const showSearch = ref(true);
 const rows = ref<FundAccount[]>([]);
@@ -358,10 +360,17 @@ function handleReset() {
 }
 
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportFundAccounts(query.value);
+        const task = await submitFundAccountExportTask({
+            requestId: `fund-account-export-${globalThis.crypto.randomUUID()}`,
+            query: { ...query.value },
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 
@@ -428,15 +437,35 @@ async function loadLedgers() {
 
 async function handleLedgerExport() {
     if (!detail.value) return;
+    ledgerExporting.value = true;
     try {
-        await exportFundLedgers(detail.value.id, {
-            ...detailQuery.value,
-            postedStartTime: detailPostedRange.value[0] || undefined,
-            postedEndTime: detailPostedRange.value[1] || undefined,
+        const task = await submitFundLedgerExportTask(detail.value.id, {
+            requestId: `fund-ledger-export-${globalThis.crypto.randomUUID()}`,
+            query: {
+                ...detailQuery.value,
+                postedStartTime: detailPostedRange.value[0] || undefined,
+                postedEndTime: detailPostedRange.value[1] || undefined,
+            },
         });
+        await openSubmittedTask(task.taskNo);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        ledgerExporting.value = false;
     }
+}
+
+/** 提示后台任务已创建，并允许操作人直接前往下载中心。 */
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
 }
 
 /** Open the immutable ledger audit snapshot already returned by the list API. */

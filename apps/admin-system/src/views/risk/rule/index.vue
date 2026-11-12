@@ -472,7 +472,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { CircleCheck, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -484,11 +484,12 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { listChannelOptions, searchChannelCapabilities, type ChannelCapability, type ChannelOption } from '@/api/channel';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
-import { approveRiskSourceUrl, batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, exportRiskConfig, getRiskOptions, importRiskConfig, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
+import { approveRiskSourceUrl, batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, submitRiskConfigExportTask, getRiskOptions, importRiskConfig, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
 import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOptions, localizeRiskOptions, resolveRiskFunction, resolveRiskRuleProfile, riskFunctionName, riskOptionLabel } from '@/views/risk/shared';
 import { cardLogoKeys, loadDictOptions, paymentLogoKeys, type SelectOption } from '@/views/channel/shared';
 
 const route = useRoute();
+const router = useRouter();
 const { locale, t } = useI18n();
 
 /**
@@ -1008,11 +1009,24 @@ function setStatusUpdating(id: number | undefined, loading: boolean) {
 }
 async function handleExport() {
   try {
-    await exportRiskConfig('RULE', current.value.functionCode, ruleQueryPayload());
-    ElMessage.success(t('risk.common.exportStarted'));
+    const task = await submitRiskConfigExportTask({
+      requestId: createExportRequestId('risk-rule'),
+      moduleType: 'RULE',
+      functionCode: current.value.functionCode,
+      query: ruleQueryPayload(),
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.exportFailed'));
   }
+}
+function createExportRequestId(prefix: string) {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return `${prefix}-${globalThis.crypto.randomUUID()}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 async function handleTemplate() {
   try {

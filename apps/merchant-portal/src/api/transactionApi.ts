@@ -7,7 +7,6 @@ import type {
   TransactionAnalyticsQuery,
 } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
-import { downloadBlob } from '@/utils/download';
 import { http } from './http';
 
 export interface TransactionPageQuery {
@@ -394,13 +393,6 @@ export const transactionApi = {
     );
     return unwrapResult(result.data);
   },
-  async exportOrders(data: TransactionPageQuery) {
-    await downloadBlob('/merchant/transactions/orders/export', {
-      method: 'post',
-      data,
-      fileName: 'merchant-transactions.csv',
-    });
-  },
   async searchRefunds(data: MerchantRefundQuery) {
     const result = await http.post<CommonResult<MerchantRefundSearchResponse>>(
       '/merchant/transactions/refunds/search',
@@ -414,13 +406,6 @@ export const transactionApi = {
       { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
     );
     return unwrapResult(result.data);
-  },
-  async exportRefunds(data: MerchantRefundQuery) {
-    await downloadBlob('/merchant/transactions/refunds/export', {
-      method: 'post',
-      data,
-      fileName: 'merchant-refunds.xlsx',
-    });
   },
   async searchNotifications(data: MerchantNotificationQuery) {
     const result = await http.post<CommonResult<PageResult<MerchantNotificationRecord>>>(

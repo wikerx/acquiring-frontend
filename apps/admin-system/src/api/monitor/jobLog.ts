@@ -3,6 +3,7 @@ import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
 import type { PageResult } from '@/api/monitor/job';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface JobRunLogRow {
     id: number;
@@ -51,6 +52,14 @@ export async function exportJobRunLogs(payload: JobRunLogQuery) {
         method: 'post',
         data: payload,
     });
+}
+
+export async function submitJobRunLogExportTask(data: { requestId: string; query: JobRunLogQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/monitor/job-log/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function deleteJobRunLog(id: number) {

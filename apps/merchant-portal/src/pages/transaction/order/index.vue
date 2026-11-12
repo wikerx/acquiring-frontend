@@ -989,6 +989,7 @@
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import RightToolbar from '@/components/RightToolbar/index.vue';
   import StandardTable from '@/components/StandardTable/StandardTable.vue';
+  import { submitTransactionExport } from '@/api/exportTaskApi';
   import {
     transactionApi,
     type TransactionAmountSummary,
@@ -1435,8 +1436,8 @@
   async function handleExport() {
     exporting.value = true;
     try {
-      await transactionApi.exportOrders(buildQueryPayload());
-      ElMessage.success(t('transaction.order.exportStarted'));
+      const task = await submitTransactionExport(buildQueryPayload());
+      ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
     } catch (error: unknown) {
       ElMessage.error(userFacingErrorMessage(error, t('transaction.order.exportFailed')));
     } finally {

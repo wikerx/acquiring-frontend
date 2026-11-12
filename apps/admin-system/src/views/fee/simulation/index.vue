@@ -92,7 +92,7 @@
                 <el-form-item><el-button :icon="Search" type="primary" @click="searchRecords">{{ $t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetRecordQuery">{{ $t('common.reset') }}</el-button></el-form-item>
             </el-form>
             <el-row :gutter="10" class="mb8">
-                <el-col :span="1.5"><el-button v-hasPermi="'fee:simulation:record:export'" :icon="Download" type="warning" plain size="small" @click="exportSimulationRecords(recordQuery)">{{ $t('common.export') }}</el-button></el-col>
+                <el-col :span="1.5"><el-button v-hasPermi="'fee:simulation:record:export'" :icon="Download" type="warning" plain size="small" :loading="exporting" @click="handleRecordExport">{{ $t('common.export') }}</el-button></el-col>
                 <el-col class="right-toolbar"><RightToolbar @toggle-search="showRecordSearch = !showRecordSearch" @refresh="loadRecords" /></el-col>
             </el-row>
             <StandardTable v-loading="recordsLoading" table-key="admin-fee-simulation-records" :data="records" row-key="id" size="small">
@@ -145,15 +145,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Clock, Download, Operation, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { AnalyticsChart, CurrencyAmountDisplay, formatDecimalAmount, formatExchangeRate, PaymentMethodDisplay, roundDecimalAmount, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import {
-    exportSimulationRecords,
     getMerchantFee,
     searchSimulationRecords,
     simulateFee,
+    submitFeeSimulationExportTask,
     type FeePlanDetail,
     type FeeSimulationDetail,
     type FeeSimulationInput,
@@ -173,7 +174,9 @@ import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteS
 import FeeSimulationDetailTable from './FeeSimulationDetailTable.vue';
 
 const { locale, t } = useI18n();
+const router = useRouter();
 const loading = ref(false);
+const exporting = ref(false);
 const selectedPlan = ref<FeePlanDetail | null>(null);
 const result = ref<FeeSimulationResult | null>(null);
 const recordsVisible = ref(false);
@@ -408,6 +411,35 @@ async function loadRecords() {
 }
 function searchRecords() { recordQuery.value.pageNo = 1; loadRecords(); }
 function resetRecordQuery() { recordQuery.value = { pageNo: 1, pageSize: recordQuery.value.pageSize || 10 }; loadRecords(); }
+
+async function handleRecordExport() {
+    exporting.value = true;
+    try {
+        const task = await submitFeeSimulationExportTask(
+            createExportRequestId('fee-simulation'), recordQuery.value,
+        );
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 </script>
 
 <style scoped>

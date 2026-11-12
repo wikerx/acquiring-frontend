@@ -35,7 +35,7 @@
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openForm" v-hasPermi="'exchange:business-rate:add'">{{ $t('common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="success" plain :icon="Plus" size="small" @click="openBatch" v-hasPermi="'exchange:business-rate:batch'">{{ $t('exchange.businessRate.batchAdd') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'exchange:business-rate:export'">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'exchange:business-rate:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
@@ -157,13 +157,14 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { useRouter } from 'vue-router';
 import { Delete, Download, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadCurrencyPresentations } from '@/api/base/currency';
-import { batchCreateExchangeBusinessRates, createExchangeBusinessRate, exportExchangeBusinessRates, getExchangeBusinessRate, searchExchangeBusinessRates, updateExchangeBusinessRateStatus, type BusinessRateSaveRequest, type ExchangeBusinessRate } from '@/api/exchange';
+import { batchCreateExchangeBusinessRates, createExchangeBusinessRate, getExchangeBusinessRate, searchExchangeBusinessRates, submitExchangeBusinessRateExportTask, updateExchangeBusinessRateStatus, type BusinessRateSaveRequest, type ExchangeBusinessRate } from '@/api/exchange';
 import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import CurrencySelect from '../CurrencySelect.vue';
 import ExchangeSourceSelect from '../ExchangeSourceSelect.vue';
@@ -180,9 +181,11 @@ import {
 } from '../shared';
 
 const { locale, t } = useI18n();
+const router = useRouter();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<ExchangeBusinessRate[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -305,7 +308,37 @@ async function toggleStatus(row: ExchangeBusinessRate) {
 }
 
 async function handleExport() {
-    await exportExchangeBusinessRates(buildQueryParams());
+    exporting.value = true;
+    try {
+        const task = await submitExchangeBusinessRateExportTask({
+            requestId: createExportRequestId('exchange-business-rate'),
+            query: buildQueryParams(),
+        });
+        await openSubmittedTask(task.taskNo);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function buildQueryParams() {

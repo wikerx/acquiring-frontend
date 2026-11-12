@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface ExchangeRateSource {
     id: number;
@@ -336,6 +337,11 @@ export async function exportExchangeSources(data: SourceQuery) {
     await downloadExcel('/admin/exchange/sources/export', { method: 'post', data });
 }
 
+export async function submitExchangeSourceExportTask(data: { requestId: string; query: SourceQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/sources/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function getExchangeSource(id: number) {
     const result = await http.get<CommonResult<ExchangeRateSource>>(`/admin/exchange/sources/${id}`);
     return unwrapResult(result.data);
@@ -370,6 +376,11 @@ export async function exportExchangeRawRates(data: RawRateQuery) {
     await downloadExcel('/admin/exchange/raw-rates/export', { method: 'post', data });
 }
 
+export async function submitExchangeRawRateExportTask(data: { requestId: string; query: RawRateQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/raw-rates/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function getExchangeRawRate(id: number) {
     const result = await http.get<CommonResult<ExchangeRawRate>>(`/admin/exchange/raw-rates/${id}`);
     return unwrapResult(result.data);
@@ -392,6 +403,11 @@ export async function searchExchangeRules(data: RuleQuery) {
 
 export async function exportExchangeRules(data: RuleQuery) {
     await downloadExcel('/admin/exchange/rules/export', { method: 'post', data });
+}
+
+export async function submitExchangeRuleExportTask(data: { requestId: string; query: RuleQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/rules/export-task', data);
+    return unwrapResult(result.data);
 }
 
 export async function getExchangeRule(id: number) {
@@ -443,6 +459,11 @@ export async function exportExchangeBusinessRates(data: BusinessRateQuery) {
     await downloadExcel('/admin/exchange/business-rates/export', { method: 'post', data });
 }
 
+export async function submitExchangeBusinessRateExportTask(data: { requestId: string; query: BusinessRateQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/business-rates/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function updateExchangeBusinessRateStatus(id: number, status: number) {
     const result = await http.put<CommonResult<ExchangeBusinessRate>>(`/admin/exchange/business-rates/${id}/status`, { status });
     return unwrapResult(result.data);
@@ -455,6 +476,11 @@ export async function searchExchangeUsageSnapshots(data: UsageSnapshotQuery) {
 
 export async function exportExchangeUsageSnapshots(data: UsageSnapshotQuery) {
     await downloadExcel('/admin/exchange/usage-snapshots/export', { method: 'post', data });
+}
+
+export async function submitExchangeUsageSnapshotExportTask(data: { requestId: string; query: UsageSnapshotQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/usage-snapshots/export-task', data);
+    return unwrapResult(result.data);
 }
 
 export async function getExchangeUsageSnapshot(id: number) {
@@ -474,6 +500,11 @@ export async function getExchangeRateVolatilityTrend(data: ExchangeRateVolatilit
 
 export async function exportExchangeRateVolatility(data: ExchangeRateVolatilityQuery) {
     await downloadExcel('/admin/exchange/volatility/export', { method: 'post', data });
+}
+
+export async function submitExchangeRateVolatilityExportTask(data: { requestId: string; query: ExchangeRateVolatilityQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/volatility/export-task', data);
+    return unwrapResult(result.data);
 }
 
 export async function searchExchangeRateAlertRules(data: ExchangeRateAlertRuleQuery) {
@@ -518,6 +549,11 @@ export async function exportExchangeRateAlertRules(data: ExchangeRateAlertRuleQu
     await downloadExcel('/admin/exchange/alert-rules/export', { method: 'post', data });
 }
 
+export async function submitExchangeRateAlertRuleExportTask(data: { requestId: string; query: ExchangeRateAlertRuleQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/alert-rules/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function searchExchangeRateAlertEvents(data: ExchangeRateAlertEventQuery) {
     const result = await http.post<CommonResult<PageResult<ExchangeRateAlertEvent>>>('/admin/exchange/alert-events/search', data);
     return unwrapResult(result.data);
@@ -540,4 +576,9 @@ export async function closeExchangeRateAlertEvent(id: number, version: number, r
 
 export async function exportExchangeRateAlertEvents(data: ExchangeRateAlertEventQuery) {
     await downloadExcel('/admin/exchange/alert-events/export', { method: 'post', data });
+}
+
+export async function submitExchangeRateAlertEventExportTask(data: { requestId: string; query: ExchangeRateAlertEventQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/exchange/alert-events/export-task', data);
+    return unwrapResult(result.data);
 }

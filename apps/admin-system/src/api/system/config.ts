@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface SysConfig {
     id: number;
@@ -37,6 +38,16 @@ export async function searchConfigs(requestBody: SysConfigQuery) {
     const result = await http.post<CommonResult<PageResult<SysConfig>>>(
         '/admin/system/configs/search',
         requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function submitSystemConfigExportTask(data: {
+    requestId: string;
+    query: Omit<SysConfigQuery, 'pageNo' | 'pageSize'>;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/system/configs/export-task', data,
     );
     return unwrapResult(result.data);
 }

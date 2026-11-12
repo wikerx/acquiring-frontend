@@ -76,6 +76,20 @@ export interface JobManualTriggerRequest {
     paramsJson?: string;
 }
 
+/** 单个自然日的任务执行终态数量。 */
+export interface JobExecutionTrendPoint {
+    date: string;
+    successCount: number;
+    failedCount: number;
+}
+
+/** 最近七个自然日的任务执行终态趋势。 */
+export interface JobExecutionTrendResponse {
+    startDate: string;
+    endDate: string;
+    points: JobExecutionTrendPoint[];
+}
+
 export async function getJobHandlers(): Promise<JobHandlerOption[]> {
     const result = await http.get<CommonResult<JobHandlerOption[]>>('/admin/monitor/job/handlers');
     return unwrapResult(result.data);
@@ -83,6 +97,12 @@ export async function getJobHandlers(): Promise<JobHandlerOption[]> {
 
 export async function searchJobs(payload: JobTaskQuery): Promise<PageResult<JobTaskRow>> {
     const result = await http.post<CommonResult<PageResult<JobTaskRow>>>('/admin/monitor/job/search', payload);
+    return unwrapResult(result.data);
+}
+
+/** 查询最近七个自然日的任务执行成功和失败终态数量。 */
+export async function getJobExecutionTrend(): Promise<JobExecutionTrendResponse> {
+    const result = await http.get<CommonResult<JobExecutionTrendResponse>>('/admin/monitor/job/trend');
     return unwrapResult(result.data);
 }
 

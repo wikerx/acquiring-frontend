@@ -1,7 +1,7 @@
 import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
-import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 import type { DataSourceMetricsResponse } from './workbench';
 
 /** 数据源监控页顶部汇总，反映当前 Admin JVM 的路由、分组、健康和分表规模。 */
@@ -125,8 +125,10 @@ export async function getDatasourceMetrics(): Promise<DataSourceMetricsResponse>
 /**
  * 导出管理后台数据源监控快照。
  */
-export async function exportDatasourceSnapshot() {
-    await downloadExcel('/admin/monitor/datasource/export', {
-        method: 'get',
-    });
+export async function submitDatasourceSnapshotExportTask(requestId: string): Promise<ExportTaskSummary> {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/monitor/datasource/export-task',
+        { requestId },
+    );
+    return unwrapResult(result.data);
 }

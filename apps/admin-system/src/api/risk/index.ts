@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface RiskOption {
     label: string;
@@ -336,11 +337,14 @@ export async function updateRiskRule(functionCode: string, id: number, data: Ris
     return unwrapResult(result.data);
 }
 
-export async function exportRiskConfig(moduleType: string, functionCode: string, data: RiskListQuery | RiskRuleQuery = {}) {
-    await downloadExcel(`/admin/risk/${moduleType}/${functionCode}/export`, {
-        method: 'post',
-        data,
-    });
+export async function submitRiskConfigExportTask(data: {
+    requestId: string;
+    moduleType: string;
+    functionCode: string;
+    query: RiskListQuery | RiskRuleQuery;
+}): Promise<ExportTaskSummary> {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/risk/export-tasks', data);
+    return unwrapResult(result.data);
 }
 
 export async function downloadRiskTemplate(moduleType: string, functionCode: string) {

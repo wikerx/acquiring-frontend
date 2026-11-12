@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface MerchantIpWhitelistItem {
     id?: string;
@@ -70,6 +71,16 @@ export interface MerchantIpWhitelistApprovalRequest {
 
 export async function searchMerchantIpWhitelists(data: MerchantIpWhitelistQuery) {
     const result = await http.post<CommonResult<PageResult<MerchantIpWhitelistRow>>>('/admin/merchant/ip-whitelist/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function submitMerchantIpWhitelistExportTask(data: {
+    requestId: string;
+    query: Omit<MerchantIpWhitelistQuery, 'pageNo' | 'pageSize'>;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/merchant/ip-whitelist/export-task', data,
+    );
     return unwrapResult(result.data);
 }
 

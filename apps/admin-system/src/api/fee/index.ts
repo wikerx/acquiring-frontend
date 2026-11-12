@@ -1,6 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 import { downloadExcel } from '@/utils/download';
 
 export type DecimalValue = string | number;
@@ -286,6 +287,14 @@ export async function exportFeeTemplates(data: FeePlanQuery) {
     await downloadExcel('/admin/fees/templates/export', { data });
 }
 
+export async function submitFeeTemplateExportTask(requestId: string, query: FeePlanQuery) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/fees/templates/export-task', {
+        requestId,
+        query: withoutPagination(query),
+    });
+    return unwrapResult(result.data);
+}
+
 export async function getFeeTemplate(id: number) {
     const result = await http.get<CommonResult<FeePlanDetail>>(`/admin/fees/templates/${id}`);
     return unwrapResult(result.data);
@@ -338,6 +347,14 @@ export async function exportMerchantFees(data: FeePlanQuery) {
     await downloadExcel('/admin/fees/merchants/export', { data });
 }
 
+export async function submitMerchantFeeExportTask(requestId: string, query: FeePlanQuery) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/fees/merchants/export-task', {
+        requestId,
+        query: withoutPagination(query),
+    });
+    return unwrapResult(result.data);
+}
+
 export async function getMerchantFee(merchantId: string) {
     const result = await http.get<CommonResult<FeePlanDetail | null>>(`/admin/fees/merchants/${encodeURIComponent(merchantId)}`);
     return unwrapResult(result.data);
@@ -368,6 +385,14 @@ export async function exportFeeReviews(data: FeePlanQuery) {
     await downloadExcel('/admin/fees/reviews/export', { data });
 }
 
+export async function submitFeeReviewExportTask(requestId: string, query: FeePlanQuery) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/fees/reviews/export-task', {
+        requestId,
+        query: withoutPagination(query),
+    });
+    return unwrapResult(result.data);
+}
+
 export async function approveFeeVersion(versionId: number, reviewComment?: string) {
     const result = await http.put<CommonResult<FeePlanDetail>>(`/admin/fees/versions/${versionId}/approve`, { reviewComment });
     return unwrapResult(result.data);
@@ -390,4 +415,19 @@ export async function searchSimulationRecords(data: FeeSimulationRecordQuery) {
 
 export async function exportSimulationRecords(data: FeeSimulationRecordQuery) {
     await downloadExcel('/admin/fees/simulation-records/export', { data });
+}
+
+export async function submitFeeSimulationExportTask(requestId: string, query: FeeSimulationRecordQuery) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/fees/simulation-records/export-task',
+        { requestId, query: withoutPagination(query) },
+    );
+    return unwrapResult(result.data);
+}
+
+function withoutPagination<T extends PageQuery>(query: T): Omit<T, 'pageNo' | 'pageSize'> {
+    const snapshot = { ...query } as T & { pageNo?: number; pageSize?: number };
+    delete snapshot.pageNo;
+    delete snapshot.pageSize;
+    return snapshot;
 }

@@ -467,7 +467,7 @@ export function createDatasourceSlowSqlDataset(values: CategoryMetric[]): Monito
     return categoryDataset(values, 'warning');
 }
 
-/** 创建任务近七日结果聚合尚未接入时的受控空数据集。 */
+/** 创建任务近七日结果聚合尚未返回时的空数据集。 */
 export function createEmptyJobTrendDataset(t: Translate): MonitorCategorySeriesDataset {
     return {
         kind: 'category-series',
@@ -475,6 +475,33 @@ export function createEmptyJobTrendDataset(t: Translate): MonitorCategorySeriesD
         series: [
             { key: 'success', label: t('monitor.chart.series.success'), semantic: 'success', unit: 'count', values: [] },
             { key: 'failed', label: t('monitor.chart.series.failed'), semantic: 'error', unit: 'count', values: [] },
+        ],
+    };
+}
+
+/** 将任务终态自然日聚合结果适配为统一分组柱状图数据。 */
+export function createJobTrendDataset(
+    points: Array<{ date: string; successCount: number; failedCount: number }>,
+    t: Translate,
+): MonitorCategorySeriesDataset {
+    return {
+        kind: 'category-series',
+        categories: points.map((point) => point.date),
+        series: [
+            {
+                key: 'success',
+                label: t('monitor.chart.series.success'),
+                semantic: 'success',
+                unit: 'count',
+                values: points.map((point) => Number(point.successCount || 0)),
+            },
+            {
+                key: 'failed',
+                label: t('monitor.chart.series.failed'),
+                semantic: 'error',
+                unit: 'count',
+                values: points.map((point) => Number(point.failedCount || 0)),
+            },
         ],
     };
 }

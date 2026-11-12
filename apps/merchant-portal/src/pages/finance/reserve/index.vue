@@ -78,8 +78,9 @@ import { ElMessage } from 'element-plus';
 import { CurrencyAmountDisplay, DirectionTag } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { submitSettlementReserveExport } from '@/api/exportTaskApi';
 import {
-    exportMerchantSettlementReserves, searchMerchantSettlementReserves,
+    searchMerchantSettlementReserves,
     type MerchantSettlementReserveItem, type MerchantSettlementReserveQuery,
 } from '@/api/settlementApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -121,7 +122,17 @@ function requestQuery(): MerchantSettlementReserveQuery { return { ...query, cur
 async function loadData() { loading.value = true; try { const result = await searchMerchantSettlementReserves(requestQuery()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; loadData(); }
 function handleReset() { Object.assign(query, { settlementBatchNo: undefined, reserveNo: undefined, reserveActionNo: undefined, sourceTransactionId: undefined, merchantOrderNo: undefined, reserveStatus: undefined, actionType: undefined, currency: undefined, pageNo: 1 }); businessDateRange.value = defaultDateRange(); transactionTimeRange.value = []; expectedReleaseDateRange.value = []; loadData(); }
-async function handleExport() { exporting.value = true; try { await exportMerchantSettlementReserves(requestQuery()); } catch (error) { showError(error); } finally { exporting.value = false; } }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitSettlementReserveExport(requestQuery());
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
+    } catch (error) {
+        showError(error);
+    } finally {
+        exporting.value = false;
+    }
+}
 function openDetail(row: MerchantSettlementReserveItem) { detail.value = row; detailVisible.value = true; }
 function openTransaction(row: MerchantSettlementReserveItem) {
     router.push({

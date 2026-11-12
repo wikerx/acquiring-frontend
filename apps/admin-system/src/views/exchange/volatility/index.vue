@@ -86,6 +86,7 @@
         <el-button :icon="Refresh" @click="resetQuery">{{ t('common.reset') }}</el-button>
         <el-button
           :icon="Download"
+          :loading="exporting"
           v-hasPermi="'exchange:volatility:export'"
           @click="handleExport"
         >
@@ -265,11 +266,13 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { AnalyticsChart, formatExchangeRate, formatPercentageValue, resolveCurrencyPresentation } from '@acquiring/shared';
   import { Bottom, Download, InfoFilled, Minus, Refresh, Search, Star, StarFilled, Top } from '@element-plus/icons-vue';
+  import { ElMessage, ElMessageBox } from 'element-plus';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import {
-    exportExchangeRateVolatility,
     getExchangeRateVolatilityOverview,
     getExchangeRateVolatilityTrend,
+    submitExchangeRateVolatilityExportTask,
     type ExchangeCurrencyPair,
     type ExchangeRateTrendSeries,
     type ExchangeRateVolatilityOverview,
@@ -293,8 +296,10 @@
   const WATCH_STORAGE_KEY = 'vexra.admin.exchange.volatility.watch-pairs.v1';
 
   const { locale, t } = useI18n();
+  const router = useRouter();
   const userStore = useUserStore();
   const loading = ref(false);
+  const exporting = ref(false);
   const displayMode = ref<DisplayMode>('RELATIVE');
   const overviewMode = ref<OverviewMode>('WATCHED');
   const selectedPreset = ref(72);
@@ -549,12 +554,42 @@
       .map((key) => overviewRows.value.find((row) => row.pairKey === key))
       .filter((row): row is OverviewRow => Boolean(row))
       .map((row) => ({ baseCurrency: row.baseCurrency, quoteCurrency: row.quoteCurrency }));
-    await exportExchangeRateVolatility({
-      rateType: query.rateType,
-      currencyPairs: selectedPairs,
-      startTime: timeRange.value[0],
-      endTime: timeRange.value[1],
-    });
+    exporting.value = true;
+    try {
+      const task = await submitExchangeRateVolatilityExportTask({
+        requestId: createExportRequestId('exchange-volatility'),
+        query: {
+          rateType: query.rateType,
+          currencyPairs: selectedPairs,
+          startTime: timeRange.value[0],
+          endTime: timeRange.value[1],
+        },
+      });
+      await openSubmittedTask(task.taskNo);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+      exporting.value = false;
+    }
+  }
+
+  async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  }
+
+  function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
   function rangeForHours(hours: number): [string, string] {

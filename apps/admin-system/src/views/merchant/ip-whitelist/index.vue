@@ -329,6 +329,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { ArrowLeft, CircleCheck, Download, Edit, MoreFilled, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -341,9 +342,9 @@ import {
   approveMerchantIpWhitelist,
   createMerchantIpWhitelists,
   deleteMerchantIpWhitelist,
-  exportMerchantIpWhitelists,
   getMerchantIpWhitelist,
   searchMerchantIpWhitelists,
+  submitMerchantIpWhitelistExportTask,
   updateMerchantIpWhitelist,
   updateMerchantIpWhitelistStatus,
   type MerchantIpWhitelistItem,
@@ -352,6 +353,7 @@ import {
 } from '@/api/merchant/ip-whitelist';
 
 const { t } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
 const queryFormRef = ref<FormInstance>();
 const formRef = ref<FormInstance>();
@@ -590,12 +592,27 @@ async function toggleStatus(row: MerchantIpWhitelistRow, item?: MerchantIpWhitel
 async function handleExport() {
   exporting.value = true;
   try {
-    await exportMerchantIpWhitelists({ ...cleanQuery(query) });
+    const exportQuery = { ...cleanQuery(query) };
+    delete exportQuery.pageNo;
+    delete exportQuery.pageSize;
+    const task = await submitMerchantIpWhitelistExportTask({
+      requestId: createExportRequestId('merchant-ip-whitelist'),
+      query: exportQuery,
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
   } finally {
     exporting.value = false;
   }
+}
+
+function createExportRequestId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function handleIpCommand(command: string, row: MerchantIpWhitelistRow, item: MerchantIpWhitelistItem) {

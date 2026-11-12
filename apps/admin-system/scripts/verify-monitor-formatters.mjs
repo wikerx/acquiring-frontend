@@ -27,10 +27,20 @@ assert.equal(
     formatMonitorTimeLabel(mysqlMicrosecondTime, { preset: '1h', timezone: 'Asia/Shanghai' }, 'zh-CN'),
     '01:16',
 );
+assert.equal(
+    formatMonitorTimeLabel('2026-11-06', undefined, 'zh-CN'),
+    '11-06',
+    'Date-only trend categories must remain calendar dates without a time-range selector',
+);
 assert.match(
     formatMonitorTooltipTime(mysqlMicrosecondTime, { preset: '1h', timezone: 'Asia/Shanghai' }, 'zh-CN'),
     /2026.*09.*14.*01.*16.*48/,
 );
+assert.equal(
+    formatMonitorTooltipTime('2026-11-06', undefined, 'zh-CN'),
+    '2026-11-06',
+    'Date-only trend tooltips must not append a synthetic wall-clock time',
+);
 assert.equal(parseMonitorDateTime('not-a-date'), null);
 
-console.log('Monitor formatters: MySQL microsecond timestamps and Asia/Shanghai wall-clock semantics verified.');
+console.log('Monitor formatters: date-only categories, MySQL microseconds and Asia/Shanghai semantics verified.');

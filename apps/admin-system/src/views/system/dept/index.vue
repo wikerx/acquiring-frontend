@@ -17,7 +17,7 @@
         </el-form>
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd()" v-hasPermi="'system:dept:add'">{{ $t('common.add') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:dept:export'">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'system:dept:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="toggleExpandAll">{{ $t('system.menu.expandCollapse') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
@@ -61,12 +61,15 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Plus, Edit, Delete, Sort, Search, Refresh, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { getDeptTree, createDept, updateDept, deleteDept, exportDepts, type SysDept } from '@/api/system/dept';
+import { getDeptTree, createDept, updateDept, deleteDept, submitDepartmentExportTask, type SysDept } from '@/api/system/dept';
 
 const { t } = useI18n();
+const router = useRouter();
 const loading = ref(false); const rows = ref<SysDept[]>([]); const open = ref(false);
+const exporting = ref(false);
 const formMode = ref<'create' | 'edit'>('create'); const activeRow = ref<SysDept | null>(null);
 const formRef = ref<FormInstance>(); const queryFormRef = ref<FormInstance>();
 const showSearch = ref(true);
@@ -92,10 +95,26 @@ async function submit() { const v = await formRef.value?.validate().catch(() => 
 async function toggleStatus(row: SysDept) { const ns = row.status === 1 ? 0 : 1; const at = ns === 1 ? t('common.enable') : t('common.disable'); try { await ElMessageBox.confirm(t('system.role.statusToggleConfirm', { action: at, name: row.deptName }), t('common.confirm'), { type: ns === 1 ? 'success' : 'warning' }); } catch { return; } try { await updateDept(row.id!, { deptName: row.deptName, parentId: row.parentId ?? 0, sortNo: row.sortNo, leader: row.leader, phone: row.phone, email: row.email, status: ns }); ElMessage.success(t('common.success')); loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function handleDelete(row: SysDept) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.deptName }), t('common.delete'), { type: 'warning' }); } catch { return; } try { await deleteDept(row.id!); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportDepts();
-        ElMessage.success(t('common.export'));
-    } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); }
+        const task = await submitDepartmentExportTask({
+            requestId: `department-export-${globalThis.crypto.randomUUID()}`,
+            query: {},
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (e) {
+        ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
+    }
 }
 
 function filterDeptTree(items: SysDept[]): SysDept[] {

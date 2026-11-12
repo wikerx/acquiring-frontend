@@ -23,7 +23,7 @@
                 <el-button v-hasPermi="'fund:recharge:add'" type="primary" plain :icon="CreditCard" size="small" @click="openCreate()">{{ $t('feeAccount.recharge') }}</el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button v-hasPermi="'fund:recharge:export'" type="warning" plain :icon="Download" size="small" @click="handleExport">{{ $t('common.export') }}</el-button>
+                <el-button v-hasPermi="'fund:recharge:export'" type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport">{{ $t('common.export') }}</el-button>
             </el-col>
             <el-col class="right-toolbar">
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadRecharges" />
@@ -169,19 +169,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { Checked, CircleCheck, CircleClose, CreditCard, Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { compareDecimalAmounts, CurrencyAmountDisplay, CurrencyDisplay, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
 import {
     auditFundRecharge,
     createFundRecharge,
-    exportFundRecharges,
     getFundAccount,
     recheckFundRecharge,
     rejectFundRecharge,
     searchFundAccounts,
     searchFundRecharges,
+    submitFundRechargeExportTask,
     type FundAccount,
     type FundRecharge,
     type FundRechargeQuery,
@@ -200,6 +200,7 @@ const router = useRouter();
 const rechargeStatuses = ['PENDING_AUDIT', 'PENDING_RECHECK', 'POSTED', 'REJECTED'];
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const submitting = ref(false);
 const rows = ref<FundRecharge[]>([]);
 const total = ref(0);
@@ -275,10 +276,25 @@ function handleReset() {
 }
 
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportFundRecharges(query.value);
+        const task = await submitFundRechargeExportTask({
+            requestId: `fund-recharge-export-${globalThis.crypto.randomUUID()}`,
+            query: { ...query.value },
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 

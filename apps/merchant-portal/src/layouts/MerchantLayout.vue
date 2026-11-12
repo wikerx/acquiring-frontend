@@ -131,7 +131,7 @@
                         @click="router.push(tag.path)"
                     >
                         <el-icon v-if="tag.icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
-                        <span>{{ tag.label }}</span>
+                        <span>{{ resolveVisitedTagLabel(tag) }}</span>
                         <el-icon class="merchant-tag__close" @click.stop="closeTag(tag.path)">
                             <Close />
                         </el-icon>
@@ -348,6 +348,16 @@ function currentRouteLabel(path: string) {
         return t(titleKey);
     }
     return typeof route.meta.title === 'string' ? route.meta.title : undefined;
+}
+
+/**
+ * Resolves an opened tab from the current locale instead of retaining the language used when it was opened.
+ */
+function resolveVisitedTagLabel(tag: MenuTag) {
+    if (tag.path === PROFILE_PATH) {
+        return t('route.profile');
+    }
+    return findMenuLabel(menuItems.value, tag.path) || tag.label;
 }
 
 function profileMenuItem(): MenuItem {

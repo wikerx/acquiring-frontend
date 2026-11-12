@@ -26,7 +26,7 @@
 
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5">
-                <el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'monitor:jobLog:export'">
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'monitor:jobLog:export'">
                     {{ $t('common.export') }}
                 </el-button>
             </el-col>
@@ -117,21 +117,23 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, View, Download, Delete, DeleteFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import BaseStatusTag from '@/components/BaseStatusTag/index.vue';
 import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { MonitorPageHeader } from '@/components/MonitorWorkbench';
-import { cleanJobRunLogs, deleteJobRunLog, exportJobRunLogs, searchJobRunLogs, type JobRunLogRow } from '@/api/monitor/jobLog';
+import { cleanJobRunLogs, deleteJobRunLog, searchJobRunLogs, submitJobRunLogExportTask, type JobRunLogRow } from '@/api/monitor/jobLog';
 
 /**
  * 调度日志主页面：按任务、触发方式和执行状态检索运行记录，支持从任务页钻取、查看失败上下文及受控清理。
  */
 const { t } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const loading = ref(false);
+const exporting = ref(false);
 const showSearch = ref(true);
 const rows = ref<JobRunLogRow[]>([]);
 const selectedRows = ref<JobRunLogRow[]>([]);
@@ -267,17 +269,29 @@ async function handleClean() {
 }
 
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportJobRunLogs({
-            pageNo: page.value,
-            pageSize: pageSize.value,
-            jobCode: query.jobCode.trim() || undefined,
-            runStatus: query.runStatus || undefined,
-            triggerType: query.triggerType || undefined,
+        const task = await submitJobRunLogExportTask({
+            requestId: `job-run-log-export-${globalThis.crypto.randomUUID()}`,
+            query: {
+                jobCode: query.jobCode.trim() || undefined,
+                runStatus: query.runStatus || undefined,
+                triggerType: query.triggerType || undefined,
+            },
         });
-        ElMessage.success(t('common.export'));
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 

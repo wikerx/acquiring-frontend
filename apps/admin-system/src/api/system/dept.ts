@@ -2,6 +2,7 @@ import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface SysDept {
     id?: number;
@@ -46,4 +47,9 @@ export async function exportDepts() {
     await downloadExcel('/admin/system/dept/export', {
         method: 'get',
     });
+}
+
+export async function submitDepartmentExportTask(data: { requestId: string; query: Record<string, never> }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/system/dept/export-task', data);
+    return unwrapResult(result.data);
 }

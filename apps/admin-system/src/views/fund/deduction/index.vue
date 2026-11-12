@@ -28,7 +28,7 @@
                 <el-button v-hasPermi="'fund:deduction:add'" type="danger" plain :icon="Remove" size="small" @click="openCreate()">{{ $t('feeAccount.deduction') }}</el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button v-hasPermi="'fund:deduction:export'" type="warning" plain :icon="Download" size="small" @click="handleExport">{{ $t('common.export') }}</el-button>
+                <el-button v-hasPermi="'fund:deduction:export'" type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport">{{ $t('common.export') }}</el-button>
             </el-col>
             <el-col class="right-toolbar">
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadDeductions" />
@@ -124,11 +124,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { Checked, CircleCheck, CircleClose, Download, RefreshLeft, Remove, Search, View } from '@element-plus/icons-vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { compareDecimalAmounts, CurrencyAmountDisplay, MerchantIdentityDisplay, normalizeDecimalAmount } from '@acquiring/shared';
-import { auditFundDeduction, createFundDeduction, exportFundDeductions, getFundAccount, getFundDeduction, recheckFundDeduction, rejectFundDeduction, searchFundAccounts, searchFundDeductions, type FundAccount, type FundDeduction, type FundDeductionQuery } from '@/api/fund';
+import { auditFundDeduction, createFundDeduction, getFundAccount, getFundDeduction, recheckFundDeduction, rejectFundDeduction, searchFundAccounts, searchFundDeductions, submitFundDeductionExportTask, type FundAccount, type FundDeduction, type FundDeductionQuery } from '@/api/fund';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -143,6 +143,7 @@ const router = useRouter();
 const deductionStatuses = ['PENDING_AUDIT', 'PENDING_RECHECK', 'POSTED', 'REJECTED'];
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const submitting = ref(false);
 const detailLoading = ref(false);
 const rows = ref<FundDeduction[]>([]);
@@ -194,7 +195,28 @@ async function loadDeductions() {
 }
 function handleSearch() { query.value.pageNo = 1; loadDeductions(); }
 function handleReset() { query.value = { pageNo: 1, pageSize: query.value.pageSize || 10 }; loadDeductions(); }
-async function handleExport() { try { await exportFundDeductions(query.value); } catch (error) { ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed')); } }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitFundDeductionExportTask({
+            requestId: `fund-deduction-export-${globalThis.crypto.randomUUID()}`,
+            query: { ...query.value },
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
 async function openCreate(accountId?: number) {
     Object.assign(createForm, { merchantId: '', accountId: undefined, deductionCategory: '', amount: '', reason: '' });
     accountOptions.value = []; selectedAccount.value = null;

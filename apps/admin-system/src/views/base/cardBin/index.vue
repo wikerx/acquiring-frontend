@@ -63,7 +63,7 @@
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="handleEdit(selectedRows[0])" v-hasPermi="'base:cardBin:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'base:cardBin:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Aim" size="small" @click="openMatchDialog" v-hasPermi="'base:cardBin:match'">{{ $t('base.cardBin.matchTest') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:cardBin:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'base:cardBin:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col :span="1.5"><el-button plain :icon="Upload" size="small" @click="handleInitLegacy" v-hasPermi="'base:cardBin:init'">{{ $t('base.cardBin.initLegacy') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
     </el-row>
@@ -288,6 +288,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Aim, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -295,7 +296,7 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   addCardBin,
   deleteCardBin,
-  exportCardBins,
+  submitCardBinExportTask,
   getCardBin,
   getCardBinOptions,
   initCardBinFromLegacyDb,
@@ -312,8 +313,10 @@ import {
 } from '@/api/base/cardBin';
 
 const { t } = useI18n();
+const router = useRouter();
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<CardBinRecord[]>([]);
 const selectedRows = ref<CardBinRecord[]>([]);
 const total = ref(0);
@@ -488,11 +491,25 @@ async function handleStatus(row: CardBinRecord, status: number) {
 }
 
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportCardBins({ ...query });
-    ElMessage.success(t('common.success'));
+    const task = await submitCardBinExportTask({
+      requestId: `card-bin-export-${globalThis.crypto.randomUUID()}`,
+      query: { ...query },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.loadFailed'));
+  } finally {
+    exporting.value = false;
   }
 }
 

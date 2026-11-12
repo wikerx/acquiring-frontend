@@ -189,8 +189,13 @@ import {
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
-    exportMerchantSettlementBatches, exportMerchantSettlementReserves, exportMerchantSettlementSummaries,
-    exportMerchantSettlementTransactions, getMerchantSettlementBatch, getMerchantSettlementVoucher,
+    submitSettlementBatchExport,
+    submitSettlementReserveExport,
+    submitSettlementSummaryExport,
+    submitSettlementTransactionExport,
+} from '@/api/exportTaskApi';
+import {
+    getMerchantSettlementBatch, getMerchantSettlementVoucher,
     searchMerchantSettlementBatches, searchMerchantSettlementReserves, searchMerchantSettlementSummaries,
     searchMerchantSettlementTransactionComponents, searchMerchantSettlementTransactions,
     type MerchantSettlementBatch, type MerchantSettlementBatchDetail,
@@ -314,7 +319,17 @@ function batchRequest(): MerchantSettlementBatchQuery { return { ...query, begin
 async function loadBatches() { loading.value = true; try { const result = await searchMerchantSettlementBatches(batchRequest()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; loadBatches(); }
 function handleReset() { Object.assign(query, { settlementBatchNo: undefined, batchType: undefined, batchStatus: undefined, pageNo: 1 }); businessDateRange.value = defaultDateRange(); loadBatches(); }
-async function handleExport() { exporting.value = true; try { await exportMerchantSettlementBatches(batchRequest()); } catch (error) { showError(error); } finally { exporting.value = false; } }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitSettlementBatchExport(batchRequest());
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
+    } catch (error) {
+        showError(error);
+    } finally {
+        exporting.value = false;
+    }
+}
 async function openDetail(row: MerchantSettlementBatch) {
     detailVisible.value = true;
     detailLoading.value = true;
@@ -449,7 +464,8 @@ async function exportSummaries() {
     if (!settlementBatchNo || summaryExporting.value) return;
     summaryExporting.value = true;
     try {
-        await exportMerchantSettlementSummaries(settlementBatchNo);
+        const task = await submitSettlementSummaryExport(settlementBatchNo);
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
     } catch (error) {
         showError(error);
     } finally {
@@ -491,12 +507,32 @@ function transactionRequest(): MerchantSettlementTransactionQuery { return { ...
 async function loadTransactions() { if (!transactionQuery.settlementBatchNo) return; transactionLoading.value = true; try { const result = await searchMerchantSettlementTransactions(transactionRequest()); transactionRows.value = result.records || []; transactionTotal.value = result.total || 0; } catch (error) { showError(error); } finally { transactionLoading.value = false; } }
 function searchTransactions() { transactionQuery.pageNo = 1; loadTransactions(); }
 function resetTransactions() { Object.assign(transactionQuery, { sourceTransactionId: undefined, merchantOrderNo: undefined, pageNo: 1 }); transactionTimeRange.value = []; loadTransactions(); }
-async function exportTransactions() { transactionExporting.value = true; try { await exportMerchantSettlementTransactions(transactionRequest()); } catch (error) { showError(error); } finally { transactionExporting.value = false; } }
+async function exportTransactions() {
+    transactionExporting.value = true;
+    try {
+        const task = await submitSettlementTransactionExport(transactionRequest());
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
+    } catch (error) {
+        showError(error);
+    } finally {
+        transactionExporting.value = false;
+    }
+}
 function reserveRequest(): MerchantSettlementReserveQuery { return { ...reserveQuery, currency: reserveQuery.currency?.toUpperCase() || undefined, beginTransactionTime: reserveTransactionTimeRange.value[0] || undefined, endTransactionTime: reserveTransactionTimeRange.value[1] || undefined, beginExpectedReleaseDate: reserveExpectedReleaseDateRange.value[0] || undefined, endExpectedReleaseDate: reserveExpectedReleaseDateRange.value[1] || undefined }; }
 async function loadReserves() { if (!reserveQuery.settlementBatchNo) return; reserveLoading.value = true; try { const result = await searchMerchantSettlementReserves(reserveRequest()); reserveRows.value = result.records || []; reserveTotal.value = result.total || 0; } catch (error) { showError(error); } finally { reserveLoading.value = false; } }
 function searchReserves() { reserveQuery.pageNo = 1; loadReserves(); }
 function resetReserves() { Object.assign(reserveQuery, { reserveNo: undefined, reserveActionNo: undefined, sourceTransactionId: undefined, merchantOrderNo: undefined, reserveStatus: undefined, actionType: undefined, currency: undefined, pageNo: 1 }); reserveTransactionTimeRange.value = []; reserveExpectedReleaseDateRange.value = []; loadReserves(); }
-async function exportReserves() { reserveExporting.value = true; try { await exportMerchantSettlementReserves(reserveRequest()); } catch (error) { showError(error); } finally { reserveExporting.value = false; } }
+async function exportReserves() {
+    reserveExporting.value = true;
+    try {
+        const task = await submitSettlementReserveExport(reserveRequest());
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
+    } catch (error) {
+        showError(error);
+    } finally {
+        reserveExporting.value = false;
+    }
+}
 async function openComponents(row: MerchantSettlementTransaction) { selectedTransaction.value = row; componentRows.value = []; componentTotal.value = 0; componentPage.value = 1; componentVisible.value = true; await loadComponents(); }
 async function loadComponents() { const batchNo = selectedTransaction.value?.settlementBatchNo; const transactionId = selectedTransaction.value?.sourceTransactionId; if (!batchNo || !transactionId || componentLoading.value) return; componentLoading.value = true; try { const result = await searchMerchantSettlementTransactionComponents(batchNo, transactionId, componentPage.value, componentPageSize.value); componentRows.value = result.records || []; componentTotal.value = result.total || 0; } catch (error) { showError(error, 'settlement.componentLoadFailed'); } finally { componentLoading.value = false; } }
 function resetComponentPage() { componentPage.value = 1; loadComponents(); }

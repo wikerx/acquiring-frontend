@@ -170,6 +170,7 @@ import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { financeApi, type DetailQuery, type FundAccount, type FundLedger } from '@/api/financeApi';
+import { submitFundLedgerExport } from '@/api/exportTaskApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -260,11 +261,12 @@ function handleReset() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await financeApi.exportLedgers({
+        const task = await submitFundLedgerExport({
             ...query.value,
             postedStartTime: postedRange.value[0] || undefined,
             postedEndTime: postedRange.value[1] || undefined,
         });
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     } finally {

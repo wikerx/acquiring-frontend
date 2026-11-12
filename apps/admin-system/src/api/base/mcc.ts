@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export type MccNodeType = 'LEVEL1' | 'LEVEL2' | 'MCC_CODE';
 export type MccApplyScope = 'ALL' | 'SPECIFIC';
@@ -220,6 +221,13 @@ export async function exportMccCodes(requestBody: MccTreeQuery = {}) {
         method: 'post',
         data: requestBody,
     });
+}
+
+export async function submitMccCodeExportTask(data: { requestId: string; query: MccTreeQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/base/mcc/code/export-task', data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function pageMccPolicies(requestBody: MccRiskPolicyQuery = {}) {

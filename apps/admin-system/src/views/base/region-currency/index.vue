@@ -8,7 +8,7 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openAdd" v-hasPermi="'base:countryCurrency:add'">{{ $t('common.add') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:countryCurrency:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'base:countryCurrency:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
@@ -56,15 +56,17 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Edit, Delete, Download, Plus } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchRegionCurrencies, createRegionCurrency, updateRegionCurrency, deleteRegionCurrency, changeRegionCurrencyStatus, exportRegionCurrencies, type RegionCurrencyRow } from '@/api/base/regionCurrency';
+import { searchRegionCurrencies, createRegionCurrency, updateRegionCurrency, deleteRegionCurrency, changeRegionCurrencyStatus, submitRegionCurrencyExportTask, type RegionCurrencyRow } from '@/api/base/regionCurrency';
 import { CurrencyDisplay } from '@acquiring/shared';
 import { loadCurrencyPresentations, searchCurrencies, type IsoCurrency } from '@/api/base/currency';
 import { searchCountries, type IsoCountry } from '@/api/base/country';
 
 const { locale, t } = useI18n();
-const showSearch = ref(true); const loading = ref(false);
+const router = useRouter();
+const showSearch = ref(true); const loading = ref(false); const exporting = ref(false);
 const rows = ref<RegionCurrencyRow[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ keyword: '', continentCode: '' });
@@ -135,9 +137,18 @@ async function toggleStatus(row: RegionCurrencyRow) {
 }
 async function handleDelete(row: RegionCurrencyRow) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.countryName }), t('common.delete'), { type: 'warning' }); } catch { return; } try { await deleteRegionCurrency(row.id); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); } }
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportRegionCurrencies();
-    ElMessage.success(t('common.export'));
-  } catch { ElMessage.error(t('common.loadFailed')); }
+    const task = await submitRegionCurrencyExportTask({
+      requestId: `region-currency-export-${globalThis.crypto.randomUUID()}`,
+      query: { ...query },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  } catch (error: any) { ElMessage.error(error?.message || t('common.loadFailed')); }
+  finally { exporting.value = false; }
 }
 </script>

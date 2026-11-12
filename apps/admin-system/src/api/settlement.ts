@@ -750,6 +750,17 @@ export async function exportSettlementReviews(data: SettlementReviewQuery) {
     await downloadExcel('/admin/settlement/review-orders/export', { data });
 }
 
+export async function submitSettlementReviewExportTask(data: {
+    requestId: string;
+    query: SettlementReviewQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/review-orders/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReversals(data: SettlementReversalQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReversal>>>(
         '/admin/settlement/reversal-orders/search', data,
@@ -902,6 +913,17 @@ export async function searchSettlementPostings(data: SettlementPostingQuery) {
 
 export async function exportSettlementPostings(data: SettlementPostingQuery) {
     await downloadExcel('/admin/settlement/postings/export', { data });
+}
+
+export async function submitSettlementPostingExportTask(data: {
+    requestId: string;
+    query: SettlementPostingQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/postings/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function searchSettlementProfiles(data: SettlementProfileQuery) {

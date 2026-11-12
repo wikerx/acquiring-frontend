@@ -244,9 +244,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, Refresh, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -254,11 +254,11 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     batchRequeryChannelMatchAbnormalities,
     claimChannelMatchAbnormality,
-    exportChannelMatchAbnormalities,
     getChannelMatchAbnormalityDetail,
     requeryChannelMatchAbnormality,
     resolveChannelMatchAbnormality,
     searchChannelMatchAbnormalities,
+    submitChannelMatchAbnormalExportTask,
     type ChannelMatchAbnormalDetail,
     type ChannelMatchAbnormalQuery,
     type ChannelMatchAbnormalRecord,
@@ -283,6 +283,7 @@ import {
 
 const { t, locale } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
@@ -390,10 +391,31 @@ async function loadData() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportChannelMatchAbnormalities(buildQuery());
+        const task = await submitChannelMatchAbnormalExportTask({
+            requestId: createExportRequestId('channel-match-abnormal'),
+            query: buildQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function buildQuery(pageNo?: number, currentPageSize?: number): ChannelMatchAbnormalQuery {

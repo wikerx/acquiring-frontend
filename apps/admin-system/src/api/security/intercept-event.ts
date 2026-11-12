@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface SecurityInterceptEventQuery extends PageQuery {
     eventNo?: string;
@@ -61,6 +62,17 @@ export async function searchSecurityInterceptEvents(data: SecurityInterceptEvent
 
 export async function exportSecurityInterceptEvents(data: SecurityInterceptEventQuery) {
     await downloadExcel('/admin/security/intercept-events/export', { data });
+}
+
+export async function submitSecurityInterceptEventExportTask(data: {
+    requestId: string;
+    query: SecurityInterceptEventQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/security/intercept-events/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function getSecurityInterceptEvent(id: string) {

@@ -10,7 +10,7 @@
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openDialog('add')" v-hasPermi="'base:country:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="openDialog('edit', sel[0])" v-hasPermi="'base:country:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'base:country:remove'">{{ $t('common.delete') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:country:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'base:country:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
@@ -67,12 +67,14 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchCountries, createCountry, updateCountry, changeCountryStatus, deleteCountry, exportCountries, type IsoCountry } from '@/api/base/country';
+import { searchCountries, createCountry, updateCountry, changeCountryStatus, deleteCountry, submitCountryExportTask, type IsoCountry } from '@/api/base/country';
 
 const { t } = useI18n();
-const showSearch = ref(true); const loading = ref(false);
+const router = useRouter();
+const showSearch = ref(true); const loading = ref(false); const exporting = ref(false);
 const rows = ref<IsoCountry[]>([]); const sel = ref<IsoCountry[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ keyword: '', continentCode: '' });
@@ -127,9 +129,18 @@ async function handleDelete(target: IsoCountry | IsoCountry[]) {
   try { await Promise.all(targets.map((item) => deleteCountry(item.id))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch { ElMessage.error(t('common.saveFailed')); }
 }
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportCountries();
-    ElMessage.success(t('common.export'));
-  } catch { ElMessage.error(t('common.loadFailed')); }
+    const task = await submitCountryExportTask({
+      requestId: `country-export-${globalThis.crypto.randomUUID()}`,
+      query: { ...query },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  } catch (error: any) { ElMessage.error(error?.message || t('common.loadFailed')); }
+  finally { exporting.value = false; }
 }
 </script>

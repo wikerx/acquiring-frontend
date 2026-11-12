@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface RegionCurrencyRow {
     id: number;
@@ -51,4 +52,14 @@ export async function exportRegionCurrencies() {
     await downloadExcel('/admin/base/region-currencies/export', {
         method: 'get',
     });
+}
+
+export async function submitRegionCurrencyExportTask(data: {
+    requestId: string;
+    query: RegionCurrencyQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/base/region-currencies/export-task', data,
+    );
+    return unwrapResult(result.data);
 }

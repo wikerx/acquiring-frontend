@@ -1,6 +1,7 @@
 import type { MonitorTimeRangeValue, MonitorUnit } from './monitorTypes';
 
 /** 系统监控图表轴、提示框和后端时间的统一格式化工具。 */
+const BACKEND_LOCAL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const BACKEND_LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/;
 const ASIA_SHANGHAI_OFFSET = '+08:00';
 
@@ -31,8 +32,10 @@ export function formatMonitorTooltipValue(value: number | null, unit: MonitorUni
     return unit === 'rate' ? `${formatted}/s` : formatted;
 }
 
-/** 根据时间范围跨度生成小时分钟或月日坐标标签。 */
+/** 纯日期保持自然日语义，带时间的值再根据时间范围生成小时分钟或月日标签。 */
 export function formatMonitorTimeLabel(value: string, range?: MonitorTimeRangeValue, locale?: string): string {
+    const localDate = parseBackendLocalDate(value);
+    if (localDate) return `${localDate.month}-${localDate.day}`;
     const date = parseMonitorDateTime(value);
     if (!date) return value;
     const dayRange = range?.preset === '7d' || range?.preset === 'custom';
@@ -44,6 +47,8 @@ export function formatMonitorTimeLabel(value: string, range?: MonitorTimeRangeVa
 
 /** 生成包含日期和秒的图表提示框时间。 */
 export function formatMonitorTooltipTime(value: string, range?: MonitorTimeRangeValue, locale?: string): string {
+    const localDate = parseBackendLocalDate(value);
+    if (localDate) return `${localDate.year}-${localDate.month}-${localDate.day}`;
     const date = parseMonitorDateTime(value);
     if (!date) return value;
     return new Intl.DateTimeFormat(locale, {
@@ -81,6 +86,18 @@ export function escapeMonitorHtml(value: unknown): string {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+/** 解析并校验后端 LocalDate，避免将自然日按 UTC 时间戳转换后产生时区偏移。 */
+function parseBackendLocalDate(value: string): { year: string; month: string; day: string } | null {
+    const match = BACKEND_LOCAL_DATE.exec(String(value || '').trim());
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return { year: match[1], month: match[2], day: match[3] };
 }
 
 function formatCompact(value: number, locale?: string): string {

@@ -1,7 +1,6 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
-import { downloadBlob } from '@/utils/download';
 
 export type DecimalValue = string | number;
 
@@ -119,12 +118,5 @@ export const financeApi = {
     async ledgers(data: DetailQuery) {
         const result = await http.post<CommonResult<PageResult<FundLedger>>>('/merchant/fund-account/ledgers/search', data);
         return unwrapResult(result.data);
-    },
-    async exportLedgers(data: DetailQuery) {
-        await downloadBlob('/merchant/fund-account/ledgers/export', {
-            method: 'post',
-            data,
-            fileName: 'balance-ledger.xlsx',
-        });
     },
 };

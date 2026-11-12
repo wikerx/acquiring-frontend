@@ -348,7 +348,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { Document, Download, Refresh, RefreshLeft, Search, Tickets, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -367,7 +367,6 @@ import {
 } from '@acquiring/shared';
 import {
     decideSettlementReview,
-    exportSettlementReviews,
     getSettlementReview,
     getSettlementReviewDecisionTask,
     getSettlementReviewVoucher,
@@ -375,6 +374,7 @@ import {
     searchSettlementReviewCandidates,
     searchSettlementReviews,
     submitSettlementReviewDecisionTask,
+    submitSettlementReviewExportTask,
     type SettlementReview,
     type SettlementReviewCandidate,
     type SettlementReviewDecisionTask,
@@ -548,12 +548,31 @@ function handleReset() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportSettlementReviews(requestQuery());
+        const task = await submitSettlementReviewExportTask({
+            requestId: createExportRequestId('settlement-review'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(errorText(error, 'common.exportFailed'));
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function openDetail(row: SettlementReview) {

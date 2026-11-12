@@ -152,6 +152,7 @@ import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import { submitRefundExport } from '@/api/exportTaskApi';
 import {
     transactionApi,
     type MerchantRefundDetail,
@@ -284,7 +285,10 @@ function resetQuery() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await transactionApi.exportRefunds(buildQuery());
+        const task = await submitRefundExport(buildQuery());
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
+    } catch (error: any) {
+        ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.refund.exportFailed'));
     } finally {
         exporting.value = false;
     }

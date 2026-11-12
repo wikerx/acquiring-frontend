@@ -60,6 +60,7 @@
           type="warning"
           plain
           :icon="Download"
+          :loading="exporting"
           size="small"
           v-hasPermi="'exchange:alert-event:export'"
           @click="handleExport"
@@ -335,17 +336,17 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import type { FormInstance, FormRules } from 'element-plus';
-  import { ElMessage } from 'element-plus';
+  import { ElMessage, ElMessageBox } from 'element-plus';
   import { Check, CircleClose, Download, Refresh, Search, View } from '@element-plus/icons-vue';
   import { formatExchangeRate, formatPercentageRate } from '@acquiring/shared';
   import { useI18n } from 'vue-i18n';
-  import { useRoute } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import {
     acknowledgeExchangeRateAlertEvent,
     closeExchangeRateAlertEvent,
-    exportExchangeRateAlertEvents,
     getExchangeRateAlertEvent,
     searchExchangeRateAlertEvents,
+    submitExchangeRateAlertEventExportTask,
     type ExchangeRateAlertEvent,
   } from '@/api/exchange';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -358,12 +359,14 @@
   type ActionMode = 'acknowledge' | 'close';
   const { locale, t } = useI18n();
   const route = useRoute();
+  const router = useRouter();
   const showSearch = ref(true),
     loading = ref(false),
     detailVisible = ref(false),
     detailLoading = ref(false),
     actionVisible = ref(false),
-    submitting = ref(false);
+    submitting = ref(false),
+    exporting = ref(false);
   const rows = ref<ExchangeRateAlertEvent[]>([]),
     detail = ref<ExchangeRateAlertEvent | null>(null),
     actionTarget = ref<ExchangeRateAlertEvent | null>(null);
@@ -486,13 +489,41 @@
     }
   }
   async function handleExport() {
-    await exportExchangeRateAlertEvents({
-      pageNo: page.value,
-      pageSize: pageSize.value,
-      ...query,
-      triggerStartTime: triggerRange.value[0],
-      triggerEndTime: triggerRange.value[1],
-    });
+    exporting.value = true;
+    try {
+      const task = await submitExchangeRateAlertEventExportTask({
+        requestId: createExportRequestId('exchange-alert-event'),
+        query: {
+          pageNo: page.value,
+          pageSize: pageSize.value,
+          ...query,
+          triggerStartTime: triggerRange.value[0],
+          triggerEndTime: triggerRange.value[1],
+        },
+      });
+      await openSubmittedTask(task.taskNo);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+      exporting.value = false;
+    }
+  }
+  async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  }
+  function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
   function rateTypeText(value?: string) {
     return value ? t(`exchange.enums.rateType.${value}`, value) : '-';

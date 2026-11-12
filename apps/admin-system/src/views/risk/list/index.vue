@@ -514,7 +514,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -533,7 +533,7 @@ import {
   createRiskList,
   createRiskRegion,
   downloadRiskTemplate,
-  exportRiskConfig,
+  submitRiskConfigExportTask,
   getRiskListEditDetail,
   getRiskOptions,
   importRiskConfig,
@@ -552,6 +552,7 @@ import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOpti
 
 const route = useRoute();
 const { t } = useI18n();
+const router = useRouter();
 const user = useUserStore();
 const current = computed(() => resolveRiskFunction(route.path));
 const profile = computed(() => resolveRiskListProfile(current.value));
@@ -1008,11 +1009,25 @@ function setStatusUpdating(id: number | undefined, loading: boolean) {
 
 async function handleExport() {
   try {
-    await exportRiskConfig(current.value.moduleType, current.value.functionCode, sanitizeAmlQuery(query));
-    ElMessage.success(t('risk.common.exportStarted'));
+    const task = await submitRiskConfigExportTask({
+      requestId: createExportRequestId('risk-config'),
+      moduleType: current.value.moduleType,
+      functionCode: current.value.functionCode,
+      query: sanitizeAmlQuery(query),
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.exportFailed'));
   }
+}
+
+function createExportRequestId(prefix: string) {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return `${prefix}-${globalThis.crypto.randomUUID()}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function handleTemplate() {

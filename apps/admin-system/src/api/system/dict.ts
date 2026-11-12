@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface SysDictType {
     id: number;
@@ -108,6 +109,14 @@ export async function exportDictTypes(requestBody: SysDictTypeQuery) {
     });
 }
 
+export async function submitDictTypeExportTask(data: {
+    requestId: string;
+    query: Omit<SysDictTypeQuery, 'pageNo' | 'pageSize'>;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/system/dicts/types/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function refreshDictCache() {
     const result = await http.post<CommonResult<void>>('/admin/system/dicts/refresh-cache');
     return unwrapResult(result.data);
@@ -155,4 +164,12 @@ export async function exportDictData(requestBody: SysDictDataQuery) {
         method: 'post',
         data: requestBody,
     });
+}
+
+export async function submitDictDataExportTask(data: {
+    requestId: string;
+    query: Omit<SysDictDataQuery, 'pageNo' | 'pageSize'>;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/system/dicts/data/export-task', data);
+    return unwrapResult(result.data);
 }

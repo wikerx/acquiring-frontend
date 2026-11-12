@@ -10,7 +10,7 @@
             <el-form-item><el-button :icon="Search" type="primary" size="small" @click="search">{{ $t('common.search') }}</el-button><el-button :icon="RefreshLeft" size="small" @click="reset">{{ $t('common.reset') }}</el-button></el-form-item>
         </el-form>
         <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5"><el-button v-hasPermi="'fee:merchant:export'" :icon="Download" type="warning" plain size="small" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button v-hasPermi="'fee:merchant:export'" :icon="Download" type="warning" plain size="small" :loading="exporting" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="load" /></el-col>
         </el-row>
         <StandardTable v-loading="loading" table-key="admin-merchant-fee-list" :data="rows" row-key="merchantId" size="small">
@@ -96,21 +96,21 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { getMerchantFormOptions } from '@/api/merchant/info';
 import {
     approveFeeVersion,
     assignMerchantFeeTemplate,
     createMerchantCustomFeeVersion,
-    exportMerchantFees,
     getFeeTemplate,
     getMerchantFee,
     rejectFeeVersion,
     searchFeeTemplates,
     searchMerchantFees,
+    submitMerchantFeeExportTask,
     type FeePlanDetail,
     type FeePlanQuery,
     type FeePlanSummary,
@@ -130,7 +130,9 @@ import { useUserStore } from '@/store/modules/user';
 const loading = ref(false);
 const { t } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
+const exporting = ref(false);
 const canAssignTemplate = userStore.hasPermission('fee:merchant:template:assign');
 const canCustomizeFee = userStore.hasPermission('fee:merchant:configure');
 const canConfigureMerchantFee = canAssignTemplate || canCustomizeFee;
@@ -201,7 +203,34 @@ async function loadCurrencyOptions() {
 
 function search() { query.value.pageNo = 1; load(); }
 function reset() { query.value = { pageNo: 1, pageSize: query.value.pageSize || 10 }; load(); }
-function handleExport() { exportMerchantFees(query.value); }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitMerchantFeeExportTask(
+            createExportRequestId('merchant-fee'), query.value,
+        );
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 function configureActionText(row: FeePlanSummary) {
     if (row.pendingVersionStatus) return t('feeAccount.processingVersion');

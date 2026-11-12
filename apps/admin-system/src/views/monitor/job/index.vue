@@ -35,13 +35,12 @@
                 <el-button type="danger" plain :icon="Delete" size="small" :disabled="selectedRows.length !== 1" @click="handleDelete(selectedRows[0])" v-hasPermi="'monitor:job:remove'">{{ $t('common.delete') }}</el-button>
             </el-col>
             <el-col class="right-toolbar">
-                <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" />
+                <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="refreshPage" />
             </el-col>
         </el-row>
 
-        <MonitorCapabilityAlert :capability="trendCapability" :title="t('monitor.workbench.job.trendCapabilityTitle')" />
         <MonitorChartGrid page-definition-id="job" class="monitor-job-page__chart">
-            <MonitorChartPanel definition-id="job.resultTrend" :dataset="trendDataset" :state="trendState" />
+            <MonitorChartPanel definition-id="job.resultTrend" :dataset="trendDataset" :state="trendState" @retry="loadTrend" />
         </MonitorChartGrid>
 
         <StandardTable table-key="monitor-job" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="handleSelectionChange">
@@ -256,21 +255,22 @@ import DetailDescriptions from '@/components/DetailDescriptions.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { MonitorChartGrid, MonitorChartPanel } from '@/components/MonitorChart';
-import { MonitorCapabilityAlert, MonitorPageHeader } from '@/components/MonitorWorkbench';
+import { MonitorPageHeader } from '@/components/MonitorWorkbench';
 import {
     changeJobStatus,
     createJob,
     deleteJob,
     getJobHandlers,
+    getJobExecutionTrend,
     searchJobs,
     triggerJob,
     updateJob,
     type JobHandlerOption,
+    type JobExecutionTrendResponse,
     type JobTaskRow,
     type JobTaskSaveRequest,
 } from '@/api/monitor/job';
-import type { ProviderCapability } from '@/api/monitor/workbench';
-import { createEmptyJobTrendDataset, monitorLoadState } from '@/api/monitor/workbenchAdapters';
+import { createEmptyJobTrendDataset, createJobTrendDataset, monitorLoadState } from '@/api/monitor/workbenchAdapters';
 
 /**
  * 调度任务主页面：维护任务定义和启停状态，展示受控执行趋势，并通过确认流程触发单次运行或查看运行日志。
@@ -291,17 +291,22 @@ const query = reactive({
     jobGroup: '',
     status: '',
 });
-const trendCapability = computed<ProviderCapability>(() => ({
-    provider: 'JOB_EXECUTION_HISTORY_METRICS',
-    status: 'NOT_CONFIGURED',
-    reason: t('monitor.workbench.job.trendNotConfigured'),
-}));
-const trendDataset = computed(() => createEmptyJobTrendDataset(t));
+const trendLoading = ref(false);
+const trendResponse = ref<JobExecutionTrendResponse | null>(null);
+const trendError = ref('');
+const trendUpdatedAt = ref('');
+const trendDataset = computed(() => trendResponse.value
+    ? createJobTrendDataset(trendResponse.value.points || [], t)
+    : createEmptyJobTrendDataset(t));
+const trendHasData = computed(() => (trendResponse.value?.points || [])
+    .some((point) => Number(point.successCount || 0) > 0 || Number(point.failedCount || 0) > 0));
 const trendState = computed(() => monitorLoadState({
-    loading: false,
-    hasResponse: true,
-    hasData: false,
-    emptyDescription: trendCapability.value.reason,
+    loading: trendLoading.value,
+    error: trendError.value,
+    hasResponse: trendResponse.value !== null,
+    hasData: trendHasData.value,
+    lastUpdatedAt: trendUpdatedAt.value || undefined,
+    emptyDescription: t('common.noData'),
 }));
 
 const formRef = ref<FormInstance>();
@@ -373,9 +378,28 @@ const rules = computed<FormRules>(() => ({
 }));
 
 onMounted(async () => {
-    await loadHandlers();
-    await loadData();
+    await Promise.all([loadHandlers(), loadData(), loadTrend()]);
 });
+
+/** 同步刷新任务定义列表和最近七日执行趋势。 */
+async function refreshPage() {
+    await Promise.all([loadData(), loadTrend()]);
+}
+
+/** 加载真实任务终态趋势；失败时保留最近一次成功数据并展示可重试错误态。 */
+async function loadTrend() {
+    trendLoading.value = true;
+    trendError.value = '';
+    try {
+        trendResponse.value = await getJobExecutionTrend();
+        trendUpdatedAt.value = new Date().toISOString();
+    } catch (error) {
+        console.error('[admin-system] job trend request failed', error instanceof Error ? error.name : 'UnknownError');
+        trendError.value = error instanceof Error ? error.message : t('common.loadFailed');
+    } finally {
+        trendLoading.value = false;
+    }
+}
 
 async function loadHandlers() {
     try {

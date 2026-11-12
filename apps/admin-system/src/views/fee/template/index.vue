@@ -12,7 +12,7 @@
 
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5"><el-button v-hasPermi="'fee:template:add'" :icon="Plus" type="primary" plain size="small" @click="openCreate">{{ $t('common.add') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button v-hasPermi="'fee:template:export'" :icon="Download" type="warning" plain size="small" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button v-hasPermi="'fee:template:export'" :icon="Download" type="warning" plain size="small" :loading="exporting" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="load" /></el-col>
         </el-row>
 
@@ -91,15 +91,16 @@ import { computed, onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import {
     archiveFeeTemplate,
     approveFeeVersion,
     createFeeTemplate,
     createFeeTemplateVersion,
-    exportFeeTemplates,
     getFeeTemplate,
     rejectFeeVersion,
     searchFeeTemplates,
+    submitFeeTemplateExportTask,
     submitFeeTemplateVersion,
     updateFeeTemplateStatus,
     updateFeeTemplateDraft,
@@ -121,7 +122,9 @@ import { createEmptyVersion, feeRequestErrorMessage, normalizeFeeVersionForSubmi
 
 const loading = ref(false);
 const { t } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
+const exporting = ref(false);
 const saving = ref(false);
 const showSearch = ref(true);
 const rows = ref<FeePlanSummary[]>([]);
@@ -167,7 +170,32 @@ async function load() {
 function search() { query.value.pageNo = 1; load(); }
 function reset() { query.value = { pageNo: 1, pageSize: query.value.pageSize || 10 }; load(); }
 
-function handleExport() { exportFeeTemplates(query.value); }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitFeeTemplateExportTask(createExportRequestId('fee-template'), query.value);
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 function openCreate() {
     editorMode.value = 'CREATE';

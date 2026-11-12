@@ -76,6 +76,7 @@
           type="warning"
           plain
           :icon="Download"
+          :loading="exporting"
           size="small"
           v-hasPermi="'exchange:alert-rule:export'"
           @click="handleExport"
@@ -451,13 +452,14 @@
     View,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import {
     createExchangeRateAlertRule,
     deleteExchangeRateAlertRule,
-    exportExchangeRateAlertRules,
     getExchangeRateAlertRule,
     importExchangeRateAlertRules,
     searchExchangeRateAlertRules,
+    submitExchangeRateAlertRuleExportTask,
     updateExchangeRateAlertRule,
     updateExchangeRateAlertRuleStatus,
     type ExchangeRateAlertRule,
@@ -473,12 +475,14 @@
   import RateNumberInput from '../RateNumberInput.vue';
 
   const { locale, t } = useI18n();
+  const router = useRouter();
   const showSearch = ref(true),
     loading = ref(false),
     detailVisible = ref(false),
     detailLoading = ref(false);
   const formVisible = ref(false),
     submitting = ref(false),
+    exporting = ref(false),
     importResultVisible = ref(false);
   const rows = ref<ExchangeRateAlertRule[]>([]),
     detail = ref<ExchangeRateAlertRule | null>(null);
@@ -676,7 +680,35 @@
     await loadData();
   }
   async function handleExport() {
-    await exportExchangeRateAlertRules({ pageNo: page.value, pageSize: pageSize.value, ...query });
+    exporting.value = true;
+    try {
+      const task = await submitExchangeRateAlertRuleExportTask({
+        requestId: createExportRequestId('exchange-alert-rule'),
+        query: { pageNo: page.value, pageSize: pageSize.value, ...query },
+      });
+      await openSubmittedTask(task.taskNo);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+      exporting.value = false;
+    }
+  }
+  async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  }
+  function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
   async function handleImport(event: Event) {
     const input = event.target as HTMLInputElement;

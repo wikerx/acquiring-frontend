@@ -25,7 +25,7 @@
         </el-form>
 
         <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'exchange:usage-snapshot:export'">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'exchange:usage-snapshot:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
@@ -103,21 +103,25 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { FULL_DAY_RANGE_DEFAULT_TIMES, TransactionTypeDisplay, resolveTransactionTypeIcon } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadCurrencyPresentations } from '@/api/base/currency';
-import { exportExchangeUsageSnapshots, getExchangeUsageSnapshot, searchExchangeUsageSnapshots, type ExchangeRateUsageSnapshot } from '@/api/exchange';
+import { getExchangeUsageSnapshot, searchExchangeUsageSnapshots, submitExchangeUsageSnapshotExportTask, type ExchangeRateUsageSnapshot } from '@/api/exchange';
 import CurrencySelect from '../CurrencySelect.vue';
 import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import { formatRate, normalizeCurrency, optionLabel, rateTypeOptions as buildRateTypeOptions, todayDateTimeRange, type DateTimeRange, usageSceneOptions as buildUsageSceneOptions } from '../shared';
 
 const { locale, t } = useI18n();
+const router = useRouter();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<ExchangeRateUsageSnapshot[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -186,8 +190,38 @@ async function openDetail(row: ExchangeRateUsageSnapshot) {
 }
 
 async function handleExport() {
-    const [appliedStartTime, appliedEndTime] = appliedRange.value;
-    await exportExchangeUsageSnapshots({ pageNo: page.value, pageSize: pageSize.value, ...query, appliedStartTime, appliedEndTime });
+    exporting.value = true;
+    try {
+        const [appliedStartTime, appliedEndTime] = appliedRange.value;
+        const task = await submitExchangeUsageSnapshotExportTask({
+            requestId: createExportRequestId('exchange-usage-snapshot'),
+            query: { pageNo: page.value, pageSize: pageSize.value, ...query, appliedStartTime, appliedEndTime },
+        });
+        await openSubmittedTask(task.taskNo);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' | 'info' {
