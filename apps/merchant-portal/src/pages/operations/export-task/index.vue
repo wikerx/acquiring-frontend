@@ -460,11 +460,16 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   gap: 10px;
 }
 
+.merchant-export-task-filter {
+  container-type: inline-size;
+}
+
 .export-task-search-form__fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(385px, 1fr) max-content;
+  align-items: center;
   gap: 8px 12px;
+  width: 100%;
 }
 
 .export-task-search-form :deep(.el-form-item) {
@@ -472,12 +477,11 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 }
 
 .export-task-search-form :deep(.el-select) {
-  width: 190px;
+  width: 154px;
 }
 
 .export-task-time-item {
-  flex: 1 1 420px;
-  min-width: 360px;
+  min-width: 0;
 }
 
 .export-task-time-item :deep(.el-form-item__content),
@@ -486,7 +490,8 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 }
 
 .export-task-search-actions {
-  flex: 0 0 auto;
+  justify-self: end;
+  margin-left: 0;
 }
 
 .merchant-export-task-table-card {
@@ -550,14 +555,30 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   margin-top: 18px;
 }
 
-@media (max-width: 900px) {
+@container (max-width: 1000px) {
+  .export-task-search-form__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .export-task-time-item {
-    flex-basis: 100%;
-    min-width: 0;
+    grid-column: 1 / -1;
+  }
+
+  .export-task-search-actions {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 640px) {
+  .export-task-search-form__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .export-task-time-item,
+  .export-task-search-actions {
+    grid-column: auto;
+  }
+
   .export-task-search-form :deep(.el-select),
   .export-task-search-form :deep(.el-form-item),
   .export-task-time-item {
