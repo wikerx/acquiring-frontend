@@ -103,6 +103,7 @@ export interface ChannelMidConfig {
     transactionTypeScope: string;
     currencyScope: string;
     allowedCountryScope: string;
+    defaultTransactionCurrency: string;
     defaultSettlementCurrency: string;
     settlementCycle: string;
     settlementCutoffTime?: string;
@@ -164,10 +165,13 @@ export interface ChannelLimitQuery extends PageQuery {
 }
 
 export interface ChannelMidConfigQuery extends PageQuery {
+    keyword?: string;
     channelId?: number;
     channelCode?: string;
     channelMid?: string;
     businessType?: string;
+    paymentMethod?: string;
+    cardBrand?: string;
     midStatus?: number;
 }
 
@@ -347,5 +351,209 @@ export async function updateMerchantChannelMidBindingStatus(id: number, status: 
 
 export async function deleteMerchantChannelMidBinding(id: number) {
     const result = await http.delete<CommonResult<void>>(`/admin/channel/mid-bindings/${id}`);
+    return unwrapResult(result.data);
+}
+
+export type PaymentRouteRuleType = 'FIXED' | 'PRIORITY' | 'WEIGHT' | 'HISTORY_AFFINITY';
+export type PaymentRouteScopeType = 'GLOBAL' | 'MERCHANT';
+export type PaymentRouteUnavailablePolicy = 'FALLBACK' | 'REJECT';
+export type PaymentRouteRuleStatus = 'DRAFT' | 'ENABLED' | 'DISABLED';
+
+export interface PaymentRouteStrategy {
+    id?: number;
+    strategyType: PaymentRouteRuleType;
+    historyLookbackMonths?: number;
+    strategyStatus: number;
+}
+
+export interface PaymentRouteCandidate {
+    id?: number;
+    paymentMethod: string;
+    cardBrand: string;
+    channelId: number;
+    channelCode?: string;
+    channelName?: string;
+    midConfigId: number;
+    channelMid?: string;
+    midName?: string;
+    paymentMethodScope?: string;
+    currencyScope?: string;
+    defaultTransactionCurrency?: string;
+    midStatus?: number;
+    candidatePriority: number;
+    /** 十进制字符串，避免权重在浏览器中出现浮点误差。 */
+    candidateWeight?: string;
+    candidateStatus: number;
+}
+
+export interface PaymentRoutePaymentScope {
+    paymentMethod: string;
+    cardBrand: string;
+}
+
+export interface PaymentRouteRule {
+    id: number;
+    ruleCode: string;
+    ruleName: string;
+    ruleType: PaymentRouteRuleType;
+    scopeType: PaymentRouteScopeType;
+    merchantId?: string;
+    merchantIds: string[];
+    businessType: 'ACQUIRING';
+    paymentMethods: string[];
+    paymentScopes: PaymentRoutePaymentScope[];
+    transactionTypes: string[];
+    rulePriority: number;
+    unavailablePolicy: PaymentRouteUnavailablePolicy;
+    ruleStatus: PaymentRouteRuleStatus;
+    version: number;
+    remark?: string;
+    strategy: PaymentRouteStrategy;
+    candidates: PaymentRouteCandidate[];
+    publishedBy?: string;
+    publishedTime?: string;
+    disabledBy?: string;
+    disabledTime?: string;
+    createBy?: string;
+    createTime?: string;
+    updateBy?: string;
+    updateTime?: string;
+}
+
+export interface PaymentRouteRuleQuery extends PageQuery {
+    keyword?: string;
+    ruleType?: PaymentRouteRuleType | '';
+    scopeType?: PaymentRouteScopeType | '';
+    merchantId?: string;
+    paymentMethods?: string[];
+    paymentScopes?: PaymentRoutePaymentScope[];
+    transactionTypes?: string[];
+    ruleStatus?: PaymentRouteRuleStatus | '';
+    unavailablePolicy?: PaymentRouteUnavailablePolicy | '';
+}
+
+export interface PaymentRouteRuleSaveRequest {
+    ruleName: string;
+    ruleType: PaymentRouteRuleType;
+    scopeType: PaymentRouteScopeType;
+    merchantId?: string;
+    merchantIds: string[];
+    businessType: 'ACQUIRING';
+    paymentMethods?: string[];
+    paymentScopes: PaymentRoutePaymentScope[];
+    transactionTypes: string[];
+    rulePriority: number;
+    unavailablePolicy: PaymentRouteUnavailablePolicy;
+    strategy: PaymentRouteStrategy;
+    candidates: PaymentRouteCandidate[];
+    version?: number;
+    remark?: string;
+    operationReason: string;
+}
+
+export interface PaymentRouteActionRequest {
+    version: number;
+    operationReason: string;
+}
+
+export interface MerchantRouteRuleBrief {
+    id: number;
+    ruleCode: string;
+    ruleName: string;
+    ruleType: PaymentRouteRuleType;
+    rulePriority: number;
+    ruleStatus: PaymentRouteRuleStatus;
+}
+
+export interface MerchantRouteConflict {
+    merchantId: string;
+    rules: MerchantRouteRuleBrief[];
+}
+
+export interface PaymentRouteCopyRequest extends PaymentRouteActionRequest {
+    ruleName: string;
+}
+
+export interface PaymentRouteValidationIssue {
+    level: 'ERROR' | 'WARNING';
+    code: string;
+    field: string;
+    message: string;
+}
+
+export interface PaymentRouteValidationResult {
+    ruleId: number;
+    version: number;
+    valid: boolean;
+    issues: PaymentRouteValidationIssue[];
+}
+
+export interface PaymentRouteChangeLog {
+    id: number;
+    ruleId: number;
+    ruleCode: string;
+    actionType: string;
+    beforeVersion?: number;
+    afterVersion?: number;
+    beforeSnapshotJson?: string;
+    afterSnapshotJson?: string;
+    operatorAccountId?: number;
+    operatorName: string;
+    operationReason: string;
+    createTime: string;
+}
+
+export async function searchPaymentRouteRules(data: PaymentRouteRuleQuery) {
+    const result = await http.post<CommonResult<PageResult<PaymentRouteRule>>>('/admin/channel/routes/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function getPaymentRouteRule(id: number) {
+    const result = await http.get<CommonResult<PaymentRouteRule>>(`/admin/channel/routes/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function getPaymentRouteMerchantConflicts(data: { merchantIds: string[]; excludeRuleId?: number }) {
+    const result = await http.post<CommonResult<MerchantRouteConflict[]>>('/admin/channel/routes/merchant-conflicts', data);
+    return unwrapResult(result.data);
+}
+
+export async function createPaymentRouteRule(data: PaymentRouteRuleSaveRequest) {
+    const result = await http.post<CommonResult<PaymentRouteRule>>('/admin/channel/routes', data);
+    return unwrapResult(result.data);
+}
+
+export async function updatePaymentRouteRule(id: number, data: PaymentRouteRuleSaveRequest) {
+    const result = await http.put<CommonResult<PaymentRouteRule>>(`/admin/channel/routes/${id}`, data);
+    return unwrapResult(result.data);
+}
+
+export async function copyPaymentRouteRule(id: number, data: PaymentRouteCopyRequest) {
+    const result = await http.post<CommonResult<PaymentRouteRule>>(`/admin/channel/routes/${id}/copy`, data);
+    return unwrapResult(result.data);
+}
+
+export async function publishPaymentRouteRule(id: number, data: PaymentRouteActionRequest) {
+    const result = await http.post<CommonResult<PaymentRouteRule>>(`/admin/channel/routes/${id}/publish`, data);
+    return unwrapResult(result.data);
+}
+
+export async function disablePaymentRouteRule(id: number, data: PaymentRouteActionRequest) {
+    const result = await http.post<CommonResult<PaymentRouteRule>>(`/admin/channel/routes/${id}/disable`, data);
+    return unwrapResult(result.data);
+}
+
+export async function deletePaymentRouteRule(id: number, data: PaymentRouteActionRequest) {
+    const result = await http.delete<CommonResult<void>>(`/admin/channel/routes/${id}`, { data });
+    return unwrapResult(result.data);
+}
+
+export async function validatePaymentRouteRule(id: number) {
+    const result = await http.get<CommonResult<PaymentRouteValidationResult>>(`/admin/channel/routes/${id}/validation`);
+    return unwrapResult(result.data);
+}
+
+export async function searchPaymentRouteChangeLogs(id: number, data: PageQuery & { actionType?: string }) {
+    const result = await http.post<CommonResult<PageResult<PaymentRouteChangeLog>>>(`/admin/channel/routes/${id}/change-logs/search`, data);
     return unwrapResult(result.data);
 }
