@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ElMessage } from 'element-plus';
-import { resolveFriendlyRequestMessage } from '@acquiring/shared';
+import { createDuplicateSubmissionGuard, resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { removeAuthStorage } from './auth';
 import { isPublicAuthPath } from './auth-navigation';
 
@@ -10,8 +10,13 @@ const request = axios.create({
     timeout: 15000,
     withCredentials: true,
 });
+const submissionGuard = createDuplicateSubmissionGuard(
+    () => document.documentElement.lang || navigator.language || 'zh-CN',
+);
 
 request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    submissionGuard.acquire(config);
+    config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
     config.headers['X-Auth-Mode'] = 'cookie';
     const csrfToken = readCsrfCookie();
     if (csrfToken) {
@@ -41,8 +46,12 @@ function readCsrfCookie(): string {
 }
 
 request.interceptors.response.use(
-    (response) => response.data,
+    (response) => {
+        submissionGuard.release(response.config);
+        return response.data;
+    },
     (error: AxiosError<{ message?: string }>) => {
+        submissionGuard.release(error.config);
         const locale = document.documentElement.lang || navigator.language || 'zh-CN';
         const message = resolveFriendlyRequestMessage(error, locale);
         if (error.response?.status === 401) {
@@ -55,6 +64,11 @@ request.interceptors.response.use(
 );
 
 export default request;
+
+function createRequestId(): string {
+    const randomPart = Math.random().toString(36).slice(2, 10).toUpperCase();
+    return `ADMIN${Date.now()}${randomPart}`;
+}
 
 function redirectToLogin() {
     const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;

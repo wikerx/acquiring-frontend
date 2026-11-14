@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
+import { createDuplicateSubmissionGuard } from './submissionGuard';
 export * from './brand';
 export * from './amount';
 export * from './refund';
@@ -28,6 +29,7 @@ export * from './tableRowActions';
 export * from './transactionAnalytics';
 export * from './settlementVoucher';
 export * from './settlementVoucherPdf';
+export * from './submissionGuard';
 
 declare module 'axios' {
     export interface AxiosRequestConfig {
@@ -325,8 +327,10 @@ export function createHttpClient(
         timeout: 15000,
         withCredentials: true,
     });
+    const submissionGuard = createDuplicateSubmissionGuard(readLocale);
 
     client.interceptors.request.use((config) => {
+        submissionGuard.acquire(config);
         config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
         if (browserSession) {
             config.headers['X-Auth-Mode'] = 'cookie';
@@ -343,8 +347,12 @@ export function createHttpClient(
     });
 
     client.interceptors.response.use(
-        (response) => response,
+        (response) => {
+            submissionGuard.release(response.config);
+            return response;
+        },
         (error) => {
+            submissionGuard.release(error.config);
             if (error.response?.status === 401) {
                 onUnauthorized();
             }

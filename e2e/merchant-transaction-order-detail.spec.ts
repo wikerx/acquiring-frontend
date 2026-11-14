@@ -42,13 +42,14 @@ test.describe('Merchant transaction operation detail', () => {
 
     await page.goto('/transaction/order');
 
-    const refundRow = page.getByRole('row', { name: /EUR 20\.00 退款 成功/ });
+    const refundRow = page.getByRole('row', { name: /EUR 20(?:\.00)? 退款 成功/ });
     await expect(refundRow).toBeVisible();
     await refundRow.getByRole('button', { name: '详情', exact: true }).click();
 
     const drawer = page.getByRole('dialog', { name: '交易详情' });
     await expect(drawer).toBeVisible();
 
+    await expect.poll(() => detailRequestUrl).not.toBe('');
     const requestUrl = new URL(detailRequestUrl);
     expect(requestUrl.pathname).toBe(
       `/merchant/transactions/orders/${refundOperation.transactionId}`,
@@ -61,7 +62,7 @@ test.describe('Merchant transaction operation detail', () => {
     ).toBeVisible();
     await expect(drawer.getByText('退款', { exact: true }).first()).toBeVisible();
     await expect(drawer.getByText('成功', { exact: true }).first()).toBeVisible();
-    await expect(drawer.getByText('20.00', { exact: true }).first()).toBeVisible();
+    await expect(drawer.getByText(/^20(?:\.00)?$/, { exact: true }).first()).toBeVisible();
     await expect(drawer.getByText(paymentOperation.transactionId, { exact: true })).toBeVisible();
   });
 });

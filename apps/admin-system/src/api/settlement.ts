@@ -440,6 +440,17 @@ export interface SettlementResultItemQuery extends PageQuery {
     endBusinessDate: string;
 }
 
+export async function submitSettlementBatchSummaryExportTask(data: {
+    requestId: string;
+    settlementBatchNo: string;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/batch-summaries/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export interface SettlementReserveItemQuery extends PageQuery {
     settlementBatchNo?: string;
     merchantId?: string;

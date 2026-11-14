@@ -108,20 +108,26 @@ test.describe('Merchant transaction notification records', () => {
 
     test('resends successful tasks and opens the system order detail route', async ({ page }) => {
         let retryPayload: Record<string, unknown> | undefined;
+        let retryRequestCount = 0;
         await mockMerchantApis(page, {
             detail: true,
             retry: true,
             transactionDetail: true,
-            captureRetry: (payload) => { retryPayload = payload; },
+            retryDelayMs: 200,
+            captureRetry: (payload) => {
+                retryPayload = payload;
+                retryRequestCount += 1;
+            },
         });
 
         await page.goto('/transaction/notification');
 
         await page.getByRole('button', { name: '重发', exact: true }).first().click();
         await expect(page.getByRole('dialog', { name: '确认重发交易通知' })).toBeVisible();
-        await page.getByRole('button', { name: '确认', exact: true }).click();
+        await page.getByRole('button', { name: '确认', exact: true }).dblclick({ delay: 10 });
         await expect(page.getByRole('dialog', { name: '确认重发交易通知' })).toBeHidden();
         await expect(page.getByText('重发任务已受理，请稍后刷新查看投递结果')).toBeVisible();
+        expect(retryRequestCount).toBe(1);
         expect(retryPayload?.notifyId).toBe(notificationRecord.notifyId);
         expect(retryPayload?.transactionDateTime).toBe('2026-11-04 16:20:00.123');
         expect(retryPayload?.requestId).toBeTruthy();
@@ -156,6 +162,7 @@ interface MockOptions {
     transactionDetail: boolean;
     captureSearch?: (payload: Record<string, unknown>) => void;
     captureRetry?: (payload: Record<string, unknown>) => void;
+    retryDelayMs?: number;
 }
 
 async function mockMerchantApis(page: Page, options: MockOptions) {
@@ -179,11 +186,25 @@ async function mockMerchantApis(page: Page, options: MockOptions) {
     });
     await page.route('**/merchant/transactions/notifications/retry', async (route) => {
         options.captureRetry?.(route.request().postDataJSON() as Record<string, unknown>);
+        if (options.retryDelayMs) {
+            await new Promise((resolve) => setTimeout(resolve, options.retryDelayMs));
+        }
         await fulfill(route, 'MNR-M-5bf29488-9f8c-3e32-9e7a-37c318d1930f');
     });
     await page.route(
         `**/merchant/transactions/notifications/${notificationRecord.notifyId}**`,
-        (route) => fulfill(route, notificationDetail),
+        (route) => {
+            if (new URL(route.request().url()).pathname.endsWith('/delivery-logs')) {
+                return fulfill(route, {
+                    total: notificationDetail.deliveryLogs.length,
+                    pageNo: 1,
+                    pageSize: 10,
+                    pages: 1,
+                    records: notificationDetail.deliveryLogs,
+                });
+            }
+            return fulfill(route, notificationDetail);
+        },
     );
     await page.route('**/merchant/transactions/orders/operations/search', (route) => fulfill(route, {
         page: {

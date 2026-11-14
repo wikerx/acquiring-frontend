@@ -441,7 +441,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { loadCurrencyPresentations } from '@/api/base/currency';
 import {
     cancelSettlementBatch,
-    exportSettlementBatchSummaries,
     getSettlementBatchDetail,
     getSettlementBatchVoucher,
     retrySettlementBatch,
@@ -457,6 +456,7 @@ import {
     searchSettlementResultItemComponents,
     searchSettlementReserveItems,
     searchSettlementResultItems,
+    submitSettlementBatchSummaryExportTask,
     submitSettlementReserveItemExportTask,
     submitSettlementResultItemExportTask,
     submitSettlementReversal,
@@ -827,7 +827,11 @@ async function exportBatchSummaries() {
     if (!batchNo || batchSummaryExporting.value) return;
     batchSummaryExporting.value = true;
     try {
-        await exportSettlementBatchSummaries(batchNo);
+        const task = await submitSettlementBatchSummaryExportTask({
+            requestId: createExportRequestId('settlement-batch-summary'),
+            settlementBatchNo: batchNo,
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {

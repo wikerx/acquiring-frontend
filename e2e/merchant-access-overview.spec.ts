@@ -7,6 +7,43 @@ const readyOverview = {
     openApiBaseUrl: 'https://openapi.example.test',
     sdkVersion: '1.0.0',
     cryptoMode: 'RSA_AES_GCM',
+    merchantProfile: {
+        status: 'READY',
+        onboardingStatus: 'COMPLETED',
+        reviewStatus: 'APPROVED',
+        activationStatus: 'ACTIVE',
+        lastUpdatedTime: '2026-11-04T09:00:00.000',
+    },
+    settlement: {
+        status: 'READY',
+        settlementCurrency: 'USD',
+        businessTimeZone: 'Asia/Shanghai',
+        dailyCutoffTime: '18:00:00',
+        processingMode: 'AUTOMATIC',
+        settlementFrequency: 'DAILY',
+        lastUpdatedTime: '2026-11-04T09:10:00.000',
+    },
+    paymentCapability: {
+        status: 'READY',
+        activeBindingCount: 1,
+        capabilities: [{
+            paymentType: 'PAYMENT',
+            paymentMethod: 'BANK_CARD',
+            currency: 'USD',
+        }],
+        lastUpdatedTime: '2026-11-04T09:20:00.000',
+    },
+    fee: {
+        status: 'READY',
+        activeVersionNo: 1,
+        lastUpdatedTime: '2026-11-04T09:30:00.000',
+    },
+    risk: {
+        status: 'READY',
+        riskLevel: 1,
+        lastUpdatedTime: '2026-11-04T09:40:00.000',
+    },
+    technicalStatus: 'READY',
     credentials: {
         status: 'READY',
         jwtKeyStatus: 'ENABLED',
@@ -48,12 +85,14 @@ test.describe('Merchant integration overview', () => {
         await expect(page.getByRole('heading', { name: '接入配置可用' })).toBeVisible();
         await expect(page.getByText('2/2', { exact: true })).toBeVisible();
         await expect(page.getByText('https://openapi.example.test', { exact: true })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'API 凭证与加密' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: '技术接入' })).toBeVisible();
         await expect(page.getByText('JWT 签名')).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'IP 白名单' })).toBeVisible();
-        await expect(page.getByRole('heading', { name: '店铺网址' })).toBeVisible();
+        await expect(page.getByText('IP 白名单', { exact: true }).last()).toBeVisible();
+        await expect(page.getByText('店铺网址', { exact: true }).last()).toBeVisible();
         await expect(page.getByText('非必需', { exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: '前往管理' })).toHaveCount(3);
+        await expect(page.getByRole('button', { name: 'API 凭证' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'IP 白名单' })).toBeVisible();
+        await expect(page.getByRole('button', { name: '店铺网址' })).toBeVisible();
         await expect(page.getByText('raw-secret-value')).toHaveCount(0);
 
         const viewport = page.viewportSize();
@@ -61,8 +100,7 @@ test.describe('Merchant integration overview', () => {
         expect(await page.evaluate(() => document.documentElement.scrollWidth))
             .toBeLessThanOrEqual(viewport!.width);
 
-        const ipRow = page.locator('.integration-check-row').filter({ hasText: 'IP 白名单' });
-        await ipRow.getByRole('button', { name: '前往管理' }).click();
+        await page.getByRole('button', { name: 'IP 白名单' }).click();
         await expect(page).toHaveURL(/\/access-config\/ip-whitelist$/);
     });
 
@@ -85,10 +123,12 @@ test.describe('Merchant integration overview', () => {
 
         await page.goto('/access-config/overview');
 
-        await expect(page.getByRole('heading', { name: 'Some settings are pending review' })).toBeVisible();
-        await expect(page.getByText('Pending Review', { exact: true }).first()).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Payment activation is in progress' })).toBeVisible();
+        await expect(page.getByText('1 pending', { exact: true })).toBeVisible();
         await expect(page.getByText('Optional', { exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Manage' })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'API Credentials' })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'IP Allowlist' })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Store Websites' })).toHaveCount(0);
         await expect(page.getByText('merchant:access-config:ip-whitelist:list')).toHaveCount(0);
     });
 
