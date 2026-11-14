@@ -292,6 +292,7 @@ const taskTypeOptions: ExportTaskType[] = [
     'ADMIN_SYSTEM_CONFIG',
     'ADMIN_MERCHANT_IP_WHITELIST',
     'ADMIN_RISK_CONFIG',
+    'ADMIN_TRADE_BLACK_RECORD',
     'ADMIN_DATASOURCE_SNAPSHOT',
 ];
 const statusOptions: ExportTaskStatus[] = ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED'];

@@ -195,7 +195,7 @@
               <el-table-column :label="t('merchant.info.fileSize')" width="110" align="right">
                 <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
               </el-table-column>
-              <el-table-column :label="t('common.createTime')" width="180">
+              <el-table-column :label="t('common.createTime')" width="180" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
               </el-table-column>
               <el-table-column :label="t('common.operation')" width="100" align="center">

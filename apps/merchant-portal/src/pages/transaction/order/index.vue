@@ -237,7 +237,7 @@
         />
       </div>
       <StandardTable
-        table-key="merchant-transaction-order-v2"
+        table-key="merchant-transaction-order-v3"
         v-loading="loading"
         :data="rows"
         row-key="transactionId"
@@ -311,6 +311,16 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <el-table-column :label="t('transaction.order.response')" min-width="128" align="center">
+          <template #default="{ row }">
+            <el-tooltip
+              :content="responseTooltip(row.merchantResponseCode, row.merchantResponseMessage)"
+              placement="top"
+            >
+              <el-tag size="small" effect="plain">{{ row.merchantResponseCode || '-' }}</el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column :label="t('transaction.order.payment')" min-width="132" align="center">
           <template #default="{ row }">
             <div class="transaction-payment-logo-cell">
@@ -376,16 +386,6 @@
             >
               {{ tagText(settlementStatusOptions, row.settlementStatus) }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column :label="t('transaction.order.response')" min-width="128" align="center">
-          <template #default="{ row }">
-            <el-tooltip
-              :content="responseTooltip(row.merchantResponseCode, row.merchantResponseMessage)"
-              placement="top"
-            >
-              <el-tag size="small" effect="plain">{{ row.merchantResponseCode || '-' }}</el-tag>
-            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column

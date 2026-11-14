@@ -45,6 +45,15 @@
             </el-form>
             <template #footer><div class="dialog-footer"><el-button type="primary" size="small" @click="submit">{{ t('common.save') }}</el-button><el-button size="small" @click="visible = false">{{ t('common.cancel') }}</el-button></div></template>
         </el-dialog>
+        <BaseFeedbackDialog
+            v-model="deleteOpen"
+            :title="t('common.deleteConfirmTitle')"
+            :message="deleteTarget ? t('system.dept.deleteConfirm', { name: deleteTarget.deptName }) : ''"
+            :confirm-text="t('common.delete')"
+            tone="danger"
+            :loading="deleteLoading"
+            @confirm="confirmRemove"
+        />
     </div>
 </template>
 
@@ -54,15 +63,18 @@ import { ElMessage } from 'element-plus';
 import { Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import BaseFeedbackDialog from '@/components/BaseFeedbackDialog.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type DeptItem } from '@/api/systemApi';
-import { confirmAction } from '@/utils/confirm';
 import { hasPermission } from '@/utils/permission';
 
 const { t } = useI18n();
 const loading = ref(false);
 const visible = ref(false);
+const deleteOpen = ref(false);
+const deleteLoading = ref(false);
+const deleteTarget = ref<DeptItem | null>(null);
 const showSearch = ref(true);
 const rows = ref<DeptItem[]>([]);
 const total = ref(0);
@@ -118,12 +130,25 @@ async function submit() {
     await loadData();
 }
 
-async function remove(row: DeptItem) {
-    const confirmed = await confirmAction(t('system.dept.deleteConfirm', { name: row.deptName }), t('common.deleteConfirmTitle'), { type: 'warning' });
-    if (!confirmed) return;
-    await systemApi.deleteDept(row.deptId);
-    ElMessage.success(t('common.deleteSuccess'));
-    await loadData();
+function remove(row: DeptItem) {
+    deleteTarget.value = row;
+    deleteOpen.value = true;
+}
+
+async function confirmRemove() {
+    if (!deleteTarget.value || deleteLoading.value) return;
+    deleteLoading.value = true;
+    try {
+        await systemApi.deleteDept(deleteTarget.value.deptId);
+        deleteOpen.value = false;
+        deleteTarget.value = null;
+        ElMessage.success(t('common.deleteSuccess'));
+        await loadData();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.deleteFailed'));
+    } finally {
+        deleteLoading.value = false;
+    }
 }
 
 onMounted(loadData);

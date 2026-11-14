@@ -64,8 +64,8 @@
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
         </el-row>
 
-        <StandardTable table-key="channel-payment-route" v-loading="loading" :data="rows" row-key="id" size="small">
-            <el-table-column :label="t('channel.route.rule')" min-width="230" align="left" fixed="left">
+        <StandardTable table-key="channel-payment-route-v2" v-loading="loading" :data="rows" row-key="id" size="small" class="route-table">
+            <el-table-column :label="t('channel.route.rule')" min-width="208" align="left" fixed="left">
                 <template #default="{ row }">
                     <div class="route-identity">
                         <span class="route-identity__name">{{ row.ruleName }}</span>
@@ -73,20 +73,24 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.route.ruleType')" width="112" align="center">
-                <template #default="{ row }"><el-tag size="small" effect="plain" :type="row.ruleType === 'FIXED' ? 'warning' : 'info'">{{ ruleTypeText(row.ruleType) }}</el-tag></template>
-            </el-table-column>
-            <el-table-column :label="t('channel.route.scopeType')" min-width="150" align="center">
+            <el-table-column :label="t('channel.route.strategySummary')" min-width="126" align="left">
                 <template #default="{ row }">
-                    <div class="route-scope">
-                        <el-tag size="small" effect="plain">{{ scopeTypeText(row.scopeType) }}</el-tag>
-                        <span v-if="row.merchantIds?.length" class="route-scope__merchant">
-                            {{ row.merchantIds[0] }}<template v-if="row.merchantIds.length > 1"> +{{ row.merchantIds.length - 1 }}</template>
-                        </span>
+                    <div class="route-strategy">
+                        <el-tag size="small" effect="plain" :type="row.ruleType === 'FIXED' ? 'warning' : 'info'">{{ ruleTypeText(row.ruleType) }}</el-tag>
+                        <span>{{ t('channel.route.priorityValue', { value: row.rulePriority }) }}</span>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.route.matchDimensions')" min-width="390" align="left">
+            <el-table-column :label="t('channel.route.scopeType')" min-width="194" align="left">
+                <template #default="{ row }">
+                    <div v-if="row.scopeType === 'GLOBAL'" class="route-scope route-scope--global">{{ t('channel.route.globalScopeShort') }}</div>
+                    <div v-else class="route-scope route-scope--merchant">
+                        <span v-for="merchantId in routeMerchantIds(row).slice(0, 2)" :key="merchantId">{{ merchantDisplayLabel(merchantId) }}</span>
+                        <small v-if="routeMerchantIds(row).length > 2">+{{ routeMerchantIds(row).length - 2 }}</small>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column :label="t('channel.route.matchDimensions')" min-width="168" align="left">
                 <template #default="{ row }">
                     <div class="dimension-summary">
                         <div class="dimension-summary__row">
@@ -111,20 +115,23 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="rulePriority" :label="t('channel.route.rulePriority')" width="110" align="center" />
-            <el-table-column :label="t('channel.route.candidateCountShort')" width="110" align="center">
-                <template #default="{ row }">{{ row.ruleType === 'HISTORY_AFFINITY' ? '-' : row.candidates?.length || 0 }}</template>
+            <el-table-column :label="t('channel.route.routeResult')" min-width="124" align="left">
+                <template #default="{ row }">
+                    <div class="route-result">
+                        <span>{{ row.ruleType === 'HISTORY_AFFINITY' ? t('channel.route.historyCandidateSource') : t('channel.route.candidateCountValue', { count: row.candidates?.length || 0 }) }}</span>
+                        <small>{{ policyText(row.unavailablePolicy) }}</small>
+                    </div>
+                </template>
             </el-table-column>
-            <el-table-column :label="t('channel.route.unavailablePolicy')" width="120" align="center">
-                <template #default="{ row }">{{ policyText(row.unavailablePolicy) }}</template>
+                    <el-table-column :label="t('channel.route.statusAndUpdate')" min-width="170" align="center">
+                <template #default="{ row }">
+                    <div class="route-status-time">
+                        <el-tag size="small" :type="statusTagType(row.ruleStatus)">{{ statusText(row.ruleStatus) }}</el-tag>
+                        <BaseDateTime :value="row.updateTime" />
+                    </div>
+                </template>
             </el-table-column>
-            <el-table-column :label="t('channel.common.status')" width="100" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusTagType(row.ruleStatus)">{{ statusText(row.ruleStatus) }}</el-tag></template>
-            </el-table-column>
-            <el-table-column :label="t('channel.common.updateTime')" min-width="170" align="center">
-                <template #default="{ row }"><BaseDateTime :value="row.updateTime" /></template>
-            </el-table-column>
-            <el-table-column :label="t('channel.common.operation')" width="170" align="center" fixed="right">
+            <el-table-column :label="t('channel.common.operation')" width="125" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'channel:route:detail'">{{ t('channel.common.detail') }}</el-button>
                     <el-dropdown v-if="hasMoreActions(row)" trigger="click" @command="(command: string) => handleRowCommand(command, row)">
@@ -170,9 +177,9 @@
                                 <el-descriptions-item :label="t('channel.route.scopeType')">{{ scopeTypeText(detailRow.scopeType) }}</el-descriptions-item>
                                 <el-descriptions-item :label="t('channel.route.merchant')">
                                     <div v-if="detailRow.merchantIds?.length" class="detail-merchants">
-                                        <el-tag v-for="merchantId in detailRow.merchantIds" :key="merchantId" size="small" effect="plain">{{ merchantId }}</el-tag>
+                                        <el-tag v-for="merchantId in detailRow.merchantIds" :key="merchantId" size="small" effect="plain">{{ merchantDisplayLabel(merchantId) }}</el-tag>
                                     </div>
-                                    <span v-else>{{ t('channel.route.allMerchants') }}</span>
+                                    <span v-else>{{ t('channel.route.globalScopeShort') }}</span>
                                 </el-descriptions-item>
                                 <el-descriptions-item :label="t('channel.route.unavailablePolicy')">{{ policyText(detailRow.unavailablePolicy) }}</el-descriptions-item>
                                 <el-descriptions-item :label="t('channel.route.rulePriority')">{{ detailRow.rulePriority }}</el-descriptions-item>
@@ -254,7 +261,7 @@
             </template>
         </CommonDetailDrawer>
 
-        <el-drawer v-model="formVisible" :title="formMode === 'create' ? t('channel.route.addTitle') : t('channel.route.editTitle')" size="min(1320px, 96vw)" append-to-body destroy-on-close class="app-form-drawer route-form-drawer" @closed="resetFormEditor">
+        <el-drawer v-model="formVisible" :title="formMode === 'create' ? t('channel.route.addTitle') : t('channel.route.editTitle')" size="min(1560px, 96vw)" append-to-body destroy-on-close class="app-form-drawer route-form-drawer" @closed="resetFormEditor">
             <el-form ref="formRef" :model="form" :rules="formRules" :validate-on-rule-change="false" label-width="118px" size="small" class="route-form">
                 <section class="route-form-section">
                     <div class="form-section__title">{{ t('channel.route.basicSection') }}</div>
@@ -326,7 +333,12 @@
                 <section class="route-form-section route-form-section--strategy">
                     <div class="form-section__title">{{ t('channel.route.strategySection') }}</div>
                     <div v-if="form.ruleType === 'HISTORY_AFFINITY'" class="history-config">
-                        <el-form-item :label="t('channel.route.historyLookbackMonths')"><el-input-number v-model="form.strategy.historyLookbackMonths" :min="1" :max="24" controls-position="right" /></el-form-item>
+                        <el-form-item :label="t('channel.route.historyLookbackMonths')">
+                            <div class="history-lookback-input">
+                                <el-input-number v-model="form.strategy.historyLookbackMonths" :min="1" :max="24" controls-position="right" />
+                                <span>{{ t('channel.route.monthUnit') }}</span>
+                            </div>
+                        </el-form-item>
                         <span>{{ t('channel.route.historyFallbackHint') }}</span>
                     </div>
                     <CandidateTransferWorkspace v-else v-model="form.candidates" :payment-scope-keys="form.paymentScopeKeys" :route-type="form.ruleType" :method-options="paymentScopeOptions" :channel-options="channelOptions" />
@@ -415,6 +427,7 @@ const pageSize = ref(20);
 const merchantLoading = ref(false);
 const merchantConflictLoading = ref(false);
 const merchantOptions = ref<MerchantInfo[]>([]);
+const merchantNameMap = ref(new Map<string, string>());
 const merchantConflictMap = ref(new Map<string, MerchantRouteRuleBrief[]>());
 const channelOptions = ref<ChannelOption[]>([]);
 const paymentMethodOptions = ref<SelectOption[]>([]);
@@ -569,6 +582,7 @@ async function loadData() {
         const result = await searchPaymentRouteRules({ ...criteria, paymentScopes: paymentScopeKeys.map(paymentScopeFromKey), pageNo: page.value, pageSize: pageSize.value });
         rows.value = result.records;
         total.value = result.total;
+        await hydrateMerchantNames(result.records.flatMap(routeMerchantIds));
     } catch (error) {
         await showChannelError(error, t('channel.route.loadFailedTitle'), t('channel.route.loadFailed'));
     } finally {
@@ -590,6 +604,7 @@ async function openDetail(row: PaymentRouteRule, targetTab = 'overview') {
     historyRows.value = [];
     try {
         detailRow.value = await getPaymentRouteRule(row.id);
+        await hydrateMerchantNames(routeMerchantIds(detailRow.value));
         if (targetTab === 'validation') await loadValidation();
         if (targetTab === 'history') await loadHistory();
     } catch (error) {
@@ -654,6 +669,7 @@ async function openForm(mode: FormMode, row?: PaymentRouteRule) {
                 remark: detail.remark || '',
                 operationReason: '',
             });
+            await hydrateMerchantNames(form.merchantIds);
             form.merchantIds.forEach((merchantId) => ensureMerchantOption(merchantId));
             await loadMerchantConflicts();
         } catch (error) {
@@ -859,6 +875,13 @@ async function submitCopy() {
 
 async function handleLifecycleAction(row: PaymentRouteRule, action: 'publish' | 'disable') {
     try {
+        if (action === 'publish') {
+            const validation = await validatePaymentRouteRule(row.id);
+            if (validation.issues.length > 0) {
+                await openDetail(row, 'validation');
+                return;
+            }
+        }
         const { value } = await ElMessageBox.prompt(
             t(action === 'publish' ? 'channel.route.publishConfirm' : 'channel.route.disableConfirm', { name: row.ruleName }),
             t('channel.common.operationConfirm'),
@@ -869,7 +892,9 @@ async function handleLifecycleAction(row: PaymentRouteRule, action: 'publish' | 
         ElMessage.success(t(action === 'publish' ? 'channel.route.published' : 'channel.route.disabledSuccess'));
         await loadData();
     } catch (error) {
-        if (!isDialogCancellation(error)) await showChannelError(error, t('channel.route.saveFailedTitle'), t('channel.route.saveFailed'));
+        if (!isDialogCancellation(error)) await showChannelError(error,
+            t(action === 'publish' ? 'channel.route.publishFailedTitle' : 'channel.route.disableFailedTitle'),
+            t(action === 'publish' ? 'channel.route.publishFailed' : 'channel.route.disableFailed'));
     }
 }
 
@@ -883,7 +908,7 @@ async function handleDelete(row: PaymentRouteRule) {
         ElMessage.success(t('channel.common.deleteSuccess'));
         await loadData();
     } catch (error) {
-        if (!isDialogCancellation(error)) await showChannelError(error, t('channel.route.saveFailedTitle'), t('channel.route.saveFailed'));
+        if (!isDialogCancellation(error)) await showChannelError(error, t('channel.route.deleteFailedTitle'), t('channel.route.deleteFailed'));
     }
 }
 
@@ -899,22 +924,51 @@ async function searchMerchantOptions(keyword: string) {
         const loaded = (await searchMerchants({ pageNo: 1, pageSize: 50, keyword: keyword.trim() || undefined })).records;
         merchantOptions.value = [...retained, ...loaded]
             .filter((item, index, items) => items.findIndex((candidate) => candidate.merchantId === item.merchantId) === index);
+        const names = new Map(merchantNameMap.value);
+        loaded.forEach((item) => names.set(item.merchantId, item.merchantName));
+        merchantNameMap.value = names;
     }
     finally { merchantLoading.value = false; }
 }
 function handleMerchantSelectVisible(visible: boolean) { if (visible && merchantOptions.value.length === 0) void searchMerchantOptions(''); }
-function merchantOptionLabel(item: MerchantInfo) { return `${item.merchantId} - ${item.merchantName}`; }
+function merchantOptionLabel(item: MerchantInfo) { return item.merchantName ? `${item.merchantId}（${item.merchantName}）` : item.merchantId; }
 function ensureMerchantOption(merchantId?: string, merchantName?: string) {
     if (!merchantId || merchantOptions.value.some((item) => item.merchantId === merchantId)) return;
-    merchantOptions.value.unshift({ merchantId, merchantName: merchantName || merchantId } as MerchantInfo);
+    const resolvedName = merchantName || merchantNameMap.value.get(merchantId);
+    merchantOptions.value.unshift({ merchantId, merchantName: resolvedName || '' } as MerchantInfo);
 }
 function routeMerchantIds(rule: Pick<PaymentRouteRule, 'merchantId' | 'merchantIds'>) {
     if (rule.merchantIds?.length) return [...new Set(rule.merchantIds.filter(Boolean))];
     return rule.merchantId ? [rule.merchantId] : [];
 }
+function merchantDisplayLabel(merchantId: string) {
+    const name = merchantNameMap.value.get(merchantId)
+        || merchantOptions.value.find((item) => item.merchantId === merchantId)?.merchantName;
+    return name ? `${merchantId}（${name}）` : merchantId;
+}
 function selectedMerchantLabel(merchantId: string) {
-    const merchant = merchantOptions.value.find((item) => item.merchantId === merchantId);
-    return merchant ? merchantOptionLabel(merchant) : merchantId;
+    return merchantDisplayLabel(merchantId);
+}
+
+async function hydrateMerchantNames(merchantIds: string[]) {
+    const ids = [...new Set(merchantIds.filter(Boolean))];
+    const missingIds = ids.filter((merchantId) => !merchantNameMap.value.has(merchantId));
+    if (missingIds.length === 0) return;
+    const results = await Promise.allSettled(missingIds.map(async (merchantId) => {
+        const result = await searchMerchants({ pageNo: 1, pageSize: 10, keyword: merchantId });
+        return result.records.find((item) => item.merchantId === merchantId);
+    }));
+    const names = new Map(merchantNameMap.value);
+    const resolved: MerchantInfo[] = [];
+    results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value) {
+            names.set(result.value.merchantId, result.value.merchantName);
+            resolved.push(result.value);
+        }
+    });
+    merchantNameMap.value = names;
+    merchantOptions.value = [...merchantOptions.value, ...resolved]
+        .filter((item, index, items) => items.findIndex((candidate) => candidate.merchantId === item.merchantId) === index);
 }
 
 function ruleTypeText(value?: string) { return ruleTypeOptions.value.find((item) => item.value === value)?.label || value || '-'; }
@@ -968,17 +1022,28 @@ function validationIssueText(issue: PaymentRouteValidationIssue) {
 </script>
 
 <style scoped>
-.route-identity { display: flex; min-width: 0; flex-direction: column; gap: 3px; padding: 2px 0; }
-.route-identity__name { overflow: hidden; color: var(--el-text-color-primary); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.route-identity__code { color: var(--el-text-color-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
-.route-scope { display: flex; min-width: 0; align-items: center; justify-content: center; gap: 6px; }
-.route-scope__merchant { overflow: hidden; color: var(--el-text-color-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.dimension-summary { display: grid; min-width: 0; gap: 7px; padding: 3px 0; }
-.dimension-summary__row { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: start; gap: 8px; }
-.dimension-summary__label { padding-top: 5px; color: var(--el-text-color-secondary); font-size: 11px; line-height: 18px; }
+.route-table :deep(.el-table__row td.el-table__cell) { padding: 10px 0; }
+.route-identity { display: flex; min-width: 0; flex-direction: column; gap: 5px; padding: 2px 0; }
+.route-identity__name { overflow: hidden; color: var(--el-text-color-primary); font-weight: 600; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.route-identity__code { overflow: hidden; color: var(--el-text-color-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.route-strategy { display: grid; align-items: start; justify-items: start; gap: 4px; }
+.route-strategy > span { color: var(--el-text-color-secondary); font-size: 11px; white-space: nowrap; }
+.route-scope { min-width: 0; color: var(--el-text-color-primary); font-size: 12px; line-height: 18px; }
+.route-scope--global { font-weight: 500; }
+.route-scope--merchant { display: grid; gap: 3px; }
+.route-scope--merchant span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-scope--merchant small { color: var(--el-text-color-secondary); }
+.dimension-summary { display: grid; min-width: 0; gap: 5px; padding: 1px 0; }
+.dimension-summary__row { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 8px; }
+.dimension-summary__label { color: var(--el-text-color-secondary); font-size: 11px; line-height: 18px; }
 .dimension-summary__values { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 5px; }
-.dimension-chip { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--el-border-color-lighter); border-radius: 4px; background: var(--el-bg-color); color: var(--el-text-color-regular); font-size: 12px; line-height: 22px; }
+.dimension-chip { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 1px 7px; border: 1px solid var(--el-border-color-lighter); border-radius: 4px; background: var(--el-bg-color); color: var(--el-text-color-regular); font-size: 12px; line-height: 20px; }
 .dimension-chip--detail { min-height: 32px; padding: 4px 10px; }
+.route-result, .route-status-time { display: grid; align-items: start; gap: 5px; }
+.route-result > span { color: var(--el-text-color-primary); font-size: 12px; font-weight: 500; }
+.route-result small { color: var(--el-text-color-secondary); font-size: 11px; }
+.route-status-time { grid-template-columns: max-content; }
+.route-status-time :deep(.base-date-time), .route-status-time > span:not(.el-tag) { color: var(--el-text-color-secondary); font-size: 11px; }
 .candidate-method-cell { display: inline-flex; align-items: center; gap: 7px; }
 .muted-text { color: var(--el-text-color-secondary); }
 .detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 0 16px; border-bottom: 1px solid var(--el-border-color-lighter); }
@@ -1018,7 +1083,7 @@ function validationIssueText(issue: PaymentRouteValidationIssue) {
 .selected-merchant__warning span { overflow: hidden; font-size: 11px; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
 .selected-merchant__ready { color: var(--el-color-success); font-size: 12px; }
 .route-form { display: grid; max-width: none; gap: 0; }
-.route-form-section { padding: 20px 0 4px; border-top: 1px solid var(--el-border-color-lighter); }
+.route-form-section { min-width: 0; padding: 20px 0 4px; border-top: 1px solid var(--el-border-color-lighter); }
 .route-form-section:first-child { padding-top: 0; border-top: 0; }
 .route-form-section--strategy { padding-bottom: 20px; }
 .route-form-section--last { padding-bottom: 4px; }
@@ -1032,6 +1097,10 @@ function validationIssueText(issue: PaymentRouteValidationIssue) {
 .history-config { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; align-items: center; gap: 24px; padding: 16px 18px; border: 1px solid var(--el-border-color); border-radius: 6px; background: var(--el-fill-color-lighter); }
 .history-config :deep(.el-form-item) { margin-bottom: 0; }
 .history-config span { color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.6; }
+.history-lookback-input { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; }
+.history-lookback-input :deep(.el-input-number) { width: 100%; }
+.history-lookback-input > span { display: flex; min-width: 52px; align-items: center; justify-content: center; border: 1px solid var(--el-border-color); border-left: 0; border-radius: 0 var(--el-border-radius-base) var(--el-border-radius-base) 0; background: var(--el-fill-color-light); color: var(--el-text-color-regular); font-size: 12px; }
+.history-lookback-input :deep(.el-input__wrapper) { border-radius: var(--el-border-radius-base) 0 0 var(--el-border-radius-base); }
 .history-priority-hint { display: flex; min-height: 32px; align-items: center; padding: 0 12px; border-left: 3px solid var(--el-color-primary); background: var(--el-color-primary-light-9); color: var(--el-text-color-regular); font-size: 12px; line-height: 1.5; }
 :deep(.route-form .el-input-number) { width: 100%; }
 .route-scope-tabs { width: min(100%, 360px); }

@@ -1,7 +1,8 @@
-import { createApp } from 'vue';
+import { createApp, reactive, watch } from 'vue';
 import { createPinia } from 'pinia';
 import ElementPlus from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import en from 'element-plus/es/locale/lang/en';
 import 'element-plus/dist/index.css';
 import { setupIdleLogout } from '@acquiring/shared';
 import App from './App.vue';
@@ -15,13 +16,22 @@ import { isPublicAuthPath } from './utils/auth-navigation';
 
 const app = createApp(App);
 const pinia = createPinia();
+const elementPlusConfig = reactive<{ locale: typeof zhCn | typeof en }>({ locale: zhCn });
+
+watch(
+    () => i18n.global.locale.value,
+    (locale) => {
+        elementPlusConfig.locale = locale === 'en-US' ? en : zhCn;
+    },
+    { immediate: true },
+);
 
 document.title = APP_TITLE;
 
 app.use(pinia);
 app.use(i18n);
 setupPermissionDirectives(app);
-app.use(router).use(ElementPlus, { locale: zhCn }).mount('#app');
+app.use(router).use(ElementPlus, elementPlusConfig).mount('#app');
 
 setupIdleLogout({
     readSession: () => useUserStore(pinia).authSession,

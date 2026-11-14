@@ -382,6 +382,31 @@ function go(path: string) {
   gap: 10px;
 }
 
+.module-card__top {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.module-card__top > .el-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  min-width: 72px;
+  height: 24px;
+  line-height: 1;
+}
+
+.module-card__top :deep(.el-tag__content) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  line-height: 1;
+  text-align: center;
+}
+
 .module-card__top span {
   display: block;
   color: var(--el-text-color-secondary);

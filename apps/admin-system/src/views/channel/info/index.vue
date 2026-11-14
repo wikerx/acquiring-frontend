@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElDialog, ElDrawer, ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
@@ -669,7 +669,7 @@ async function handleDelete(target?: ChannelInfo | ChannelInfo[]) {
         return;
     }
     try {
-        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: targets.map((item) => item.channelCnName).join('、') }), t('channel.common.delete'), { type: 'warning' });
+        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: targets.map((item) => item.channelCnName).join('、') }), t('channel.common.delete'), { type: 'error', icon: markRaw(Delete), confirmButtonText: t('channel.common.delete'), confirmButtonClass: 'feedback-danger-button' });
     } catch {
         return;
     }

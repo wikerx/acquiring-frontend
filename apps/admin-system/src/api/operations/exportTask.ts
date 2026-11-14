@@ -47,6 +47,7 @@ export type ExportTaskType =
     | 'ADMIN_SYSTEM_CONFIG'
     | 'ADMIN_MERCHANT_IP_WHITELIST'
     | 'ADMIN_RISK_CONFIG'
+    | 'ADMIN_TRADE_BLACK_RECORD'
     | 'ADMIN_DATASOURCE_SNAPSHOT';
 
 export interface ExportTaskQuery {

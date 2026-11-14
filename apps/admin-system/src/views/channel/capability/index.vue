@@ -246,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Check, Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { CurrencyDisplay, PaymentLogoGroup, TransactionTypeDisplay, type PaymentLogoKey } from '@acquiring/shared';
@@ -656,7 +656,7 @@ async function handleDelete(target?: ChannelCapability | ChannelCapability[]) {
         return;
     }
     try {
-        await ElMessageBox.confirm(t('channel.capability.deleteConfirm', { name: targets.map((item) => item.channelName).join('、') }), t('channel.common.delete'), { type: 'warning' });
+        await ElMessageBox.confirm(t('channel.capability.deleteConfirm', { name: targets.map((item) => item.channelName).join('、') }), t('channel.common.delete'), { type: 'error', icon: markRaw(Delete), confirmButtonText: t('channel.common.delete'), confirmButtonClass: 'feedback-danger-button' });
     } catch {
         return;
     }

@@ -71,7 +71,10 @@
                 <div class="transfer-layout">
                     <section class="transfer-panel" aria-labelledby="available-mid-title">
                         <header class="transfer-panel__header">
-                            <div><strong id="available-mid-title">{{ t('channel.route.availableMids') }}</strong><span>{{ t('channel.route.availableMidsHint') }}</span></div>
+                            <div>
+                                <strong id="available-mid-title">{{ t('channel.route.availableMids') }}</strong>
+                                <span>{{ t('channel.route.availableMidsHint') }}</span>
+                            </div>
                             <el-tag size="small" effect="plain">{{ availableTotal }}</el-tag>
                         </header>
                         <div class="transfer-panel__filters">
@@ -91,27 +94,27 @@
                             v-loading="availableLoading"
                             :data="availableRows"
                             row-key="id"
-                            height="330"
+                            height="280"
                             size="small"
                             :empty-text="availableQuery.channelId ? '-' : t('channel.route.selectChannelEmpty')"
                             @selection-change="availableSelection = $event"
                         >
-                            <el-table-column type="selection" width="44" align="center" :selectable="canSelectAvailable" />
-                            <el-table-column :label="t('channel.route.mid')" min-width="190" show-overflow-tooltip>
+                            <el-table-column type="selection" width="40" align="center" :selectable="canSelectAvailable" />
+                            <el-table-column :label="t('channel.route.mid')" min-width="180" align="left" show-overflow-tooltip>
                                 <template #default="{ row }"><div class="mid-identity"><strong>{{ row.midName || row.channelMid }}</strong><span>{{ row.channelMid }}</span></div></template>
                             </el-table-column>
-                            <el-table-column :label="t('channel.route.defaultTransactionCurrency')" width="118" align="center">
+                            <el-table-column :label="t('channel.route.defaultTransactionCurrency')" width="108" align="center">
                                 <template #default="{ row }"><CurrencyDisplay :currency="row.defaultTransactionCurrency" :locale="String(locale)" size="xs" variant="soft" /></template>
                             </el-table-column>
                         </el-table>
                         <div class="transfer-panel__pagination">
-                            <span class="transfer-panel__pagination-meta">{{ t('channel.route.selectedCount', { count: availableSelection.length }) }}</span>
+                            <span>{{ t('channel.route.selectedCount', { count: availableSelection.length }) }}</span>
                             <el-pagination
                                 v-model:current-page="availablePage"
                                 v-model:page-size="availablePageSize"
                                 :total="availableTotal"
                                 :page-sizes="[10, 20, 50]"
-                                layout="total, sizes, prev, pager, next"
+                                layout="total, prev, pager, next"
                                 size="small"
                                 background
                                 @size-change="loadAvailable"
@@ -127,8 +130,12 @@
 
                     <section class="transfer-panel" aria-labelledby="selected-mid-title">
                         <header class="transfer-panel__header">
-                            <div><strong id="selected-mid-title">{{ t('channel.route.selectedMids') }}</strong><span>{{ selectedHint }}</span></div>
+                            <div>
+                                <strong id="selected-mid-title">{{ t('channel.route.selectedMids') }}</strong>
+                                <span>{{ selectedHint }}</span>
+                            </div>
                             <div class="transfer-panel__header-actions">
+                                <span v-if="routeType === 'WEIGHT'" class="weight-total" :class="{ 'weight-total--valid': weightTotal === '100.00' }">{{ t('channel.route.weightTotal') }} {{ weightTotal }}%</span>
                                 <el-tag size="small" effect="plain">{{ activeCandidates.length }}</el-tag>
                                 <el-button v-if="routeType === 'WEIGHT' && activeCandidates.length" type="primary" link @click="equalizeWeights">{{ t('channel.route.equalWeight') }}</el-button>
                             </div>
@@ -137,25 +144,26 @@
                             <el-input v-model.trim="selectedKeyword" clearable :prefix-icon="Search" :placeholder="t('channel.route.selectedMidKeywordPlaceholder')" />
                             <el-button type="danger" plain :icon="Delete" :disabled="selectedSelection.length === 0" @click="removeSelected">{{ t('channel.route.batchRemove') }}</el-button>
                         </div>
-                        <el-table :data="selectedPageRows" row-key="midConfigId" height="330" size="small" @selection-change="selectedSelection = $event">
-                            <el-table-column type="selection" width="44" align="center" />
-                            <el-table-column :label="t('channel.route.selectedMid')" min-width="200" show-overflow-tooltip>
+                        <el-table :data="selectedPageRows" row-key="midConfigId" height="280" size="small" :empty-text="t('channel.route.noSelectedMids')" @selection-change="selectedSelection = $event">
+                            <el-table-column type="selection" width="40" align="center" />
+                            <el-table-column :label="t('channel.route.selectedMid')" min-width="190" align="left" show-overflow-tooltip>
                                 <template #default="{ row }"><div class="mid-identity"><strong>{{ row.midName || row.channelMid || row.midConfigId }}</strong><span>{{ candidateChannelText(row) }} · {{ row.channelMid || row.midConfigId }}</span></div></template>
                             </el-table-column>
                             <el-table-column v-if="routeType === 'PRIORITY'" :label="t('channel.route.candidatePriority')" width="104" align="center">
                                 <template #default="{ row, $index }">
                                     <div class="order-actions">
                                         <span>{{ absoluteIndex($index) + 1 }}</span>
-                                        <el-button :icon="ArrowUp" text circle :disabled="absoluteIndex($index) === 0" @click="moveCandidate(row, -1)" />
-                                        <el-button :icon="ArrowDown" text circle :disabled="absoluteIndex($index) === activeCandidates.length - 1" @click="moveCandidate(row, 1)" />
+                                        <el-button :icon="ArrowUp" text circle :title="t('table.moveUp')" :aria-label="t('table.moveUp')" :disabled="absoluteIndex($index) === 0" @click="moveCandidate(row, -1)" />
+                                        <el-button :icon="ArrowDown" text circle :title="t('table.moveDown')" :aria-label="t('table.moveDown')" :disabled="absoluteIndex($index) === activeCandidates.length - 1" @click="moveCandidate(row, 1)" />
                                     </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column v-else :label="t('channel.route.candidateWeight')" width="128" align="center">
+                            <el-table-column v-else :label="t('channel.route.candidateWeight')" width="112" align="center">
                                 <template #default="{ row }">
                                     <el-input
                                         class="weight-input"
                                         :model-value="row.candidateWeight"
+                                        :aria-label="t('channel.route.candidateWeightForMid', { mid: row.midName || row.channelMid || row.midConfigId })"
                                         inputmode="decimal"
                                         @input="stageWeight(row, String($event))"
                                         @change="updateWeight(row, String($event))"
@@ -166,14 +174,13 @@
                                     </el-input>
                                 </template>
                             </el-table-column>
-                            <el-table-column width="48" align="center">
+                            <el-table-column width="44" align="center">
                                 <template #default="{ row }"><el-button type="danger" :icon="Delete" circle text :title="t('channel.common.delete')" @click="removeOne(row)" /></template>
                             </el-table-column>
                         </el-table>
                         <div class="transfer-panel__pagination">
-                            <span v-if="routeType === 'WEIGHT'" class="transfer-panel__pagination-meta weight-total" :class="{ 'weight-total--valid': weightTotal === '100.00' }">{{ t('channel.route.weightTotal') }} {{ weightTotal }}%</span>
-                            <span v-else class="transfer-panel__pagination-meta">{{ t('channel.route.selectedCount', { count: selectedSelection.length }) }}</span>
-                            <el-pagination v-model:current-page="selectedPage" v-model:page-size="selectedPageSize" :total="filteredSelectedRows.length" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" size="small" background />
+                            <span>{{ t('channel.route.selectedCount', { count: selectedSelection.length }) }}</span>
+                            <el-pagination v-model:current-page="selectedPage" v-model:page-size="selectedPageSize" :total="filteredSelectedRows.length" layout="total, prev, pager, next" size="small" background />
                         </div>
                     </section>
                 </div>
@@ -442,7 +449,7 @@ function midOptionLabel(row: ChannelMidConfig) { return `${row.midName || row.ch
 </script>
 
 <style scoped>
-.candidate-configurator { min-width: 0; }
+.candidate-configurator { min-width: 0; container-type: inline-size; }
 .method-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--el-border-color); gap: 4px; }
 .method-tab { display: inline-flex; min-width: max-content; height: 42px; align-items: center; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--el-text-color-regular); cursor: pointer; gap: 8px; padding: 0 14px; }
 .method-tab:hover, .method-tab--active { color: var(--el-color-primary); }
@@ -461,24 +468,24 @@ function midOptionLabel(row: ChannelMidConfig) { return `${row.midName || row.ch
 .mid-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .mid-option > span { display: flex; min-width: 0; flex-direction: column; }
 .mid-option small { color: var(--el-text-color-secondary); }
-.transfer-toolbar { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--el-border-color-lighter); border-radius: 6px; background: var(--el-fill-color-lighter); }
+.transfer-toolbar { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--el-border-color-lighter); border-radius: 8px; background: var(--el-fill-color-light); }
 .transfer-toolbar__channel { display: grid; width: min(100%, 480px); grid-template-columns: auto minmax(260px, 1fr); align-items: center; gap: 12px; color: var(--el-text-color-primary); font-size: 13px; font-weight: 600; }
 .transfer-toolbar__channel .el-select { width: 100%; }
-.transfer-toolbar__hint { color: var(--el-text-color-secondary); font-size: 12px; }
-.transfer-layout { display: grid; grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr); align-items: stretch; gap: 16px; }
-.transfer-panel { display: grid; min-width: 0; overflow: hidden; grid-template-rows: 60px 52px 330px 58px; border: 1px solid var(--el-border-color); border-radius: 8px; background: var(--el-bg-color); box-shadow: 0 1px 2px rgb(15 23 42 / 4%); }
-.transfer-panel__header { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--el-border-color-lighter); }
-.transfer-panel__header div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.transfer-toolbar__hint { color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.5; text-align: right; }
+.transfer-layout { display: grid; grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr); align-items: stretch; gap: 14px; }
+.transfer-panel { display: grid; min-width: 0; overflow: hidden; grid-template-rows: 64px 50px 280px 50px; border: 1px solid var(--el-border-color); border-radius: 8px; background: var(--el-bg-color); box-shadow: 0 1px 2px rgb(15 23 42 / 4%); }
+.transfer-panel__header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--el-border-color-lighter); }
+.transfer-panel__header > div:first-child { display: grid; min-width: 0; gap: 3px; }
 .transfer-panel__header strong { color: var(--el-text-color-primary); font-size: 14px; }
-.transfer-panel__header span { color: var(--el-text-color-secondary); font-size: 12px; }
-.transfer-panel__header-actions { align-items: center !important; flex-direction: row !important; gap: 8px !important; }
-.transfer-panel__filters { display: grid; grid-template-columns: minmax(180px, 1fr) 32px; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--el-border-color-lighter); }
-.transfer-panel__filters--selected { grid-template-columns: minmax(180px, 1fr) auto; }
-.transfer-panel__pagination { display: grid; min-width: 0; min-height: 58px; grid-template-columns: minmax(72px, auto) minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--el-border-color-lighter); color: var(--el-text-color-secondary); font-size: 12px; }
-.transfer-panel__pagination-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transfer-panel__header span { overflow: hidden; color: var(--el-text-color-secondary); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.transfer-panel__header-actions { display: flex; min-width: fit-content; align-items: center; gap: 8px; }
+.transfer-panel__header-actions .el-button { margin: 0; }
+.transfer-panel__filters { display: grid; grid-template-columns: minmax(160px, 1fr) 32px; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--el-border-color-lighter); background: var(--el-fill-color-extra-light); }
+.transfer-panel__filters--selected { grid-template-columns: minmax(160px, 1fr) auto; }
+.transfer-panel__pagination { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--el-border-color-lighter); color: var(--el-text-color-secondary); font-size: 12px; }
 .transfer-panel__pagination :deep(.el-pagination) { min-width: 0; justify-content: flex-end; }
-.transfer-actions { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
-.transfer-actions .el-button { width: 84px; margin: 0; }
+.transfer-actions { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.transfer-actions .el-button { width: auto; min-width: 132px; margin: 0; white-space: nowrap; }
 .transfer-actions .el-button + .el-button { margin-left: 0; }
 .mid-identity { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .mid-identity strong, .mid-identity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -488,17 +495,25 @@ function midOptionLabel(row: ChannelMidConfig) { return `${row.midName || row.ch
 .order-actions .el-button { width: 26px; height: 26px; }
 .weight-total { color: var(--el-color-danger); font-size: 12px; font-weight: 600; }
 .weight-total--valid { color: var(--el-color-success); }
-:deep(.transfer-panel .el-table__header-wrapper th.el-table__cell) { height: 44px; }
-:deep(.transfer-panel .el-table__body-wrapper td.el-table__cell) { height: 56px; }
-:deep(.transfer-panel .el-table__empty-block) { min-height: 286px; }
+:deep(.transfer-panel .el-table__header-wrapper th.el-table__cell) { height: 40px; background: var(--el-fill-color-light); }
+:deep(.transfer-panel .el-table__body-wrapper td.el-table__cell) { height: 52px; }
+:deep(.transfer-panel .el-table__empty-block) { min-height: 236px; }
 :deep(.weight-input .el-input__inner) { text-align: right; }
 :deep(.transfer-panel .el-input-group__append) { padding: 0 8px; }
-@media (max-width: 1180px) {
+@container (max-width: 1180px) {
     .transfer-layout { grid-template-columns: 1fr; }
     .transfer-actions { flex-direction: row; padding: 2px 0; }
     .transfer-actions :deep(.el-icon) { transform: rotate(90deg); }
-    .fixed-target__selectors, .fixed-target__current { grid-template-columns: 1fr; }
     .transfer-toolbar { align-items: stretch; flex-direction: column; gap: 8px; }
     .transfer-toolbar__channel { width: 100%; }
+    .transfer-toolbar__hint { text-align: left; }
+    .fixed-target__selectors, .fixed-target__current { grid-template-columns: 1fr; }
+}
+@container (max-width: 640px) {
+    .transfer-toolbar__channel { grid-template-columns: 1fr; }
+    .transfer-panel__header { align-items: flex-start; flex-direction: column; }
+    .transfer-panel__header-actions { width: 100%; justify-content: space-between; }
+    .transfer-panel__pagination { align-items: flex-start; flex-direction: column; }
+    .transfer-panel__pagination :deep(.el-pagination) { justify-content: flex-start; }
 }
 </style>

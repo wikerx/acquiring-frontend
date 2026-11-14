@@ -1,7 +1,8 @@
-import { createApp } from 'vue';
+import { createApp, reactive, watch } from 'vue';
 import { createPinia } from 'pinia';
 import ElementPlus from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import en from 'element-plus/es/locale/lang/en';
 import 'element-plus/dist/index.css';
 import { setupIdleLogout, VEXRA_BRAND } from '@acquiring/shared';
 import App from './App.vue';
@@ -14,8 +15,17 @@ import './styles/main.css';
 document.title = VEXRA_BRAND.systems.merchant.title;
 
 const pinia = createPinia();
+const elementPlusConfig = reactive<{ locale: typeof zhCn | typeof en }>({ locale: zhCn });
 
-createApp(App).use(pinia).use(router).use(i18n).use(ElementPlus, { locale: zhCn }).mount('#app');
+watch(
+    () => i18n.global.locale.value,
+    (locale) => {
+        elementPlusConfig.locale = locale === 'en-US' ? en : zhCn;
+    },
+    { immediate: true },
+);
+
+createApp(App).use(pinia).use(router).use(i18n).use(ElementPlus, elementPlusConfig).mount('#app');
 
 setupIdleLogout({
     readSession: () => useAuthStore(pinia).session,

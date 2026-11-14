@@ -27,7 +27,18 @@
                 @logout="handleLogout"
             />
             <TopNav v-if="settings.layoutMode === 'top'" :menus="permission.menus" :nav-theme="settings.sideTheme" />
-            <TagsView v-if="settings.showTagsView" :tags="tags.visitedViews" :tags-view-style="settings.tagsViewStyle" @close="handleCloseTag" @close-others="handleCloseOthers" @close-all="handleCloseAll" />
+            <TagsView
+                v-if="settings.showTagsView"
+                :tags="tags.visitedViews"
+                :tags-view-style="settings.tagsViewStyle"
+                @close="handleCloseTag"
+                @close-left="handleCloseLeft"
+                @close-right="handleCloseRight"
+                @close-others="handleCloseOthers"
+                @close-all="handleCloseAll"
+                @pin="tags.pinView"
+                @unpin="tags.unpinView"
+            />
             <main class="layout-content">
                 <RouterView />
             </main>
@@ -87,18 +98,32 @@ function handleOpenProfile() {
 }
 
 function handleCloseTag(path: string) {
-    tags.removeView(path);
-    if (route.path === path) {
+    const removed = tags.removeView(path);
+    if (removed && route.path === path) {
         const latest = tags.visitedViews[tags.visitedViews.length - 1];
         router.push(latest?.path || '/dashboard');
     }
 }
 
+function ensureActiveView(fallbackPath: string) {
+    if (!tags.visitedViews.some((view) => view.path === route.path)) {
+        router.push(fallbackPath);
+    }
+}
+
+function handleCloseLeft(path: string) {
+    tags.clearLeft(path);
+    ensureActiveView(path);
+}
+
+function handleCloseRight(path: string) {
+    tags.clearRight(path);
+    ensureActiveView(path);
+}
+
 function handleCloseOthers(path: string) {
     tags.clearOthers(path);
-    if (!tags.visitedViews.some((v) => v.path === route.path)) {
-        router.push(path);
-    }
+    ensureActiveView(path);
 }
 
 function handleCloseAll() {

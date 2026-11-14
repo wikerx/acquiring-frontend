@@ -14,15 +14,13 @@
             </el-select>
           </el-form-item>
           <el-form-item :label="t('exportTask.createTime')" class="export-task-time-item">
-            <el-date-picker
+            <TransactionTimeRangeFilter
               v-model="createdRange"
-              type="datetimerange"
-              :clearable="false"
-              value-format="YYYY-MM-DDTHH:mm:ss"
-              format="YYYY-MM-DD HH:mm:ss"
-              :range-separator="t('common.to')"
-              :start-placeholder="t('common.startTime')"
-              :end-placeholder="t('common.endTime')"
+              v-model:time-zone="createdTimeZone"
+              v-model:preset="createdPreset"
+              :timezone-options="createdTimezoneOptions"
+              time-zone-disabled
+              default-preset="today"
             />
           </el-form-item>
           <el-form-item class="merchant-search-actions export-task-search-actions">
@@ -194,7 +192,13 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { hasPermission } from '@/utils/permission';
-import { defaultTodayFullDayRange } from '@/pages/transaction/shared';
+import TransactionTimeRangeFilter from '@/pages/transaction/components/TransactionTimeRangeFilter.vue';
+import {
+  DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+  defaultTransactionTodayRange,
+  ensureTransactionTimezoneOptions,
+  resolveTransactionQueryRange,
+} from '@/pages/transaction/shared';
 
 const POLL_INTERVAL_MILLIS = 10_000;
 const taskTypeOptions: MerchantExportTaskType[] = [
@@ -236,7 +240,11 @@ const detailVisible = ref(false);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
-const createdRange = ref<string[]>(defaultTodayFullDayRange());
+const createdTimeZone = ref(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
+const createdPreset = ref('today');
+const createdRange = ref<string[]>(defaultTransactionTodayRange(createdTimeZone.value));
+const createdTimezoneOptions = ensureTransactionTimezoneOptions([])
+  .filter((item) => item.value === DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
 const query = reactive<MerchantExportTaskQuery>({ taskType: '', status: '' });
 const canDetail = computed(() => hasPermission('merchant:operations:export-task:detail'));
 const canDownload = computed(() => hasPermission('merchant:operations:export-task:download'));
@@ -258,6 +266,7 @@ onBeforeUnmount(() => {
 });
 
 function buildQuery(): MerchantExportTaskQuery {
+  createdRange.value = resolveTransactionQueryRange(createdRange.value, createdPreset.value, createdTimeZone.value);
   return {
     taskType: query.taskType || undefined,
     status: query.status || undefined,
@@ -293,7 +302,9 @@ function applyQuery() {
 function resetQuery() {
   query.taskType = '';
   query.status = '';
-  createdRange.value = defaultTodayFullDayRange();
+  createdTimeZone.value = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+  createdPreset.value = 'today';
+  createdRange.value = defaultTransactionTodayRange(createdTimeZone.value);
   applyQuery();
 }
 
@@ -466,7 +477,7 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 
 .export-task-search-form__fields {
   display: grid;
-  grid-template-columns: max-content max-content minmax(385px, 1fr) max-content;
+  grid-template-columns: max-content max-content minmax(0, 760px) minmax(max-content, 1fr);
   align-items: center;
   gap: 8px 12px;
   width: 100%;
@@ -484,9 +495,13 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   min-width: 0;
 }
 
-.export-task-time-item :deep(.el-form-item__content),
-.export-task-time-item :deep(.el-date-editor) {
+.export-task-time-item :deep(.el-form-item__content) {
   width: 100%;
+  min-width: 0;
+}
+
+.export-task-time-item :deep(.transaction-time-range-filter) {
+  max-width: 760px;
 }
 
 .export-task-search-actions {
@@ -555,17 +570,19 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   margin-top: 18px;
 }
 
-@container (max-width: 1000px) {
+@container (max-width: 1400px) {
   .export-task-search-form__fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   }
 
   .export-task-time-item {
     grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .export-task-search-actions {
-    grid-column: 1 / -1;
+    grid-column: 4;
+    grid-row: 1;
   }
 }
 
@@ -577,6 +594,7 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   .export-task-time-item,
   .export-task-search-actions {
     grid-column: auto;
+    grid-row: auto;
   }
 
   .export-task-search-form :deep(.el-select),

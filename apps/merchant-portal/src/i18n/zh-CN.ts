@@ -12,6 +12,7 @@ export default {
     add: '新增',
     edit: '编辑',
     delete: '删除',
+    deleteFailed: '删除失败',
     detail: '详情',
     save: '保存',
     cancel: '取消',
