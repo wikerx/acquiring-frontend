@@ -27,6 +27,7 @@
     "build:cashier": "npm run build:checkout",
     "test:amount": "npm --workspace @acquiring/shared run test:amount",
     "test:e2e:merchant": "playwright test e2e/merchant-transaction-notification.spec.ts",
+    "test:governance:file-templates": "node scripts/verify-file-template-governance.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint apps packages --max-warnings=0",
     "format": "prettier --write \"{apps,packages}/**/*.{ts,vue,css,md,json}\""

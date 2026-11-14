@@ -102,7 +102,11 @@ async function submit() {
     await loadData();
 }
 async function remove(row: PostItem) {
-    const confirmed = await confirmAction(t('system.post.deleteConfirm', { name: row.postName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.post.deleteConfirm', { name: row.postName }), t('common.deleteConfirmTitle'), {
+        type: 'error',
+        confirmButtonText: t('common.delete'),
+        confirmButtonClass: 'feedback-danger-button',
+    });
     if (!confirmed) return;
     await systemApi.deletePost(row.postId);
     ElMessage.success(t('common.deleteSuccess'));

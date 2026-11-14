@@ -10,8 +10,14 @@
                         <el-option :label="t('common.disabled')" :value="0" />
                     </el-select>
                 </el-form-item>
-                <el-form-item :label="t('system.role.createdTime')">
-                    <el-date-picker v-model="query.createdRange" type="daterange" :start-placeholder="t('system.role.startDate')" :end-placeholder="t('system.role.endDate')" value-format="YYYY-MM-DD" clearable />
+                <el-form-item :label="t('system.role.createdTime')" class="role-time-form-item">
+                    <TransactionTimeRangeFilter
+                        v-model="createdRange"
+                        v-model:time-zone="createdTimeZone"
+                        v-model:preset="createdPreset"
+                        :timezone-options="createdTimezoneOptions"
+                        time-zone-disabled
+                    />
                 </el-form-item>
                 <el-form-item class="merchant-search-actions">
                     <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
@@ -239,6 +245,12 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { systemApi, type RoleGrantNode, type RoleItem } from '@/api/systemApi';
+import TransactionTimeRangeFilter from '@/pages/transaction/components/TransactionTimeRangeFilter.vue';
+import {
+    DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
+    ensureTransactionTimezoneOptions,
+    resolveTransactionQueryRange,
+} from '@/pages/transaction/shared';
 import { confirmAction } from '@/utils/confirm';
 import { resolveMerchantMenuLabel } from '@/utils/menu';
 import { hasAnyPermission, hasPermission } from '@/utils/permission';
@@ -278,7 +290,12 @@ const rows = ref<RoleItem[]>([]);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
-const query = reactive<{ roleName?: string; roleCode?: string; status?: number; createdRange?: [string, string] }>({});
+const query = reactive<{ roleName?: string; roleCode?: string; status?: number }>({});
+const createdTimeZone = ref(DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
+const createdPreset = ref('');
+const createdRange = ref<string[]>([]);
+const createdTimezoneOptions = ensureTransactionTimezoneOptions([])
+    .filter((item) => item.value === DEFAULT_TRANSACTION_QUERY_TIME_ZONE);
 const form = reactive<RoleForm>({ roleCode: '', roleName: '', dataScope: 'SELF', description: '', status: 1, sortNo: 100 });
 const formRef = ref<FormInstance>();
 const grantTreeRef = ref<InstanceType<typeof ElTree>>();
@@ -355,14 +372,15 @@ onMounted(loadData);
 async function loadData() {
     loading.value = true;
     try {
+        createdRange.value = resolveTransactionQueryRange(createdRange.value, createdPreset.value, createdTimeZone.value);
         const result = await systemApi.pageRoles({
             pageNo: page.value,
             pageSize: pageSize.value,
             roleName: query.roleName?.trim() || undefined,
             roleCode: query.roleCode?.trim() || undefined,
             status: query.status,
-            createdStartTime: query.createdRange?.[0],
-            createdEndTime: query.createdRange?.[1],
+            createdStartTime: createdRange.value[0],
+            createdEndTime: createdRange.value[1],
         });
         rows.value = result.records;
         total.value = result.total;
@@ -383,7 +401,9 @@ function resetQuery() {
     query.roleName = undefined;
     query.roleCode = undefined;
     query.status = undefined;
-    query.createdRange = undefined;
+    createdTimeZone.value = DEFAULT_TRANSACTION_QUERY_TIME_ZONE;
+    createdPreset.value = '';
+    createdRange.value = [];
     applyQuery();
 }
 
@@ -498,7 +518,11 @@ async function changeStatus(row: RoleItem) {
 
 async function remove(row: RoleItem) {
     if (isSystemRole(row)) return;
-    const confirmed = await confirmAction(t('system.role.deleteConfirm', { name: row.roleName }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.role.deleteConfirm', { name: row.roleName }), t('common.deleteConfirmTitle'), {
+        type: 'error',
+        confirmButtonText: t('common.delete'),
+        confirmButtonClass: 'feedback-danger-button',
+    });
     if (!confirmed) return;
     await systemApi.deleteRole(row.roleId);
     ElMessage.success(t('common.deleteSuccess'));
@@ -663,8 +687,18 @@ function tagType(value?: string) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-date-editor) {
-    width: 240px;
+.role-time-form-item {
+    flex: 1 1 760px;
+    max-width: 100%;
+}
+
+.role-time-form-item :deep(.el-form-item__content) {
+    width: 100%;
+    min-width: 0;
+}
+
+.role-time-form-item :deep(.transaction-time-range-filter) {
+    max-width: 760px;
 }
 
 .role-desc {

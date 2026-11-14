@@ -359,7 +359,11 @@ async function toggleStatus(row: AccountItem) {
 }
 
 async function remove(row: AccountItem) {
-    const confirmed = await confirmAction(t('system.account.deleteConfirm', { name: row.loginAccount }), t('common.deleteConfirmTitle'), { type: 'warning' });
+    const confirmed = await confirmAction(t('system.account.deleteConfirm', { name: row.loginAccount }), t('common.deleteConfirmTitle'), {
+        type: 'error',
+        confirmButtonText: t('common.delete'),
+        confirmButtonClass: 'feedback-danger-button',
+    });
     if (!confirmed) return;
     await systemApi.deleteAccount(row.accountId);
     ElMessage.success(t('common.deleteSuccess'));
