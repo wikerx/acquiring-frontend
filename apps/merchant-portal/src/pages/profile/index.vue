@@ -3,7 +3,8 @@
         <section class="merchant-profile-info">
             <div class="merchant-profile-card__header">{{ t('profile.infoTitle') }}</div>
             <div class="merchant-profile-info__identity">
-                <span class="merchant-profile-info__avatar" :aria-label="t('profile.avatarAlt')">{{ avatarText }}</span>
+                <span class="merchant-profile-info__avatar"><PrivateImage :version="account?.avatarVersion" :load="loadAvatar" :alt="t('media.avatar')" :fallback="avatarText" round preview /></span>
+                <el-button link type="primary" @click="openAvatar">{{ t('media.changeAvatar') }}</el-button>
                 <strong>{{ displayName }}</strong>
                 <small>{{ account?.loginAccount || '-' }}</small>
             </div>
@@ -13,7 +14,7 @@
                         <el-icon><component :is="item.icon" /></el-icon>
                         <span>{{ item.label }}</span>
                     </dt>
-                    <dd>{{ item.value || '-' }}</dd>
+                    <dd :title="String(item.value || '-')"><BaseDateTime v-if="item.icon === Calendar" :value="item.value" /><template v-else>{{ item.value || '-' }}</template></dd>
                 </div>
             </dl>
         </section>
@@ -80,6 +81,13 @@
                 </el-tab-pane>
             </el-tabs>
         </section>
+        <el-dialog v-model="avatarDialog" :title="t('media.avatar')" width="min(520px, calc(100vw - 32px))" :close-on-click-modal="!avatarSaving" :close-on-press-escape="!avatarSaving" :show-close="!avatarSaving" destroy-on-close>
+            <ImagePicker v-model="avatarFile" v-model:removed="avatarRemoved" :version="account?.avatarVersion" :load="loadAvatar" :disabled="avatarSaving" :processing="avatarSaving" :error-message="avatarError" round />
+            <template #footer><div class="dialog-footer">
+                <el-button type="primary" :loading="avatarSaving" :disabled="!avatarFile && !avatarRemoved" @click="submitAvatar">{{ avatarSaving ? t('media.saving') : t('media.save') }}</el-button>
+                <el-button :disabled="avatarSaving" @click="avatarDialog = false">{{ t('media.cancel') }}</el-button>
+            </div></template>
+        </el-dialog>
     </div>
 </template>
 
@@ -91,6 +99,9 @@ import { Calendar, CollectionTag, Iphone, Message, OfficeBuilding, User, UserFil
 import { useI18n } from 'vue-i18n';
 import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { changePassword, currentUser, updateProfile } from '@/api/authApi';
+import { PrivateImage, ImagePicker, BusinessResultError, userFacingErrorMessage } from '@acquiring/shared';
+import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import { loadAvatar, saveAvatar } from '@/api/authApi';
 import VerificationCodeInput from '@/components/VerificationCodeInput/index.vue';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -98,6 +109,28 @@ const router = useRouter();
 const auth = useAuthStore();
 const { t, locale } = useI18n();
 
+const avatarDialog = ref(false);
+const avatarFile = ref<File | null>(null);
+const avatarRemoved = ref(false);
+const avatarSaving = ref(false);
+const avatarError = ref('');
+watch([avatarFile, avatarRemoved], () => { avatarError.value = ''; });
+function openAvatar() { avatarFile.value = null; avatarRemoved.value = false; avatarError.value = ''; avatarDialog.value = true; }
+async function submitAvatar() {
+    if (avatarSaving.value || (!avatarFile.value && !avatarRemoved.value)) return;
+    avatarSaving.value = true; avatarError.value = '';
+    try {
+        const currentAccount = account.value;
+        const version = await saveAvatar(avatarFile.value);
+        if (currentAccount && currentAccount === account.value) currentAccount.avatarVersion = version;
+        avatarDialog.value = false; ElMessage.success(t('media.saved'));
+    } catch (error) {
+        avatarError.value = error instanceof BusinessResultError && error.resultCode === 'F500'
+            ? t('media.serviceUnavailable')
+            : userFacingErrorMessage(error, t('media.failed'));
+    }
+    finally { avatarSaving.value = false; }
+}
 const activeTab = ref('basic');
 const basicFormRef = ref<FormInstance>();
 const passwordFormRef = ref<FormInstance>();
@@ -509,4 +542,12 @@ function buildAvatarText(value: string) {
         margin-left: 0 !important;
     }
 }
+</style>
+
+<style scoped>
+.merchant-profile-info__item { grid-template-columns: 96px minmax(0, 1fr); padding: 10px 0; font-size: 14px; line-height: 1.6; }
+.merchant-profile-info__item dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.merchant-profile-info__identity strong { max-width: 100%; text-align: center; overflow-wrap: anywhere; }
+.merchant-profile-info__item :deep(.base-date-time) { white-space: normal; }
+.avatar-error { color: var(--el-color-danger); font-size: 14px; }
 </style>

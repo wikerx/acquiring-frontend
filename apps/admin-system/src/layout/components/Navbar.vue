@@ -28,7 +28,7 @@
             >
                 <template #reference>
                     <button class="user-trigger" type="button" :aria-label="$t('layout.userMenu')">
-                        <span class="user-trigger__avatar">{{ avatarText }}</span>
+                        <span class="user-trigger__avatar"><PrivateImage :version="userStore.account?.avatarVersion" :load="loadAvatar" :alt="t('media.avatar')" :fallback="avatarText" round /></span>
                         <span class="user-trigger__name">{{ displayName }}</span>
                         <el-icon class="user-trigger__arrow" :class="{ 'is-open': menuVisible }">
                             <ArrowDown />
@@ -37,7 +37,7 @@
                 </template>
                 <div class="user-menu">
                     <div class="user-menu__summary">
-                        <span class="user-menu__avatar">{{ avatarText }}</span>
+                        <span class="user-menu__avatar"><PrivateImage :version="userStore.account?.avatarVersion" :load="loadAvatar" :alt="t('media.avatar')" :fallback="avatarText" round /></span>
                         <div class="user-menu__identity">
                             <div class="user-menu__title">{{ displayName }}</div>
                             <div v-if="loginAccount" class="user-menu__account">{{ loginAccount }}</div>
@@ -84,6 +84,9 @@
 </template>
 
 <script setup lang="ts">
+import { PrivateImage } from '@acquiring/shared';
+import { useUserStore } from '@/store/modules/user';
+import { loadAvatar } from '@/api/auth';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowDown, Document, Expand, Fold, FullScreen, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -91,6 +94,7 @@ import Breadcrumb from './Breadcrumb.vue';
 import LanguageSwitch from '@/components/LanguageSwitch/index.vue';
 import SettingsPanel from '@/components/SettingsPanel/index.vue';
 
+const userStore = useUserStore();
 const settingsPanelRef = ref<InstanceType<typeof SettingsPanel>>();
 const menuVisible = ref(false);
 const isFullscreen = ref(false);

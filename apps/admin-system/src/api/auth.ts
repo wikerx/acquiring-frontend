@@ -169,3 +169,17 @@ export async function completeAccountActivationApi(
     );
     return unwrapResult(result.data);
 }
+
+
+export async function loadAvatar(): Promise<Blob> {
+    return (await http.get<Blob>('/admin/auth/avatar', { responseType: 'blob' })).data;
+}
+export async function saveAvatar(file: File | null): Promise<string | null> {
+    if (!file) {
+        const response = await http.delete<CommonResult<void>>('/admin/auth/avatar');
+        unwrapResult(response.data); return null;
+    }
+    const data = new FormData(); data.append('file', file);
+    const response = await http.post<CommonResult<string>>('/admin/auth/avatar', data);
+    return unwrapResult(response.data);
+}

@@ -1,6 +1,43 @@
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+  media: {
+    "serviceUnavailable": "图片安全检查或保存服务暂不可用，请稍后重试。",
+    "choose": "选择图片",
+    "remove": "移除",
+    "preview": "图片预览",
+    "hint": "支持 PNG、JPEG · 单张最大 2 MB",
+    "cropHint": "头像将居中裁剪为正方形，并以圆形显示。",
+    "invalid": "请选择不超过 2 MiB 的有效 PNG 或 JPEG 图片。",
+    "avatar": "个人头像",
+    "changeAvatar": "更换头像",
+    "save": "保存头像",
+    "saving": "正在检查并保存…",
+    "cancel": "取消",
+    "saved": "头像已更新",
+    "failed": "图片保存失败，请重试",
+    "logo": "渠道 Logo",
+    "saveFailed": "图片保存失败，请稍后重试",
+    "dropImage": "将图片拖拽到此处，或点击选择图片",
+    "replace": "更换图片",
+    "currentImage": "当前图片",
+    "previewHint": "点击缩略图可预览",
+    "selected": "已选择 · 待上传",
+    "uploaded": "已上传",
+    "validating": "正在校验图片…",
+    "removePending": "保存后移除当前图片",
+    "saveHint": "选择后预览，保存时上传并完成安全校验",
+    "singleFile": "一次只能选择一张图片。",
+    "validation": {
+        "empty": "图片为空，请重新选择。",
+        "size": "图片超过 2 MB，请压缩后重试。",
+        "unsupported": "文件实际格式为 {actual}。仅支持 PNG/JPEG，请重新导出后上传。",
+        "extension": "文件实际格式为 {actual}，与文件扩展名不一致，请使用正确的图片文件。",
+        "content": "无法识别有效的 PNG/JPEG 图片，文件可能已损坏。",
+        "mime": "文件声明类型与实际的 {actual} 内容不一致，请重新导出图片。",
+        "read": "读取图片失败，请重新选择文件。"
+    }
+},
     refundForm: refundMessagesZh,
   feedback: {
     importTitle: '导入{name}',

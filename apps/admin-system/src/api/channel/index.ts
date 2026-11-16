@@ -6,6 +6,7 @@ export interface ChannelInfo {
     id: number;
     channelCode: string;
     channelCnName: string;
+    logoVersion?: string | null;
     channelEnName: string;
     channelStatus: number;
     supportAcquiring: number;
@@ -556,4 +557,19 @@ export async function validatePaymentRouteRule(id: number) {
 export async function searchPaymentRouteChangeLogs(id: number, data: PageQuery & { actionType?: string }) {
     const result = await http.post<CommonResult<PageResult<PaymentRouteChangeLog>>>(`/admin/channel/routes/${id}/change-logs/search`, data);
     return unwrapResult(result.data);
+}
+
+
+export async function loadChannelLogo(id: number): Promise<Blob> {
+    return (await http.get<Blob>(`/admin/channel/info/${id}/logo`, { responseType: 'blob' })).data;
+}
+export async function saveChannelWithLogo(id: number | null, metadata: Partial<ChannelInfo>, file: File | null, removeLogo = false): Promise<ChannelInfo> {
+    const data = new FormData();
+    data.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    if (file) data.append('file', file);
+    data.append('removeLogo', String(removeLogo));
+    const response = id === null
+        ? await http.post<CommonResult<ChannelInfo>>('/admin/channel/info/with-logo', data)
+        : await http.put<CommonResult<ChannelInfo>>(`/admin/channel/info/${id}/with-logo`, data);
+    return unwrapResult(response.data);
 }

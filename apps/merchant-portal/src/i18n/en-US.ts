@@ -1,6 +1,43 @@
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+  media: {
+    "serviceUnavailable": "Image safety checks or storage are temporarily unavailable. Please try again later.",
+    "choose": "Choose image",
+    "remove": "Remove",
+    "preview": "Image preview",
+    "hint": "PNG or JPEG · Up to 2 MB per image",
+    "cropHint": "Avatars are cropped to a centered square and displayed as a circle.",
+    "invalid": "Choose a valid PNG or JPEG image no larger than 2 MiB.",
+    "avatar": "Profile photo",
+    "changeAvatar": "Change photo",
+    "save": "Save photo",
+    "saving": "Checking and saving…",
+    "cancel": "Cancel",
+    "saved": "Profile photo updated",
+    "failed": "Could not save the image. Please try again.",
+    "logo": "Channel logo",
+    "saveFailed": "Could not save the image. Please try again later.",
+    "dropImage": "Drag an image here, or click to choose",
+    "replace": "Replace image",
+    "currentImage": "Current image",
+    "previewHint": "Click the thumbnail to preview",
+    "selected": "Selected · Pending upload",
+    "uploaded": "Uploaded",
+    "validating": "Checking image…",
+    "removePending": "The current image will be removed when saved",
+    "saveHint": "Preview your selection; saving uploads and checks the image",
+    "singleFile": "Choose one image at a time.",
+    "validation": {
+        "empty": "The image is empty. Choose another file.",
+        "size": "The image exceeds 2 MB. Compress it and try again.",
+        "unsupported": "The file is actually {actual}. Only PNG/JPEG are supported. Export it again before uploading.",
+        "extension": "The file is actually {actual}, which does not match its extension. Use the correct image file.",
+        "content": "This is not a valid PNG/JPEG image, or the file is damaged.",
+        "mime": "The declared file type does not match its {actual} content. Export the image again.",
+        "read": "Could not read the image. Select the file again."
+    }
+},
   refundForm: refundMessagesEn,
   common: {
     logout: 'Logout',

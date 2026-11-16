@@ -1,6 +1,8 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import { createDuplicateSubmissionGuard } from './submissionGuard';
 export * from './brand';
+export { default as PrivateImage } from './components/PrivateImage.vue';
+export { default as ImagePicker } from './components/ImagePicker.vue';
 export * from './amount';
 export * from './refund';
 export { default as RefundFields } from './components/RefundFields.vue';
@@ -68,6 +70,7 @@ export interface AuthAccount {
     loginAccount: string;
     realName: string;
     nickname?: string | null;
+    avatarVersion?: string | null;
     mobile?: string | null;
     phone?: string | null;
     phoneNumber?: string | null;
@@ -331,6 +334,7 @@ export function createHttpClient(
 
     client.interceptors.request.use((config) => {
         submissionGuard.acquire(config);
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.timeout === 15000) config.timeout = 90000;
         config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
         if (browserSession) {
             config.headers['X-Auth-Mode'] = 'cookie';
