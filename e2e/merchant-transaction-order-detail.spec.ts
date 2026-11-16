@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { verifyDictionaryLoading } from '../e2e-support/dictionary-loading';
 
 const rootTransactionDateTime = '2026-11-07T13:36:24.158';
 const refundTransactionDateTime = '2026-11-07T13:38:10.321';
@@ -9,6 +10,7 @@ const paymentOperation = {
   merchantOrderNo: '202611071336262034592',
   transactionType: 'PAYMENT',
   transactionStatus: 'SUCCESS',
+  settlementStatus: 'NOT_SETTLED',
   labelAmount: '100.00',
   labelCurrency: 'EUR',
   currencyExponent: 2,
@@ -32,6 +34,13 @@ const refundOperation = {
 };
 
 test.describe('Merchant transaction operation detail', () => {
+  test('shares dictionary queries without caching completed results or failed requests', async ({ page }) => {
+    await mockMerchantApis(page, () => {});
+    await page.goto('/transaction/order');
+    await expect(page.getByRole('button', { name: '详情', exact: true }).first()).toBeVisible();
+    await verifyDictionaryLoading(page, 'merchant');
+  });
+
   test('keeps refund as the focused operation when payment and refund share one operation id', async ({
     page,
   }) => {
@@ -64,6 +73,7 @@ test.describe('Merchant transaction operation detail', () => {
     await expect(drawer.getByText('成功', { exact: true }).first()).toBeVisible();
     await expect(drawer.getByText(/^20(?:\.00)?$/, { exact: true }).first()).toBeVisible();
     await expect(drawer.getByText(paymentOperation.transactionId, { exact: true })).toBeVisible();
+    await expect(drawer.locator('.transaction-stage-status-display[data-domain="settlement"][data-status="NOT_SETTLED"]').first()).toHaveText('未结算');
   });
 });
 

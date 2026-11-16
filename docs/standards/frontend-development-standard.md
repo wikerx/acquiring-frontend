@@ -80,6 +80,60 @@
 - 金额按接口提供的币种、符号、精度和符号位展示；
 - JavaScript 浮点数不得用于资金决策或精确金额推导。
 
+### 8.1 交易类型、支付方式与业务状态的统一展示
+
+交易类型复用 `TransactionTypeDisplay`，支付方式复用 `PaymentMethodDisplay` /
+`PaymentLogoGroup`，交易结果复用 `TransactionStatusDisplay`。勾兑、对账、交易结算三个业务域
+统一使用 `TransactionStageStatusDisplay` 和 `TransactionStageStatusSelect`，不得在业务页面
+重新手写普通标签、颜色或图标映射。该约束覆盖管理端和商户端的普通下拉、可搜索筛选下拉、
+选中值、列表单元格、详情抽屉、财务摘要和明细。
+
+共用选择框只接收页面已有字典选项，不自行发起请求；字典的启停、顺序、文案与选项范围继续
+沿用既有契约。相同字典的并发读取由字典 API 合并，读取失败不能伪装成成功。展示与筛选
+分离：选择框始终提交原始 `value`，清空返回空字符串；禁止把资源 key、中文文字或视觉语义
+写回接口、数据库或状态机。
+
+#### 状态与资源映射
+
+资源来自用户提供的 V5 状态扩展包，13 个 SVG 存放于
+`packages/shared/src/assets/transaction-icons/stages`。业务域和状态码必须同时匹配，不能只凭
+`FAILED` 或“不一致”等通用文字判断含义。
+
+| 业务域 | 接口状态码 | SVG 资源 | 视觉语义 |
+| --- | --- | --- | --- |
+| 勾兑 | `NOT_REQUIRED` | `MATCH_NOT_REQUIRED` | 中性、减号 |
+| 勾兑 | `PENDING` | `MATCH_UNMATCHED` | 中性、内环 |
+| 勾兑 | `REVIEW_REQUIRED` | `MATCH_PENDING_REVIEW` | 待复核、人形 |
+| 勾兑 | `MATCHED` | `MATCH_SUCCESS` | 成功、对勾 |
+| 勾兑 | `MISMATCHED` | `MATCH_MISMATCH` | 业务差异、不等号 |
+| 勾兑 | `FAILED` | `MATCH_FAILED` | 执行失败、叉号 |
+| 对账 | `NOT_RECONCILED` | `RECON_UNRECONCILED` | 中性、内环 |
+| 对账 | `RECONCILED` | `RECON_RECONCILED` | 成功、对勾 |
+| 对账 | `MISMATCHED` | `RECON_MISMATCH` | 业务差异、不等号 |
+| 交易结算 | `NOT_SETTLED` | `SETTLE_UNSETTLED` | 中性、内环 |
+| 交易结算 | `SETTLING` | `SETTLE_PROCESSING` | 处理中、循环箭头 |
+| 交易结算 | `SETTLED` | `SETTLE_SETTLED` | 成功、对勾 |
+| 交易结算 | `FAILED` | `SETTLE_FAILED` | 执行失败、叉号 |
+
+不一致与失败可以同属红色，但必须保留独立图标、状态码与筛选项；“无需勾兑”不得标为成功绿。
+未知状态保留接口值或字典文案，以无图标中性样式降级；空值显示 `-`，不得猜成成功或失败。
+结算批次、审批、付款、入账、清分、风险审核等状态有各自契约，不能因为文字相似就套用本表。
+
+#### 视觉与交互规格
+
+- 标签高度 24px、圆角 6px、左右内边距 8px；图文间距 5px。
+- SVG 画布使用 20px 容器，资源内可视圆直径约 16px；文字 12px、字重 500。
+- 成功背景/文案为 `#F0FDF4` / `#166534`；失败与差异为 `#FEF2F2` / `#B91C1C`。
+- 处理中背景/文案为 `#EFF6FF` / `#1D4ED8`；待复核为 `#FFFBEB` / `#92400E`；
+  中性为 `#F1F5F9` / `#475569`。图标颜色与符号使用资源包原始 SVG。
+- 下拉选项与选中值复用同一标签；搜索匹配字典文字，保留清空、禁用和键盘操作。
+- 列表沿用表格对齐规则；长文案省略但保留完整标题；图标为装饰，辅助技术读取完整状态文字。
+- 中英文由现有字典与 i18n 提供，组件不硬编码业务文案；兼容当前布局与主题，不覆盖全局配色。
+
+执行 `npm run test:governance:transaction-status` 检查接入约束和资产；该检查已加入双端构建。
+改动需验证 13 个状态、未知/空值、SVG 加载、下拉搜索与选中值、清空、原始查询码、详情展示、
+语言切换，以及字典并发读取和失败重试。不得仅凭构建成功声明页面验收完成。
+
 ## 9. 安全与隐私
 
 禁止在控制台、URL、浏览器存储、埋点、错误信息、Fixture、截图中记录：

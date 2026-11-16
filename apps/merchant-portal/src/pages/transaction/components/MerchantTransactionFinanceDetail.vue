@@ -45,7 +45,7 @@
               </div>
               <div>
                 <span>{{ t('transaction.order.settlementStatus') }}</span>
-                <strong>{{ statusText(clearingDetail.summary.settlementStatus) }}</strong>
+                <strong><TransactionStageStatusDisplay domain="settlement" :value="clearingDetail.summary.settlementStatus" :label="statusText(clearingDetail.summary.settlementStatus)" /></strong>
               </div>
               <div class="is-money">
                 <span>{{ t('transaction.order.transactionLabelAmount') }}</span>
@@ -318,12 +318,7 @@
                 align="center"
               >
                 <template #default="{ row }">
-                  <el-tag
-                    size="small"
-                    :type="processingStatusType(row.reconciliationStatus)"
-                    effect="plain"
-                    >{{ statusText(row.reconciliationStatus) }}</el-tag
-                  >
+                  <TransactionStageStatusDisplay domain="reconciliation" :value="row.reconciliationStatus" :label="statusText(row.reconciliationStatus)" />
                 </template>
               </el-table-column>
               <el-table-column
@@ -332,12 +327,7 @@
                 align="center"
               >
                 <template #default="{ row }">
-                  <el-tag
-                    size="small"
-                    :type="processingStatusType(row.settlementStatus)"
-                    effect="plain"
-                    >{{ statusText(row.settlementStatus) }}</el-tag
-                  >
+                  <TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="statusText(row.settlementStatus)" />
                 </template>
               </el-table-column>
               <el-table-column
@@ -610,7 +600,7 @@
     Minus,
     Refresh,
   } from '@element-plus/icons-vue';
-  import { CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
+  import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import {

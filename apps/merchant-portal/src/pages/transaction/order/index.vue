@@ -109,19 +109,7 @@
             </el-select>
           </el-form-item>
           <el-form-item :label="t('transaction.order.settlementStatus')">
-            <el-select
-              v-model="query.settlementStatus"
-              :placeholder="t('common.pleaseSelect')"
-              clearable
-              filterable
-            >
-              <el-option
-                v-for="item in settlementStatusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
+            <TransactionStageStatusSelect v-model="query.settlementStatus" domain="settlement" :options="settlementStatusOptions" :placeholder="t('common.pleaseSelect')" />
           </el-form-item>
           <el-form-item
             :label="t('transaction.order.timeRange')"
@@ -379,13 +367,7 @@
           align="center"
         >
           <template #default="{ row }">
-            <el-tag
-              size="small"
-              :type="statusTag(row.settlementStatus, settlementStatusOptions)"
-              effect="plain"
-            >
-              {{ tagText(settlementStatusOptions, row.settlementStatus) }}
-            </el-tag>
+            <TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="tagText(settlementStatusOptions, row.settlementStatus)" />
           </template>
         </el-table-column>
         <el-table-column
@@ -602,13 +584,7 @@
               <div>
                 <dt>{{ t('transaction.order.settlementStatus') }}</dt>
                 <dd>
-                  <el-tag
-                    class="transaction-detail-status-tag"
-                    size="small"
-                    :type="statusTag(detailSummaryRecord?.settlementStatus, settlementStatusOptions)"
-                    effect="plain"
-                    >{{ tagText(settlementStatusOptions, detailSummaryRecord?.settlementStatus) }}</el-tag
-                  >
+                  <TransactionStageStatusDisplay domain="settlement" :value="detailSummaryRecord?.settlementStatus" :label="tagText(settlementStatusOptions, detailSummaryRecord?.settlementStatus)" />
                 </dd>
               </div>
             </dl>
@@ -969,7 +945,7 @@
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute } from 'vue-router';
-  import {
+  import { TransactionStageStatusDisplay, TransactionStageStatusSelect,
     CurrencyAmountDisplay,
     RefundFields,
     type RefundContext,

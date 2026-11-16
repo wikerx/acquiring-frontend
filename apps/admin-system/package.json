@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "build": "node ../../scripts/verify-file-template-governance.mjs && node scripts/verify-monitor-chart-governance.mjs && node scripts/verify-monitor-formatters.mjs && vue-tsc --noEmit && vite build",
+    "build": "node ../../scripts/verify-file-template-governance.mjs && node ../../scripts/verify-transaction-stage-status-governance.mjs && node scripts/verify-monitor-chart-governance.mjs && node scripts/verify-monitor-formatters.mjs && vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
     "test:governance:monitor-charts": "node scripts/verify-monitor-chart-governance.mjs",
     "test:monitor-formatters": "node scripts/verify-monitor-formatters.mjs",
