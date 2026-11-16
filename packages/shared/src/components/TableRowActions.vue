@@ -51,11 +51,16 @@ import { computed } from 'vue';
 import { MoreFilled } from '@element-plus/icons-vue';
 import { directTableRowActionCount, type TableRowAction } from '../tableRowActions';
 
-const props = defineProps<{ actions: TableRowAction[]; moreLabel: string }>();
+const props = defineProps<{ actions: TableRowAction[]; moreLabel: string; maxDirectActions?: number }>();
 const emit = defineEmits<{ select: [key: string] }>();
 
 const visibleActions = computed(() => props.actions.filter((action) => action.visible !== false));
-const directCount = computed(() => directTableRowActionCount(visibleActions.value.length));
+const directCount = computed(() => {
+    const defaultCount = directTableRowActionCount(visibleActions.value.length);
+    return props.maxDirectActions === undefined
+        ? defaultCount
+        : Math.min(defaultCount, Math.max(0, Math.floor(props.maxDirectActions)));
+});
 const directActions = computed(() => visibleActions.value.slice(0, directCount.value));
 const overflowActions = computed(() => visibleActions.value.slice(directCount.value));
 

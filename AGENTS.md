@@ -112,6 +112,13 @@ layout changed. Report failures and skipped checks accurately; do not use old ou
 - UI changes include loading, empty, error, disabled, permission-denied, long-content, and responsive
   states where applicable.
 - Do not perform broad visual redesign or remove an entry/function without explicit approval.
+- Transaction type, payment method, and transaction result displays use the existing shared display
+  components. Matching, reconciliation, and transaction settlement statuses use
+  `TransactionStageStatusDisplay` and `TransactionStageStatusSelect` in lists, detail views, search
+  options, and selected values. Follow the mapping and dimensions in
+  `docs/standards/frontend-development-standard.md`; do not replace backend status/filter values
+  with asset names or merge mismatch and execution failure. Batch/review workflow states remain
+  separate contracts. Keep `npm run test:governance:transaction-status` passing.
 
 ## Verification Baseline
 

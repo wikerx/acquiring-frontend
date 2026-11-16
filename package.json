@@ -32,6 +32,7 @@
     "test:governance:file-templates": "node scripts/verify-file-template-governance.mjs",
     "test:governance:submissions": "node scripts/verify-submission-governance.mjs",
     "test:governance:exports": "node scripts/verify-export-governance.mjs",
+    "test:governance:transaction-status": "node scripts/verify-transaction-stage-status-governance.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint apps packages --max-warnings=0",
     "format": "prettier --write \"{apps,packages}/**/*.{ts,vue,css,md,json}\""

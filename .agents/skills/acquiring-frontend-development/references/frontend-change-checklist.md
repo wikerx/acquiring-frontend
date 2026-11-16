@@ -35,6 +35,10 @@ checkout, responsive, or significant UI work.
   states as applicable.
 - Use i18n for visible copy and verify both maintained locales when keys change.
 - Tables preserve fixed/action/identity behavior, scroll and preference reset/compatibility.
+- Matching, reconciliation, and transaction settlement status fields use the shared stage status
+  display/select components in dropdown options, selected values, tables and details. Verify all
+  supported mappings, unknown/empty values, filter search/clear, locale switching, and raw request
+  values. Do not confuse mismatch with failed execution or transaction statuses with batch workflows.
 - Dialogs preserve focus, close behavior, action order, validation, submitting state, and error
   recovery.
 - Check text wrapping, overflow, overlap, keyboard access, focus visibility, and viewport changes.

@@ -1,6 +1,7 @@
 import type { AuthMenu, CommonResult, CurrencyPresentation, PageResult } from '@acquiring/shared';
 import { setCurrencyPresentations, unwrapResult } from '@acquiring/shared';
 import { http } from './http';
+import { i18n } from '@/i18n';
 
 export interface IdsRequest {
     ids: number[];
@@ -198,6 +199,8 @@ export interface RoleGrantTree {
     tree: RoleGrantNode[];
 }
 
+const pendingDictDataQueries = new Map<string, Promise<PageResult<DictDataItem>>>();
+
 export const systemApi = {
     async loadCurrencyPresentations() {
         const result = await http.get<CommonResult<CurrencyPresentation[]>>('/merchant/system/dicts/currency-presentations');
@@ -205,9 +208,19 @@ export const systemApi = {
         setCurrencyPresentations(presentations);
         return presentations;
     },
-    async searchDictData(data: DictDataQuery) {
-        const result = await http.post<CommonResult<PageResult<DictDataItem>>>('/merchant/system/dicts/data/search', data);
-        return unwrapResult(result.data);
+    /** 合并相同的在途字典读取；不缓存完成结果，也不绕过业务写入保护。 */
+    searchDictData(data: DictDataQuery): Promise<PageResult<DictDataItem>> {
+        const key = JSON.stringify([String(i18n.global.locale.value), Object.entries(data)
+            .filter(([, value]) => value !== undefined).sort(([left], [right]) => left.localeCompare(right))]);
+        const pending = pendingDictDataQueries.get(key);
+        if (pending) return pending;
+
+        const request = http.post<CommonResult<PageResult<DictDataItem>>>('/merchant/system/dicts/data/search', data)
+            .then((result) => unwrapResult(result.data)).finally(() => {
+                pendingDictDataQueries.delete(key);
+            });
+        pendingDictDataQueries.set(key, request);
+        return request;
     },
     async depts() {
         const result = await http.get<CommonResult<DeptItem[]>>('/merchant/system/depts');

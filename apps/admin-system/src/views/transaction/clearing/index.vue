@@ -102,7 +102,7 @@
                 <template #default="{ row }"><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.settlementStatus')" min-width="132" align="center">
-                <template #default="{ row }">{{ settlementStatusText(row.settlementStatus) }}</template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="settlementStatusText(row.settlementStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.retryCount')" width="92" align="center">
                 <template #default="{ row }">{{ row.clearingRetryCount || 0 }}</template>
@@ -182,7 +182,7 @@
                         <el-descriptions-item :label="t('transaction.clearing.grossAmount')"><CurrencyAmountDisplay :amount="detail.summary.grossLabelAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.platformFee')"><CurrencyAmountDisplay :amount="detail.summary.platformFeeAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.reserveAmount')"><CurrencyAmountDisplay :amount="detail.summary.reserveAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.settlementStatus')">{{ settlementStatusText(detail.summary.settlementStatus) }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.clearing.settlementStatus')"><TransactionStageStatusDisplay domain="settlement" :value="detail.summary.settlementStatus" :label="settlementStatusText(detail.summary.settlementStatus)" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.settlementEligibleDate')">{{ detail.summary.settlementEligibleDate || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.nextRetryTime')"><BaseDateTime :value="detail.summary.nextRetryTime" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.transactionDateTime')"><BaseDateTime :value="detail.summary.transactionDateTime" /></el-descriptions-item>
@@ -444,7 +444,7 @@
 import { Refresh } from '@element-plus/icons-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { CurrencyAmountDisplay, DirectionTag, formatPercentageRate, TransactionTypeDisplay } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, formatPercentageRate, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';

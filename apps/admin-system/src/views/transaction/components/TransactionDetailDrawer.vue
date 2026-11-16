@@ -129,7 +129,7 @@
                         <el-descriptions-item :label="t('transaction.fields.channelTransactionAmount')"><CurrencyAmountDisplay :amount="detail.order?.transactionAmount" :currency="detail.order?.transactionCurrency" :exponent="detail.order?.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.transactionRate')">{{ rateText(detail.order?.transactionRate) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.channelMatchStatus')">
-                            <el-tag size="small" effect="plain">{{ optionText(channelMatchStatusOptions, capabilityRecord?.channelMatchStatus) }}</el-tag>
+                            <TransactionStageStatusDisplay domain="matching" :value="capabilityRecord?.channelMatchStatus" :label="optionText(channelMatchStatusOptions, capabilityRecord?.channelMatchStatus)" />
                         </el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.threeDs')">
                             <el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': capabilityRecord?.threeDsEnabled === 1 }">{{ t(capabilityRecord?.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag>
@@ -378,7 +378,7 @@ import {
     User,
     Wallet,
 } from '@element-plus/icons-vue';
-import { CurrencyAmountDisplay, safeErrorType, TransactionStatusDisplay, TransactionTypeDisplay, type PaymentLogoKey } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, CurrencyAmountDisplay, safeErrorType, TransactionStatusDisplay, TransactionTypeDisplay, type PaymentLogoKey } from '@acquiring/shared';
 import { LegacyPaymentLogoGroup } from '@acquiring/shared/legacy';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';

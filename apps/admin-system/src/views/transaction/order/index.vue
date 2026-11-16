@@ -123,7 +123,7 @@
             </el-table-column>
             <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="120" align="center" />
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="140" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.channelMatchStatus)">{{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="matching" :value="row.channelMatchStatus" :label="tagText(channelMatchStatusOptions, row.channelMatchStatus)" /></template>
             </el-table-column>
             <el-table-column prop="threeDsEnabled" :label="t('transaction.fields.threeDs')" width="92" align="center">
                 <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">{{ t(row.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag></template>
@@ -135,10 +135,10 @@
                 <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">{{ t(row.edcEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.settlementStatus')" width="130" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.settlementStatus)">{{ tagText(settlementStatusOptions, row.settlementStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="tagText(settlementStatusOptions, row.settlementStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.reconciliationStatus')" width="130" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.reconciliationStatus)">{{ tagText(reconciliationStatusOptions, row.reconciliationStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="reconciliation" :value="row.reconciliationStatus" :label="tagText(reconciliationStatusOptions, row.reconciliationStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.transactionDateTime')" min-width="172" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
@@ -173,7 +173,7 @@ import { Download, View } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay, safeErrorType } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay, safeErrorType } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
@@ -209,7 +209,6 @@ import {
     resolveTransactionQueryRange,
     responseTooltip,
     splitDateRange,
-    statusOptionTagType,
     tagText,
     type TransactionDictOption,
 } from '../shared';

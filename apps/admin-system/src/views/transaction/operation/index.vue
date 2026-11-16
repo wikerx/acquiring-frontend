@@ -71,19 +71,13 @@
                     <el-input v-model.trim="query.acquirerReferenceNo" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.channelMatchStatus')">
-                    <el-select v-model="query.channelMatchStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <el-option v-for="item in channelMatchStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                    </el-select>
+                    <TransactionStageStatusSelect v-model="query.channelMatchStatus" domain="matching" :options="channelMatchStatusOptions" :placeholder="t('common.pleaseSelect')" />
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.reconciliationStatus')">
-                    <el-select v-model="query.reconciliationStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <el-option v-for="item in reconciliationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                    </el-select>
+                    <TransactionStageStatusSelect v-model="query.reconciliationStatus" domain="reconciliation" :options="reconciliationStatusOptions" :placeholder="t('common.pleaseSelect')" />
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.settlementStatus')">
-                    <el-select v-model="query.settlementStatus" :placeholder="t('common.pleaseSelect')" clearable filterable>
-                        <el-option v-for="item in settlementStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-                    </el-select>
+                    <TransactionStageStatusSelect v-model="query.settlementStatus" domain="settlement" :options="settlementStatusOptions" :placeholder="t('common.pleaseSelect')" />
                 </el-form-item>
             </template>
             <template #time>
@@ -144,7 +138,7 @@
                 <template #default="{ row }"><TransactionStatusDisplay :value="row.transactionStatus" :label="tagText(statusOptions, row.transactionStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="128" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.channelMatchStatus)">{{ tagText(channelMatchStatusOptions, row.channelMatchStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="matching" :value="row.channelMatchStatus" :label="tagText(channelMatchStatusOptions, row.channelMatchStatus)" /></template>
             </el-table-column>
             <el-table-column prop="threeDsEnabled" :label="t('transaction.fields.threeDs')" width="92" align="center">
                 <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--three-ds" :class="{ 'is-enabled': row.threeDsEnabled === 1 }">{{ t(row.threeDsEnabled === 1 ? 'common.yes' : 'common.no') }}</el-tag></template>
@@ -156,10 +150,10 @@
                 <template #default="{ row }"><el-tag size="small" effect="plain" class="transaction-capability-tag transaction-capability-tag--edc" :class="{ 'is-enabled': row.edcEnabled === 1 }">{{ t(row.edcEnabled === 1 ? 'transaction.capability.enabled' : 'transaction.capability.disabled') }}</el-tag></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.reconciliationStatus')" width="128" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.reconciliationStatus)">{{ tagText(reconciliationStatusOptions, row.reconciliationStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="reconciliation" :value="row.reconciliationStatus" :label="tagText(reconciliationStatusOptions, row.reconciliationStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.settlementStatus')" width="128" align="center">
-                <template #default="{ row }"><el-tag size="small" :type="statusOptionTagType(row.settlementStatus)">{{ tagText(settlementStatusOptions, row.settlementStatus) }}</el-tag></template>
+                <template #default="{ row }"><TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="tagText(settlementStatusOptions, row.settlementStatus)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.merchantNotificationStatus')" width="138" align="center">
                 <template #default="{ row }">
@@ -214,50 +208,14 @@
                     <CopyableText :value="row.acquirerReferenceNo" :label="t('transaction.fields.acquirerReferenceNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="430" fixed="right" align="center">
+            <el-table-column :label="t('common.operation')" width="138" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button size="small" type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:operation:detail'">{{ t('common.detail') }}</el-button>
-                    <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryCallbackDisabled')" placement="top">
-                        <span>
-                            <el-button
-                                size="small"
-                                type="warning"
-                                link
-                                :icon="RefreshRight"
-                                :disabled="!canRetryCallback(row)"
-                                :loading="retryingTransactionId === row.transactionId"
-                                @click="handleRetryCallback(row)"
-                                v-hasPermi="'transaction:merchant-notification:retry'"
-                            >
-                                {{ t('transaction.actions.retryCallback') }}
-                            </el-button>
-                        </span>
-                    </el-tooltip>
-                    <el-tooltip :content="canRequeryChannelMatch(row) ? t('transaction.actions.channelMatchTip') : t('transaction.actions.channelMatchDisabled')" placement="top">
-                        <span>
-                            <el-button
-                                size="small"
-                                type="primary"
-                                link
-                                :icon="RefreshRight"
-                                :disabled="!canRequeryChannelMatch(row)"
-                                :loading="matchingTransactionId === row.transactionId"
-                                @click="handleChannelMatch(row)"
-                                v-hasPermi="'transaction:match-abnormal:requery'"
-                            >
-                                {{ t('transaction.actions.channelMatch') }}
-                            </el-button>
-                        </span>
-                    </el-tooltip>
-                    <el-tooltip :content="canRefund(row) ? t('transaction.actions.refundTip') : t('transaction.actions.refundDisabled')" placement="top">
-                        <span><el-button size="small" type="primary" link :disabled="!canRefund(row)" @click="openRefundDialog(row)" v-hasPermi="'transaction:operation:refund'">{{ t('transaction.actions.refund') }}</el-button></span>
-                    </el-tooltip>
-                    <el-tooltip :content="captureActionTip(row, canCapture(row))" placement="top">
-                        <span><el-button size="small" type="primary" link :disabled="!canCapture(row)" @click="openCaptureDialog(row)" v-hasPermi="'transaction:operation:capture'">{{ captureActionText(row) }}</el-button></span>
-                    </el-tooltip>
-                    <el-tooltip :content="canVoid(row) ? t('transaction.actions.voidTip') : t('transaction.actions.voidDisabled')" placement="top">
-                        <span><el-button size="small" type="primary" link :disabled="!canVoid(row)" @click="openVoidDialog(row)" v-hasPermi="'transaction:operation:void'">{{ t('transaction.actions.void') }}</el-button></span>
-                    </el-tooltip>
+                    <TableRowActions
+                        :actions="transactionRowActions(row)"
+                        :more-label="t('common.more')"
+                        :max-direct-actions="userStore.hasPermission('transaction:operation:detail') ? 1 : 0"
+                        @select="handleTransactionRowAction($event, row)"
+                    />
                 </template>
             </el-table-column>
         </StandardTable>
@@ -427,9 +385,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Download, RefreshRight, View } from '@element-plus/icons-vue';
+import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { CurrencyAmountDisplay, RefundFields, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -492,6 +450,41 @@ const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+
+function transactionRowActions(row: TransactionOperation): TableRowAction[] {
+    return [
+        { key: 'detail', label: t('common.detail'), icon: View,
+            visible: userStore.hasPermission('transaction:operation:detail') },
+        { key: 'retryCallback', label: t('transaction.actions.retryCallback'), icon: RefreshRight, type: 'warning',
+            visible: userStore.hasPermission('transaction:merchant-notification:retry'),
+            disabled: !canRetryCallback(row), loading: retryingTransactionId.value === row.transactionId,
+            disabledReason: t(`transaction.actions.${canRetryCallback(row) ? 'retryCallbackTip' : 'retryCallbackDisabled'}`) },
+        { key: 'channelMatch', label: t('transaction.actions.channelMatch'), icon: RefreshRight,
+            visible: userStore.hasPermission('transaction:match-abnormal:requery'),
+            disabled: !canRequeryChannelMatch(row), loading: matchingTransactionId.value === row.transactionId,
+            disabledReason: t(`transaction.actions.${canRequeryChannelMatch(row) ? 'channelMatchTip' : 'channelMatchDisabled'}`) },
+        { key: 'refund', label: t('transaction.actions.refund'), icon: RefreshLeft,
+            visible: userStore.hasPermission('transaction:operation:refund') && supportsRefund(row), disabled: !canRefund(row),
+            disabledReason: t(`transaction.actions.${canRefund(row) ? 'refundTip' : 'refundDisabled'}`) },
+        { key: 'capture', label: captureActionText(row), icon: Promotion,
+            visible: userStore.hasPermission('transaction:operation:capture') && isAuthorizationOperation(row), disabled: !canCapture(row),
+            disabledReason: captureActionTip(row, canCapture(row)) },
+        { key: 'void', label: t('transaction.actions.void'), icon: CircleClose,
+            visible: userStore.hasPermission('transaction:operation:void') && isAuthorizationOperation(row), disabled: !canVoid(row),
+            disabledReason: t(`transaction.actions.${canVoid(row) ? 'voidTip' : 'voidDisabled'}`) },
+    ];
+}
+
+function handleTransactionRowAction(key: string, row: TransactionOperation) {
+    const action = transactionRowActions(row).find((item) => item.key === key);
+    if (!action || action.visible === false || action.disabled || action.loading) return;
+    if (key === 'detail') void openDetail(row);
+    else if (key === 'retryCallback') void handleRetryCallback(row);
+    else if (key === 'channelMatch') void handleChannelMatch(row);
+    else if (key === 'refund') void openRefundDialog(row);
+    else if (key === 'capture') void openCaptureDialog(row);
+    else if (key === 'void') void openVoidDialog(row);
+}
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
@@ -941,8 +934,17 @@ function paymentLogos(row: TransactionOperation): PaymentLogoKey[] {
     return transactionPaymentLogoKeys(row.paymentMethod, row.paymentBrand);
 }
 
+/** 类型决定操作是否适用，状态和可用金额再决定适用操作是否可执行。 */
+function supportsRefund(row: TransactionOperation) {
+    return ['PAYMENT', 'CAPTURE'].includes(row.transactionType);
+}
+
+function isAuthorizationOperation(row: TransactionOperation) {
+    return ['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType);
+}
+
 function canRefund(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !['PAYMENT', 'CAPTURE'].includes(row.transactionType)) {
+    if (row.transactionStatus !== 'SUCCESS' || !supportsRefund(row)) {
         return false;
     }
     if (row.availableRefundAmount != null && row.availableRefundAmount !== '') {
@@ -1020,7 +1022,7 @@ function paymentSummaryLabel(item: TransactionPaymentMethodSummary) {
 }
 
 function canVoid(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
+    if (row.transactionStatus !== 'SUCCESS' || !isAuthorizationOperation(row)) {
         return false;
     }
     return isZeroOrMissing(row.capturedAmount) && isZeroOrMissing(row.refundedAmount);
@@ -1101,7 +1103,7 @@ async function handleRetryCallback(row: TransactionOperation) {
 }
 
 function canCapture(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)) {
+    if (row.transactionStatus !== 'SUCCESS' || !isAuthorizationOperation(row)) {
         return false;
     }
     if (row.availableCaptureAmount != null && row.availableCaptureAmount !== '') {

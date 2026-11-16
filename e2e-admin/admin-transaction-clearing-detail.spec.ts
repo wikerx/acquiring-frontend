@@ -1,4 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { verifyDictionaryLoading } from '../e2e-support/dictionary-loading';
 
 const transactionId = '202611141800181810898';
 const transactionDateTime = '2026-11-14T18:00:18.181';
@@ -12,6 +14,9 @@ const operation = {
     merchantOrderId: 'SDKQRY177261114180018162',
     transactionType: 'PAYMENT',
     transactionStatus: 'SUCCESS',
+    channelMatchStatus: 'NOT_REQUIRED',
+    reconciliationStatus: 'NOT_RECONCILED',
+    settlementStatus: 'NOT_SETTLED',
     labelCurrency: 'EUR',
     labelAmount: '132.19',
     labelCurrencyExponent: 2,
@@ -39,6 +44,8 @@ test('shows clearing lines from their paginated APIs when the summary has no emb
     await expect(drawer).toBeVisible();
     await drawer.getByRole('tab', { name: '财务处理' }).click();
     await drawer.getByRole('tab', { name: '清分', exact: true }).click();
+
+    await expect(drawer.locator('.transaction-stage-status-display[data-domain="settlement"][data-status="NOT_SETTLED"]')).toBeVisible();
 
     const ledgers = drawer.locator('.transaction-finance-detail__section');
     await expect(ledgers.nth(0).locator('.el-tag')).toHaveText('6');
@@ -116,7 +123,268 @@ test('retries a failed transaction ledger and paginates without losing reserve l
     expect(transactionDetailRequests).toBe(3);
 });
 
-async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => void) {
+for (const actionPermissions of [
+    [],
+    ['transaction:merchant-notification:retry'],
+    ['transaction:merchant-notification:retry', 'transaction:match-abnormal:requery',
+        'transaction:operation:refund', 'transaction:operation:capture', 'transaction:operation:void'],
+]) {
+    test(`keeps row actions compact and permission-scoped with ${actionPermissions.length} additional permissions`, async ({ page }) => {
+        await page.setViewportSize({ width: 1366, height: 900 });
+        await mockAdminApis(page, () => {}, actionPermissions);
+        await page.goto('/transaction/operation');
+        await expect(page.getByText(transactionId, { exact: true }).first()).toBeVisible();
+        const actions = page.locator('tbody .table-row-actions').first();
+        await expect(actions.getByRole('button', { name: '详情', exact: true })).toBeVisible();
+        await expect(actions.locator('.table-row-actions__direct')).toHaveCount(1);
+        const cell = actions.locator('xpath=ancestor::td');
+        expect((await cell.boundingBox())!.width).toBeLessThanOrEqual(139);
+
+        if (actionPermissions.length === 0) {
+            await expect(actions.getByRole('button', { name: '更多', exact: true })).toHaveCount(0);
+            return;
+        }
+        await actions.getByRole('button', { name: '更多', exact: true }).click();
+        const items = page.getByRole('menuitem');
+        const menu = page.getByRole('menu').filter({ has: page.getByRole('menuitem', { name: '重发回调', exact: true }) });
+        await expect(menu).toBeVisible();
+        await expect(menu.getByRole('menuitem')).toHaveCount(actionPermissions.length === 5 ? 3 : actionPermissions.length);
+        await expect(items.filter({ hasText: /^重发回调$/ })).toBeEnabled();
+        if (actionPermissions.length === 5) {
+            await expect(menu.getByRole('menuitem', { name: '退款', exact: true })).toBeEnabled();
+            await expect(menu.getByRole('menuitem', { name: '勾兑', exact: true })).toBeDisabled();
+            await expect(menu.getByRole('menuitem', { name: '请款', exact: true })).toHaveCount(0);
+            await expect(menu.getByRole('menuitem', { name: '撤销', exact: true })).toHaveCount(0);
+        } else {
+            await expect(menu.getByRole('menuitem', { name: '退款', exact: true })).toHaveCount(0);
+        }
+        await expect(menu).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+    });
+}
+
+test('keeps permitted actions in the menu when transaction detail permission is absent', async ({ page }) => {
+    await mockAdminApis(page, () => {}, ['transaction:operation:refund'], false);
+    await page.goto('/transaction/operation');
+    await expect(page.getByText(transactionId, { exact: true }).first()).toBeVisible();
+    const actions = page.locator('tbody .table-row-actions').first();
+    await expect(actions.getByRole('button', { name: '详情', exact: true })).toHaveCount(0);
+    await expect(actions.locator('.table-row-actions__direct')).toHaveCount(0);
+    await actions.getByRole('button', { name: '更多', exact: true }).click();
+    const menu = page.getByRole('menu').filter({ has: page.getByRole('menuitem', { name: '退款', exact: true }) });
+    await expect(menu.getByRole('menuitem')).toHaveCount(1);
+    await expect(menu.getByRole('menuitem', { name: '退款', exact: true })).toBeEnabled();
+});
+
+test('loads transaction filters when the list and detail drawer request the same dictionaries concurrently', async ({ page }) => {
+    await mockAdminApis(page, () => {});
+    const requests: string[] = [];
+    const warnings: string[] = [];
+    page.on('console', (message) => {
+        if (message.type() === 'warning') warnings.push(message.text());
+    });
+    await page.route('**/admin/system/dicts/data/search', async (route) => {
+        const { dictType } = route.request().postDataJSON() as { dictType: string };
+        requests.push(dictType);
+        // 延迟响应，稳定复现列表与已挂载详情组件同时加载相同字典。
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        const records = dictType === 'transaction_type'
+            ? [{ id: 1, dictType, dictLabel: '支付', dictValue: 'PAYMENT', status: 1 }]
+            : dictType === 'transaction_status'
+                ? [{ id: 2, dictType, dictLabel: '成功', dictValue: 'SUCCESS', status: 1 }]
+                : [];
+        await fulfill(route, { total: records.length, pageNo: 1, pageSize: 500, pages: 1, records });
+    });
+    await page.goto('/transaction/operation');
+    await expect(page.getByText(transactionId, { exact: true }).first()).toBeVisible();
+    for (const [label, option] of [['交易类型', '支付'], ['交易状态', '成功']]) {
+        const select = page.locator('.el-select').filter({ has: page.getByRole('combobox', { name: label, exact: true }) });
+        await select.locator('.el-select__wrapper').click();
+        await expect(page.getByRole('option', { name: option, exact: true })).toBeVisible();
+        await page.getByRole('option', { name: option, exact: true }).click();
+    }
+    const query = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+        && request.postDataJSON().transactionType === 'PAYMENT' && request.postDataJSON().transactionStatus === 'SUCCESS');
+    await page.getByRole('button', { name: '搜索', exact: true }).click();
+    await query;
+    expect(requests.filter((type) => type === 'transaction_type')).toHaveLength(1);
+    expect(requests.filter((type) => type === 'transaction_status')).toHaveLength(1);
+    expect(warnings.filter((message) => message.includes('dictionary unavailable'))).toEqual([]);
+});
+
+test('shares admin dictionary queries without caching completed results or failed requests', async ({ page }) => {
+    await mockAdminApis(page, () => {});
+    await page.goto('/transaction/operation');
+    await expect(page.getByText(transactionId, { exact: true }).first()).toBeVisible();
+    await verifyDictionaryLoading(page, 'admin');
+});
+
+test('renders all thirteen stage statuses with distinct assets, consistent dimensions and safe unknown values', async ({ page }) => {
+    const matching = ['NOT_REQUIRED', 'PENDING', 'REVIEW_REQUIRED', 'MATCHED', 'MISMATCHED', 'FAILED', 'SETTLED', ''];
+    const reconciliation = ['NOT_RECONCILED', 'RECONCILED', 'MISMATCHED', 'NOT_RECONCILED', 'RECONCILED', 'MISMATCHED', 'FAILED', ''];
+    const settlement = ['NOT_SETTLED', 'SETTLING', 'SETTLED', 'FAILED', 'NOT_SETTLED', 'SETTLING', 'UNRECOGNIZED', ''];
+    const records = matching.map((status, index) => ({
+        ...operation, transactionId: `${transactionId.slice(0, -2)}${String(index).padStart(2, '0')}`,
+        channelMatchStatus: status, reconciliationStatus: reconciliation[index], settlementStatus: settlement[index],
+    }));
+    await mockAdminApis(page, () => {}, [], true, records);
+    await page.goto('/transaction/operation');
+    const assets = {
+        matching: ['MATCH_NOT_REQUIRED', 'MATCH_UNMATCHED', 'MATCH_PENDING_REVIEW', 'MATCH_SUCCESS', 'MATCH_MISMATCH', 'MATCH_FAILED'],
+        reconciliation: ['RECON_UNRECONCILED', 'RECON_RECONCILED', 'RECON_MISMATCH'],
+        settlement: ['SETTLE_UNSETTLED', 'SETTLE_PROCESSING', 'SETTLE_SETTLED', 'SETTLE_FAILED'],
+    };
+    for (const [domain, expectedAssets] of Object.entries(assets)) {
+        for (const [index, asset] of expectedAssets.entries()) {
+            const row = page.locator('tbody tr').filter({ has: page.getByText(records[index].transactionId, { exact: true }) });
+            const tag = row.locator(`.transaction-stage-status-display[data-domain="${domain}"]`);
+            await expect(tag).toHaveCSS('height', '24px');
+            await expect(tag).toHaveCSS('border-radius', '6px');
+            await expect(tag).toHaveCSS('font-size', '12px');
+            const expectedSvg = readFileSync(new URL(`../packages/shared/src/assets/transaction-icons/stages/${asset}.svg`, import.meta.url), 'utf8');
+            const matchesAsset = await tag.locator('img').evaluate(async (image: HTMLImageElement, expected) => {
+                const actual = image.src.startsWith('data:image/svg+xml,')
+                    ? decodeURIComponent(image.src.slice(image.src.indexOf(',') + 1))
+                    : await (await fetch(image.src)).text();
+                const parser = new DOMParser();
+                return parser.parseFromString(actual, 'image/svg+xml').documentElement.isEqualNode(
+                    parser.parseFromString(expected, 'image/svg+xml').documentElement,
+                );
+            }, expectedSvg);
+            expect(matchesAsset, `${domain} ${asset}`).toBe(true);
+            await expect.poll(() => tag.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+        }
+        const unknownRow = page.locator('tbody tr').filter({ has: page.getByText(records[6].transactionId, { exact: true }) });
+        const unknown = unknownRow.locator(`.transaction-stage-status-display[data-domain="${domain}"]`);
+        await expect(unknown).toHaveAttribute('data-semantic', 'neutral');
+        await expect(unknown.locator('img')).toHaveCount(0);
+        const emptyRow = page.locator('tbody tr').filter({ has: page.getByText(records[7].transactionId, { exact: true }) });
+        await expect(emptyRow.locator(`.transaction-stage-status-display[data-domain="${domain}"]`)).toHaveText('-');
+    }
+    const mismatch = page.locator('tbody [data-domain="matching"][data-status="MISMATCHED"]');
+    const failed = page.locator('tbody [data-domain="matching"][data-status="FAILED"]');
+    await expect(mismatch).toHaveAttribute('data-semantic', 'mismatch');
+    await expect(failed).toHaveAttribute('data-semantic', 'failed');
+    await expect(mismatch).toHaveCSS('background-color', 'rgb(254, 242, 242)');
+    await expect(failed).toHaveCSS('background-color', 'rgb(254, 242, 242)');
+});
+
+test('searches stage status options and submits original backend values, including clearing selected filters', async ({ page }) => {
+    await mockAdminApis(page, () => {});
+    await page.goto('/transaction/operation');
+    await page.getByText('高级筛选', { exact: true }).click();
+    const choices = [['勾兑状态', 'matching', '不一致'], ['对账状态', 'reconciliation', '不一致'], ['结算状态', 'settlement', '失败']];
+    for (const [label, domain, text] of choices) {
+        const select = page.locator('.transaction-stage-status-select').filter({ has: page.getByRole('combobox', { name: label, exact: true }) });
+        await select.locator('.el-select__wrapper').click();
+        await select.getByRole('combobox').fill(text);
+        const id = await select.getByRole('combobox').getAttribute('aria-controls');
+        const popup = page.locator(`[id="${id}"]`);
+        await popup.getByRole('option', { name: text, exact: true }).click();
+        await expect(select.locator(`[data-domain="${domain}"]`)).toHaveAttribute('data-semantic', domain === 'settlement' ? 'failed' : 'mismatch');
+    }
+    const query = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+        && request.postDataJSON().channelMatchStatus === 'MISMATCHED');
+    await page.getByRole('button', { name: '搜索', exact: true }).click();
+    expect((await query).postDataJSON()).toMatchObject({ channelMatchStatus: 'MISMATCHED', reconciliationStatus: 'MISMATCHED', settlementStatus: 'FAILED' });
+    for (const [label] of choices) {
+        const select = page.locator('.transaction-stage-status-select').filter({ has: page.getByRole('combobox', { name: label, exact: true }) });
+        await select.hover();
+        await select.locator('.el-select__clear').click();
+        await expect(select.locator('.transaction-stage-status-display')).toHaveCount(0);
+    }
+    const cleared = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+        && !request.postDataJSON().channelMatchStatus);
+    await page.getByRole('button', { name: '搜索', exact: true }).click();
+    const values = (await cleared).postDataJSON();
+    expect(values.channelMatchStatus).toBeUndefined();
+    expect(values.reconciliationStatus).toBeUndefined();
+    expect(values.settlementStatus).toBeUndefined();
+});
+
+test('only shows financial actions supported by each transaction type', async ({ page }) => {
+    const cases = [
+        { type: 'PAYMENT', labels: ['退款'] },
+        { type: 'CAPTURE', labels: ['退款'] },
+        { type: 'AUTHORIZATION', labels: ['请款', '撤销'] },
+        { type: 'PRE_AUTHORIZATION', labels: ['预授权完成', '撤销'] },
+        { type: 'PRE_AUTH_COMPLETION', labels: [] },
+        { type: 'REFUND', labels: [] },
+        { type: 'VOID', labels: [] },
+        { type: 'PAYOUT', labels: [] },
+        { type: 'UNKNOWN', labels: [] },
+    ];
+    const records = cases.map((item, index) => ({
+        ...operation, transactionId: `${transactionId.slice(0, -2)}${String(index).padStart(2, '0')}`,
+        transactionType: item.type,
+    }));
+    await mockAdminApis(page, () => {}, [
+        'transaction:merchant-notification:retry', 'transaction:match-abnormal:requery',
+        'transaction:operation:refund', 'transaction:operation:capture', 'transaction:operation:void',
+    ], true, records);
+    await page.goto('/transaction/operation');
+    for (const [index, item] of cases.entries()) {
+        const row = page.locator('tbody tr').filter({ has: page.getByText(records[index].transactionId, { exact: true }) });
+        await row.getByRole('button', { name: '更多', exact: true }).click();
+        const menu = page.getByRole('menu').filter({ has: page.getByRole('menuitem', { name: '重发回调', exact: true }) });
+        await expect(menu).toBeVisible();
+        for (const label of ['退款', '请款', '预授权完成', '撤销']) {
+            await expect(menu.getByRole('menuitem', { name: label, exact: true })).toHaveCount(item.labels.includes(label) ? 1 : 0);
+        }
+        for (const label of item.labels) {
+            await expect(menu.getByRole('menuitem', { name: label, exact: true })).toBeEnabled();
+        }
+        await expect(menu).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+    }
+});
+
+test('does not show an empty more menu when the permitted financial actions do not apply', async ({ page }) => {
+    await mockAdminApis(page, () => {}, [
+        'transaction:operation:refund', 'transaction:operation:capture', 'transaction:operation:void',
+    ], true, [{ ...operation, transactionType: 'REFUND' }]);
+    await page.goto('/transaction/operation');
+    await expect(page.getByText(transactionId, { exact: true }).first()).toBeVisible();
+    const actions = page.locator('tbody .table-row-actions').first();
+    await expect(actions.getByRole('button', { name: '详情', exact: true })).toBeVisible();
+    await expect(actions.getByRole('button', { name: '更多', exact: true })).toHaveCount(0);
+    for (const label of ['退款', '请款', '撤销']) {
+        await expect(actions.getByRole('button', { name: label, exact: true })).toHaveCount(0);
+    }
+});
+
+test('keeps supported financial actions disabled when status or available amounts prevent execution', async ({ page }) => {
+    const cases = [
+        { record: { ...operation, availableRefundAmount: '0' }, labels: ['退款'] },
+        { record: { ...operation, transactionStatus: 'FAILED' }, labels: ['退款'] },
+        { record: { ...operation, transactionType: 'AUTHORIZATION', availableCaptureAmount: '0', capturedAmount: '132.19' }, labels: ['请款', '撤销'] },
+        { record: { ...operation, transactionType: 'PRE_AUTHORIZATION', transactionStatus: 'PENDING' }, labels: ['预授权完成', '撤销'] },
+    ];
+    const records = cases.map((item, index) => ({
+        ...item.record, transactionId: `${transactionId.slice(0, -2)}${String(index).padStart(2, '0')}`,
+    }));
+    await mockAdminApis(page, () => {}, [
+        'transaction:merchant-notification:retry', 'transaction:operation:refund',
+        'transaction:operation:capture', 'transaction:operation:void',
+    ], true, records);
+    await page.goto('/transaction/operation');
+    for (const [index, item] of cases.entries()) {
+        const row = page.locator('tbody tr').filter({ has: page.getByText(records[index].transactionId, { exact: true }) });
+        await row.getByRole('button', { name: '更多', exact: true }).click();
+        const menu = page.getByRole('menu').filter({ has: page.getByRole('menuitem', { name: '重发回调', exact: true }) });
+        for (const label of item.labels) {
+            await expect(menu.getByRole('menuitem', { name: label, exact: true })).toBeDisabled();
+        }
+        await expect(menu).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+    }
+});
+
+async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => void,
+    actionPermissions: string[] = [], includeDetailPermission = true, records = [operation]) {
     await page.addInitScript(() => localStorage.setItem('acquiring_admin_locale', 'zh-CN'));
     await page.route('**/admin/**', (route) => fulfill(route, null));
     await page.route('**/admin/auth/me', (route) => fulfill(route, {
@@ -129,7 +397,8 @@ async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => 
             status: 1,
         },
         roles: ['SUPER_ADMIN'],
-        permissions: ['transaction:operation:list', 'transaction:operation:detail', 'clearing:record:detail'],
+        permissions: ['transaction:operation:list', 'clearing:record:detail',
+            ...(includeDetailPermission ? ['transaction:operation:detail'] : []), ...actionPermissions],
         menus: [{
             id: 30,
             parentId: 0,
@@ -169,7 +438,7 @@ async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => 
         total: 0, pageNo: 1, pageSize: 50, pages: 0, records: [],
     }));
     await page.route('**/admin/transactions/operations/search-with-summary', (route) => fulfill(route, {
-        page: { total: 1, pageNo: 1, pageSize: 10, pages: 1, records: [operation] },
+        page: { total: records.length, pageNo: 1, pageSize: 10, pages: 1, records },
         summary: {
             totalCount: 1,
             successCount: 1,
@@ -207,7 +476,7 @@ async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => 
             labelCurrency: 'EUR',
             grossLabelAmount: '132.19',
             reserveAmount: '13.22',
-            settlementStatus: 'UNSETTLED',
+            settlementStatus: 'NOT_SETTLED',
             version: 1,
         },
         transactionDetails: [],

@@ -31,7 +31,7 @@
                                 <CurrencyAmountDisplay :amount="clearingDetail.summary.reserveAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.settlementStatus')">
-                                {{ statusText(clearingDetail.summary.settlementStatus) }}
+                                <TransactionStageStatusDisplay domain="settlement" :value="clearingDetail.summary.settlementStatus" :label="statusText(clearingDetail.summary.settlementStatus)" />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.settlementEligibleDate')">
                                 {{ clearingDetail.summary.settlementEligibleDate || '-' }}
@@ -198,16 +198,12 @@
                             </el-table-column>
                             <el-table-column :label="t('transaction.fields.reconciliationStatus')" width="150" align="center">
                                 <template #default="{ row }">
-                                    <el-tag size="small" :type="financeStatusTagType(row.reconciliationStatus)">
-                                        {{ statusText(row.reconciliationStatus) }}
-                                    </el-tag>
+                                    <TransactionStageStatusDisplay domain="reconciliation" :value="row.reconciliationStatus" :label="statusText(row.reconciliationStatus)" />
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.fields.settlementStatus')" width="140" align="center">
                                 <template #default="{ row }">
-                                    <el-tag size="small" :type="financeStatusTagType(row.settlementStatus)">
-                                        {{ statusText(row.settlementStatus) }}
-                                    </el-tag>
+                                    <TransactionStageStatusDisplay domain="settlement" :value="row.settlementStatus" :label="statusText(row.settlementStatus)" />
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.fields.accountingStatus')" width="140" align="center">
@@ -366,7 +362,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Refresh } from '@element-plus/icons-vue';
-import { CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import {
     getSettlementReconciliationRecordsByTransaction,

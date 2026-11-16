@@ -38,28 +38,19 @@ const CARD_LOGO_MAP: Record<string, PaymentLogoKey[]> = {
     UNIONPAY: ['unionPay'],
 };
 
-const pendingDictOptionRequests = new Map<string, Promise<SelectOption[]>>();
-
-export function loadDictOptions(dictType: string, locale: string): Promise<SelectOption[]> {
-    const key = JSON.stringify([dictType, locale]);
-    const pending = pendingDictOptionRequests.get(key);
-    if (pending) return pending;
-
-    const request = searchDictData({
+export async function loadDictOptions(dictType: string, locale: string): Promise<SelectOption[]> {
+    const result = await searchDictData({
         pageNo: 1,
         pageSize: 500,
         dictType,
         locale,
         status: 1,
-    }).then((result) => result.records.map((item: SysDictData) => ({
+    });
+    return result.records.map((item: SysDictData) => ({
         label: item.dictLabel,
         value: item.dictValue,
         extraJson: item.extraJson,
-    }))).finally(() => {
-        pendingDictOptionRequests.delete(key);
-    });
-    pendingDictOptionRequests.set(key, request);
-    return request;
+    }));
 }
 
 export async function loadChannelOptions(): Promise<ChannelOption[]> {
