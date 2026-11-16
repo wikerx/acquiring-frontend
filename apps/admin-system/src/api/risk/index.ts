@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface RiskOption {
     label: string;
@@ -177,23 +178,119 @@ export interface TradeBlackQuery extends PageQuery {
     paymentOrderNo?: string;
     blackTargetType?: string;
     status?: number;
+    operator?: string;
+    operationStartTime?: string;
+    operationEndTimeExclusive?: string;
 }
 
-export interface TradeBlackSaveRequest {
-    merchantId?: string;
-    merchantName?: string;
-    merchantOrderNo?: string;
-    paymentOrderNo?: string;
-    blackTargetType: string;
-    blackTargetValueMasked: string;
-    blackTargetHash?: string;
-    sourceType?: string;
-    actionType?: string;
+export interface TradeBlackRecord {
+    id: string;
+    merchant_id?: string;
+    merchant_name?: string;
+    merchant_order_no?: string;
+    payment_order_no?: string;
+    black_target_type?: string;
+    black_target_value_masked?: string;
+    source_type?: string;
+    action_type?: string;
+    action_reason?: string;
+    status: number;
+    operator?: string;
+    create_time?: string;
+    update_time?: string;
+}
+
+export type TradeBlackInputMode = 'SINGLE' | 'PASTE' | 'FILE';
+export type TradeBlackIdentifierType = 'MERCHANT_ORDER_NO' | 'SYSTEM_ORDER_NO';
+export type TradeBlackScopeType = 'GLOBAL' | 'MERCHANT';
+export type TradeBlackActionType = 'ADD' | 'RELEASE';
+
+export interface TradeBlackOrderReference {
+    rowNo?: number;
+    identifierType: TradeBlackIdentifierType;
+    lookupMerchantId?: string;
+    orderNo: string;
+}
+
+export interface TradeBlackPreviewRequest {
+    inputMode: TradeBlackInputMode;
+    scopeType: TradeBlackScopeType;
+    merchantIds?: string[];
+    actionType: TradeBlackActionType;
+    functionCodes: string[];
     actionReason?: string;
-    status?: number;
+    orders: TradeBlackOrderReference[];
+}
+
+export interface TradeBlackCandidate {
+    candidateKey: string;
+    rowNo?: number;
+    inputOrderNo?: string;
+    transactionId?: string;
+    sourceMerchantId?: string;
+    merchantOrderNo?: string;
+    functionCode: string;
+    functionName: string;
+    sourceField?: string;
+    sourceLabel?: string;
+    maskedValue?: string;
+    targetScope: TradeBlackScopeType;
+    targetMerchantId?: string;
+    state: 'READY' | 'ALREADY_EXISTS' | 'ALREADY_MISSING' | 'NOT_AVAILABLE';
+    stateMessage?: string;
+    selectable: boolean;
+    selected: boolean;
+}
+
+export interface TradeBlackOrderError {
+    rowNo?: number;
+    orderNo?: string;
+    code?: string;
+    message?: string;
+}
+
+export interface TradeBlackPreviewResponse {
+    orderCount: number;
+    resolvedOrderCount: number;
+    candidateCount: number;
+    selectableCount: number;
+    unavailableCount: number;
+    candidates: TradeBlackCandidate[];
+    orderErrors: TradeBlackOrderError[];
+}
+
+export interface TradeBlackExecuteRequest {
+    requestId: string;
+    workflow: TradeBlackPreviewRequest;
+    selectedCandidateKeys: string[];
+}
+
+export interface TradeBlackExecuteItem {
+    candidateKey?: string;
+    rowNo?: number;
+    orderNo?: string;
+    functionCode?: string;
+    functionName?: string;
+    sourceField?: string;
+    targetScope?: string;
+    targetMerchantId?: string;
+    maskedValue?: string;
+    resultCode?: string;
+    message?: string;
+}
+
+export interface TradeBlackExecuteResponse {
+    batchNo: string;
+    status: 'PROCESSING' | 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED';
+    totalCount: number;
+    successCount: number;
+    skippedCount: number;
+    failureCount: number;
+    failures: TradeBlackExecuteItem[];
 }
 
 export interface EvaluationQuery extends PageQuery {
+    riskRecordNo?: string;
     merchantId?: string;
     merchantOrderNo?: string;
     paymentOrderNo?: string;
@@ -201,6 +298,33 @@ export interface EvaluationQuery extends PageQuery {
     riskLevel?: string;
     evaluationStartTime?: string;
     evaluationEndTimeExclusive?: string;
+}
+
+export type EvaluationDetailQuery = PageQuery;
+
+export interface EvaluationDetail {
+    id: string;
+    risk_record_no: string;
+    module_type?: string;
+    function_code?: string;
+    function_name?: string;
+    rule_id?: string;
+    hit_element?: string;
+    hit_value_masked?: string;
+    risk_level?: string;
+    decision_result?: string;
+    reason_code?: string;
+    decision_reason?: string;
+    decision_time?: string;
+    time_window_seconds?: number;
+    threshold_count?: number;
+    elements_json?: string;
+    current_count?: string;
+    stage_code?: string;
+    stage_name?: string;
+    stage_order?: number;
+    match_result?: string;
+    decision_effect?: string;
 }
 
 export async function getRiskFunctions() {
@@ -308,11 +432,22 @@ export async function updateRiskRule(functionCode: string, id: number, data: Ris
     return unwrapResult(result.data);
 }
 
-export async function exportRiskConfig(moduleType: string, functionCode: string, data: RiskListQuery | RiskRuleQuery = {}) {
-    await downloadExcel(`/admin/risk/${moduleType}/${functionCode}/export`, {
-        method: 'post',
-        data,
-    });
+export async function submitRiskConfigExportTask(data: {
+    requestId: string;
+    moduleType: string;
+    functionCode: string;
+    query: RiskListQuery | RiskRuleQuery;
+}): Promise<ExportTaskSummary> {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/risk/export-tasks', data);
+    return unwrapResult(result.data);
+}
+
+export async function submitTradeBlackExportTask(data: {
+    requestId: string;
+    query: TradeBlackQuery;
+}): Promise<ExportTaskSummary> {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/risk/trade-black/export-tasks', data);
+    return unwrapResult(result.data);
 }
 
 export async function downloadRiskTemplate(moduleType: string, functionCode: string) {
@@ -334,18 +469,59 @@ export async function importRiskConfig(moduleType: string, functionCode: string,
 }
 
 export async function pageTradeBlack(data: TradeBlackQuery = {}) {
-    const result = await http.post<CommonResult<PageResult<Record<string, unknown>>>>('/admin/risk/trade-black/page', data);
+    const result = await http.post<CommonResult<PageResult<TradeBlackRecord>>>('/admin/risk/trade-black/page', data);
     return unwrapResult(result.data);
 }
 
-export async function createTradeBlack(data: TradeBlackSaveRequest) {
-    const result = await http.post<CommonResult<void>>('/admin/risk/trade-black', data);
+export async function previewTradeBlack(data: TradeBlackPreviewRequest) {
+    const result = await http.post<CommonResult<TradeBlackPreviewResponse>>('/admin/risk/trade-black/preview', data);
     return unwrapResult(result.data);
 }
 
-export async function releaseTradeBlack(id: number, reason?: string) {
-    const result = await http.put<CommonResult<void>>(`/admin/risk/trade-black/${id}/release`, null, { params: { reason } });
+export async function previewTradeBlackFile(metadata: Omit<TradeBlackPreviewRequest, 'orders'>, file: File) {
+    const formData = new FormData();
+    formData.append('metadata', JSON.stringify(metadata));
+    formData.append('file', file);
+    const result = await http.post<CommonResult<TradeBlackPreviewResponse>>('/admin/risk/trade-black/preview-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return unwrapResult(result.data);
+}
+
+export async function executeTradeBlack(data: TradeBlackExecuteRequest) {
+    const result = await http.post<CommonResult<TradeBlackExecuteResponse>>('/admin/risk/trade-black/execute', data);
+    return unwrapResult(result.data);
+}
+
+export async function executeTradeBlackFile(
+    requestId: string,
+    metadata: Omit<TradeBlackPreviewRequest, 'orders'>,
+    selectedCandidateKeys: string[],
+    file: File,
+) {
+    const formData = new FormData();
+    formData.append('requestId', requestId);
+    formData.append('metadata', JSON.stringify(metadata));
+    formData.append('selectedCandidateKeys', JSON.stringify(selectedCandidateKeys));
+    formData.append('file', file);
+    const result = await http.post<CommonResult<TradeBlackExecuteResponse>>('/admin/risk/trade-black/execute-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrapResult(result.data);
+}
+
+export async function downloadTradeBlackTemplate(fallbackFileName = 'transaction-blacklist-import-template.xlsx') {
+    await downloadExcel('/admin/risk/trade-black/template', {
+        method: 'get',
+        fileName: fallbackFileName,
+    });
+}
+
+export async function downloadTradeBlackFailureReport(batchNo: string, fallbackFileName = `${batchNo}-transaction-blacklist-failures.xlsx`) {
+    await downloadExcel(`/admin/risk/trade-black/batches/${encodeURIComponent(batchNo)}/failures`, {
+        method: 'get',
+        fileName: fallbackFileName,
+    });
 }
 
 export async function pageEvaluations(data: EvaluationQuery = {}) {
@@ -360,5 +536,13 @@ export async function getEvaluationHits(riskRecordNo: string) {
 
 export async function getEvaluationDetails(riskRecordNo: string) {
     const result = await http.get<CommonResult<Record<string, unknown>[]>>(`/admin/risk/record/evaluations/${riskRecordNo}/details`);
+    return unwrapResult(result.data);
+}
+
+export async function pageEvaluationDetails(riskRecordNo: string, data: EvaluationDetailQuery = {}) {
+    const result = await http.post<CommonResult<PageResult<EvaluationDetail>>>(
+        `/admin/risk/record/evaluations/${riskRecordNo}/details/page`,
+        data,
+    );
     return unwrapResult(result.data);
 }

@@ -51,7 +51,12 @@
             <el-table-column :label="t('channel.capability.paymentScope')" width="150" align="center">
                 <template #default="{ row }">
                     <div class="scope-cell">
-                        <PaymentLogoGroup v-if="paymentScopeLogo(row).length" :keys="paymentScopeLogo(row)" size="sm" align="center" />
+                        <ChannelPaymentScopeDisplay
+                            v-if="paymentScopeLogo(row).length"
+                            :keys="paymentScopeLogo(row)"
+                            :label="t('channel.capability.paymentScope')"
+                        />
+                        <span v-else>{{ scopeText(row.paymentMethod, row.cardBrand) }}</span>
                     </div>
                 </template>
             </el-table-column>
@@ -82,7 +87,10 @@
                 <el-descriptions-item :label="t('channel.alert.ruleName')">{{ detailRow.ruleName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.capability.paymentScope')">{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.capability.paymentScope')">
+                    <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" size="sm" align="start" />
+                    <span v-else>{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.ruleType')">{{ optionLabel(ruleTypeOptions, detailRow.ruleType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.windowMinutes')">{{ detailRow.windowMinutes }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.threshold')">{{ thresholdText(detailRow) }}</el-descriptions-item>
@@ -98,7 +106,6 @@
                 <el-descriptions-item :label="t('channel.alert.emailRecipients')">{{ detailRow.emailRecipients || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.emailCc')">{{ detailRow.emailCc || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.alert.emailTemplateCode')">{{ detailRow.emailTemplateCode || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.alert.emailSceneCode')">{{ detailRow.emailSceneCode || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.operator')">{{ detailRow.updateBy || detailRow.createBy || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
@@ -126,14 +133,27 @@
                         </el-form-item>
                         <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
                             <el-select v-model="form.paymentMethod" filterable style="width:100%" :disabled="formMode === 'edit' || !form.businessType" @change="handlePaymentChange">
+                                <template v-if="selectedFormPaymentLogoKeys.length" #prefix>
+                                    <PaymentLogoGroup :keys="selectedFormPaymentLogoKeys" size="sm" :wrap="false" />
+                                </template>
                                 <el-option :label="t('channel.common.all')" value="ALL" />
-                                <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
                             <el-select v-model="form.cardBrands" multiple filterable collapse-tags collapse-tags-tooltip style="width:100%" @change="handleCardBrandsChange">
                                 <el-option :label="t('channel.common.all')" value="ALL" />
-                                <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.alert.ruleType')" prop="ruleTypes">
@@ -152,27 +172,22 @@
 
                 <div class="form-section form-section--rules">
                     <div class="form-section__title">{{ t('channel.alert.ruleConfigSection') }}</div>
-                    <div v-if="selectedRules.length" class="rule-type-switch">
-                        <button
-                            v-for="rule in selectedRules"
-                            :key="rule.ruleType"
-                            type="button"
-                            class="rule-type-tab"
-                            :class="{ 'is-active': activeRuleType === rule.ruleType }"
-                            @click="activeRuleType = rule.ruleType"
-                        >
-                            {{ ruleTypeTabLabel(rule.ruleType) }}
-                        </button>
-                    </div>
+                    <AdminLinearTabs
+                        v-if="selectedRules.length"
+                        v-model="activeRuleType"
+                        :items="ruleTabOptions"
+                        :aria-label="t('channel.alert.ruleConfigSection')"
+                        class="rule-type-switch"
+                    />
                     <div v-for="rule in selectedRules" :key="rule.ruleType" v-show="activeRuleType === rule.ruleType" class="rule-panel">
-                        <div class="rule-panel__grid">
+                        <div class="rule-panel__grid" :class="{ 'rule-panel__grid--rate': thresholdModeFor(rule.ruleType) === 'RATE' }">
                             <el-form-item :label="t('channel.alert.windowValue')" :prop="`rules.${rule.ruleType}.windowValue`" :rules="[{ required: true, message: t('channel.alert.requiredWindowMinutes'), trigger: 'blur' }]">
-                                <el-input-number v-model="rule.windowValue" :min="1" :precision="0" controls-position="right" style="width:100%" />
-                            </el-form-item>
-                            <el-form-item :label="t('channel.alert.windowUnit')" :prop="`rules.${rule.ruleType}.windowUnit`">
-                                <el-select v-model="rule.windowUnit" style="width:100%">
-                                    <el-option v-for="item in windowUnitOptions" :key="item.value" :label="item.label" :value="item.value" />
-                                </el-select>
+                                <div class="rule-window-control">
+                                    <el-input-number v-model="rule.windowValue" :min="1" :precision="0" controls-position="right" />
+                                    <el-select v-model="rule.windowUnit" :aria-label="t('channel.alert.windowUnit')">
+                                        <el-option v-for="item in windowUnitOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                    </el-select>
+                                </div>
                             </el-form-item>
                             <el-form-item
                                 v-if="thresholdModeFor(rule.ruleType) === 'COUNT'"
@@ -225,11 +240,6 @@
                 <div class="form-section form-section--notify">
                     <div class="form-section__title">{{ t('channel.alert.notifyConfigSection') }}</div>
                     <div class="notify-grid">
-                        <el-form-item :label="t('channel.alert.notifyType')" prop="notifyType">
-                            <el-select v-model="form.notifyType" style="width:100%">
-                                <el-option :label="t('channel.alert.email')" value="EMAIL" />
-                            </el-select>
-                        </el-form-item>
                         <el-form-item :label="t('channel.alert.emailRecipients')" prop="recipientEmails">
                             <el-select v-model="form.recipientEmails" multiple filterable remote reserve-keyword collapse-tags collapse-tags-tooltip style="width:100%" :remote-method="searchEmailOptions">
                                 <el-option v-for="item in userEmailOptions" :key="item.email" :label="userEmailLabel(item)" :value="item.email" />
@@ -240,14 +250,9 @@
                                 <el-option v-for="item in userEmailOptions" :key="item.email" :label="userEmailLabel(item)" :value="item.email" />
                             </el-select>
                         </el-form-item>
-                        <el-form-item :label="t('channel.alert.emailTemplateCode')" prop="emailTemplateCode">
-                            <el-select v-model="form.emailTemplateCode" filterable remote reserve-keyword clearable style="width:100%" :remote-method="searchEmailOptions" @change="handleTemplateChange">
-                                <el-option v-for="item in emailTemplateOptions" :key="`${item.templateCode}:${item.locale || ''}`" :label="templateOptionLabel(item)" :value="item.templateCode" />
-                            </el-select>
-                        </el-form-item>
-                        <el-form-item :label="t('channel.alert.emailSceneCode')" prop="emailSceneCode">
-                            <el-select v-model="form.emailSceneCode" filterable remote reserve-keyword clearable style="width:100%" :remote-method="searchEmailOptions">
-                                <el-option v-for="item in emailSceneOptions" :key="item" :label="item" :value="item" />
+                        <el-form-item :label="t('channel.alert.emailTemplateCode')" prop="emailTemplateCode" class="notify-grid__template">
+                            <el-select v-model="form.emailTemplateCode" filterable remote reserve-keyword style="width:100%" :remote-method="searchTemplateOptions" @change="handleTemplateChange">
+                                <el-option v-for="item in localizedEmailTemplateOptions" :key="item.templateCode" :label="templateOptionLabel(item)" :value="item.templateCode" />
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.common.remark')" class="notify-grid__remark">
@@ -269,13 +274,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { Cpu, Delete, Edit, Histogram, Lightning, Plus, Refresh, Search, Timer, View } from '@element-plus/icons-vue';
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import AdminLinearTabs from '@/components/AdminLinearTabs/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
 import {
     createChannelAlertRules,
     deleteChannelAlertRule,
@@ -310,6 +317,9 @@ import type { ChannelOption } from '@/api/channel';
 
 type WindowUnit = 'MINUTE' | 'HOUR' | 'DAY' | 'WEEK' | 'MONTH';
 type ThresholdMode = 'COUNT' | 'RATE' | 'MILLIS' | '';
+
+const CHANNEL_ALERT_SCENE = 'CHANNEL_ALERT';
+const DEFAULT_CHANNEL_ALERT_TEMPLATE = 'CHANNEL_ALERT_DEFAULT';
 
 interface RuleFormItem {
     id?: number;
@@ -353,7 +363,6 @@ const optionCardBrands = ref<string[]>([]);
 const rowCapabilityOptions = ref<Record<string, { businessType: string; paymentMethod: string; cardBrands: string[] }[]>>({});
 const userEmailOptions = ref<ChannelAlertUserEmailOption[]>([]);
 const emailTemplateOptions = ref<ChannelAlertEmailTemplateOption[]>([]);
-const emailSceneOptions = ref<string[]>([]);
 
 const query = reactive({
     ruleName: '',
@@ -375,8 +384,8 @@ const form = reactive({
     notifyType: 'EMAIL',
     recipientEmails: [] as string[],
     ccEmails: [] as string[],
-    emailTemplateCode: '',
-    emailSceneCode: 'CHANNEL_ALERT',
+    emailTemplateCode: DEFAULT_CHANNEL_ALERT_TEMPLATE,
+    emailSceneCode: CHANNEL_ALERT_SCENE,
     ruleStatus: 1,
     remark: '',
 });
@@ -411,11 +420,51 @@ const formPaymentOptions = computed(() => {
         .filter((item) => item.businessType === form.businessType)
         .map((item) => item.paymentMethod);
     const source = form.businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
-    return source.filter((item) => values.includes(item.value));
+    const options = source.filter((item) => values.includes(item.value));
+    if (formMode.value !== 'edit' || !form.paymentMethod || form.paymentMethod === 'ALL') {
+        return options;
+    }
+    const currentOption = source.find((item) => item.value === form.paymentMethod);
+    return dedupeSelectOptions(currentOption ? [currentOption, ...options] : options);
 });
-const formCardBrandOptions = computed(() => cardBrandOptions.value.filter((item) => optionCardBrands.value.includes(item.value)));
+const formCardBrandOptions = computed(() => {
+    const options = cardBrandOptions.value.filter((item) => optionCardBrands.value.includes(item.value));
+    if (formMode.value !== 'edit') {
+        return options;
+    }
+    const currentOptions = cardBrandOptions.value.filter((item) => form.cardBrands.includes(item.value));
+    return dedupeSelectOptions([...currentOptions, ...options]);
+});
 const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
+const selectedFormPaymentLogoKeys = computed(() => {
+    if (!form.paymentMethod || form.paymentMethod === 'ALL') {
+        return [];
+    }
+    const option = formPaymentOptions.value.find((item) => item.value === form.paymentMethod);
+    return paymentLogoKeys(form.paymentMethod, option);
+});
 const selectedRules = computed(() => form.ruleTypes.map((ruleType) => form.rules[ruleType]).filter(Boolean));
+const localizedEmailTemplateOptions = computed(() => {
+    const localeCode = normalizedLocale(locale.value);
+    const grouped = new Map<string, ChannelAlertEmailTemplateOption[]>();
+    emailTemplateOptions.value
+        .filter((item) => item.sceneCode === CHANNEL_ALERT_SCENE)
+        .forEach((item) => grouped.set(item.templateCode, [...(grouped.get(item.templateCode) || []), item]));
+    return Array.from(grouped.values()).map((items) => (
+        items.find((item) => normalizedLocale(item.locale) === localeCode) || items[0]
+    ));
+});
+const ruleTabIcons = {
+    CONTINUOUS_FAILURE: Lightning,
+    SUCCESS_RATE_LOW: Histogram,
+    TECH_ERROR_RATE_HIGH: Cpu,
+    LATENCY_HIGH: Timer,
+};
+const ruleTabOptions = computed(() => selectedRules.value.map((rule) => ({
+    value: rule.ruleType,
+    label: ruleTypeTabLabel(rule.ruleType),
+    icon: ruleTabIcons[rule.ruleType as keyof typeof ruleTabIcons],
+})));
 
 onMounted(async () => {
     await Promise.all([loadOptions(), loadData()]);
@@ -455,11 +504,14 @@ async function loadRuleOptions(keyword = '') {
     optionCardBrands.value = result.cardBrands || [];
     userEmailOptions.value = mergeUserEmailOptions(userEmailOptions.value, result.userEmails || []);
     emailTemplateOptions.value = mergeTemplateOptions(emailTemplateOptions.value, result.emailTemplates || []);
-    emailSceneOptions.value = Array.from(new Set([...(result.emailSceneCodes || []), 'CHANNEL_ALERT']));
     syncFormDimensionOptions();
 }
 
 async function searchEmailOptions(keyword: string) {
+    await loadRuleOptions(keyword);
+}
+
+async function searchTemplateOptions(keyword: string) {
     await loadRuleOptions(keyword);
 }
 
@@ -535,14 +587,25 @@ function resetForm() {
         notifyType: 'EMAIL',
         recipientEmails: [],
         ccEmails: [],
-        emailTemplateCode: '',
-        emailSceneCode: 'CHANNEL_ALERT',
+        emailTemplateCode: DEFAULT_CHANNEL_ALERT_TEMPLATE,
+        emailSceneCode: CHANNEL_ALERT_SCENE,
         ruleStatus: 1,
         remark: '',
     });
     activeRuleType.value = '';
     optionPaymentMethods.value = [];
     optionCardBrands.value = [];
+}
+
+function dedupeSelectOptions(options: SelectOption[]) {
+    const seen = new Set<string>();
+    return options.filter((item) => {
+        if (seen.has(item.value)) {
+            return false;
+        }
+        seen.add(item.value);
+        return true;
+    });
 }
 
 async function handleChannelChange() {
@@ -629,7 +692,7 @@ function buildBatchPayload(): ChannelAlertRuleBatchSaveRequest {
         emailRecipients: form.recipientEmails.join(','),
         emailCc: form.ccEmails.join(','),
         emailTemplateCode: form.emailTemplateCode,
-        emailSceneCode: form.emailSceneCode || 'CHANNEL_ALERT',
+        emailSceneCode: CHANNEL_ALERT_SCENE,
         ruleStatus: form.ruleStatus,
         remark: form.remark,
     };
@@ -718,8 +781,8 @@ function applyDimensionToForm(dimension: ChannelAlertRuleDimension) {
     form.notifyType = dimension.notifyType || 'EMAIL';
     form.recipientEmails = splitEmails(dimension.emailRecipients);
     form.ccEmails = splitEmails(dimension.emailCc);
-    form.emailTemplateCode = dimension.emailTemplateCode || '';
-    form.emailSceneCode = dimension.emailSceneCode || 'CHANNEL_ALERT';
+    form.emailTemplateCode = dimension.emailTemplateCode || DEFAULT_CHANNEL_ALERT_TEMPLATE;
+    form.emailSceneCode = CHANNEL_ALERT_SCENE;
     form.ruleStatus = dimension.ruleStatus ?? 1;
     form.remark = dimension.remark || '';
     const byRuleType = new Map<string, ChannelAlertRule>();
@@ -733,9 +796,8 @@ function applyDimensionToForm(dimension: ChannelAlertRuleDimension) {
     activeRuleType.value = form.ruleTypes[0] || '';
     userEmailOptions.value = mergeUserEmailOptions(userEmailOptions.value, splitEmails(dimension.emailRecipients).concat(splitEmails(dimension.emailCc)).map((email) => ({ accountId: 0, loginAccount: email, email })));
     if (dimension.emailTemplateCode) {
-        emailTemplateOptions.value = mergeTemplateOptions(emailTemplateOptions.value, [{ templateCode: dimension.emailTemplateCode, sceneCode: dimension.emailSceneCode || 'CHANNEL_ALERT' }]);
+        emailTemplateOptions.value = mergeTemplateOptions(emailTemplateOptions.value, [{ templateCode: dimension.emailTemplateCode, sceneCode: CHANNEL_ALERT_SCENE }]);
     }
-    emailSceneOptions.value = Array.from(new Set([...emailSceneOptions.value, dimension.emailSceneCode || 'CHANNEL_ALERT']));
     loadRuleOptions();
 }
 
@@ -967,14 +1029,16 @@ function userEmailLabel(item: ChannelAlertUserEmailOption) {
 }
 
 function templateOptionLabel(item: ChannelAlertEmailTemplateOption) {
-    return item.templateName ? `${item.templateCode} (${item.templateName})` : item.templateCode;
+    return item.templateName ? `${item.templateCode} - ${item.templateName}` : item.templateCode;
 }
 
 function handleTemplateChange(value?: string) {
-    const template = emailTemplateOptions.value.find((item) => item.templateCode === value);
-    if (template?.sceneCode) {
-        form.emailSceneCode = template.sceneCode;
-    }
+    const template = localizedEmailTemplateOptions.value.find((item) => item.templateCode === value);
+    form.emailSceneCode = template?.sceneCode || CHANNEL_ALERT_SCENE;
+}
+
+function normalizedLocale(value?: string) {
+    return String(value || '').toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';
 }
 
 function mergeUserEmailOptions(current: ChannelAlertUserEmailOption[], incoming: ChannelAlertUserEmailOption[]) {
@@ -1055,42 +1119,7 @@ function mergeTemplateOptions(current: ChannelAlertEmailTemplateOption[], incomi
 }
 
 .rule-type-switch {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    padding: 4px 6px 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px 6px 0 0;
-    background: linear-gradient(180deg, #f7fbff 0%, #f9fbff 54%, #fff 100%);
     margin-bottom: 14px;
-}
-
-.rule-type-tab {
-    position: relative;
-    height: 42px;
-    border: 0;
-    background: transparent;
-    color: var(--el-text-color-regular);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.rule-type-tab::after {
-    position: absolute;
-    right: 28px;
-    bottom: -1px;
-    left: 28px;
-    height: 2px;
-    background: transparent;
-    content: "";
-}
-
-.rule-type-tab.is-active {
-    color: var(--el-color-primary);
-}
-
-.rule-type-tab.is-active::after {
-    background: var(--el-color-primary);
 }
 
 .rule-panel {
@@ -1100,8 +1129,62 @@ function mergeTemplateOptions(current: ChannelAlertEmailTemplateOption[], incomi
 .rule-panel__grid {
     display: grid;
     align-items: start;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 18px;
+    grid-template-columns: minmax(250px, 1.3fr) repeat(2, minmax(190px, 1fr));
+    column-gap: 16px;
+}
+
+.rule-panel__grid--rate {
+    grid-template-columns: minmax(230px, 1.25fr) repeat(3, minmax(150px, 1fr));
+}
+
+.rule-panel__grid :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+}
+
+.rule-panel__grid :deep(.el-form-item__label) {
+    width: auto !important;
+    height: 24px;
+    margin: 0 0 5px;
+    padding: 0;
+    line-height: 24px;
+}
+
+.rule-panel__grid :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+}
+
+.rule-window-control {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 96px;
+}
+
+.rule-window-control :deep(.el-input-number),
+.rule-window-control :deep(.el-select) {
+    height: 32px;
+    width: 100%;
+}
+
+.rule-window-control :deep(.el-input__wrapper),
+.rule-window-control :deep(.el-select__wrapper) {
+    min-height: 32px;
+    box-sizing: border-box;
+    border-radius: 0 4px 4px 0;
+}
+
+.rule-window-control :deep(.el-input-number .el-input__wrapper) {
+    border-radius: 4px 0 0 4px;
+}
+
+.rule-window-control :deep(.el-select__wrapper) {
+    margin-left: -1px;
+}
+
+.rule-window-control:focus-within :deep(.el-input__wrapper),
+.rule-window-control:focus-within :deep(.el-select__wrapper) {
+    position: relative;
+    z-index: 1;
 }
 
 .rule-panel :deep(.el-textarea__inner),
@@ -1120,26 +1203,50 @@ function mergeTemplateOptions(current: ChannelAlertEmailTemplateOption[], incomi
     grid-column: 1 / -1;
 }
 
+.notify-grid__template {
+    grid-column: 1 / -1;
+}
+
 .dialog-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
 }
 
+.channel-option-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.channel-option-display > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 820px) {
     .form-grid,
-    .rule-panel__grid,
     .notify-grid {
         grid-template-columns: 1fr;
     }
 
-    .rule-type-switch {
+    .rule-panel__grid,
+    .rule-panel__grid--rate {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .rule-panel {
         padding-right: 12px;
         padding-left: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .rule-panel__grid,
+    .rule-panel__grid--rate {
+        grid-template-columns: 1fr;
     }
 }
 </style>

@@ -43,12 +43,15 @@
                 <el-descriptions-item :label="t('monitor.workbench.fields.operationId')">{{ response.summary.operationId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.merchantId')">{{ response.summary.merchantId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.merchantOrderNo')">{{ response.summary.merchantOrderNo || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="t('monitor.workbench.fields.transactionType')">{{ response.summary.transactionType || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('monitor.workbench.fields.transactionType')"><TransactionTypeDisplay :value="response.summary.transactionType" :label="transactionTypeText(response.summary.transactionType)" align="start" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.status')">
-                    <el-tag size="small" :type="monitorTagType(response.summary.transactionStatus)">{{ statusText(response.summary.transactionStatus) }}</el-tag>
+                    <TransactionStatusDisplay :value="response.summary.transactionStatus" :label="statusText(response.summary.transactionStatus)" align="start" />
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.amount')">{{ traceAmount }}</el-descriptions-item>
-                <el-descriptions-item :label="t('monitor.workbench.fields.paymentMethod')">{{ response.summary.paymentMethod || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="t('monitor.workbench.fields.paymentMethod')">
+                    <PaymentLogoGroup v-if="tracePaymentLogoKeys.length" :keys="tracePaymentLogoKeys" size="sm" align="start" fallback="text" :wrap="false" />
+                    <span v-else>{{ response.summary.paymentMethod || '-' }}</span>
+                </el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.channelCode')">{{ response.summary.channelCode || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.channelOrderNo')">{{ response.summary.channelOrderNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('monitor.workbench.fields.totalDuration')">{{ formatDuration(response.summary.totalDurationMillis, String(locale)) }}</el-descriptions-item>
@@ -111,9 +114,16 @@
 
 <script setup lang="ts">
 /** 交易链路主页面：按业务标识定位单笔交易并展示脱敏事件与阶段瀑布图。 */
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Refresh, Search } from '@element-plus/icons-vue';
+import {
+    PaymentLogoGroup,
+    TransactionStatusDisplay,
+    TransactionTypeDisplay,
+    formatMoneyAmount,
+    resolvePaymentLogoKeys,
+} from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -122,12 +132,19 @@ import { MonitorChartGrid, MonitorChartPanel, MonitorTimeRangeSelector, type Mon
 import { MonitorCapabilityAlert, MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { searchMonitorTrace, type TraceEvent, type TraceResponse } from '@/api/monitor/workbench';
 import { createMonitorTimeRange, createTraceWaterfallDataset, formatDuration, monitorLoadState, monitorTagType, toMonitorTimeRangeQuery } from '@/api/monitor/workbenchAdapters';
+import {
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+    type TransactionDictOption,
+} from '@/views/transaction/shared';
 
 const { locale, t } = useI18n();
 const route = useRoute();
 const timeRange = ref(createMonitorTimeRange());
 const loading = ref(false);
 const errorMessage = ref('');
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
 const response = ref<TraceResponse>();
 const query = reactive({ transactionId: '', merchantOrderNo: '', channelOrderNo: '', traceId: '' });
 const detailVisible = ref(false);
@@ -156,13 +173,28 @@ const summaryCards = computed(() => {
 const traceAmount = computed(() => {
     const summary = response.value?.summary;
     if (!summary || summary.amount === null || summary.amount === undefined) return '-';
-    return [summary.currency, summary.amount].filter(Boolean).join(' ');
+    return [
+        summary.currency,
+        formatMoneyAmount(summary.amount, String(locale.value || 'zh-CN')),
+    ].filter(Boolean).join(' ');
 });
+const tracePaymentLogoKeys = computed(() =>
+    resolvePaymentLogoKeys(response.value?.summary?.paymentMethod),
+);
 
 onMounted(async () => {
+    await loadTransactionTypeOptions();
     assignRouteQuery();
     if (hasIdentifier()) await handleSearch();
 });
+watch(() => locale.value, () => { void loadTransactionTypeOptions(); });
+
+async function loadTransactionTypeOptions() {
+    const fallback = fallbackTransactionTypeOptions(t);
+    transactionTypeOptions.value = fallback;
+    const loaded = await loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []);
+    transactionTypeOptions.value = mergeTransactionDictOptions(loaded, fallback);
+}
 
 async function handleSearch() {
     if (!hasIdentifier()) {
@@ -211,6 +243,11 @@ function assignRouteQuery() {
 
 function statusText(value?: string) {
     return t(`monitor.workbench.status.${String(value || 'unknown').toLowerCase()}`, value || '-');
+}
+
+function transactionTypeText(value?: string) {
+    if (!value) return '-';
+    return transactionTypeOptions.value.find((item) => item.value === value)?.label || value;
 }
 
 function openEvent(event: TraceEvent) {

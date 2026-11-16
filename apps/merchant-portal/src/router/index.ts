@@ -22,6 +22,7 @@ const staticChildren: RouteRecordRaw[] = [
     { path: 'profile', component: () => import('@/pages/profile/index.vue'), meta: { titleKey: 'route.profile' } },
     { path: 'transaction/order', component: () => import('@/pages/transaction/order/index.vue'), meta: { titleKey: 'route.transactionOrder', permission: 'merchant:transaction:order:list' } },
     { path: 'transaction/refund', component: () => import('@/pages/transaction/refund/index.vue'), meta: { titleKey: 'route.transactionRefund', permission: 'merchant:transaction:refund:list' } },
+    { path: 'transaction/notification', component: () => import('@/pages/transaction/notification/index.vue'), meta: { titleKey: 'route.transactionNotification', permission: 'merchant:transaction:notification:list' } },
     { path: 'transaction/analytics', component: () => import('@/pages/transaction/analytics/index.vue'), meta: { titleKey: 'route.transactionAnalytics', permission: 'merchant:transaction:analytics:view' } },
     { path: 'merchant-info/openapi-keys', component: () => import('@/pages/merchant-info/openapi-keys/index.vue'), meta: { titleKey: 'route.openapiKeys', permission: 'merchant:openapi:key:view' } },
     { path: 'system/account', component: () => import('@/pages/system/account/index.vue'), meta: { titleKey: 'route.systemAccount', permission: 'merchant:system:account:list' } },

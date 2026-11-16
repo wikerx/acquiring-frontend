@@ -25,7 +25,7 @@
             :collapse-text="t('transaction.search.collapse')"
             :search-text="t('common.search')"
             :reset-text="t('common.reset')"
-            label-width="88px"
+            label-width="96px"
             inline-time
             @search="loadActiveTab"
             @reset="resetFilters"
@@ -59,7 +59,8 @@
             </el-form-item>
             <el-form-item :label="t('transactionAnalytics.transactionType')">
                 <el-select v-model="filters.transactionType" clearable filterable :placeholder="t('transactionAnalytics.all')">
-                    <el-option v-for="item in transactionTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template #prefix><TransactionTypeDisplay v-if="filters.transactionType" :value="filters.transactionType" icon-only /></template>
+                    <el-option v-for="item in transactionTypeOptions" :key="item.value" :label="item.label" :value="item.value"><TransactionTypeDisplay :value="item.value" :label="item.label" align="start" /></el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('transactionAnalytics.currency')">
@@ -71,7 +72,7 @@
                     default-first-option
                     :placeholder="t('transactionAnalytics.all')"
                 >
-                    <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item" />
+                    <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item"><CurrencyDisplay :currency="item" :locale="String(locale)" size="sm" /></el-option>
                 </el-select>
             </el-form-item>
             <template #time>
@@ -464,14 +465,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Clock } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import {
     AnalyticsChart,
     AnalyticsPaymentPerformance,
+    CurrencyDisplay,
     PaymentLogoGroup,
+    TransactionTypeDisplay,
     analyticsNumber,
     createAnalyticsChannelPerformanceOption,
     createAnalyticsChannelTrendOption,
@@ -513,6 +516,7 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     ensureTransactionTimezoneOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     type TransactionDictOption,
 } from '../shared';
 
@@ -593,19 +597,13 @@ const paymentToolOptions = computed<PaymentToolOption[]>(() => paymentMethodOpti
             logoKeys: resolvePaymentLogoKeys(method.value),
         }];
     }
-    const allCards: PaymentToolOption = {
-        value: paymentToolValue(method.value),
-        label: t('transactionAnalytics.allCardBrands', { method: method.label }),
-        paymentMethod: method.value,
-        logoKeys: resolvePaymentLogoKeys(method.value),
-    };
-    return [allCards, ...paymentBrandOptions.value.map((brand) => ({
+    return paymentBrandOptions.value.map((brand) => ({
         value: paymentToolValue(method.value, brand.value),
         label: brand.label,
         paymentMethod: method.value,
         paymentBrand: brand.value,
         logoKeys: resolvePaymentLogoKeys(method.value, brand.value),
-    }))];
+    }));
 }));
 
 const selectedPaymentTool = computed(() => paymentToolOptions.value.find((item) => item.value === filters.paymentTool));
@@ -881,6 +879,9 @@ function applyMerchant(payload: AnalyticsChartClick) {
 }
 
 async function loadFilterOptions() {
+    transactionTypeOptions.value = [];
+    paymentMethodOptions.value = [];
+    paymentBrandOptions.value = [];
     try {
         const [types, methods, brands, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
@@ -889,9 +890,9 @@ async function loadFilterOptions() {
             loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
         const supportedTypes = types.filter((item) => supportedTransactionTypes.has(item.value));
-        transactionTypeOptions.value = supportedTypes;
-        paymentMethodOptions.value = methods;
-        paymentBrandOptions.value = brands;
+        transactionTypeOptions.value = mergeTransactionDictOptions(supportedTypes, []);
+        paymentMethodOptions.value = mergeTransactionDictOptions(methods, []);
+        paymentBrandOptions.value = mergeTransactionDictOptions(brands, []);
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
         console.warn('[admin-system] transaction analytics dictionaries unavailable', safeErrorType(error));
@@ -905,6 +906,8 @@ onMounted(async () => {
     await loadFilterOptions();
     loadActiveTab();
 });
+
+watch(locale, () => void loadFilterOptions());
 </script>
 
 <style scoped>
@@ -936,11 +939,8 @@ onMounted(async () => {
 .analytics-page__updated :deep(.base-date-time) { color: inherit; }
 
 .analytics-page :deep(.transaction-search-panel) { margin-bottom: 6px; }
-.analytics-page :deep(.transaction-search__grid) { align-items: center; }
 .analytics-page :deep(.analytics-merchant-filter .el-select) { width: 280px; }
 .analytics-page :deep(.analytics-payment-filter .el-select) { width: 250px; }
-.analytics-page :deep(.analytics-time-filter) { flex: 1 1 760px; max-width: 930px; }
-.analytics-page :deep(.analytics-time-filter .el-form-item__content) { min-width: 0; }
 .analytics-payment-filter__prefix { max-width: 54px; overflow: hidden; }
 .analytics-payment-filter__prefix :deep(.payment-logo-group) { flex-wrap: nowrap; gap: 3px; }
 

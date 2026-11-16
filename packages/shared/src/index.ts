@@ -1,25 +1,37 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
+import { createDuplicateSubmissionGuard } from './submissionGuard';
 export * from './brand';
+export { default as PrivateImage } from './components/PrivateImage.vue';
+export { default as ImagePicker } from './components/ImagePicker.vue';
 export * from './amount';
 export * from './refund';
 export { default as RefundFields } from './components/RefundFields.vue';
 export * from './dateTime';
 export * from './paymentBrand';
+export * from './transactionPresentation';
 export * from './currencyPresentation';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
 export { default as PaymentMethodDisplay } from './components/PaymentMethodDisplay.vue';
+export { default as TransactionTypeDisplay } from './components/TransactionTypeDisplay.vue';
+export { default as TransactionStatusDisplay } from './components/TransactionStatusDisplay.vue';
 export { default as CurrencyAmountPills } from './components/CurrencyAmountPills.vue';
+export { default as CurrencyAmountDisplay } from './components/CurrencyAmountDisplay.vue';
 export { default as CurrencyDisplay } from './components/CurrencyDisplay.vue';
+export { default as ExchangeRateDisplay } from './components/ExchangeRateDisplay.vue';
+export { default as PercentageRateDisplay } from './components/PercentageRateDisplay.vue';
 export { default as DirectionTag } from './components/DirectionTag.vue';
 export { default as MerchantIdentityDisplay } from './components/MerchantIdentityDisplay.vue';
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
 export { default as SettlementVoucher } from './components/SettlementVoucher.vue';
 export { default as AnalyticsChart } from './components/AnalyticsChart.vue';
 export { default as AnalyticsPaymentPerformance } from './components/AnalyticsPaymentPerformance.vue';
+export { default as TableRowActions } from './components/TableRowActions.vue';
+export * from './tableRowActions';
 export * from './transactionAnalytics';
 export * from './settlementVoucher';
 export * from './settlementVoucherPdf';
+export * from './submissionGuard';
 
 declare module 'axios' {
     export interface AxiosRequestConfig {
@@ -58,6 +70,7 @@ export interface AuthAccount {
     loginAccount: string;
     realName: string;
     nickname?: string | null;
+    avatarVersion?: string | null;
     mobile?: string | null;
     phone?: string | null;
     phoneNumber?: string | null;
@@ -317,8 +330,11 @@ export function createHttpClient(
         timeout: 15000,
         withCredentials: true,
     });
+    const submissionGuard = createDuplicateSubmissionGuard(readLocale);
 
     client.interceptors.request.use((config) => {
+        submissionGuard.acquire(config);
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.timeout === 15000) config.timeout = 90000;
         config.headers['X-Request-Id'] = config.headers['X-Request-Id'] || createRequestId();
         if (browserSession) {
             config.headers['X-Auth-Mode'] = 'cookie';
@@ -335,8 +351,12 @@ export function createHttpClient(
     });
 
     client.interceptors.response.use(
-        (response) => response,
+        (response) => {
+            submissionGuard.release(response.config);
+            return response;
+        },
         (error) => {
+            submissionGuard.release(error.config);
             if (error.response?.status === 401) {
                 onUnauthorized();
             }

@@ -16,7 +16,7 @@
                 </div>
                 <div>
                     <span>{{ t('merchant.info.settlementCurrency') }}</span>
-                    <strong>{{ merchant.settlementCurrency || '-' }}</strong>
+                    <strong><CurrencyDisplay :currency="merchant.settlementCurrency" :locale="String(locale)" size="xs" /></strong>
                 </div>
             </section>
 
@@ -41,7 +41,7 @@
                         </template>
                     </el-table-column>
                     <el-table-column :label="t('transaction.merchant.defaultSettlementCurrency')" width="140" align="center">
-                        <template #default="{ row }">{{ midById.get(row.midConfigId)?.defaultSettlementCurrency || '-' }}</template>
+                        <template #default="{ row }"><CurrencyDisplay :currency="midById.get(row.midConfigId)?.defaultSettlementCurrency" :locale="String(locale)" size="xs" /></template>
                     </el-table-column>
                     <el-table-column :label="t('common.status')" width="100" align="center">
                         <template #default="{ row }">
@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { CurrencyDisplay, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { searchChannelMids, searchMerchantChannelMidBindings, type ChannelMidConfig, type MerchantChannelMidBinding } from '@/api/channel';
@@ -76,7 +76,7 @@ const emit = defineEmits<{
     'update:visible': [value: boolean];
 }>();
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const loading = ref(false);
 const merchant = ref<MerchantInfo | null>(null);
 const bindings = ref<MerchantChannelMidBinding[]>([]);

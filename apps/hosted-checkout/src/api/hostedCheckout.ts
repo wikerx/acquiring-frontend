@@ -5,6 +5,7 @@ export type CheckoutPageState =
     | 'PAYABLE'
     | 'THREE_DS_REQUIRED'
     | 'PROCESSING'
+    | 'PENDING'
     | 'SUCCEEDED'
     | 'FAILED_RETRYABLE'
     | 'FAILED_FINAL'

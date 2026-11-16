@@ -44,7 +44,8 @@
                     </el-form-item>
                     <el-form-item :label="t('transactionAnalytics.transactionType')">
                         <el-select v-model="filters.transactionType" clearable filterable :placeholder="t('transactionAnalytics.all')">
-                            <el-option v-for="item in transactionTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                            <template #prefix><TransactionTypeDisplay v-if="filters.transactionType" :value="filters.transactionType" icon-only /></template>
+                            <el-option v-for="item in transactionTypeOptions" :key="item.value" :label="item.label" :value="item.value"><TransactionTypeDisplay :value="item.value" :label="item.label" align="start" /></el-option>
                         </el-select>
                     </el-form-item>
                     <el-form-item :label="t('transactionAnalytics.currency')">
@@ -56,10 +57,10 @@
                             default-first-option
                             :placeholder="t('transactionAnalytics.all')"
                         >
-                            <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item" />
+                            <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item"><CurrencyDisplay :currency="item" :locale="String(locale)" size="sm" /></el-option>
                         </el-select>
                     </el-form-item>
-                    <el-form-item :label="t('transactionAnalytics.dateRange')" class="analytics-time-filter">
+                    <el-form-item :label="t('transactionAnalytics.dateRange')" class="analytics-time-filter transaction-time-form-item">
                         <TransactionTimeRangeFilter
                             v-model="dateRange"
                             v-model:time-zone="filters.queryTimeZone"
@@ -227,14 +228,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Clock, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import {
     AnalyticsChart,
     AnalyticsPaymentPerformance,
+    CurrencyDisplay,
     PaymentLogoGroup,
+    TransactionTypeDisplay,
     analyticsNumber,
     createAnalyticsDimensionOption,
     createAnalyticsDonutOption,
@@ -256,6 +259,7 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     ensureTransactionTimezoneOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     type TransactionDictOption,
 } from '../shared';
 
@@ -319,34 +323,13 @@ const paymentToolOptions = computed<PaymentToolOption[]>(() => {
                 logoKeys: resolvePaymentLogoKeys(method.value),
             }];
         }
-        const allCards: PaymentToolOption = {
-            value: paymentToolValue(method.value),
-            label: t('transactionAnalytics.allCardBrands', { method: method.label }),
-            paymentMethod: method.value,
-            logoKeys: resolvePaymentLogoKeys(method.value),
-        };
-        return [allCards, ...paymentBrandOptions.value.map((brand) => ({
+        return paymentBrandOptions.value.map((brand) => ({
             value: paymentToolValue(method.value, brand.value),
             label: brand.label,
             paymentMethod: method.value,
             paymentBrand: brand.value,
             logoKeys: resolvePaymentLogoKeys(method.value, brand.value),
-        }))];
-    });
-    const knownValues = new Set(options.map((item) => item.value));
-    [...(overview.value?.paymentMethods ?? []), ...(failureAnalysis.value?.paymentMethods ?? [])].forEach((row) => {
-        const paymentMethod = row.paymentMethod || (!row.paymentBrand ? row.key : '');
-        if (!paymentMethod) return;
-        const value = paymentToolValue(paymentMethod, row.paymentBrand);
-        if (knownValues.has(value)) return;
-        knownValues.add(value);
-        options.push({
-            value,
-            label: row.key || paymentMethod,
-            paymentMethod,
-            paymentBrand: row.paymentBrand,
-            logoKeys: resolvePaymentLogoKeys(paymentMethod, row.paymentBrand || row.key),
-        });
+        }));
     });
     return options;
 });
@@ -474,6 +457,9 @@ function applyPaymentDimension(row: TransactionAnalyticsDimensionMetric) {
 }
 
 async function loadFilterOptions() {
+    transactionTypeOptions.value = [];
+    paymentMethodOptions.value = [];
+    paymentBrandOptions.value = [];
     const [types, methods, brands, timezones] = await Promise.all([
         loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')).catch(() => []),
         loadTransactionDictOptions('acquiring_payment_method', String(locale.value || 'zh-CN')).catch(() => []),
@@ -481,9 +467,9 @@ async function loadFilterOptions() {
         loadTransactionDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
     ]);
     const supportedTypes = types.filter((item) => supportedTransactionTypes.has(item.value));
-    transactionTypeOptions.value = supportedTypes;
-    paymentMethodOptions.value = methods;
-    paymentBrandOptions.value = brands;
+    transactionTypeOptions.value = mergeTransactionDictOptions(supportedTypes, []);
+    paymentMethodOptions.value = mergeTransactionDictOptions(methods, []);
+    paymentBrandOptions.value = mergeTransactionDictOptions(brands, []);
     timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
 }
 
@@ -491,6 +477,8 @@ onMounted(async () => {
     await loadFilterOptions();
     loadActiveTab();
 });
+
+watch(locale, () => void loadFilterOptions());
 </script>
 
 <style scoped>
@@ -523,22 +511,25 @@ onMounted(async () => {
 
 .analytics-filter-card { padding: 12px 16px; }
 .analytics-search-form { display: grid; width: 100%; }
-.analytics-search-form__fields { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; width: 100%; }
+.analytics-search-form__fields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 18px; width: 100%; }
 .analytics-search-form__fields :deep(.el-form-item) {
     display: grid;
-    grid-template-columns: 82px minmax(0, 1fr);
-    flex: 0 1 290px;
+    grid-template-columns: 92px minmax(0, 1fr);
+    flex: 0 1 320px;
     align-items: center;
     gap: 8px;
     min-width: 0;
     margin: 0;
 }
-.analytics-search-form__fields :deep(.el-form-item.analytics-time-filter) { flex: 1 1 720px; max-width: 100%; }
-.analytics-search-form :deep(.el-form-item__label) { justify-content: flex-end; width: 82px; padding-right: 0; color: #566173; }
+.analytics-search-form__fields :deep(.el-form-item.analytics-time-filter) { flex: 1 1 780px; max-width: 100%; }
+.analytics-search-form :deep(.el-form-item__label) { justify-content: flex-end; width: 92px; padding-right: 0; color: #566173; }
 .analytics-search-form :deep(.el-form-item__content) { width: 100%; min-width: 0; margin-left: 0 !important; }
 .analytics-search-form :deep(.el-input),
 .analytics-search-form :deep(.el-select) { width: 100%; }
 .analytics-time-filter :deep(.transaction-time-range-filter) { max-width: none; }
+.analytics-time-filter :deep(.transaction-time-range-filter__timezone),
+.analytics-time-filter :deep(.transaction-time-range-filter__picker),
+.analytics-time-filter :deep(.el-date-editor) { width: 100%; }
 .analytics-payment-filter__prefix { max-width: 54px; overflow: hidden; }
 .analytics-payment-filter__prefix :deep(.payment-logo-group) { flex-wrap: nowrap; gap: 3px; }
 

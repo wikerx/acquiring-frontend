@@ -37,7 +37,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { compareDecimalAmounts, formatDecimalAmount, isPositiveDecimalAmount, normalizeDecimalAmount } from '../amount';
+import { compareDecimalAmounts, formatMoneyAmount, isPositiveDecimalAmount, normalizeDecimalAmount } from '../amount';
 import { REFUND_REASON_CODES, type RefundContext, type RefundDraft } from '../refund';
 
 // 两端共享字段、校验和额度展示；翻译函数由宿主传入，兼容两端不同的 vue-i18n 版本。
@@ -105,7 +105,7 @@ const rules = computed<FormRules>(() => ({
 }));
 
 function money(value: string | number) {
-    return `${props.context?.currency || props.model.currency} ${formatDecimalAmount(value, props.locale, digits.value, digits.value)}`;
+    return `${props.context?.currency || props.model.currency} ${formatMoneyAmount(value, props.locale, digits.value)}`;
 }
 
 function updateModel(patch: Partial<RefundDraft>) {

@@ -94,7 +94,15 @@
                         :placeholder="t('transaction.settlement.paymentTypeScopeAll')"
                         @change="resetPreviewState"
                     >
-                        <el-option v-for="item in paymentTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <template v-if="selectedPaymentTypeLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedPaymentTypeLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in paymentTypeOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="payment-dimension-option">
+                                <PaymentLogoGroup v-if="paymentTypeLogoKeys(item).length" :keys="paymentTypeLogoKeys(item)" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.settlement.paymentMethodOptional')" class="dimension-field">
@@ -105,7 +113,15 @@
                         :placeholder="t('transaction.settlement.paymentMethodScopeAll')"
                         @change="resetPreviewState"
                     >
-                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <template v-if="selectedPaymentMethodLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedPaymentMethodLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="payment-dimension-option">
+                                <PaymentLogoGroup v-if="paymentMethodLogoKeys(item).length" :keys="paymentMethodLogoKeys(item)" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.settlement.manualSettlementReason')" required class="reason-field">
@@ -324,22 +340,22 @@
                             <template #default="{ row }">{{ integerText(row.transactionCount) }}</template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.grossAmount')" min-width="175" align="right">
-                            <template #default="{ row }">{{ previewMoney(row.grossAmount, row) }}</template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.grossAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.platformFeeAmount')" min-width="175" align="right">
-                            <template #default="{ row }">{{ previewMoney(row.platformFeeAmount, row) }}</template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.reserveAmount')" min-width="175" align="right">
-                            <template #default="{ row }">{{ previewMoney(row.reserveAmount, row) }}</template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.netSettlementAmount')" min-width="185" align="right">
-                            <template #default="{ row }"><strong>{{ previewMoney(row.netSettlementAmount, row) }}</strong></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.netSettlementAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" emphasized /></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" prop="pendingFeeCount" :label="t('transaction.settlement.pendingFeeCount')" min-width="185" align="right">
                             <template #default="{ row }">{{ integerText(row.pendingFeeCount) }}</template>
                         </el-table-column>
                         <el-table-column v-if="isReserve" :label="t('transaction.settlement.releasedReserveAmount')" min-width="180" align="right">
-                            <template #default="{ row }"><strong>{{ previewMoney(row.releasedReserveAmount, row) }}</strong></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.releasedReserveAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" emphasized /></template>
                         </el-table-column>
                         <el-table-column v-if="isReserve" :label="t('transaction.settlement.reserveReleaseCycle')" min-width="180" align="center">
                             <template #default="{ row }">{{ reserveCycleText(row) }}</template>
@@ -410,7 +426,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     Check,
     Clock,
@@ -422,7 +438,15 @@ import {
     View,
     WarningFilled,
 } from '@element-plus/icons-vue';
-import { BusinessResultError, CurrencyDisplay, VexraBrandLogo } from '@acquiring/shared';
+import {
+    BusinessResultError,
+    CurrencyAmountDisplay,
+    CurrencyDisplay,
+    getPaymentLogo,
+    PaymentLogoGroup,
+    VexraBrandLogo,
+    type PaymentLogoKey,
+} from '@acquiring/shared';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -441,9 +465,19 @@ import {
 import { loadCurrencyPresentations } from '@/api/base/currency';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
+import {
+    cardLogoKeys,
+    loadDictOptions,
+    paymentLogoKeys,
+    type SelectOption,
+} from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { moneyTextByExponent, requestKey } from '@/views/settlement/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
+import { requestKey } from '@/views/settlement/shared';
 
 interface PreviewErrorState {
     code: string;
@@ -467,8 +501,18 @@ const scopeForm = reactive({
     reason: '',
 });
 const profiles = ref<SettlementProfile[]>([]);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const selectedPaymentTypeLogoKeys = computed(() => selectedDimensionLogoKeys(
+    scopeForm.paymentType,
+    paymentTypeOptions.value,
+    paymentTypeLogoKeys,
+));
+const selectedPaymentMethodLogoKeys = computed(() => selectedDimensionLogoKeys(
+    scopeForm.paymentMethod,
+    paymentMethodOptions.value,
+    paymentMethodLogoKeys,
+));
 const profilesLoading = ref(false);
 const previewing = ref(false);
 const starting = ref(false);
@@ -617,15 +661,25 @@ onMounted(async () => {
 
 onBeforeUnmount(stopPolling);
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
     const language = String(locale.value || 'zh-CN');
-    const [paymentTypes, paymentMethods] = await Promise.all([
-        loadDictOptions('acquiring_payment_method', language).catch(() => []),
-        loadDictOptions('card_brand', language).catch(() => []),
-        loadCurrencyPresentations().catch(() => []),
+    const [paymentTypes, paymentMethods] = await Promise.allSettled([
+        loadDictOptions('acquiring_payment_method', language),
+        loadDictOptions('card_brand', language),
+        loadCurrencyPresentations(),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
+    if (paymentTypes.status === 'fulfilled') {
+        paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes.value, []);
+    }
+    if (paymentMethods.status === 'fulfilled') {
+        paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods.value, []);
+    }
 }
 
 async function handleMerchantChange(value: string | string[]) {
@@ -843,6 +897,28 @@ function dimensionText(group: string, value?: string) {
         : t('transaction.settlement.paymentMethodScopeAll');
 }
 
+function paymentTypeLogoKeys(option: SelectOption): PaymentLogoKey[] {
+    return assetLogoKeys(paymentLogoKeys(option.value, option));
+}
+
+function paymentMethodLogoKeys(option: SelectOption): PaymentLogoKey[] {
+    return assetLogoKeys(cardLogoKeys(option.value, option));
+}
+
+function selectedDimensionLogoKeys(
+    value: string,
+    options: SelectOption[],
+    resolver: (option: SelectOption) => PaymentLogoKey[],
+) {
+    if (!value) return [];
+    const option = options.find((item) => item.value === value) || { value, label: value };
+    return resolver(option);
+}
+
+function assetLogoKeys(keys: PaymentLogoKey[]) {
+    return keys.filter((key) => Boolean(getPaymentLogo(key).asset));
+}
+
 function enumText(group: string, value?: string) {
     if (!value) return '-';
     const options = group === 'paymentTypeValue' ? paymentTypeOptions.value
@@ -859,10 +935,6 @@ function cycleText(unit: string, days: number) {
 
 function normalizedTime(value?: string) {
     return value ? value.slice(0, 8) : '-';
-}
-
-function previewMoney(value: number | string, row: ManualSettlementPreviewLine) {
-    return moneyTextByExponent(value, row.sourceCurrency, row.sourceCurrencyExponent);
 }
 
 function reserveCycleText(row: ManualSettlementPreviewLine) {
@@ -982,6 +1054,20 @@ function errorText(error: unknown, fallbackKey: string) {
     min-height: 0;
     padding: 14px 0 0;
     background: transparent;
+}
+
+.payment-dimension-option {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+}
+
+.payment-dimension-option > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .page-header,

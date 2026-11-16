@@ -69,11 +69,7 @@
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="openForm('edit', selectedRows[0])" v-hasPermi="`${current.permissionPrefix}:edit`">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="selectedRows.length === 0" @click="handleBatchDelete" v-hasPermi="`${current.permissionPrefix}:remove`">{{ $t('risk.common.batchDelete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" @click="handleTemplate" v-hasPermi="`${current.permissionPrefix}:template`">{{ $t('risk.common.template') }}</el-button></el-col>
-      <el-col :span="1.5">
-        <el-upload :show-file-list="false" accept=".xlsx,.xls,.csv" :auto-upload="false" :on-change="handleImport" v-hasPermi="`${current.permissionPrefix}:import`">
-          <el-button type="info" plain :icon="Upload" size="small">{{ $t('common.import') }}</el-button>
-        </el-upload>
-      </el-col>
+      <el-col :span="1.5"><el-button type="info" plain :icon="Upload" size="small" @click="openImport" v-hasPermi="`${current.permissionPrefix}:import`">{{ $t('common.import') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="`${current.permissionPrefix}:export`">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar">
         <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData">
@@ -494,6 +490,8 @@
       <template #footer><div class="dialog-footer"><el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button><el-button @click="formOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
+    <BaseImportDialog v-model="importOpen" :subject="currentFunctionName" :template-permission="`${current.permissionPrefix}:template`" :loading="importLoading" :result="importResult" @submit="handleImport" @download-template="handleTemplate" @reset-result="importOutcome = null" />
+
     <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('common.detail')" size="md">
       <el-descriptions v-if="detailRow" :column="1" border size="small">
         <el-descriptions-item v-for="item in detailItems" :key="item.label" :label="item.label">
@@ -513,14 +511,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, markRaw, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import type { UploadFile } from 'element-plus';
 import { PaymentLogoMark } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import BaseImportDialog from '@/components/BaseImportDialog.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -533,7 +531,7 @@ import {
   createRiskList,
   createRiskRegion,
   downloadRiskTemplate,
-  exportRiskConfig,
+  submitRiskConfigExportTask,
   getRiskListEditDetail,
   getRiskOptions,
   importRiskConfig,
@@ -552,6 +550,7 @@ import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOpti
 
 const route = useRoute();
 const { t } = useI18n();
+const router = useRouter();
 const user = useUserStore();
 const current = computed(() => resolveRiskFunction(route.path));
 const profile = computed(() => resolveRiskListProfile(current.value));
@@ -565,6 +564,26 @@ const profileValuePlaceholder = computed(() => t(profile.value.valuePlaceholderK
  */
 const showSearch = ref(true);
 const loading = ref(false);
+const importOpen = ref(false);
+const importLoading = ref(false);
+const importOutcome = ref<
+  | { type: 'success'; successCount: number; failureCount: number; errors: string[] }
+  | { type: 'error'; message?: string }
+  | null
+>(null);
+const importResult = computed(() => {
+  const outcome = importOutcome.value;
+  if (!outcome) return null;
+  return outcome.type === 'success'
+    ? {
+        type: 'success' as const,
+        message: t('risk.common.importSuccess', { count: outcome.successCount }),
+        successCount: outcome.successCount,
+        failureCount: outcome.failureCount,
+        errors: outcome.errors,
+      }
+    : { type: 'error' as const, message: outcome.message || t('risk.common.importFailed') };
+});
 const rows = ref<RiskRecord[]>([]);
 const selectedRows = ref<RiskRecord[]>([]);
 const total = ref(0);
@@ -939,7 +958,7 @@ function openDetail(row: RiskRecord) {
 
 async function handleDelete(row?: RiskRecord) {
   if (!row?.id) return;
-  await ElMessageBox.confirm(t('risk.common.deleteConfirm', { name: deleteTargetName(row) }), t('common.operationConfirm'), { type: 'warning' });
+  await ElMessageBox.confirm(t('risk.common.deleteConfirm', { name: deleteTargetName(row) }), t('common.operationConfirm'), { type: 'error', icon: markRaw(Delete), confirmButtonText: t('common.delete'), confirmButtonClass: 'feedback-danger-button' });
   await removeRiskRecord(current.value.moduleType, current.value.functionCode, row.id);
   ElMessage.success(t('common.deleteSuccess'));
   await loadData();
@@ -948,7 +967,7 @@ async function handleDelete(row?: RiskRecord) {
 async function handleBatchDelete() {
   const ids = selectedRows.value.map((item) => item.id).filter(Boolean);
   if (ids.length === 0) return;
-  await ElMessageBox.confirm(t('risk.common.batchDeleteConfirm', { count: ids.length, name: currentFunctionName.value }), t('common.operationConfirm'), { type: 'warning' });
+  await ElMessageBox.confirm(t('risk.common.batchDeleteConfirm', { count: ids.length, name: currentFunctionName.value }), t('common.operationConfirm'), { type: 'error', icon: markRaw(Delete), confirmButtonText: t('common.delete'), confirmButtonClass: 'feedback-danger-button' });
   await batchRemoveRiskRecords(current.value.moduleType, current.value.functionCode, ids);
   ElMessage.success(t('common.deleteSuccess'));
   selectedRows.value = [];
@@ -1008,11 +1027,25 @@ function setStatusUpdating(id: number | undefined, loading: boolean) {
 
 async function handleExport() {
   try {
-    await exportRiskConfig(current.value.moduleType, current.value.functionCode, sanitizeAmlQuery(query));
-    ElMessage.success(t('risk.common.exportStarted'));
+    const task = await submitRiskConfigExportTask({
+      requestId: createExportRequestId('risk-config'),
+      moduleType: current.value.moduleType,
+      functionCode: current.value.functionCode,
+      query: sanitizeAmlQuery(query),
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.exportFailed'));
   }
+}
+
+function createExportRequestId(prefix: string) {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return `${prefix}-${globalThis.crypto.randomUUID()}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function handleTemplate() {
@@ -1024,15 +1057,29 @@ async function handleTemplate() {
   }
 }
 
-async function handleImport(uploadFile: UploadFile) {
-  if (!uploadFile.raw) return;
+function openImport() {
+  importOutcome.value = null;
+  importOpen.value = true;
+}
+
+async function handleImport(file: File) {
+  if (importLoading.value) return;
+  importLoading.value = true;
+  importOutcome.value = null;
   try {
-    const result = await importRiskConfig(current.value.moduleType, current.value.functionCode, uploadFile.raw);
-    ElMessage.success(t('risk.common.importSuccess', { count: result.successCount }));
-    await loadData();
+    const result = await importRiskConfig(current.value.moduleType, current.value.functionCode, file);
+    importOutcome.value = {
+      type: 'success',
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+      errors: result.errors || [],
+    };
   } catch (error: any) {
-    ElMessage.error(error?.message || t('risk.common.importFailed'));
+    importOutcome.value = { type: 'error', message: error?.message };
+  } finally {
+    importLoading.value = false;
   }
+  if (importOutcome.value?.type === 'success') await loadData();
 }
 
 function handleCountryChange(value: string) {

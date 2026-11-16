@@ -16,6 +16,7 @@
                     :items="account ? [{ currency: account.settlementCurrency, amount: account.availableBalance }] : []"
                     :fallback-currency="account?.settlementCurrency || 'USD'"
                     :locale="String(locale)"
+                    :show-currency-mark="false"
                     tone="green"
                 />
                 <small>{{ $t('finance.availableBalanceHint') }}</small>
@@ -27,6 +28,7 @@
                     :items="account?.pendingBalances || []"
                     :fallback-currency="account?.settlementCurrency || 'USD'"
                     :locale="String(locale)"
+                    :show-currency-mark="false"
                     tone="blue"
                 />
                 <small>{{ $t('finance.pendingHint') }}</small>
@@ -38,6 +40,7 @@
                     :items="account?.reserveBalances || []"
                     :fallback-currency="account?.settlementCurrency || 'USD'"
                     :locale="String(locale)"
+                    :show-currency-mark="false"
                     tone="amber"
                 />
                 <small>{{ $t('finance.reserveHint') }}</small>
@@ -82,13 +85,13 @@
                     <template #default="{ row }"><DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" /></template>
                 </el-table-column>
                 <el-table-column :label="$t('finance.amount')" min-width="140" align="right">
-                    <template #default="{ row }">{{ money(row.amount, row.currency) }}</template>
+                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                 </el-table-column>
                 <el-table-column :label="$t('finance.balanceBefore')" min-width="140" align="right">
-                    <template #default="{ row }">{{ money(row.balanceBefore, row.currency) }}</template>
+                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceBefore" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                 </el-table-column>
                 <el-table-column :label="$t('finance.balanceAfter')" min-width="140" align="right">
-                    <template #default="{ row }">{{ money(row.balanceAfter, row.currency) }}</template>
+                    <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceAfter" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
                 </el-table-column>
                 <el-table-column prop="operatorName" :label="$t('finance.operator')" width="120" align="center" />
                 <el-table-column prop="reviewerName" :label="$t('finance.reviewer')" width="120" align="center" />
@@ -122,15 +125,15 @@
                 <section class="ledger-amount-flow" :class="selectedLedger.direction === 'CREDIT' ? 'is-credit' : 'is-debit'">
                     <div class="ledger-amount-flow__item">
                         <span>{{ $t('finance.balanceBefore') }}</span>
-                        <strong>{{ money(selectedLedger.balanceBefore, selectedLedger.currency) }}</strong>
+                        <strong><CurrencyAmountDisplay :amount="selectedLedger.balanceBefore" :currency="selectedLedger.currency" :locale="String(locale)" emphasized /></strong>
                     </div>
                     <div class="ledger-amount-flow__item ledger-amount-flow__change">
                         <span>{{ $t('finance.occurredAmount') }}</span>
-                        <strong>{{ money(selectedLedger.amount, selectedLedger.currency) }}</strong>
+                        <strong><CurrencyAmountDisplay :amount="selectedLedger.amount" :currency="selectedLedger.currency" :locale="String(locale)" emphasized /></strong>
                     </div>
                     <div class="ledger-amount-flow__item">
                         <span>{{ $t('finance.balanceAfter') }}</span>
-                        <strong>{{ money(selectedLedger.balanceAfter, selectedLedger.currency) }}</strong>
+                        <strong><CurrencyAmountDisplay :amount="selectedLedger.balanceAfter" :currency="selectedLedger.currency" :locale="String(locale)" emphasized /></strong>
                     </div>
                 </section>
                 <section class="ledger-info-band is-business">
@@ -162,11 +165,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { compareDecimalAmounts, CurrencyAmountPills, DirectionTag, formatDecimalAmount, FULL_DAY_RANGE_DEFAULT_TIMES, normalizeDecimalAmount } from '@acquiring/shared';
+import { compareDecimalAmounts, CurrencyAmountDisplay, CurrencyAmountPills, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, normalizeDecimalAmount } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { financeApi, type DetailQuery, type FundAccount, type FundLedger } from '@/api/financeApi';
+import { submitFundLedgerExport } from '@/api/exportTaskApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -257,11 +261,12 @@ function handleReset() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await financeApi.exportLedgers({
+        const task = await submitFundLedgerExport({
             ...query.value,
             postedStartTime: postedRange.value[0] || undefined,
             postedEndTime: postedRange.value[1] || undefined,
         });
+        ElMessage.success(t('exportTask.submitted', { taskNo: task.taskNo }));
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     } finally {
@@ -273,12 +278,6 @@ async function handleExport() {
 function openLedgerDetail(row: FundLedger) {
     selectedLedger.value = row;
     ledgerDetailVisible.value = true;
-}
-
-function money(value?: string | number | null, currency?: string) {
-    if (value === undefined || value === null || value === '') return '-';
-    const amount = formatDecimalAmount(value, String(locale.value || 'zh-CN'));
-    return `${String(currency || '').toUpperCase()} ${amount}`.trim();
 }
 
 function dictLabel(options: TransactionDictOption[], value?: string) {

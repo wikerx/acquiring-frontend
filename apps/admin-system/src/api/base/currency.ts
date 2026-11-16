@@ -2,6 +2,7 @@ import type { CommonResult, CurrencyPresentation, PageResult } from '@acquiring/
 import { setCurrencyPresentations, unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface IsoCurrency {
     id: number;
@@ -60,6 +61,13 @@ export async function exportCurrencies() {
     await downloadExcel('/admin/base/currencies/export', {
         method: 'get',
     });
+}
+
+export async function submitCurrencyExportTask(data: { requestId: string; query: IsoCurrencyQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/base/currencies/export-task', data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function loadCurrencyPresentations() {

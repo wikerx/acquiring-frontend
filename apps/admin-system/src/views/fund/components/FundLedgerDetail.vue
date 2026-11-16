@@ -3,18 +3,18 @@
         <section class="amount-flow" :class="ledger.direction === 'CREDIT' ? 'is-credit' : 'is-debit'">
             <div>
                 <span>{{ $t('feeAccount.balanceBefore') }}</span>
-                <strong><BaseAmount :value="ledger.balanceBefore" :currency="ledger.currency" currency-display="code" /></strong>
+                <strong><CurrencyAmountDisplay :amount="ledger.balanceBefore" :currency="ledger.currency" :locale="String(locale)" emphasized /></strong>
             </div>
             <div class="amount-flow__change">
                 <span>{{ $t('feeAccount.occurredAmount') }}</span>
                 <div class="amount-flow__change-value">
                     <DirectionTag :direction="ledger.direction" :label="ledger.direction === 'CREDIT' ? $t('feeAccount.credit') : $t('feeAccount.debit')" />
-                    <strong><BaseAmount :value="ledger.amount" :currency="ledger.currency" currency-display="code" /></strong>
+                    <strong><CurrencyAmountDisplay :amount="ledger.amount" :currency="ledger.currency" :locale="String(locale)" emphasized /></strong>
                 </div>
             </div>
             <div>
                 <span>{{ $t('feeAccount.balanceAfter') }}</span>
-                <strong><BaseAmount :value="ledger.balanceAfter" :currency="ledger.currency" currency-display="code" /></strong>
+                <strong><CurrencyAmountDisplay :amount="ledger.balanceAfter" :currency="ledger.currency" :locale="String(locale)" emphasized /></strong>
             </div>
         </section>
 
@@ -47,7 +47,7 @@
                 <el-descriptions-item :label="$t('feeAccount.requestId')">{{ recharge.requestId || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="recharge.merchantId" :merchant-name="recharge.merchantName" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.accountNo')">{{ recharge.accountNo || ledger.accountNo || '-' }}</el-descriptions-item>
-                <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')">{{ recharge.currency }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('feeAccount.rechargeCurrency')"><CurrencyDisplay :currency="recharge.currency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                 <el-descriptions-item :label="$t('common.remark')" :span="2">{{ recharge.remark || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.submitter')">{{ recharge.submitByName || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="$t('feeAccount.submitTime')"><BaseDateTime :value="recharge.submitTime" /></el-descriptions-item>
@@ -128,10 +128,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DirectionTag, MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyAmountDisplay, CurrencyDisplay, DirectionTag, MerchantIdentityDisplay } from '@acquiring/shared';
+import { useI18n } from 'vue-i18n';
 import type { FundLedger } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+
+const { locale } = useI18n();
 
 const props = withDefaults(defineProps<{
     ledger: FundLedger;

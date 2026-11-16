@@ -74,7 +74,16 @@
                     <el-descriptions-item :label="t('channel.alert.ruleName')">{{ detailRow.ruleName }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('channel.capability.paymentScope')">{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('channel.capability.paymentScope')">
+                        <PaymentLogoGroup
+                            v-if="paymentScopeLogo(detailRow.paymentMethod, detailRow.cardBrand).length"
+                            :keys="paymentScopeLogo(detailRow.paymentMethod, detailRow.cardBrand)"
+                            size="sm"
+                            align="start"
+                            :wrap="false"
+                        />
+                        <span v-else>{{ scopeText(detailRow.paymentMethod, detailRow.cardBrand) }}</span>
+                    </el-descriptions-item>
                     <el-descriptions-item :label="t('channel.alert.ruleType')">{{ optionLabel(ruleTypeOptions, detailRow.ruleType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.alert.alertLevel')"><el-tag size="small" :type="alertLevelType(detailRow.alertLevel)">{{ optionLabel(alertLevelOptions, detailRow.alertLevel) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="t('channel.alert.eventStatus')"><el-tag size="small" :type="eventStatusType(detailRow.eventStatus)">{{ optionLabel(eventStatusOptions, detailRow.eventStatus) }}</el-tag></el-descriptions-item>
@@ -130,7 +139,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue';
-import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { FULL_DAY_RANGE_DEFAULT_TIMES, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleCheck, Delete, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
@@ -147,7 +156,17 @@ import {
     type ChannelAlertEvent,
     type ChannelAlertNotifyLog,
 } from '@/api/channel-alert';
-import { channelDisplayText, channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, showChannelError, type SelectOption } from '../shared';
+import {
+    cardLogoKeys,
+    channelDisplayText,
+    channelOptionLabel,
+    loadChannelOptions,
+    loadDictOptions,
+    optionLabel,
+    paymentLogoKeys,
+    showChannelError,
+    type SelectOption,
+} from '../shared';
 import type { ChannelOption } from '@/api/channel';
 import { useUserStore } from '@/store/modules/user';
 
@@ -326,6 +345,21 @@ function scopeText(paymentMethod?: string, cardBrand?: string) {
     const payment = !paymentMethod || paymentMethod === 'ALL' ? t('channel.common.all') : optionLabel(paymentOptions, paymentMethod);
     const card = !cardBrand || cardBrand === 'ALL' ? '' : ` / ${optionLabel(cardBrandOptions.value, cardBrand)}`;
     return `${payment}${card}`;
+}
+
+function paymentScopeLogo(paymentMethod?: string, cardBrand?: string): PaymentLogoKey[] {
+    if (!paymentMethod || paymentMethod === 'ALL') {
+        return [];
+    }
+    if (paymentMethod === 'BANK_CARD') {
+        if (!cardBrand || cardBrand === 'ALL') {
+            return [];
+        }
+        const option = cardBrandOptions.value.find((item) => item.value === cardBrand);
+        return cardLogoKeys(cardBrand, option);
+    }
+    const paymentOptions = [...acquiringPaymentOptions.value, ...payoutPaymentOptions.value];
+    return paymentLogoKeys(paymentMethod, paymentOptions.find((item) => item.value === paymentMethod));
 }
 
 function triggerValueText(row: ChannelAlertEvent) {

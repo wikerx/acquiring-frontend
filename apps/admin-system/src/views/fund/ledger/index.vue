@@ -69,13 +69,13 @@
                 </template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" /></template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.balanceBefore')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.balanceBefore" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceBefore" :currency="row.currency" :locale="String(locale)" align="end" /></template>
             </el-table-column>
             <el-table-column :label="$t('feeAccount.balanceAfter')" min-width="150" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.balanceAfter" :currency="row.currency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceAfter" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="115" align="center" />
             <el-table-column prop="reviewerName" :label="$t('feeAccount.reviewer')" width="115" align="center" />
@@ -114,17 +114,17 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyAmountDisplay, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import {
-    exportAllFundLedgers,
     searchAllFundLedgers,
+    submitAllFundLedgerExportTask,
     type FundDetailQuery,
     type FundLedger,
 } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -140,6 +140,7 @@ import { defaultTodayFullDayRange } from '@/views/transaction/shared';
  * 只把字典标签用于展示，导出始终使用当前完整筛选条件。
  */
 const { locale, t } = useI18n();
+const router = useRouter();
 const loading = ref(false);
 const exporting = ref(false);
 const showSearch = ref(true);
@@ -203,11 +204,23 @@ function handleReset() {
     loadLedgers();
 }
 
-/** 按当前筛选条件下载全部余额明细，不受页面分页限制。 */
+/** 按当前筛选条件创建全局余额流水后台导出任务。 */
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportAllFundLedgers(requestQuery());
+        const task = await submitAllFundLedgerExportTask({
+            requestId: `fund-ledger-export-${globalThis.crypto.randomUUID()}`,
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
     } finally {

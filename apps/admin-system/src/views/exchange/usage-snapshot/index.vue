@@ -25,14 +25,16 @@
         </el-form>
 
         <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'exchange:usage-snapshot:export'">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'exchange:usage-snapshot:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
         </el-row>
 
         <StandardTable table-key="exchange-usage-snapshot" v-loading="loading" :data="rows" row-key="id" size="small">
             <el-table-column :label="$t('exchange.fields.rateType')" min-width="115" align="center"><template #default="{ row }"><el-tag size="small" effect="plain" :type="rateTypeTagType(row.rateType)">{{ optionLabel(rateTypeOptions, row.rateType) }}</el-tag></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usageScene')" min-width="90" align="center"><template #default="{ row }"><span class="scene-label">{{ optionLabel(usageSceneOptions, row.usageScene) }}</span></template></el-table-column>
-            <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="150" align="center" :show-overflow-tooltip="true"><template #default="{ row }"><span class="code-label table-code-label">{{ row.businessType || '-' }}</span></template></el-table-column>
+            <el-table-column prop="businessType" :label="$t('exchange.fields.businessType')" min-width="150" align="center" :show-overflow-tooltip="true">
+                <template #default="{ row }"><TransactionTypeDisplay :value="row.businessType" :label="businessTypeText(row.businessType)" /></template>
+            </el-table-column>
             <el-table-column prop="businessNo" :label="$t('exchange.fields.businessNo')" min-width="175" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="$t('exchange.fields.currencyPair')" min-width="155" align="center"><template #default="{ row }"><CurrencyPairDisplay :base-currency="row.baseCurrency" :quote-currency="row.quoteCurrency" :locale="String(locale)" /></template></el-table-column>
             <el-table-column :label="$t('exchange.fields.usedRate')" min-width="130" align="right"><template #default="{ row }"><strong class="rate-value">{{ formatRate(row.usedRate) }}</strong></template></el-table-column>
@@ -62,7 +64,7 @@
                         <el-descriptions :column="1" border size="small">
                             <el-descriptions-item :label="$t('exchange.fields.usageEventId')"><span class="code-label code-label--wrap">{{ detailRow.usageEventId || '-' }}</span></el-descriptions-item>
                             <el-descriptions-item :label="$t('exchange.fields.producerService')">{{ detailRow.producerService || '-' }}</el-descriptions-item>
-                            <el-descriptions-item :label="$t('exchange.fields.businessType')">{{ detailRow.businessType || '-' }}</el-descriptions-item>
+                            <el-descriptions-item :label="$t('exchange.fields.businessType')"><TransactionTypeDisplay :value="detailRow.businessType" :label="businessTypeText(detailRow.businessType)" align="start" /></el-descriptions-item>
                             <el-descriptions-item :label="$t('exchange.fields.businessNo')">{{ detailRow.businessNo || '-' }}</el-descriptions-item>
                         </el-descriptions>
                     </section>
@@ -99,23 +101,27 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { FULL_DAY_RANGE_DEFAULT_TIMES } from '@acquiring/shared';
+import { FULL_DAY_RANGE_DEFAULT_TIMES, TransactionTypeDisplay, resolveTransactionTypeIcon } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, Refresh, Search, View } from '@element-plus/icons-vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadCurrencyPresentations } from '@/api/base/currency';
-import { exportExchangeUsageSnapshots, getExchangeUsageSnapshot, searchExchangeUsageSnapshots, type ExchangeRateUsageSnapshot } from '@/api/exchange';
+import { getExchangeUsageSnapshot, searchExchangeUsageSnapshots, submitExchangeUsageSnapshotExportTask, type ExchangeRateUsageSnapshot } from '@/api/exchange';
 import CurrencySelect from '../CurrencySelect.vue';
 import CurrencyPairDisplay from '../CurrencyPairDisplay.vue';
 import { formatRate, normalizeCurrency, optionLabel, rateTypeOptions as buildRateTypeOptions, todayDateTimeRange, type DateTimeRange, usageSceneOptions as buildUsageSceneOptions } from '../shared';
 
 const { locale, t } = useI18n();
+const router = useRouter();
 const translate = (key: string, params?: Record<string, unknown>) => t(key, params || {});
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<ExchangeRateUsageSnapshot[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -184,8 +190,38 @@ async function openDetail(row: ExchangeRateUsageSnapshot) {
 }
 
 async function handleExport() {
-    const [appliedStartTime, appliedEndTime] = appliedRange.value;
-    await exportExchangeUsageSnapshots({ pageNo: page.value, pageSize: pageSize.value, ...query, appliedStartTime, appliedEndTime });
+    exporting.value = true;
+    try {
+        const [appliedStartTime, appliedEndTime] = appliedRange.value;
+        const task = await submitExchangeUsageSnapshotExportTask({
+            requestId: createExportRequestId('exchange-usage-snapshot'),
+            query: { pageNo: page.value, pageSize: pageSize.value, ...query, appliedStartTime, appliedEndTime },
+        });
+        await openSubmittedTask(task.taskNo);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' | 'info' {
@@ -193,6 +229,11 @@ function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' |
     if (rateType === 'SETTLEMENT_RATE') return 'success';
     if (rateType === 'CLEARING_RATE') return 'warning';
     return 'info';
+}
+
+function businessTypeText(value?: string) {
+    if (!value) return '-';
+    return resolveTransactionTypeIcon(value) ? t(`transaction.type.${value}`, value) : value;
 }
 </script>
 
@@ -213,11 +254,6 @@ function rateTypeTagType(rateType?: string): 'primary' | 'success' | 'warning' |
 .calculation-description {
     overflow-wrap: anywhere;
     white-space: pre-wrap;
-}
-
-.table-code-label {
-    font-size: 12px;
-    white-space: nowrap;
 }
 
 .rate-evidence {

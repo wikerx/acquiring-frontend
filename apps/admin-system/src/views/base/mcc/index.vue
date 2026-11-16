@@ -31,7 +31,7 @@
                     <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="openCategoryDrawer('LEVEL1')" v-hasPermi="'base:mcc:category:add'">{{ $t('base.mcc.tree.addLevel1') }}</el-button></el-col>
                     <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="setExpandAll(true)" v-hasPermi="'base:mcc:tree:expand'">{{ $t('base.mcc.tree.expandAll') }}</el-button></el-col>
                     <el-col :span="1.5"><el-button type="info" plain :icon="Sort" size="small" @click="setExpandAll(false)" v-hasPermi="'base:mcc:tree:expand'">{{ $t('base.mcc.tree.collapseAll') }}</el-button></el-col>
-                    <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExportCodes" v-hasPermi="'base:mcc:tree:export'">{{ $t('base.mcc.tree.exportCodes') }}</el-button></el-col>
+                    <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExportCodes" v-hasPermi="'base:mcc:tree:export'">{{ $t('base.mcc.tree.exportCodes') }}</el-button></el-col>
                     <el-col class="right-toolbar"><RightToolbar @toggle-search="showTreeSearch = !showTreeSearch" @refresh="loadTree" /></el-col>
                 </el-row>
 
@@ -238,6 +238,7 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Download, Edit, Plus, Refresh, Search, Sort, SwitchButton, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -252,7 +253,7 @@ import {
     editMccCategory,
     editMccCode,
     editMccPolicy,
-    exportMccCodes,
+    submitMccCodeExportTask,
     getMccCodeDetail,
     getMccOptions,
     getMccOverview,
@@ -273,6 +274,8 @@ import {
 } from '@/api/base/mcc';
 
 const { t, te } = useI18n();
+const router = useRouter();
+const exporting = ref(false);
 const LEGACY_MCC_TYPE_ALIASES: Record<string, string> = {
     '特殊用途/系统用途': 'SPECIAL',
 };
@@ -590,11 +593,21 @@ async function deletePolicyRow(row: MccRiskPolicy) {
 }
 
 async function handleExportCodes() {
+    exporting.value = true;
     try {
-        await exportMccCodes(cleanQuery(treeQuery));
-        ElMessage.success(t('common.export'));
-    } catch {
-        ElMessage.error(t('common.loadFailed'));
+        const task = await submitMccCodeExportTask({
+            requestId: `mcc-code-export-${globalThis.crypto.randomUUID()}`,
+            query: cleanQuery(treeQuery),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error: any) {
+        ElMessage.error(error?.message || t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 

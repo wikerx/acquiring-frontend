@@ -37,23 +37,18 @@
 
         <StandardTable table-key="channel-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
+            <el-table-column prop="logoVersion" :label="t('media.logo')" width="100" align="center"><template #default="{ row }"><span class="channel-logo"><PrivateImage :version="row.logoVersion" :load="() => loadChannelLogo(row.id)" :alt="t('media.logo')" preview /></span></template></el-table-column>
             <el-table-column prop="channelCode" :label="t('channel.info.channelCode')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelCnName" :label="t('channel.info.channelCnName')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelEnName" :label="t('channel.info.channelEnName')" min-width="180" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="t('channel.info.acquiringMethods')" min-width="180" align="center">
+            <el-table-column prop="acquiringPaymentMethods" :label="t('channel.info.acquiringMethods')" min-width="220" align="center">
                 <template #default="{ row }">
-                    <div class="logo-line">
-                        <PaymentLogoGroup :keys="paymentKeys(row.acquiringPaymentMethods)" fallback="text" size="sm" />
-                        <span v-if="!row.acquiringPaymentMethods?.length">-</span>
-                    </div>
+                    <ChannelPaymentScopeDisplay :keys="paymentKeys(row.acquiringPaymentMethods)" :label="t('channel.info.acquiringMethods')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.info.payoutMethods')" min-width="160" align="center">
+            <el-table-column prop="payoutPaymentMethods" :label="t('channel.info.payoutMethods')" min-width="220" align="center">
                 <template #default="{ row }">
-                    <div class="logo-line">
-                        <PaymentLogoGroup :keys="paymentKeys(row.payoutPaymentMethods)" fallback="text" size="sm" />
-                        <span v-if="!row.payoutPaymentMethods?.length">-</span>
-                    </div>
+                    <ChannelPaymentScopeDisplay :keys="paymentKeys(row.payoutPaymentMethods)" :label="t('channel.info.payoutMethods')" />
                 </template>
             </el-table-column>
             <el-table-column label="3DS" width="80" align="center">
@@ -95,6 +90,7 @@
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.info.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small" class="channel-detail-descriptions">
+                <el-descriptions-item :label="t('media.logo')"><span class="channel-logo channel-logo--detail"><PrivateImage :version="detailRow.logoVersion" :load="() => loadChannelLogo(detailRow!.id)" :alt="t('media.logo')" preview /></span></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelCode')">{{ detailRow.channelCode }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelCnName')">{{ detailRow.channelCnName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelEnName')">{{ detailRow.channelEnName }}</el-descriptions-item>
@@ -153,8 +149,10 @@
             :title="formMode === 'create' ? t('channel.info.addTitle') : t('channel.info.editTitle')"
             v-bind="formOverlayProps"
             class="channel-form-overlay"
+            :before-close="(done: () => void) => { if (!saving) done(); }"
         >
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small" class="channel-form">
+                <el-form-item :label="t('media.logo')"><ImagePicker v-model="logoFile" v-model:removed="logoRemoved" :version="editingRowSnapshot?.logoVersion" :load="() => loadChannelLogo(form.id)" :disabled="saving" :processing="saving" /></el-form-item>
                 <el-form-item :label="t('channel.info.channelCode')" prop="channelCode"><el-input v-model.trim="form.channelCode" :disabled="formMode === 'edit'" maxlength="64" placeholder="STRIPE" @input="form.channelCode = form.channelCode.toUpperCase()" /></el-form-item>
                 <el-form-item :label="t('channel.info.channelCnName')" prop="channelCnName"><el-input v-model.trim="form.channelCnName" maxlength="128" /></el-form-item>
                 <el-form-item :label="t('channel.info.channelEnName')" prop="channelEnName"><el-input v-model.trim="form.channelEnName" maxlength="128" /></el-form-item>
@@ -223,8 +221,8 @@
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button type="primary" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
-                    <el-button @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
+                    <el-button type="primary" :loading="saving" @click="submitForm">{{ t('channel.common.confirm') }}</el-button>
+                    <el-button :disabled="saving" @click="formVisible = false">{{ t('channel.common.cancel') }}</el-button>
                 </div>
             </template>
         </component>
@@ -232,16 +230,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElDialog, ElDrawer, ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { PrivateImage, ImagePicker, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo, type ChannelMetadataSchema } from '@/api/channel';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
+import { loadChannelLogo, saveChannelWithLogo, createChannel, deleteChannel, getChannel, searchChannelCapabilities, searchChannels, updateChannel, updateChannelStatus, type ChannelCapability, type ChannelInfo, type ChannelMetadataSchema } from '@/api/channel';
 import { loadDictOptions, paymentLogoKeys, showChannelError, statusText, statusType, yesNoText, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
@@ -255,6 +254,9 @@ const pageSize = ref(10);
 const detailVisible = ref(false);
 const detailRow = ref<ChannelInfo | null>(null);
 const formVisible = ref(false);
+const logoFile = ref<File | null>(null);
+const logoRemoved = ref(false);
+const saving = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const formRef = ref<FormInstance>();
 const editingRowSnapshot = ref<ChannelInfo | null>(null);
@@ -398,6 +400,8 @@ async function openDetail(row: ChannelInfo) {
 }
 
 function openForm(mode: 'create' | 'edit', row?: ChannelInfo) {
+    if (saving.value) return;
+    logoFile.value = null; logoRemoved.value = false;
     formMode.value = mode;
     editingRowSnapshot.value = row ? { ...row } : null;
     Object.assign(form, emptyForm(), row || {});
@@ -408,6 +412,7 @@ function openForm(mode: 'create' | 'edit', row?: ChannelInfo) {
 }
 
 async function submitForm() {
+    if (saving.value) return;
     syncChannelSupportFields();
     const valid = await formRef.value?.validate().catch(() => false);
     if (!valid) {
@@ -419,20 +424,23 @@ async function submitForm() {
         return;
     }
     const payload = buildChannelPayload();
+    saving.value = true;
     try {
         if (formMode.value === 'create') {
-            await createChannel(payload);
+            if (logoFile.value) await saveChannelWithLogo(null, payload, logoFile.value);
+            else await createChannel(payload);
         } else {
             const confirmed = await confirmChannelCapabilityImpact(editingRowSnapshot.value, payload);
             if (!confirmed) {
                 return;
             }
-            await updateChannel(form.id, payload);
+            if (logoFile.value || logoRemoved.value) await saveChannelWithLogo(form.id, payload, logoFile.value, logoRemoved.value);
+            else await updateChannel(form.id, payload);
         }
     } catch (error) {
         await showChannelError(error, t('common.saveFailed'), t('common.saveFailed'));
         return;
-    }
+    } finally { saving.value = false; }
     ElMessage.success(t('channel.common.saveSuccess'));
     formVisible.value = false;
     loadData();
@@ -674,7 +682,7 @@ async function handleDelete(target?: ChannelInfo | ChannelInfo[]) {
         return;
     }
     try {
-        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: targets.map((item) => item.channelCnName).join('、') }), t('channel.common.delete'), { type: 'warning' });
+        await ElMessageBox.confirm(t('channel.info.deleteConfirm', { name: targets.map((item) => item.channelCnName).join('、') }), t('channel.common.delete'), { type: 'error', icon: markRaw(Delete), confirmButtonText: t('channel.common.delete'), confirmButtonClass: 'feedback-danger-button' });
     } catch {
         return;
     }
@@ -717,11 +725,6 @@ function secondsText(value?: number) {
 
 .channel-form__sort :deep(.el-input-number) {
     width: 180px;
-}
-
-.logo-line {
-    display: flex;
-    justify-content: center;
 }
 
 .detail-logo-line {
@@ -994,4 +997,9 @@ function secondsText(value?: number) {
         padding-top: 0;
     }
 }
+</style>
+
+<style scoped>
+.channel-logo { display: inline-flex; width: 68px; height: 34px; align-items: center; justify-content: center; }
+.channel-logo--detail { width: 180px; height: 92px; }
 </style>

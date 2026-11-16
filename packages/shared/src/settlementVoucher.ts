@@ -1,13 +1,12 @@
 import type { VexraSystemKey } from './brand';
-import { formatDecimalAmount } from './amount';
+import { formatExchangeRate, formatMoneyAmount } from './amount';
 
 /** Keep voucher rates at a professional minimum scale without losing source precision. */
 export function formatSettlementVoucherRate(
     value?: string | number | null,
     locale = 'zh-CN',
 ): string {
-    if (value === undefined || value === null || value === '') return '-';
-    return formatDecimalAmount(value, locale, 8, 16);
+    return formatExchangeRate(value, locale);
 }
 
 /** Format voucher money without mixing the currency code into the numeric value. */
@@ -16,11 +15,7 @@ export function formatSettlementVoucherAmount(
     locale = 'zh-CN',
     exponent?: number | null,
 ): string {
-    if (value === undefined || value === null || value === '') return '-';
-    const digits = typeof exponent === 'number'
-        ? Math.min(Math.max(exponent, 0), 8)
-        : 2;
-    return formatDecimalAmount(value, locale, digits, 8);
+    return formatMoneyAmount(value, locale, exponent);
 }
 
 export type SettlementVoucherStatusTone = 'success' | 'warning' | 'danger' | 'info';

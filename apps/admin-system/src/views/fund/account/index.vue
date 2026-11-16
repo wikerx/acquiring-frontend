@@ -20,7 +20,7 @@
 
         <el-row :gutter="10" class="mb8">
             <el-col :span="1.5">
-                <el-button v-hasPermi="'fund:account:export'" type="warning" plain :icon="Download" size="small" @click="handleExport">
+                <el-button v-hasPermi="'fund:account:export'" type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport">
                     {{ $t('common.export') }}
                 </el-button>
             </el-col>
@@ -36,9 +36,11 @@
                     <MerchantIdentityDisplay :merchant-id="row.merchantId" :merchant-name="row.merchantName" clickable @click="openMerchant(row.merchantId)" />
                 </template>
             </el-table-column>
-            <el-table-column prop="settlementCurrency" :label="$t('feeAccount.settlementCurrency')" width="105" align="center" />
+            <el-table-column :label="$t('feeAccount.settlementCurrency')" width="105" align="center">
+                <template #default="{ row }"><CurrencyDisplay :currency="row.settlementCurrency" :locale="String(locale)" size="xs" /></template>
+            </el-table-column>
             <el-table-column :label="$t('feeAccount.availableBalance')" min-width="155" align="right">
-                <template #default="{ row }"><BaseAmount :value="row.availableBalance" :currency="row.settlementCurrency" currency-display="code" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.availableBalance" :currency="row.settlementCurrency" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column :label="$t('common.status')" width="130" align="center">
                 <template #default="{ row }"><el-tag :type="accountStatusType(row.accountStatus)">{{ accountStatusText(row.accountStatus) }}</el-tag></template>
@@ -80,7 +82,7 @@
                     <el-descriptions-item :label="$t('feeAccount.merchant')" :span="2">
                         <MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" />
                     </el-descriptions-item>
-                    <el-descriptions-item :label="$t('feeAccount.settlementCurrency')">{{ detail.settlementCurrency }}</el-descriptions-item>
+                    <el-descriptions-item :label="$t('feeAccount.settlementCurrency')"><CurrencyDisplay :currency="detail.settlementCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                     <el-descriptions-item :label="$t('common.status')"><el-tag :type="accountStatusType(detail.accountStatus)">{{ accountStatusText(detail.accountStatus) }}</el-tag></el-descriptions-item>
                     <el-descriptions-item :label="$t('feeAccount.negativeReverseRestriction')"><el-tag :type="detail.reverseRestricted ? 'danger' : 'success'">{{ detail.reverseRestricted ? $t('feeAccount.restricted') : $t('feeAccount.normal') }}</el-tag></el-descriptions-item>
                 </el-descriptions>
@@ -101,6 +103,7 @@
                             :items="[{ currency: detail.settlementCurrency, amount: detail.availableBalance }]"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="green"
                             variant="balance"
                         />
@@ -113,6 +116,7 @@
                             :items="detail.pendingBalances"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="blue"
                             variant="balance"
                         />
@@ -125,6 +129,7 @@
                             :items="detail.reserveBalances"
                             :fallback-currency="detail.settlementCurrency || 'USD'"
                             :locale="String(locale)"
+                            :show-currency-mark="false"
                             tone="amber"
                             variant="balance"
                         />
@@ -157,7 +162,7 @@
                     </el-form>
                     <el-row :gutter="10" class="mb8">
                         <el-col :span="1.5">
-                            <el-button v-hasPermi="'fund:ledger:export'" type="warning" plain :icon="Download" size="small" @click="handleLedgerExport">{{ $t('common.export') }}</el-button>
+                            <el-button v-hasPermi="'fund:ledger:export'" type="warning" plain :icon="Download" size="small" :loading="ledgerExporting" @click="handleLedgerExport">{{ $t('common.export') }}</el-button>
                         </el-col>
                         <el-col class="ledger-heading">{{ $t('feeAccount.balanceLedger') }}</el-col>
                     </el-row>
@@ -169,13 +174,13 @@
                             <template #default="{ row }"><DirectionTag :direction="row.direction" :label="dictLabel(directionOptions, row.direction)" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.occurredAmount')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.amount" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.balanceBefore')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.balanceBefore" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceBefore" :currency="row.currency" :locale="String(locale)" align="end" /></template>
                         </el-table-column>
                         <el-table-column :label="$t('feeAccount.balanceAfter')" min-width="150" align="right">
-                            <template #default="{ row }"><BaseAmount :value="row.balanceAfter" :currency="row.currency" currency-display="code" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.balanceAfter" :currency="row.currency" :locale="String(locale)" align="end" emphasized /></template>
                         </el-table-column>
                         <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="115" align="center" />
                         <el-table-column prop="reviewerName" :label="$t('feeAccount.reviewer')" width="115" align="center" />
@@ -222,27 +227,26 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-import { CurrencyAmountPills, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
+import { CurrencyAmountDisplay, CurrencyAmountPills, CurrencyDisplay, DirectionTag, FULL_DAY_RANGE_DEFAULT_TIMES, MerchantIdentityDisplay } from '@acquiring/shared';
 import { CircleClose, CreditCard, Download, Lock, MoreFilled, RefreshLeft, RefreshRight, Remove, Search, Unlock, View } from '@element-plus/icons-vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     closeFundAccount,
-    exportFundAccounts,
-    exportFundLedgers,
     freezeFundAccount,
     getFundAccount,
     reopenFundAccount,
     searchFundAccounts,
     searchFundLedgers,
+    submitFundAccountExportTask,
+    submitFundLedgerExportTask,
     unfreezeFundAccount,
     type FundAccount,
     type FundAccountQuery,
     type FundDetailQuery,
     type FundLedger,
 } from '@/api/fund';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -272,6 +276,8 @@ const accountStatuses = ['NORMAL', 'FROZEN', 'CLOSED'].map((value) => ({
 }));
 
 const loading = ref(false);
+const exporting = ref(false);
+const ledgerExporting = ref(false);
 const detailLoading = ref(false);
 const showSearch = ref(true);
 const rows = ref<FundAccount[]>([]);
@@ -354,10 +360,17 @@ function handleReset() {
 }
 
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportFundAccounts(query.value);
+        const task = await submitFundAccountExportTask({
+            requestId: `fund-account-export-${globalThis.crypto.randomUUID()}`,
+            query: { ...query.value },
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 
@@ -424,15 +437,35 @@ async function loadLedgers() {
 
 async function handleLedgerExport() {
     if (!detail.value) return;
+    ledgerExporting.value = true;
     try {
-        await exportFundLedgers(detail.value.id, {
-            ...detailQuery.value,
-            postedStartTime: detailPostedRange.value[0] || undefined,
-            postedEndTime: detailPostedRange.value[1] || undefined,
+        const task = await submitFundLedgerExportTask(detail.value.id, {
+            requestId: `fund-ledger-export-${globalThis.crypto.randomUUID()}`,
+            query: {
+                ...detailQuery.value,
+                postedStartTime: detailPostedRange.value[0] || undefined,
+                postedEndTime: detailPostedRange.value[1] || undefined,
+            },
         });
+        await openSubmittedTask(task.taskNo);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        ledgerExporting.value = false;
     }
+}
+
+/** 提示后台任务已创建，并允许操作人直接前往下载中心。 */
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
 }
 
 /** Open the immutable ledger audit snapshot already returned by the list API. */

@@ -22,9 +22,9 @@
             <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" align="center" show-overflow-tooltip><template #default="{ row }"><el-button link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionType')" min-width="128" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
-            <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="160" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="170" align="right"><template #default="{ row }"><strong>{{ moneyTextByExponent(row.netTargetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></template></el-table-column>
+            <el-table-column :label="t('transaction.fields.transactionType')" min-width="150" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
+            <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+            <el-table-column :label="t('transaction.settlement.netAmount')" min-width="200" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.netTargetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.netDirection" :label="enumText('directionValue', row.netDirection)" /></template></el-table-column>
             <el-table-column prop="componentCount" :label="t('transaction.settlement.componentCount')" width="108" align="center" />
             <el-table-column :label="t('transaction.fields.transactionDateTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.sourceTransactionDateTime" /></template></el-table-column>
@@ -34,16 +34,16 @@
 
         <el-drawer v-model="componentVisible" :title="t('transaction.settlement.financialComponents')" size="min(1180px, 96vw)" destroy-on-close>
             <template v-if="selectedTransaction">
-                <div class="component-identity"><div><span>{{ t('transaction.fields.transactionId') }}</span><strong>{{ selectedTransaction.sourceTransactionId }}</strong></div><div><span>{{ t('transaction.settlement.merchantOrderNo') }}</span><strong>{{ selectedTransaction.merchantOrderNo || '-' }}</strong></div><div><span>{{ t('transaction.settlement.netAmount') }}</span><strong>{{ moneyTextByExponent(selectedTransaction.netTargetAmount, selectedTransaction.targetCurrency, selectedTransaction.targetCurrencyExponent) }}</strong></div></div>
+                <div class="component-identity"><div><span>{{ t('transaction.fields.transactionId') }}</span><strong>{{ selectedTransaction.sourceTransactionId }}</strong></div><div><span>{{ t('transaction.settlement.merchantOrderNo') }}</span><strong>{{ selectedTransaction.merchantOrderNo || '-' }}</strong></div><div><span>{{ t('transaction.settlement.netAmount') }}</span><strong><CurrencyAmountDisplay :amount="selectedTransaction.netTargetAmount" :currency="selectedTransaction.targetCurrency" :exponent="selectedTransaction.targetCurrencyExponent" :locale="String(locale)" emphasized /></strong></div></div>
                 <el-table v-loading="componentLoading" :data="componentRows" border size="small">
                     <el-table-column prop="settlementResultItemNo" :label="t('transaction.settlement.resultItemNo')" min-width="220" fixed="left" align="center" show-overflow-tooltip />
                     <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ itemTypeText(row.resultItemType) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.settlement.resultRole')" min-width="150" align="center"><template #default="{ row }">{{ roleText(row.resultRole) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="135" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                     <el-table-column :label="t('transaction.settlement.appliedLimit')" min-width="126" align="center"><template #default="{ row }">{{ enumText('appliedLimitValue', row.appliedLimit) }}</template></el-table-column>
                 </el-table>
                 <el-empty v-if="!componentLoading && !componentRows.length" :description="t('transaction.settlement.componentEmpty')" :image-size="72" />
@@ -56,19 +56,19 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
-import { DirectionTag, PaymentMethodDisplay } from '@acquiring/shared';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { CurrencyAmountDisplay, DirectionTag, PaymentMethodDisplay, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { exportSettlementResultItems, searchSettlementResultItemComponents, searchSettlementResultItems, type SettlementResultItem, type SettlementResultItemQuery, type SettlementTransactionSummary } from '@/api/settlement';
+import { searchSettlementResultItemComponents, searchSettlementResultItems, submitSettlementResultItemExportTask, type SettlementResultItem, type SettlementResultItemQuery, type SettlementTransactionSummary } from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { businessDateFromBusinessNo, decimalText, defaultDateRange, moneyTextByExponent } from '@/views/settlement/shared';
+import { businessDateFromBusinessNo, defaultDateRange, rateText, requestKey } from '@/views/settlement/shared';
 
-const { t, te } = useI18n();
+const { locale, t, te } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const itemTypes = ['PRINCIPAL', 'FEE_COMPONENT', 'FEE_GROUP_FINAL', 'RESERVE_HOLD', 'RESERVE_RETURN', 'RESERVE_RELEASE', 'ADJUSTMENT', 'REVERSAL'];
@@ -95,7 +95,28 @@ function requestQuery(): SettlementResultItemQuery { return { ...query, settleme
 async function loadData() { loading.value = true; try { const result = await searchSettlementResultItems(requestQuery()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error, 'common.loadFailed'); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; void loadData(); }
 function handleReset() { Object.assign(query, { settlementBatchNo: undefined, merchantId: undefined, merchantOrderNo: undefined, sourceTransactionId: undefined, resultItemType: undefined, direction: undefined, targetCurrency: undefined, pageNo: 1 }); dateRange.value = defaultDateRange(); transactionTimeRange.value = []; void loadData(); }
-async function handleExport() { exporting.value = true; try { await exportSettlementResultItems(requestQuery()); } catch (error) { showError(error, 'common.exportFailed'); } finally { exporting.value = false; } }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitSettlementResultItemExportTask({
+            requestId: requestKey('settlement-result-item-export'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        showError(error, 'common.exportFailed');
+    } finally {
+        exporting.value = false;
+    }
+}
 async function openComponents(row: SettlementTransactionSummary) { selectedTransaction.value = row; componentVisible.value = true; componentPage.value = 1; componentRows.value = []; await loadComponents(); }
 async function loadComponents() { const row = selectedTransaction.value; if (!row || componentLoading.value) return; componentLoading.value = true; try { const result = await searchSettlementResultItemComponents(row.settlementBatchNo, row.sourceTransactionId, componentPage.value, componentPageSize.value); componentRows.value = result.records || []; componentTotal.value = result.total || 0; } catch (error) { showError(error, 'transaction.settlement.componentLoadFailed'); } finally { componentLoading.value = false; } }
 function resetComponentPage() { componentPage.value = 1; void loadComponents(); }

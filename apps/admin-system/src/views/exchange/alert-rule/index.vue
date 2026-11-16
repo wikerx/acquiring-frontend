@@ -76,6 +76,7 @@
           type="warning"
           plain
           :icon="Download"
+          :loading="exporting"
           size="small"
           v-hasPermi="'exchange:alert-rule:export'"
           @click="handleExport"
@@ -124,7 +125,7 @@
       <el-table-column :label="t('exchange.alertRule.thresholds')" min-width="145" align="center"
         ><template #default="{ row }"
           ><span class="numeric-value"
-            >&gt; {{ row.triggerThreshold }}% / &lt; {{ row.recoveryThreshold }}%</span
+            >&gt; {{ percentageText(row.triggerThreshold) }} / &lt; {{ percentageText(row.recoveryThreshold) }}</span
           ></template
         ></el-table-column
       >
@@ -239,12 +240,12 @@
           rateTypeText(detail.rateType)
         }}</el-descriptions-item
         ><el-descriptions-item :label="t('exchange.fields.currencyPair')"
-          >{{ detail.baseCurrency }}/{{ detail.quoteCurrency }}</el-descriptions-item
+          ><span v-if="detail.baseCurrency === 'ALL'" class="scope-all">{{ t('exchange.placeholders.allCurrenciesShort') }}</span><CurrencyPairDisplay v-else :base-currency="detail.baseCurrency" :quote-currency="detail.quoteCurrency" :locale="String(locale)" /></el-descriptions-item
         >
         <el-descriptions-item :label="t('exchange.alertRule.triggerThreshold')"
-          >{{ detail.triggerThreshold }}%</el-descriptions-item
+          >{{ percentageText(detail.triggerThreshold) }}</el-descriptions-item
         ><el-descriptions-item :label="t('exchange.alertRule.recoveryThreshold')"
-          >{{ detail.recoveryThreshold }}%</el-descriptions-item
+          >{{ percentageText(detail.recoveryThreshold) }}</el-descriptions-item
         >
         <el-descriptions-item :label="t('exchange.alertRule.window')">{{
           windowText(detail.windowMinutes)
@@ -437,6 +438,7 @@
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import type { FormInstance, FormRules } from 'element-plus';
   import { ElMessage, ElMessageBox } from 'element-plus';
+  import { formatPercentageRate } from '@acquiring/shared';
   import {
     Delete,
     Download,
@@ -450,13 +452,14 @@
     View,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import {
     createExchangeRateAlertRule,
     deleteExchangeRateAlertRule,
-    exportExchangeRateAlertRules,
     getExchangeRateAlertRule,
     importExchangeRateAlertRules,
     searchExchangeRateAlertRules,
+    submitExchangeRateAlertRuleExportTask,
     updateExchangeRateAlertRule,
     updateExchangeRateAlertRuleStatus,
     type ExchangeRateAlertRule,
@@ -472,12 +475,14 @@
   import RateNumberInput from '../RateNumberInput.vue';
 
   const { locale, t } = useI18n();
+  const router = useRouter();
   const showSearch = ref(true),
     loading = ref(false),
     detailVisible = ref(false),
     detailLoading = ref(false);
   const formVisible = ref(false),
     submitting = ref(false),
+    exporting = ref(false),
     importResultVisible = ref(false);
   const rows = ref<ExchangeRateAlertRule[]>([]),
     detail = ref<ExchangeRateAlertRule | null>(null);
@@ -509,6 +514,10 @@
     alertLevel: 'WARNING',
     remark: '',
   });
+
+  function percentageText(value?: string | number | null) {
+    return formatPercentageRate(value, String(locale.value));
+  }
   const rateTypeOptions = computed(() =>
     ['TRANSACTION_RATE', 'SETTLEMENT_RATE'].map((value) => ({
       value,
@@ -671,7 +680,35 @@
     await loadData();
   }
   async function handleExport() {
-    await exportExchangeRateAlertRules({ pageNo: page.value, pageSize: pageSize.value, ...query });
+    exporting.value = true;
+    try {
+      const task = await submitExchangeRateAlertRuleExportTask({
+        requestId: createExportRequestId('exchange-alert-rule'),
+        query: { pageNo: page.value, pageSize: pageSize.value, ...query },
+      });
+      await openSubmittedTask(task.taskNo);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+      exporting.value = false;
+    }
+  }
+  async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  }
+  function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
   async function handleImport(event: Event) {
     const input = event.target as HTMLInputElement;

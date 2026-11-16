@@ -28,5 +28,30 @@ jobs:
         run: npm run lint
       - name: Typecheck workspaces
         run: npm run typecheck
+      - name: Verify exact amount formatting
+        run: npm run test:amount
       - name: Build workspaces
         run: npm run build
+
+  merchant-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run Merchant E2E baseline
+        run: npm run test:e2e:merchant
+      - name: Upload E2E report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merchant-e2e-report
+          path: output/
+          if-no-files-found: ignore

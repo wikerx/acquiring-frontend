@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 import type { SysRole } from './role';
 
 export interface SysUserAccount {
@@ -145,6 +146,16 @@ export async function searchUsers(requestBody: SysUserAccountQuery) {
     const result = await http.post<CommonResult<PageResult<SysUserAccount>>>(
         '/admin/system/users/search',
         requestBody,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function submitSystemUserExportTask(data: {
+    requestId: string;
+    query: Omit<SysUserAccountQuery, 'pageNo' | 'pageSize'>;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/system/users/export-task', data,
     );
     return unwrapResult(result.data);
 }

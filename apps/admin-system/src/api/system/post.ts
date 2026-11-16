@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface SysPost {
     id?: number;
@@ -54,4 +55,9 @@ export async function exportPosts() {
     await downloadExcel('/admin/system/post/export', {
         method: 'get',
     });
+}
+
+export async function submitPostExportTask(data: { requestId: string; query: Omit<PostQuery, 'pageNo' | 'pageSize'> }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/system/post/export-task', data);
+    return unwrapResult(result.data);
 }

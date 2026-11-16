@@ -5,6 +5,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@acquiring/shared/legacy": ["../../packages/shared/src/legacy.ts"],
       "@acquiring/shared": ["../../packages/shared/src/index.ts"]
     }
   }

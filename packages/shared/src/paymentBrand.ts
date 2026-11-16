@@ -1,21 +1,25 @@
-import visaLogo from './assets/payment-icons/cards/visa.svg';
-import americanExpressLogo from './assets/payment-icons/cards/american-express.svg';
-import dinersClubLogo from './assets/payment-icons/cards/diners-club.svg';
-import discoverLogo from './assets/payment-icons/cards/discover.svg';
-import mastercardLogo from './assets/payment-icons/cards/mastercard.svg';
-import jcbLogo from './assets/payment-icons/cards/jcb.png';
-import maestroLogo from './assets/payment-icons/cards/maestro.svg';
-import unionPayLogo from './assets/payment-icons/cards/union-pay.svg';
+import visaLogo from './assets/payment-icons/normalized/visa.png';
+import americanExpressLogo from './assets/payment-icons/normalized/american-express.png';
+import dinersClubLogo from './assets/payment-icons/normalized/diners-club.png';
+import discoverLogo from './assets/payment-icons/normalized/discover.png';
+import mastercardLogo from './assets/payment-icons/normalized/mastercard.png';
+import jcbLogo from './assets/payment-icons/normalized/jcb.png';
+import maestroLogo from './assets/payment-icons/normalized/maestro.png';
+import unionPayLogo from './assets/payment-icons/normalized/union-pay.png';
 import httpsLogo from './assets/payment-icons/security/https.svg';
 import pciDssLogo from './assets/payment-icons/security/pci-dss.svg';
 import sslLogo from './assets/payment-icons/security/ssl.svg';
 import visaSecureLogo from './assets/payment-icons/security/visa-secure.png';
-import alipayPlusLogo from './assets/payment-icons/wallets/alipay-plus.svg';
-import applePayLogo from './assets/payment-icons/wallets/apple-pay.svg';
-import cashAppPayLogo from './assets/payment-icons/wallets/cash-app-pay.png';
-import googlePayLogo from './assets/payment-icons/wallets/google-pay.svg';
-import paypalLogo from './assets/payment-icons/wallets/paypal.svg';
-import bitcoinLogo from './assets/payment-icons/wallets/bitcoin.svg';
+import alipayPlusLogo from './assets/payment-icons/normalized/alipay-plus.png';
+import applePayLogo from './assets/payment-icons/normalized/apple-pay.png';
+import cashAppPayLogo from './assets/payment-icons/normalized/cash-app-pay.png';
+import googlePayLogo from './assets/payment-icons/normalized/google-pay.png';
+import paypalLogo from './assets/payment-icons/normalized/paypal.png';
+import bitcoinLogo from './assets/payment-icons/normalized/bitcoin.png';
+import achDebitLogo from './assets/payment-icons/normalized/ach-debit.png';
+import bankTransferLogo from './assets/payment-icons/normalized/bank-transfer.png';
+import pyusdLogo from './assets/payment-icons/normalized/pyusd.png';
+import upiLogo from './assets/payment-icons/normalized/upi.png';
 
 export type PaymentLogoKind = 'card-brand' | 'wallet' | 'bank-transfer' | 'security';
 
@@ -39,8 +43,10 @@ export type PaymentLogoKey =
     | 'digitalWallet'
     | 'cashAppPay'
     | 'bitcoin'
+    | 'pyusd'
     | 'achDebit'
     | 'bankTransfer'
+    | 'upi'
     | 'spei'
     | 'pix'
     | 'pciDss'
@@ -63,7 +69,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Visa',
         textFallback: 'Visa',
         asset: visaLogo,
-        assetSource: 'Visa Merchant Signage: Visa Brandmark RGB 2021 SVG package',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     visaSecure: {
         key: 'visaSecure',
@@ -79,7 +85,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Mastercard',
         textFallback: 'Mastercard',
         asset: mastercardLogo,
-        assetSource: 'Mastercard Brand Center: Mastercard Symbol SVG package provided locally',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     mastercardIdCheck: {
         key: 'mastercardIdCheck',
@@ -93,7 +99,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'JCB',
         textFallback: 'JCB',
         asset: jcbLogo,
-        assetSource: 'JCB emblem color TIFF package provided locally, converted to PNG for browser display',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     americanExpress: {
         key: 'americanExpress',
@@ -101,7 +107,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'American Express',
         textFallback: 'American Express',
         asset: americanExpressLogo,
-        assetSource: 'Wikimedia Commons: American Express logo (2018) SVG',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     dinersClub: {
         key: 'dinersClub',
@@ -109,7 +115,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Diners Club International',
         textFallback: 'Diners Club',
         asset: dinersClubLogo,
-        assetSource: 'Local payment-icons-svg cards: Diners Club asset provided by user',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     discover: {
         key: 'discover',
@@ -117,7 +123,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Discover',
         textFallback: 'Discover',
         asset: discoverLogo,
-        assetSource: 'Wikimedia Commons: Discover Card logo SVG',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     unionPay: {
         key: 'unionPay',
@@ -125,7 +131,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'UnionPay',
         textFallback: 'UnionPay',
         asset: unionPayLogo,
-        assetSource: 'Wikimedia Commons: UnionPay logo SVG',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     maestro: {
         key: 'maestro',
@@ -133,7 +139,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Maestro',
         textFallback: 'Maestro',
         asset: maestroLogo,
-        assetSource: 'Mastercard Brand Center: Maestro white/light background SVG package provided locally',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     applePay: {
         key: 'applePay',
@@ -141,7 +147,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Apple Pay',
         textFallback: 'Apple Pay',
         asset: applePayLogo,
-        assetSource: 'Apple Developer: Apple Pay Mark package',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     googlePay: {
         key: 'googlePay',
@@ -149,7 +155,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Google Pay',
         textFallback: 'Google Pay',
         asset: googlePayLogo,
-        assetSource: 'Google Pay API Brand Guidelines: Google Pay Acceptance package',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     samsungPay: {
         key: 'samsungPay',
@@ -163,7 +169,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'PayPal',
         textFallback: 'PayPal',
         asset: paypalLogo,
-        assetSource: 'PayPal official paypalobjects marketing logo resource',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     alipayPlus: {
         key: 'alipayPlus',
@@ -171,7 +177,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Alipay+',
         textFallback: 'Alipay+',
         asset: alipayPlusLogo,
-        assetSource: 'Alipay+ brand asset package provided locally',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     bankCard: {
         key: 'bankCard',
@@ -191,7 +197,7 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Cash App Pay',
         textFallback: 'Cash App Pay',
         asset: cashAppPayLogo,
-        assetSource: 'Icons8 Cash App icon provided by user; usage is subject to the applicable Icons8 license',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
     },
     bitcoin: {
         key: 'bitcoin',
@@ -199,19 +205,39 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         label: 'Bitcoin',
         textFallback: 'Bitcoin',
         asset: bitcoinLogo,
-        assetSource: 'Simple Icons: Bitcoin mark (CC0)',
+        assetSource: 'User-provided V5 payment asset normalized to a transparent 128x64 canvas',
+    },
+    pyusd: {
+        key: 'pyusd',
+        kind: 'wallet',
+        label: 'PayPal USD (PYUSD)',
+        textFallback: 'PYUSD',
+        asset: pyusdLogo,
+        assetSource: 'User-provided PYUSD asset normalized to a transparent 128x64 canvas',
     },
     achDebit: {
         key: 'achDebit',
         kind: 'bank-transfer',
         label: 'ACH Debit',
         textFallback: 'ACH Debit',
+        asset: achDebitLogo,
+        assetSource: 'User-provided ACH asset normalized to a transparent 128x64 canvas',
     },
     bankTransfer: {
         key: 'bankTransfer',
         kind: 'bank-transfer',
         label: 'Bank Transfer',
         textFallback: 'Bank Transfer',
+        asset: bankTransferLogo,
+        assetSource: 'User-provided bank transfer asset normalized to a transparent 128x64 canvas',
+    },
+    upi: {
+        key: 'upi',
+        kind: 'bank-transfer',
+        label: 'Unified Payments Interface (UPI)',
+        textFallback: 'UPI',
+        asset: upiLogo,
+        assetSource: 'User-provided UPI asset normalized to a transparent 128x64 canvas',
     },
     spei: {
         key: 'spei',
@@ -289,8 +315,10 @@ const PAYMENT_METHOD_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
     ALIPAY_PLUS: ['alipayPlus'],
     CASH_APP_PAY: ['cashAppPay'],
     BTC_ON_CHAIN: ['bitcoin'],
+    PYUSD: ['pyusd'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
+    UPI: ['upi'],
     SPEI: ['spei'],
     PIX: ['pix'],
 };
@@ -311,8 +339,10 @@ const PAYMENT_BRAND_LOGO_KEYS: Record<string, PaymentLogoKey[]> = {
     ALIPAY_PLUS: ['alipayPlus'],
     CASH_APP_PAY: ['cashAppPay'],
     BTC_ON_CHAIN: ['bitcoin'],
+    PYUSD: ['pyusd'],
     ACH_DEBIT: ['achDebit'],
     BANK_TRANSFER: ['bankTransfer'],
+    UPI: ['upi'],
     SPEI: ['spei'],
     PIX: ['pix'],
 };

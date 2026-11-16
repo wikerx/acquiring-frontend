@@ -155,7 +155,21 @@ function submit(action: 'APPROVE' | 'REJECT') {
 .fee-review__section-title { display: flex; align-items: center; gap: 8px; color: #344054; font-size: 13px; font-weight: 600; }
 .fee-review__section-title::before { width: 3px; height: 14px; border-radius: 2px; background: #2f6fed; content: ''; }
 .fee-review__reason { min-height: 44px; padding: 12px 14px; border: 1px solid #e4e9f1; background: #f8fafc; color: #475467; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
-.fee-review__decision :deep(.el-form-item) { margin-bottom: 0; }
+.fee-review__decision :deep(.el-form),
+.fee-review__decision :deep(.el-form-item),
+.fee-review__decision :deep(.el-form-item__content),
+.fee-review__decision :deep(.el-textarea) {
+    width: 100%;
+    min-width: 0;
+}
+.fee-review__decision :deep(.el-form-item) { display: block; margin-bottom: 0; }
+.fee-review__decision :deep(.el-form-item__label) {
+    width: auto;
+    margin: 0 0 8px;
+    float: none;
+    line-height: 20px;
+}
+.fee-review__decision :deep(.el-form-item__content) { margin-left: 0 !important; }
 .fee-review__decision :deep(.el-textarea__inner) { min-height: 112px !important; }
 
 @media (max-width: 640px) {

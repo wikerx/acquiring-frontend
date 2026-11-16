@@ -73,24 +73,9 @@
             <el-table-column :label="t('transaction.fields.nextRetryTime')" min-width="172" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.nextRetryTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
             </el-table-column>
-            <el-table-column :label="t('common.operation')" width="210" fixed="right" align="center">
+            <el-table-column v-if="showOperationColumn" :label="t('common.operation')" width="190" fixed="right" align="center">
                 <template #default="{ row }">
-                    <el-button type="primary" link :icon="View" @click="openDetail(row)" v-hasPermi="'transaction:merchant-notification:detail'">{{ t('common.detail') }}</el-button>
-                    <el-tooltip :content="canRetryCallback(row) ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryNotificationDisabled')" placement="top">
-                        <span>
-                            <el-button
-                                type="warning"
-                                link
-                                :icon="RefreshRight"
-                                :disabled="!canRetryCallback(row)"
-                                :loading="retryingTransactionId === recordText(row, 'transactionId')"
-                                @click="handleRetryCallback(row)"
-                                v-hasPermi="'transaction:merchant-notification:retry'"
-                            >
-                                {{ t('transaction.actions.retryCallback') }}
-                            </el-button>
-                        </span>
-                    </el-tooltip>
+                    <TableRowActions :actions="notificationRowActions(row)" :more-label="t('common.more')" @select="handleNotificationRowAction($event, row)" />
                 </template>
             </el-table-column>
         </StandardTable>
@@ -103,7 +88,21 @@
             <div v-loading="detailLoading">
                 <TransactionRecordList :rows="detailRow ? [detailRow] : []" :display-time-zone="query.queryTimeZone" />
                 <el-divider content-position="left">{{ t('transaction.merchantNotification.deliveryAttempts') }}</el-divider>
-                <TransactionRecordList :rows="deliveryLogs" variant="callback" :display-time-zone="query.queryTimeZone" />
+                <div v-loading="deliveryLogsLoading">
+                    <TransactionRecordList :rows="deliveryLogs" variant="callback" :display-time-zone="query.queryTimeZone" />
+                    <div class="pagination-container" v-show="deliveryLogTotal > 0">
+                        <el-pagination
+                            v-model:current-page="deliveryLogPage"
+                            v-model:page-size="deliveryLogPageSize"
+                            :total="deliveryLogTotal"
+                            :page-sizes="[10, 20, 50, 100]"
+                            layout="total, sizes, prev, pager, next, jumper"
+                            background
+                            @size-change="handleDeliveryLogSizeChange"
+                            @current-change="loadDeliveryLogs"
+                        />
+                    </div>
+                </div>
             </div>
         </CommonDetailDrawer>
     </div>
@@ -114,11 +113,14 @@ import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
+import { TableRowActions, type TableRowAction, userFacingErrorMessage } from '@acquiring/shared';
+import { useUserStore } from '@/store/modules/user';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
-import { exportMerchantNotifications, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
+import { getMerchantNotificationDeliveryLogs, getMerchantNotificationDetail, retryMerchantNotification, searchMerchantNotifications, submitMerchantNotificationExportTask, type MerchantNotificationQuery, type TransactionRecord } from '@/api/transaction';
 import CopyableText from '../components/CopyableText.vue';
 import MerchantRemoteSelect from '../components/MerchantRemoteSelect.vue';
 import TransactionRecordList from '../components/TransactionRecordList.vue';
@@ -131,6 +133,12 @@ import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, defaultTransactionTodayRange, ensu
  * 商户通知记录主页面：按交易分片时间查询投递任务和尝试明细，并仅对仍可重试的失败任务开放人工重试。
  */
 const { t, locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const userStore = useUserStore();
+const canNotificationDetail = userStore.hasPermission('transaction:merchant-notification:detail');
+const canNotificationRetry = userStore.hasPermission('transaction:merchant-notification:retry');
+const showOperationColumn = canNotificationDetail || canNotificationRetry;
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
@@ -145,13 +153,54 @@ const detailVisible = ref(false);
 const detailLoading = ref(false);
 const detailRow = ref<TransactionRecord | null>(null);
 const deliveryLogs = ref<TransactionRecord[]>([]);
+const deliveryLogsLoading = ref(false);
+const deliveryLogPage = ref(1);
+const deliveryLogPageSize = ref(10);
+const deliveryLogTotal = ref(0);
+const detailNotifyId = ref('');
+const detailTransactionDateTime = ref('');
 const timezoneOptions = ref<SelectOption[]>([]);
 const query = reactive({ merchantId: '', transactionId: '', notifyStatus: '', queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE });
 
+function notificationRowActions(row: TransactionRecord): TableRowAction[] {
+    const retryable = canRetryCallback(row);
+    const transactionId = recordText(row, 'transactionId');
+    return [
+        { key: 'detail', label: t('common.detail'), icon: View, visible: canNotificationDetail },
+        {
+            key: 'retry', label: t('transaction.actions.retryCallback'), icon: RefreshRight, type: 'warning',
+            visible: canNotificationRetry,
+            disabled: !retryable,
+            disabledReason: retryable ? t('transaction.actions.retryCallbackTip') : t('transaction.actions.retryNotificationDisabled'),
+            loading: retryingTransactionId.value === transactionId,
+        },
+    ];
+}
+
+function handleNotificationRowAction(action: string, row: TransactionRecord) {
+    if (action === 'detail') void openDetail(row);
+    else if (action === 'retry') void handleRetryCallback(row);
+}
+
 onMounted(async () => {
+    const linkedTransactionId = routeText('transactionId');
+    if (linkedTransactionId) query.transactionId = linkedTransactionId;
+    applyLinkedDateRange(routeText('sourceOccurredAt'));
     await loadTimezones();
     await loadData();
 });
+
+function routeText(name: string) {
+    const value = route.query[name];
+    return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+}
+
+function applyLinkedDateRange(value: string) {
+    const date = value.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    quickPreset.value = '';
+    dateRange.value = [`${date}T00:00:00`, `${date}T23:59:59`];
+}
 
 async function loadTimezones() {
     const options = await loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []);
@@ -172,10 +221,31 @@ async function loadData() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportMerchantNotifications(buildQuery());
+        const task = await submitMerchantNotificationExportTask({
+            requestId: createExportRequestId('merchant-notification'),
+            query: buildQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error: unknown) {
+        ElMessage.error(userFacingErrorMessage(error, t('common.exportFailed')));
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function buildQuery(pageNo?: number, currentPageSize?: number): MerchantNotificationQuery {
@@ -213,20 +283,52 @@ function handleReset() {
 async function openDetail(row: TransactionRecord) {
     detailRow.value = row;
     deliveryLogs.value = [];
+    deliveryLogTotal.value = 0;
+    deliveryLogPage.value = 1;
     detailVisible.value = true;
     const notifyId = recordText(row, 'notifyId');
     const transactionDateTime = recordText(row, 'transactionDateTime');
+    detailNotifyId.value = notifyId;
+    detailTransactionDateTime.value = transactionDateTime;
     if (!notifyId || !transactionDateTime) {
         return;
     }
     detailLoading.value = true;
     try {
-        const detail = await getMerchantNotificationDetail(notifyId, transactionDateTime);
+        const [detail] = await Promise.all([
+            getMerchantNotificationDetail(notifyId, transactionDateTime),
+            loadDeliveryLogs(),
+        ]);
         detailRow.value = detail.notification || row;
-        deliveryLogs.value = detail.deliveryLogs || [];
     } finally {
         detailLoading.value = false;
     }
+}
+
+async function loadDeliveryLogs() {
+    if (!detailNotifyId.value || !detailTransactionDateTime.value) return;
+    deliveryLogsLoading.value = true;
+    try {
+        const result = await getMerchantNotificationDeliveryLogs(
+            detailNotifyId.value,
+            detailTransactionDateTime.value,
+            deliveryLogPage.value,
+            deliveryLogPageSize.value,
+        );
+        deliveryLogs.value = result.records || [];
+        deliveryLogTotal.value = result.total || 0;
+    } catch (error) {
+        deliveryLogs.value = [];
+        deliveryLogTotal.value = 0;
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        deliveryLogsLoading.value = false;
+    }
+}
+
+function handleDeliveryLogSizeChange() {
+    deliveryLogPage.value = 1;
+    void loadDeliveryLogs();
 }
 
 function recordText(row: TransactionRecord, field: string) {

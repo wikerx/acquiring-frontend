@@ -238,7 +238,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search, Refresh, Download, View, Link as LinkIcon } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -247,7 +247,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import { MonitorChartGrid, MonitorChartPanel } from '@/components/MonitorChart';
 import { MonitorCapabilityAlert, MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import {
-    exportDatasourceSnapshot,
+    submitDatasourceSnapshotExportTask,
     getDatasourceMetrics,
     getDatasourceSnapshot,
     type DataSourceMonitorDataSourceItem,
@@ -446,14 +446,28 @@ function handleReset() {
 /** 导出当前运行时数据源和分表配置快照，不导出业务表数据。 */
 async function handleExport() {
     try {
-        await exportDatasourceSnapshot();
+        const task = await submitDatasourceSnapshotExportTask(createExportRequestId('datasource-snapshot'));
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         if (error instanceof Error) {
             ElMessage.error(error.message);
         } else {
-            ElMessage.error(t('common.saveFailed'));
+            ElMessage.error(t('common.exportFailed'));
         }
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') return `${prefix}-${globalThis.crypto.randomUUID()}`;
+    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 /** 打开单个物理数据源详情。 */

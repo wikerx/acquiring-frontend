@@ -22,7 +22,7 @@
             <div class="profile-header__metadata">
               <span>{{ merchant.countryCode || '-' }}</span>
               <span>MCC {{ merchant.merchantCategoryCode || '-' }}</span>
-              <span>{{ merchant.settlementCurrency || '-' }}</span>
+              <CurrencyDisplay :currency="merchant.settlementCurrency" :locale="String(locale)" size="xs" />
               <span>{{ merchant.timezone || '-' }}</span>
             </div>
             <div class="profile-header__state">
@@ -86,6 +86,131 @@
       </el-alert>
 
       <el-tabs v-model="activeTab" class="profile-tabs">
+        <el-tab-pane :label="t('merchant.info.activationWorkbench')" name="activation">
+          <div class="activation-workbench">
+            <section class="activation-summary" :class="merchant.activationReady ? 'is-ready' : 'is-blocked'">
+              <div class="activation-summary__icon">
+                <CircleCheck v-if="merchant.activationReady" />
+                <Clock v-else />
+              </div>
+              <div>
+                <h4>{{ t('merchant.info.activationWorkbenchTitle') }}</h4>
+                <p>
+                  {{ merchant.activationReady
+                    ? t('merchant.info.activationWorkbenchReady')
+                    : t('merchant.info.activationWorkbenchBlocked', { count: merchant.readinessIssues?.length || 0 }) }}
+                </p>
+              </div>
+              <el-tag :type="merchant.activationReady ? 'success' : 'warning'" effect="light">
+                {{ merchant.activationReady ? t('merchant.info.stageReady') : t('merchant.info.stageBlocked') }}
+              </el-tag>
+            </section>
+
+            <section class="activation-stage-list" :aria-label="t('merchant.info.activationStageList')">
+              <article
+                v-for="stage in activationStages"
+                :key="stage.key"
+                class="activation-stage-row"
+                :class="`is-${stage.status.toLowerCase()}`"
+              >
+                <div class="activation-stage-row__index">{{ stage.order }}</div>
+                <div class="activation-stage-row__icon"><component :is="stage.icon" /></div>
+                <div class="activation-stage-row__content">
+                  <div class="activation-stage-row__title">
+                    <h4>{{ stage.title }}</h4>
+                    <el-tag :type="stage.status === 'READY' ? 'success' : 'warning'" size="small" effect="plain">
+                      {{ stage.status === 'READY' ? t('merchant.info.stageReady') : t('merchant.info.stageBlocked') }}
+                    </el-tag>
+                  </div>
+                  <p>{{ stage.description }}</p>
+                  <div v-if="stage.issues.length" class="activation-stage-row__issues">
+                    <span v-for="issue in stage.issues" :key="issue">{{ readinessIssueText(issue, t) }}</span>
+                  </div>
+                </div>
+                <el-button
+                  v-if="stage.action && stage.actionVisible"
+                  text
+                  type="primary"
+                  :icon="ArrowRight"
+                  @click="runStageAction(stage.action)"
+                >{{ stage.actionLabel }}</el-button>
+              </article>
+            </section>
+
+            <section class="activation-capabilities">
+              <header class="activation-capabilities__header">
+                <div>
+                  <h4>{{ t('merchant.info.effectivePaymentCapabilities') }}</h4>
+                  <p>{{ t('merchant.info.effectivePaymentCapabilitiesDesc') }}</p>
+                </div>
+                <div class="activation-capabilities__metrics">
+                  <span>{{ t('merchant.info.activeBindingCount') }} <b>{{ paymentReadiness?.activeBindingCount || 0 }}</b></span>
+                  <span>{{ t('merchant.info.unavailableBindingCount') }} <b>{{ paymentReadiness?.unavailableBindingCount || 0 }}</b></span>
+                </div>
+              </header>
+              <el-table
+                v-if="paymentReadiness?.capabilities?.length"
+                :data="paymentReadiness.capabilities"
+                size="small"
+                border
+                :row-key="capabilityKey"
+              >
+                <el-table-column :label="t('merchant.info.transactionType')" min-width="150">
+                  <template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="optionText('transactionType', row.transactionType)" align="start" /></template>
+                </el-table-column>
+                <el-table-column :label="t('merchant.info.paymentType')" min-width="130">
+                  <template #default="{ row }">
+                    <PaymentLogoGroup
+                      v-if="paymentTypeLogoKeys(row.paymentType).length"
+                      :keys="paymentTypeLogoKeys(row.paymentType)"
+                      size="sm"
+                      align="start"
+                      :wrap="false"
+                    />
+                    <span v-else>{{ optionText('paymentType', row.paymentType) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column :label="t('merchant.info.paymentMethod')" min-width="180">
+                  <template #default="{ row }">
+                    <PaymentMethodDisplay
+                      :payment-types="[
+                        {
+                          value: row.paymentType || '',
+                          label: optionText('paymentType', row.paymentType),
+                        },
+                      ]"
+                      :payment-methods="[
+                        {
+                          value: row.paymentMethod || '',
+                          label: optionText('paymentMethod', row.paymentMethod),
+                        },
+                      ]"
+                      align="start"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column :label="t('merchant.info.currency')" width="100" align="center">
+                  <template #default="{ row }"><CurrencyDisplay :currency="row.currency" :locale="String(locale)" size="xs" /></template>
+                </el-table-column>
+                <el-table-column :label="t('merchant.info.capabilityCheck')" min-width="260">
+                  <template #default="{ row }">
+                    <div class="capability-check-tags">
+                      <el-tag
+                        v-for="flag in capabilityFlags(row)"
+                        :key="flag.key"
+                        :type="flag.type"
+                        size="small"
+                        effect="plain"
+                      >{{ flag.label }}</el-tag>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-else :description="t('merchant.info.noEffectivePaymentCapabilities')" />
+            </section>
+          </div>
+        </el-tab-pane>
+
         <el-tab-pane :label="t('merchant.info.stepBasic')" name="basic">
           <div class="detail-grid">
             <DetailSection :title="t('merchant.info.basicInfo')" :icon="Grid">
@@ -207,18 +332,12 @@
                 <el-descriptions-item :label="t('merchant.info.targetMarkets')">{{
                   listValue(merchant.targetMarkets)
                 }}</el-descriptions-item>
-                <el-descriptions-item :label="t('merchant.info.transactionCurrencies')">{{
-                  listValue(merchant.transactionCurrencies)
-                }}</el-descriptions-item>
-                <el-descriptions-item :label="t('merchant.info.expectedMonthlyVolume')">{{
-                  amountValue(merchant.expectedMonthlyVolume, merchant.expectedVolumeCurrency)
-                }}</el-descriptions-item>
-                <el-descriptions-item :label="t('merchant.info.averageTicket')">{{
-                  amountValue(merchant.averageTicket, merchant.expectedVolumeCurrency)
-                }}</el-descriptions-item>
-                <el-descriptions-item :label="t('merchant.info.maxTicket')">{{
-                  amountValue(merchant.maxTicket, merchant.expectedVolumeCurrency)
-                }}</el-descriptions-item>
+                <el-descriptions-item :label="t('merchant.info.transactionCurrencies')">
+                  <ChannelCurrencyScopeDisplay :currencies="merchant.transactionCurrencies" :label="t('merchant.info.transactionCurrencies')" :locale="String(locale)" />
+                </el-descriptions-item>
+                <el-descriptions-item :label="t('merchant.info.expectedMonthlyVolume')"><CurrencyAmountDisplay :amount="merchant.expectedMonthlyVolume" :currency="merchant.expectedVolumeCurrency" :locale="String(locale)" /></el-descriptions-item>
+                <el-descriptions-item :label="t('merchant.info.averageTicket')"><CurrencyAmountDisplay :amount="merchant.averageTicket" :currency="merchant.expectedVolumeCurrency" :locale="String(locale)" /></el-descriptions-item>
+                <el-descriptions-item :label="t('merchant.info.maxTicket')"><CurrencyAmountDisplay :amount="merchant.maxTicket" :currency="merchant.expectedVolumeCurrency" :locale="String(locale)" /></el-descriptions-item>
                 <el-descriptions-item :label="t('merchant.info.expectedMonthlyCount')">{{
                   value(merchant.expectedMonthlyCount)
                 }}</el-descriptions-item>
@@ -329,9 +448,7 @@
           <div class="detail-grid">
             <DetailSection :title="t('merchant.info.settlementAndAccount')" :icon="Wallet">
               <el-descriptions :column="2" border size="small">
-                <el-descriptions-item :label="t('merchant.info.settlementCurrency')">{{
-                  value(merchant.settlementCurrency)
-                }}</el-descriptions-item>
+                <el-descriptions-item :label="t('merchant.info.settlementCurrency')"><CurrencyDisplay :currency="merchant.settlementCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                 <el-descriptions-item :label="t('merchant.info.fundAccountStatus')">{{
                   value(merchant.fundAccountStatus)
                 }}</el-descriptions-item>
@@ -537,11 +654,13 @@
     CircleClose,
     Clock,
     Connection,
+    ArrowRight,
     Delete,
     DocumentAdd,
     Download,
     Edit,
     Grid,
+    Key,
     Link,
     Location,
     Money,
@@ -552,11 +671,20 @@
     User,
     VideoPlay,
     Wallet,
+    Setting,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
+  import { CurrencyAmountDisplay, CurrencyDisplay, PaymentLogoGroup, PaymentMethodDisplay, TransactionTypeDisplay } from '@acquiring/shared';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
-  import type { MerchantDocument, MerchantInfo, MerchantReviewRequest } from '@/api/merchant/info';
+  import type {
+    MerchantDocument,
+    MerchantInfo,
+    MerchantPaymentCapability,
+    MerchantReviewRequest,
+  } from '@/api/merchant/info';
+  import { paymentLogoKeys } from '@/views/channel/shared';
+  import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
   import { normalizeInternationalPhone } from '../international-phone';
   import { readinessIssueText } from '../readiness-issue';
 
@@ -568,6 +696,9 @@
     canViewFee?: boolean;
     canBindChannel?: boolean;
     canViewFund?: boolean;
+    canViewSettlement?: boolean;
+    canViewRisk?: boolean;
+    canViewTechnical?: boolean;
     actionLoading?: boolean;
     documentBusyId?: string;
   }>();
@@ -578,6 +709,9 @@
     'configure-fee': [];
     'bind-channel': [];
     'fund-account': [];
+    'settlement-profile': [];
+    'risk-configuration': [];
+    'technical-access': [];
     'submit-review': [];
     review: [request: MerchantReviewRequest];
     activate: [];
@@ -586,8 +720,16 @@
     'delete-document': [document: MerchantDocument];
   }>();
 
-  const { t } = useI18n();
-  const activeTab = ref('basic');
+  const { locale, t } = useI18n();
+  type ActivationStageAction =
+    | 'edit'
+    | 'settlement-profile'
+    | 'bind-channel'
+    | 'configure-fee'
+    | 'risk-configuration'
+    | 'technical-access';
+
+  const activeTab = ref('activation');
   const reviewVisible = ref(false);
   const reviewDecision = ref<MerchantReviewRequest['decision']>('PASS');
   const reviewComment = ref('');
@@ -629,6 +771,98 @@
   const reviewDialogTitle = computed(() =>
     t(`merchant.info.reviewDecision.${reviewDecision.value}`),
   );
+  const paymentReadiness = computed(() => props.merchant?.paymentCapabilityReadiness);
+
+  const operationalIssueGroups = {
+    settlement: (issue: string) => issue.startsWith('SETTLEMENT_') || issue === 'FEE_SETTLEMENT_CYCLE_INCOMPLETE',
+    payment: (issue: string) => issue.startsWith('CHANNEL_MID_')
+      || issue.startsWith('CHANNEL_PAYMENT_')
+      || issue.startsWith('CHANNEL_ROUTE_')
+      || issue.startsWith('PAYMENT_CAPABILITY_'),
+    fee: (issue: string) => (issue.startsWith('FEE_') && issue !== 'FEE_SETTLEMENT_CYCLE_INCOMPLETE'),
+    risk: (issue: string) => issue.startsWith('RISK_')
+      || issue.startsWith('CHANNEL_LIMIT_')
+      || issue.startsWith('THREE_DS_'),
+    technical: (issue: string) => issue.startsWith('OPENAPI_')
+      || issue.startsWith('SOURCE_URL_')
+      || issue.startsWith('TECHNICAL_ACCESS_'),
+  };
+
+  const activationStages = computed(() => {
+    const allIssues = props.merchant?.readinessIssues || [];
+    const grouped = {
+      settlement: allIssues.filter(operationalIssueGroups.settlement),
+      payment: allIssues.filter(operationalIssueGroups.payment),
+      fee: allIssues.filter(operationalIssueGroups.fee),
+      risk: allIssues.filter(operationalIssueGroups.risk),
+      technical: allIssues.filter(operationalIssueGroups.technical),
+    };
+    const operationalIssues = new Set(Object.values(grouped).flat());
+    const profileIssues = allIssues.filter((issue) => !operationalIssues.has(issue));
+    const stage = (
+      order: string,
+      key: string,
+      icon: Component,
+      issues: string[],
+      action: ActivationStageAction,
+      actionVisible: boolean,
+    ) => ({
+      order,
+      key,
+      icon,
+      issues,
+      status: issues.length ? 'BLOCKED' : 'READY',
+      title: t(`merchant.info.activationStage.${key}.title`),
+      description: t(`merchant.info.activationStage.${key}.${issues.length ? 'blocked' : 'ready'}`),
+      action,
+      actionVisible,
+      actionLabel: t(`merchant.info.activationStage.${key}.action`),
+    });
+    return [
+      stage('01', 'profile', Grid, profileIssues, 'edit', props.canEdit === true),
+      stage('02', 'settlement', Wallet, grouped.settlement, 'settlement-profile', props.canViewSettlement === true),
+      stage('03', 'payment', Connection, grouped.payment, 'bind-channel', props.canBindChannel === true),
+      stage('04', 'fee', Money, grouped.fee, 'configure-fee', props.canViewFee === true),
+      stage('05', 'risk', Setting, grouped.risk, 'risk-configuration', props.canViewRisk === true),
+      stage('06', 'technical', Key, grouped.technical, 'technical-access', props.canViewTechnical === true),
+    ];
+  });
+
+  function runStageAction(action: ActivationStageAction) {
+    if (action === 'edit') emit('edit');
+    else if (action === 'settlement-profile') emit('settlement-profile');
+    else if (action === 'bind-channel') emit('bind-channel');
+    else if (action === 'configure-fee') emit('configure-fee');
+    else if (action === 'risk-configuration') emit('risk-configuration');
+    else emit('technical-access');
+  }
+
+  function capabilityKey(capability: MerchantPaymentCapability) {
+    return [capability.transactionType, capability.paymentType, capability.paymentMethod, capability.currency].join('|');
+  }
+
+  function includesCapability(rows: MerchantPaymentCapability[] | undefined, capability: MerchantPaymentCapability) {
+    const key = capabilityKey(capability);
+    return rows?.some((row) => capabilityKey(row) === key) === true;
+  }
+
+  function capabilityFlags(capability: MerchantPaymentCapability) {
+    const readiness = paymentReadiness.value;
+    const flags = [] as Array<{ key: string; label: string; type: 'success' | 'warning' | 'danger' }>;
+    if (includesCapability(readiness?.routeConflicts, capability)) {
+      flags.push({ key: 'route', label: t('merchant.info.routeConflict'), type: 'danger' });
+    }
+    if (includesCapability(readiness?.feeGaps, capability)) {
+      flags.push({ key: 'fee-gap', label: t('merchant.info.feeGap'), type: 'danger' });
+    }
+    if (includesCapability(readiness?.feeAmbiguities, capability)) {
+      flags.push({ key: 'fee-ambiguous', label: t('merchant.info.feeAmbiguous'), type: 'warning' });
+    }
+    if (!flags.length) {
+      flags.push({ key: 'ready', label: t('merchant.info.capabilityReady'), type: 'success' });
+    }
+    return flags;
+  }
 
   function openReview(decision: MerchantReviewRequest['decision']) {
     reviewDecision.value = decision;
@@ -659,10 +893,6 @@
     return items.map((item) => (group ? optionText(group, item) : item)).join(', ');
   }
 
-  function amountValue(amount?: number, currency?: string) {
-    return amount === undefined || amount === null ? '-' : `${currency || ''} ${amount}`.trim();
-  }
-
   function percentValue(input?: number) {
     return input === undefined || input === null ? '-' : `${input}%`;
   }
@@ -684,6 +914,10 @@
     const key = `merchant.info.options.${group}.${option}`;
     const translated = t(key);
     return translated === key ? option : translated;
+  }
+
+  function paymentTypeLogoKeys(paymentType?: string) {
+    return paymentLogoKeys(paymentType);
   }
 
   function lifecycleText(group: string, status?: string) {
@@ -794,6 +1028,190 @@
     display: grid;
     min-width: 0;
     gap: 12px;
+  }
+
+  .activation-workbench {
+    display: grid;
+    min-width: 0;
+    gap: 14px;
+  }
+
+  .activation-summary {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 15px 17px;
+    border: 1px solid #d9e3ef;
+    border-left: 4px solid #d97706;
+    border-radius: 6px;
+    background: #fff;
+  }
+
+  .activation-summary.is-ready {
+    border-left-color: #15803d;
+  }
+
+  .activation-summary__icon,
+  .activation-stage-row__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #b45309;
+    background: #fff7ed;
+  }
+
+  .activation-summary__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+  }
+
+  .activation-summary.is-ready .activation-summary__icon {
+    color: #15803d;
+    background: #f0fdf4;
+  }
+
+  .activation-summary__icon svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .activation-summary h4,
+  .activation-stage-row h4,
+  .activation-capabilities h4 {
+    margin: 0;
+    color: #172033;
+    letter-spacing: 0;
+  }
+
+  .activation-summary h4,
+  .activation-capabilities h4 {
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .activation-summary p,
+  .activation-stage-row p,
+  .activation-capabilities__header p {
+    margin: 3px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 19px;
+  }
+
+  .activation-stage-list,
+  .activation-capabilities {
+    border: 1px solid #dfe7f0;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .activation-stage-row {
+    display: grid;
+    grid-template-columns: 34px 38px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    min-height: 90px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #edf1f5;
+  }
+
+  .activation-stage-row:last-child {
+    border-bottom: 0;
+  }
+
+  .activation-stage-row__index {
+    color: #94a3b8;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .activation-stage-row__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 5px;
+  }
+
+  .activation-stage-row.is-ready .activation-stage-row__icon {
+    color: #15803d;
+    background: #f0fdf4;
+  }
+
+  .activation-stage-row__icon svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .activation-stage-row__title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .activation-stage-row h4 {
+    font-size: 14px;
+    line-height: 21px;
+  }
+
+  .activation-stage-row__issues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 7px;
+  }
+
+  .activation-stage-row__issues span {
+    position: relative;
+    padding-left: 10px;
+    color: #9a3412;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .activation-stage-row__issues span::before {
+    position: absolute;
+    top: 7px;
+    left: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #ea580c;
+    content: '';
+  }
+
+  .activation-capabilities__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 15px 17px;
+    border-bottom: 1px solid #e5ebf2;
+    background: #f8fafc;
+  }
+
+  .activation-capabilities__metrics,
+  .capability-check-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .activation-capabilities__metrics span {
+    padding: 4px 8px;
+    border: 1px solid #dfe7f0;
+    border-radius: 4px;
+    color: #64748b;
+    background: #fff;
+    font-size: 12px;
+  }
+
+  .activation-capabilities__metrics b {
+    margin-left: 4px;
+    color: #172033;
   }
 
   .profile-header {
@@ -1119,6 +1537,33 @@
   }
 
   @media (max-width: 820px) {
+    .activation-summary {
+      grid-template-columns: 40px minmax(0, 1fr);
+      padding: 13px;
+    }
+
+    .activation-summary > .el-tag {
+      grid-column: 2;
+      justify-self: start;
+    }
+
+    .activation-stage-row {
+      grid-template-columns: 28px 36px minmax(0, 1fr);
+      gap: 9px;
+      padding: 13px;
+    }
+
+    .activation-stage-row > .el-button {
+      grid-column: 3;
+      justify-self: start;
+      margin-left: 0;
+    }
+
+    .activation-capabilities__header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
     .profile-header,
     .detail-grid {
       grid-template-columns: 1fr;

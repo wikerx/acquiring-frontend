@@ -49,16 +49,16 @@
                                                 <template #default="{ row: tier }">{{ tier.upperBound ?? $t('finance.unlimited') }}</template>
                                             </el-table-column>
                                             <el-table-column :label="$t('finance.rate')" min-width="110" align="right">
-                                                <template #default="{ row: tier }">{{ tier.percentageRate }}%</template>
+                                                <template #default="{ row: tier }"><PercentageRateDisplay :value="tier.percentageRate" :locale="String(locale)" align="end" /></template>
                                             </el-table-column>
                                             <el-table-column :label="$t('finance.fixedFee')" min-width="120" align="right">
-                                                <template #default="{ row: tier }">{{ usd(tier.fixedAmountUsd) }}</template>
+                                                <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.fixedAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                             </el-table-column>
                                             <el-table-column :label="$t('finance.minimumFee')" min-width="120" align="right">
-                                                <template #default="{ row: tier }">{{ usd(tier.minimumAmountUsd) }}</template>
+                                                <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.minimumAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                             </el-table-column>
                                             <el-table-column :label="$t('finance.maximumFee')" min-width="120" align="right">
-                                                <template #default="{ row: tier }">{{ usd(tier.maximumAmountUsd) }}</template>
+                                                <template #default="{ row: tier }"><CurrencyAmountDisplay :amount="tier.maximumAmountUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template>
                                             </el-table-column>
                                         </el-table>
                                     </div>
@@ -71,19 +71,19 @@
                             <el-table-column v-if="tab.name === 'RISK_FEE'" :label="$t('finance.chargeTrigger')" min-width="150" align="center">
                                 <template #default="{ row }">{{ chargeTriggerText(row.chargeTrigger) }}</template>
                             </el-table-column>
-                            <el-table-column :label="$t('finance.transactionType')" min-width="170" align="center">
+                            <el-table-column :label="$t('finance.transactionType')" min-width="300" align="center">
                                 <template #default="{ row }">
-                                    <div class="fee-dimension-tags">
-                                        <el-tag v-for="item in transactionTypeItems(row)" :key="item.value" effect="plain" size="small">{{ item.label }}</el-tag>
-                                    </div>
+                                    <FeeTransactionScopeDisplay
+                                        :items="transactionTypeItems(row)"
+                                        :label="$t('finance.transactionType')"
+                                    />
                                 </template>
                             </el-table-column>
-                            <el-table-column :label="$t('finance.paymentMethod')" min-width="310" align="center">
+                            <el-table-column :label="$t('finance.paymentMethod')" min-width="240" align="center">
                                 <template #default="{ row }">
-                                    <PaymentMethodDisplay
-                                        :payment-types="paymentTypeItems(row)"
-                                        :payment-methods="paymentMethodItems(row)"
-                                        :all-card-brands-label="allCardBrandsLabel(row)"
+                                    <FeePaymentScopeDisplay
+                                        :keys="paymentScopeKeys(row)"
+                                        :label="$t('finance.paymentMethod')"
                                     />
                                 </template>
                             </el-table-column>
@@ -102,7 +102,7 @@
                         <section class="configuration-panel">
                             <el-alert :title="$t('finance.reserveRuleHint')" type="info" :closable="false" show-icon />
                             <el-descriptions :column="2" border size="small">
-                                <el-descriptions-item :label="$t('finance.reserveRate')">{{ fee?.reserveRate ?? 0 }}%</el-descriptions-item>
+                                <el-descriptions-item :label="$t('finance.reserveRate')"><PercentageRateDisplay :value="fee?.reserveRate ?? 0" :locale="String(locale)" emphasized /></el-descriptions-item>
                                 <el-descriptions-item :label="$t('finance.reserveDelayDays')">D+{{ fee?.reserveDelayDays || '-' }}</el-descriptions-item>
                             </el-descriptions>
                         </section>
@@ -121,10 +121,16 @@
                                     <el-tag effect="plain" type="primary">{{ $t('finance.standardRate') }}</el-tag>
                                 </div>
                                 <el-descriptions :column="4" border size="small">
-                                    <el-descriptions-item :label="$t('finance.percentageRate')">{{ settlementFxRule.percentageRate }}%</el-descriptions-item>
-                                    <el-descriptions-item :label="$t('finance.fixedFee')">{{ usd(settlementFxRule.fixedAmountUsd) }}</el-descriptions-item>
-                                    <el-descriptions-item :label="$t('finance.minimumFee')">{{ usd(settlementFxRule.minimumAmountUsd) }}</el-descriptions-item>
-                                    <el-descriptions-item :label="$t('finance.maximumFee')">{{ usd(settlementFxRule.maximumAmountUsd) }}</el-descriptions-item>
+                                    <el-descriptions-item :label="$t('finance.transactionType')" :span="4">
+                                        <FeeTransactionScopeDisplay
+                                            :items="transactionTypeItems(settlementFxRule)"
+                                            :label="$t('finance.transactionType')"
+                                        />
+                                    </el-descriptions-item>
+                                    <el-descriptions-item :label="$t('finance.percentageRate')"><PercentageRateDisplay :value="settlementFxRule.percentageRate" :locale="String(locale)" emphasized /></el-descriptions-item>
+                                    <el-descriptions-item :label="$t('finance.fixedFee')"><CurrencyAmountDisplay :amount="settlementFxRule.fixedAmountUsd" currency="USD" :locale="String(locale)" /></el-descriptions-item>
+                                    <el-descriptions-item :label="$t('finance.minimumFee')"><CurrencyAmountDisplay :amount="settlementFxRule.minimumAmountUsd" currency="USD" :locale="String(locale)" /></el-descriptions-item>
+                                    <el-descriptions-item :label="$t('finance.maximumFee')"><CurrencyAmountDisplay :amount="settlementFxRule.maximumAmountUsd" currency="USD" :locale="String(locale)" /></el-descriptions-item>
                                 </el-descriptions>
                             </div>
                         </section>
@@ -138,22 +144,39 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { PaymentMethodDisplay } from '@acquiring/shared';
+import {
+    CurrencyAmountDisplay,
+    DEFAULT_CARD_BRAND_LOGOS,
+    PercentageRateDisplay,
+    formatMoneyAmount,
+    formatPercentageValue,
+    resolvePaymentLogoKeys,
+    type PaymentLogoKey,
+} from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { financeApi, type CurrentFee, type FeeRule } from '@/api/financeApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { loadTransactionDictOptions, type TransactionDictOption } from '@/pages/transaction/shared';
+import FeePaymentScopeDisplay from '@/pages/finance/fee/components/FeePaymentScopeDisplay.vue';
+import FeeTransactionScopeDisplay from '@/pages/finance/fee/components/FeeTransactionScopeDisplay.vue';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+    type TransactionDictOption,
+} from '@/pages/transaction/shared';
 
 type FeeCategory = FeeRule['feeCategory'];
 
 const { locale, t } = useI18n();
 const loading = ref(false);
 const fee = ref<CurrentFee | null>(null);
-const transactionTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentTypeOptions = ref<TransactionDictOption[]>([]);
-const paymentMethodOptions = ref<TransactionDictOption[]>([]);
+const transactionTypeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const paymentTypeOptions = ref<TransactionDictOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<TransactionDictOption[]>(fallbackCardBrandOptions());
 let loadedDictLocale = '';
 const activeTab = ref<FeeCategory | 'RESERVE' | 'SETTLEMENT'>('TRANSACTION_FEE');
 const feeTabs = computed(() => [
@@ -196,14 +219,28 @@ function tierRuleIds(category: FeeCategory) {
 async function loadDimensionOptions() {
     const language = String(locale.value || 'zh-CN');
     if (loadedDictLocale === language) return;
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
     const results = await Promise.allSettled([
         loadTransactionDictOptions('transaction_type', language),
         loadTransactionDictOptions('acquiring_payment_method', language),
         loadTransactionDictOptions('card_brand', language),
     ]);
-    transactionTypeOptions.value = settledOptions(results[0]);
-    paymentTypeOptions.value = settledOptions(results[1]);
-    paymentMethodOptions.value = settledOptions(results[2]);
+    transactionTypeOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[0]),
+        fallbackTransactionTypes,
+    );
+    paymentTypeOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[1]),
+        fallbackPaymentTypes,
+    );
+    paymentMethodOptions.value = mergeTransactionDictOptions(
+        settledOptions(results[2]),
+        fallbackPaymentMethods,
+    );
     if (results.every((result) => result.status === 'fulfilled')) loadedDictLocale = language;
 }
 
@@ -212,7 +249,7 @@ function settledOptions(result: PromiseSettledResult<TransactionDictOption[]>) {
 }
 
 function transactionTypeItems(rule: FeeRule) {
-    return dimensionItems(rule.transactionTypes, rule.transactionType, transactionTypeOptions.value, 'transaction');
+    return dimensionItems(rule.transactionTypes, rule.transactionType, transactionTypeOptions.value, 'transactionType');
 }
 
 function paymentTypeItems(rule: FeeRule) {
@@ -223,14 +260,27 @@ function paymentMethodItems(rule: FeeRule) {
     return dimensionItems(rule.paymentMethods, rule.paymentMethod, paymentMethodOptions.value, 'paymentMethod');
 }
 
-function allCardBrandsLabel(rule: FeeRule) {
-    const bankCardLabel = paymentTypeItems(rule).find((item) => item.value === 'BANK_CARD')?.label
-        || t('finance.paymentMethod');
-    return t('transactionAnalytics.allCardBrands', { method: bankCardLabel });
+function paymentScopeKeys(rule: FeeRule) {
+    const keys: PaymentLogoKey[] = [];
+    const methods = paymentMethodItems(rule).filter((item) => item.value !== '-');
+    for (const paymentType of paymentTypeItems(rule)) {
+        if (paymentType.value !== 'BANK_CARD') {
+            keys.push(...resolvePaymentLogoKeys(paymentType.value));
+            continue;
+        }
+        if (!methods.length || methods.some((item) => item.value === 'ALL')) {
+            keys.push(...DEFAULT_CARD_BRAND_LOGOS);
+            continue;
+        }
+        for (const method of methods) {
+            keys.push(...resolvePaymentLogoKeys('', method.value));
+        }
+    }
+    return [...new Set(keys)];
 }
 
 function dimensionItems(batchValues: string[] | undefined, compatibleValue: string | undefined,
-    options: TransactionDictOption[], dimension: 'transaction' | 'paymentType' | 'paymentMethod') {
+    options: TransactionDictOption[], dimension: 'transactionType' | 'paymentType' | 'paymentMethod') {
     const sourceValues = batchValues?.length ? batchValues : compatibleValue ? [compatibleValue] : [];
     const values = [...new Set(sourceValues.flatMap((value) => value.split(','))
         .map((value) => value.trim()).filter(Boolean))];
@@ -238,11 +288,14 @@ function dimensionItems(batchValues: string[] | undefined, compatibleValue: stri
     return values.map((value) => ({ value, label: dimensionLabel(value, options, dimension) }));
 }
 
-function dimensionLabel(value: string, options: TransactionDictOption[], dimension: 'transaction' | 'paymentType' | 'paymentMethod') {
-    if (value === 'ALL') return t('finance.allDimension');
+function dimensionLabel(value: string, options: TransactionDictOption[],
+    dimension: 'transactionType' | 'paymentType' | 'paymentMethod') {
+    if (value === 'ALL') return dimension === 'transactionType'
+        ? t('finance.allTransactionTypes')
+        : t('finance.allDimension');
     const option = options.find((item) => item.value === value);
     if (option?.label) return option.label;
-    if (dimension === 'transaction') return t(`transaction.type.${value}`, value);
+    if (dimension === 'transactionType') return t(`transaction.type.${value}`, value);
     if (dimension === 'paymentType') return t(`transaction.paymentMethod.${value}`, value);
     return value.replaceAll('_', ' ');
 }
@@ -265,10 +318,27 @@ function billingRuleText(rule: FeeRule) {
     if (rule.feeCategory === 'RISK_FEE' && rule.chargeTrigger === 'NO_CHARGE') return t('finance.noCharge');
     if (rule.feeMode === 'TIER') return tierMetricText(rule);
     const formulas: string[] = [];
-    if (hasAmount(rule.percentageRate)) formulas.push(t('finance.labelAmountFormula', { rate: rule.percentageRate }));
-    if (hasAmount(rule.fixedAmountUsd)) formulas.push(t('finance.fixedAmountFormula', { amount: rule.fixedAmountUsd }));
-    if (hasAmount(rule.minimumAmountUsd)) formulas.push(t('finance.minimumFormula', { amount: rule.minimumAmountUsd }));
-    if (hasAmount(rule.maximumAmountUsd)) formulas.push(t('finance.maximumFormula', { amount: rule.maximumAmountUsd }));
+    const displayLocale = String(locale.value || 'zh-CN');
+    if (hasAmount(rule.percentageRate)) {
+        formulas.push(t('finance.labelAmountFormula', {
+            rate: formatPercentageValue(rule.percentageRate, displayLocale),
+        }));
+    }
+    if (hasAmount(rule.fixedAmountUsd)) {
+        formulas.push(t('finance.fixedAmountFormula', {
+            amount: formatMoneyAmount(rule.fixedAmountUsd, displayLocale),
+        }));
+    }
+    if (hasAmount(rule.minimumAmountUsd)) {
+        formulas.push(t('finance.minimumFormula', {
+            amount: formatMoneyAmount(rule.minimumAmountUsd, displayLocale),
+        }));
+    }
+    if (hasAmount(rule.maximumAmountUsd)) {
+        formulas.push(t('finance.maximumFormula', {
+            amount: formatMoneyAmount(rule.maximumAmountUsd, displayLocale),
+        }));
+    }
     return formulas.length ? formulas.join(t('finance.formulaSeparator')) : t('finance.noCharge');
 }
 
@@ -303,9 +373,6 @@ function frequency(value?: string, day?: number | null) {
     return value || '-';
 }
 
-function usd(value?: string | number | null) {
-    return value === null || value === undefined || value === '' ? '-' : `USD ${value}`;
-}
 </script>
 
 <style scoped>
@@ -324,9 +391,6 @@ function usd(value?: string | number | null) {
 .tier-detail__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .tier-detail__heading strong { color: var(--fee-ink); font-size: 13px; }
 .tier-detail__heading span { color: var(--fee-muted); font-size: 12px; }
-.fee-dimension-tags { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; min-height: 24px; }
-.fee-dimension-tags :deep(.el-tag) { max-width: 100%; }
-.fee-dimension-tags :deep(.el-tag__content) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .billing-rule-text { color: #344054; line-height: 1.55; }
 :deep(.fee-standard-row .el-table__expand-icon) { visibility: hidden; pointer-events: none; }
 .configuration-panel { display: grid; gap: 16px; min-height: 180px; padding: 8px 0; align-content: start; }

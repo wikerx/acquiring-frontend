@@ -243,7 +243,7 @@
                             <el-table-column :label="t('transaction.settlement.sourceCurrency')" width="110" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.sourceCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.targetCurrency')" width="110" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.rateType')" width="120" align="center"><template #default="{ row }">{{ enumText('rateTypeValue', row.rateType) }}</template></el-table-column>
-                            <el-table-column :label="t('transaction.settlement.directRate')" min-width="160" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.settlement.directRate')" min-width="160" align="right"><template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.rateSource')" min-width="140" align="center" show-overflow-tooltip><template #default="{ row }">{{ enumText('rateSourceValue', row.rateSource) }}</template></el-table-column>
                             <el-table-column prop="quoteId" :label="t('transaction.settlement.quoteId')" min-width="160" align="center" show-overflow-tooltip />
                             <el-table-column :label="t('transaction.settlement.lockedTime')" min-width="172" align="center"><template #default="{ row }"><BaseDateTime :value="row.lockedTime" :source-time-zone="detail.batch.businessTimeZone" /></template></el-table-column>
@@ -284,7 +284,7 @@
                         </div>
                         <el-table v-if="batchSummaryRows.length || batchSummaryLoading" v-loading="batchSummaryLoading" :data="batchSummaryRows" size="small" border>
                             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="210" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="170" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="130" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
@@ -326,7 +326,7 @@
                             <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" fixed="left" align="center"><template #default="{ row }"><el-button link type="primary" @click="openTransaction(row, activeDetailBatch?.businessTimeZone || 'Asia/Shanghai')">{{ row.sourceTransactionId }}</el-button></template></el-table-column>
                             <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="130" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
+                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="170" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.netAmount')" min-width="160" align="right"><template #default="{ row }"><div class="settlement-page__net-amount"><DirectionTag :direction="row.netDirection" :label="enumText('directionValue', row.netDirection)" /><strong>{{ exactMoney(row.netTargetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</strong></div></template></el-table-column>
                             <el-table-column :label="t('transaction.settlement.componentCount')" width="112" align="center"><template #default="{ row }"><el-button link type="primary" @click="openTransactionComponents(row)">{{ row.componentCount }}</el-button></template></el-table-column>
@@ -384,7 +384,7 @@
                 <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
                 <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.settlement.appliedLimit')" width="120" align="center"><template #default="{ row }">{{ enumText('appliedLimitValue', row.appliedLimit) }}</template></el-table-column>
             </el-table>
@@ -421,8 +421,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
 import {
     CurrencyDisplay,
@@ -432,6 +432,7 @@ import {
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
+    TransactionTypeDisplay,
     type SettlementVoucherDocument,
     type SettlementVoucherStatusTone,
 } from '@acquiring/shared';
@@ -440,7 +441,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { loadCurrencyPresentations } from '@/api/base/currency';
 import {
     cancelSettlementBatch,
-    exportSettlementBatchSummaries,
     getSettlementBatchDetail,
     getSettlementBatchVoucher,
     retrySettlementBatch,
@@ -453,11 +453,12 @@ import {
     type SettlementResultSummaryLine,
 } from '@/api/transaction';
 import {
-    exportSettlementReserveItems,
-    exportSettlementResultItems,
     searchSettlementResultItemComponents,
     searchSettlementReserveItems,
     searchSettlementResultItems,
+    submitSettlementBatchSummaryExportTask,
+    submitSettlementReserveItemExportTask,
+    submitSettlementResultItemExportTask,
     submitSettlementReversal,
     type SettlementReserveItem,
     type SettlementResultItem,
@@ -472,8 +473,14 @@ import CopyableText from '@/views/transaction/components/CopyableText.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionResultBar from '@/views/transaction/components/TransactionResultBar.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
-import { businessDateFromBusinessNo, moneyTextByExponent, settlementFormulaText } from '@/views/settlement/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
+import { businessDateFromBusinessNo, moneyTextByExponent, rateText, settlementFormulaText } from '@/views/settlement/shared';
 
 type CommandType = 'retry' | 'cancel' | 'reversalRequest';
 type SettlementBatchDomain = 'all' | 'transaction' | 'reserve';
@@ -559,9 +566,9 @@ const componentTotal = ref(0);
 const componentPage = ref(1);
 const componentPageSize = ref(10);
 const selectedTransaction = ref<SettlementTransactionSummary | null>(null);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const commandVisible = ref(false);
 const commandLoading = ref(false);
 const commandType = ref<CommandType>('cancel');
@@ -820,7 +827,11 @@ async function exportBatchSummaries() {
     if (!batchNo || batchSummaryExporting.value) return;
     batchSummaryExporting.value = true;
     try {
-        await exportSettlementBatchSummaries(batchNo);
+        const task = await submitSettlementBatchSummaryExportTask({
+            requestId: createExportRequestId('settlement-batch-summary'),
+            settlementBatchNo: batchNo,
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {
@@ -879,7 +890,11 @@ function resetTransactionItemsFilter() {
 async function exportTransactionItems() {
     transactionExporting.value = true;
     try {
-        await exportSettlementResultItems(transactionItemQuery());
+        const task = await submitSettlementResultItemExportTask({
+            requestId: createExportRequestId('settlement-transaction'),
+            query: transactionItemQuery(),
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {
@@ -982,12 +997,35 @@ function resetComponentPage() {
 async function exportReserveItems() {
     reserveExporting.value = true;
     try {
-        await exportSettlementReserveItems(reserveItemQuery());
+        const task = await submitSettlementReserveItemExportTask({
+            requestId: createExportRequestId('settlement-reserve'),
+            query: reserveItemQuery(),
+        });
+        await openSubmittedTask(task.taskNo);
     } catch (error: any) {
         ElMessage.error(error?.friendlyMessage || error?.message || t('common.exportFailed'));
     } finally {
         reserveExporting.value = false;
     }
+}
+
+async function openSubmittedTask(taskNo: string) {
+    await ElMessageBox.confirm(
+        t('operations.exportTask.submitted', { taskNo }),
+        t('operations.exportTask.submittedTitle'),
+        {
+            confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+            cancelButtonText: t('common.close'),
+            type: 'success',
+        },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function openMerchant(merchantId: string) {
@@ -1307,13 +1345,6 @@ function exactMoney(amount?: number | string | null, currency?: string, currency
     return moneyTextByExponent(amount, currency, currencyExponent);
 }
 
-function decimalText(value?: number | string | null) {
-    if (value === undefined || value === null || value === '') return '-';
-    const text = String(value);
-    const match = /^([+-]?)(\d+)(\.\d+)?$/.exec(text);
-    return match ? `${match[1]}${match[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${match[3] || ''}` : text;
-}
-
 function defaultDateRange(): [string, string] {
     const end = new Date();
     const begin = new Date(end);
@@ -1342,15 +1373,21 @@ function handlePageSizeChange() {
 }
 
 async function loadDimensionDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
-    transactionTypeOptions.value = transactionTypes;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+    transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
 }
 
 onMounted(async () => {
@@ -1368,6 +1405,8 @@ onMounted(async () => {
     await loadData();
     if (linkedBatchNo) await openLinkedBatchDetail(linkedBatchNo);
 });
+
+watch(locale, () => void loadDimensionDictionaries());
 </script>
 
 <style scoped>

@@ -46,17 +46,36 @@
                 </el-form-item>
                 <el-form-item :label="t('transaction.settlement.paymentType')">
                     <el-select v-model="query.paymentType" clearable filterable :placeholder="t('common.pleaseSelect')">
-                        <el-option v-for="item in paymentTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <template v-if="selectedPaymentTypeLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedPaymentTypeLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in paymentTypeOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="candidate-payment-option">
+                                <PaymentLogoGroup v-if="paymentTypeLogoKeys(item).length" :keys="paymentTypeLogoKeys(item)" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.paymentMethod')">
                     <el-select v-model="query.paymentMethod" clearable filterable :placeholder="t('common.pleaseSelect')">
-                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <template v-if="selectedPaymentMethodLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedPaymentMethodLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in paymentMethodOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="candidate-payment-option">
+                                <PaymentLogoGroup v-if="paymentMethodLogoKeys(item).length" :keys="paymentMethodLogoKeys(item)" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.transactionType')">
                     <el-select v-model="query.transactionType" clearable filterable :placeholder="t('common.pleaseSelect')">
-                        <el-option v-for="item in transactionTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        <template #prefix><TransactionTypeDisplay v-if="query.transactionType" :value="query.transactionType" icon-only /></template>
+                        <el-option v-for="item in activeTransactionTypeOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <TransactionTypeDisplay :value="item.value" :label="item.label" align="start" />
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('transaction.fields.labelCurrency')"><CurrencySelect v-model="query.labelCurrency" width="100%" /></el-form-item>
@@ -138,23 +157,23 @@
             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="200" align="center">
                 <template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionType')" min-width="118" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
+            <el-table-column :label="t('transaction.fields.transactionType')" min-width="150" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.sourceType')" min-width="156" align="center">
                 <template #default="{ row }">{{ sourceTypeText(row.sourceType) }}</template>
             </el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" prop="reserveActionNo" :label="t('transaction.settlement.reserveActionNo')" min-width="220" align="center" show-overflow-tooltip>
                 <template #default="{ row }">{{ row.reserveActionNo || '-' }}</template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.labelAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ candidateAmount(row) }}</strong></template></el-table-column>
-            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="190" align="center">
-                <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b>{{ candidateMoney(row.grossLabelAmount, row) }}</b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b>{{ candidateMoney(row.platformFeeAmount, row) }}</b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b>{{ candidateMoney(row.reserveAmount, row) }}</b></span></div></template>
+            <el-table-column :label="t('transaction.fields.labelAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.labelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
+            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="230" align="center">
+                <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span></div></template>
             </el-table-column>
-            <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="168" align="right"><template #default="{ row }"><div class="candidate-action"><span>{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><strong>{{ candidateMoney(row.reserveActionAmount, row) }}</strong></div></template></el-table-column>
+            <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="198" align="right"><template #default="{ row }"><div class="candidate-action"><span>{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><CurrencyAmountDisplay :amount="row.reserveActionAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" prop="reserveNo" :label="t('transaction.settlement.reserveNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column v-if="props.kind === 'reserve'" :label="t('transaction.settlement.reserveStatus')" min-width="126" align="center"><template #default="{ row }">{{ reserveStatusText(row.reserveStatus) }}</template></el-table-column>
-            <el-table-column v-if="props.kind === 'reserve'" :label="t('transaction.settlement.remainingAmount')" min-width="150" align="right"><template #default="{ row }"><strong>{{ candidateMoney(row.remainingAmount, row) }}</strong></template></el-table-column>
+            <el-table-column v-if="props.kind === 'reserve'" :label="t('transaction.settlement.remainingAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" prop="expectedReserveReleaseDate" :label="t('transaction.settlement.expectedReleaseDate')" width="140" align="center" />
-            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.candidateNetAmount')" min-width="164" align="right"><template #default="{ row }"><strong>{{ candidateMoney(row.netSettlementAmount, row) }}</strong><small v-if="!hasAmount(row.netSettlementAmount) && row.feeEvaluationStatus">{{ feeEvaluationText(row.feeEvaluationStatus) }}</small></template></el-table-column>
+            <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.candidateNetAmount')" min-width="194" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.netSettlementAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /><small v-if="!hasAmount(row.netSettlementAmount) && row.feeEvaluationStatus">{{ feeEvaluationText(row.feeEvaluationStatus) }}</small></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.targetCurrency')" width="116" align="center">
                 <template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="String(locale)" size="xs" /></template>
             </el-table-column>
@@ -186,26 +205,26 @@
                 <el-descriptions-item :label="t('transaction.settlement.merchant')" :span="2"><MerchantIdentityDisplay :merchant-id="detail.merchantId" :merchant-name="detail.merchantName" clickable @click="openMerchant(detail.merchantId)" /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.fields.merchantOrderNo')">{{ detail.merchantOrderNo || '-' }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.paymentTypeMethod')"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', detail.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', detail.paymentMethod)" align="start" /></el-descriptions-item>
-                <el-descriptions-item :label="t('transaction.fields.transactionType')">{{ enumText('transactionTypeValue', detail.transactionType) }}</el-descriptions-item>
-                <el-descriptions-item :label="t('transaction.fields.labelAmount')"><strong>{{ candidateAmount(detail) }}</strong></el-descriptions-item>
+                <el-descriptions-item :label="t('transaction.fields.transactionType')"><TransactionTypeDisplay :value="detail.transactionType" :label="enumText('transactionTypeValue', detail.transactionType)" align="start" /></el-descriptions-item>
+                <el-descriptions-item :label="t('transaction.fields.labelAmount')"><CurrencyAmountDisplay :amount="detail.labelAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.sourceType')">{{ sourceTypeText(detail.sourceType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.sourceBusinessId')">{{ detail.sourceBusinessId }}</el-descriptions-item>
                 <el-descriptions-item :label="t('transaction.settlement.sourceRevision')">{{ detail.sourceRevision }}</el-descriptions-item>
                 <template v-if="props.kind === 'transaction'">
-                    <el-descriptions-item :label="t('transaction.settlement.grossLabelAmount')">{{ candidateMoney(detail.grossLabelAmount, detail) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.platformFeeAmount')">{{ candidateMoney(detail.platformFeeAmount, detail) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.reserveAmount')">{{ candidateMoney(detail.reserveAmount, detail) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.candidateNetAmount')">{{ candidateMoney(detail.netSettlementAmount, detail) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.grossLabelAmount')"><CurrencyAmountDisplay :amount="detail.grossLabelAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.platformFeeAmount')"><CurrencyAmountDisplay :amount="detail.platformFeeAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.reserveAmount')"><CurrencyAmountDisplay :amount="detail.reserveAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.candidateNetAmount')"><CurrencyAmountDisplay :amount="detail.netSettlementAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.feeEvaluationStatus')">{{ feeEvaluationText(detail.feeEvaluationStatus) }}</el-descriptions-item>
                 </template>
                 <template v-else>
                     <el-descriptions-item :label="t('transaction.settlement.reserveActionNo')">{{ detail.reserveActionNo || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveActionType')">{{ enumText('reserveActionTypeValue', detail.reserveActionType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.direction')"><DirectionTag :direction="detail.reserveDirection" :label="enumText('directionValue', detail.reserveDirection)" /></el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.reserveActionAmount')">{{ candidateMoney(detail.reserveActionAmount, detail) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.reserveActionAmount')"><CurrencyAmountDisplay :amount="detail.reserveActionAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveNo')">{{ detail.reserveNo || '-' }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveStatus')">{{ reserveStatusText(detail.reserveStatus) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.remainingAmount')">{{ candidateMoney(detail.remainingAmount, detail) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.remainingAmount')"><CurrencyAmountDisplay :amount="detail.remainingAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.expectedReleaseDate')">{{ detail.expectedReserveReleaseDate || '-' }}</el-descriptions-item>
                 </template>
                 <el-descriptions-item :label="sourceTransactionLabel">{{ detail.sourceTransactionId || '-' }}</el-descriptions-item>
@@ -246,12 +265,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Plus, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { CurrencyDisplay, DirectionTag, MerchantIdentityDisplay, PaymentMethodDisplay } from '@acquiring/shared';
+import {
+    CurrencyAmountDisplay,
+    CurrencyDisplay,
+    DirectionTag,
+    getPaymentLogo,
+    MerchantIdentityDisplay,
+    PaymentLogoGroup,
+    PaymentMethodDisplay,
+    TransactionTypeDisplay,
+    type PaymentLogoKey,
+} from '@acquiring/shared';
 import {
     getSettlementCandidate, searchSettlementCandidates, submitSettlementReview,
     type SettlementCandidate, type SettlementCandidateQuery,
@@ -260,11 +289,22 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
-import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
+import {
+    cardLogoKeys,
+    loadDictOptions,
+    paymentLogoKeys,
+    type SelectOption,
+} from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
 import TransactionSearchPanel from '@/views/transaction/components/TransactionSearchPanel.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
-import { defaultDateRange, moneyTextByExponent, requestKey, statusTagType } from '@/views/settlement/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
+import { defaultDateRange, requestKey, statusTagType } from '@/views/settlement/shared';
 
 const props = withDefaults(defineProps<{
     kind: 'transaction' | 'reserve';
@@ -287,9 +327,20 @@ const total = ref(0);
 const eligibleRange = ref<[string, string]>(defaultDateRange());
 const transactionRange = ref<string[]>([]);
 const expectedReleaseRange = ref<string[]>([]);
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const selectedPaymentTypeLogoKeys = computed(() => selectedDimensionLogoKeys(
+    query.paymentType,
+    paymentTypeOptions.value,
+    paymentTypeLogoKeys,
+));
+const selectedPaymentMethodLogoKeys = computed(() => selectedDimensionLogoKeys(
+    query.paymentMethod,
+    paymentMethodOptions.value,
+    paymentMethodLogoKeys,
+));
+const activeTransactionTypeOptions = ref<SelectOption[]>([]);
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const detailVisible = ref(false);
 const detail = ref<SettlementCandidate | null>(null);
 const submitVisible = ref(false);
@@ -323,21 +374,31 @@ onMounted(async () => {
     await loadData();
 });
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
-    try {
-        const language = String(locale.value || 'zh-CN');
-        const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
-            loadDictOptions('acquiring_payment_method', language).catch(() => []),
-            loadDictOptions('card_brand', language).catch(() => []),
-            loadTransactionDictOptions('transaction_type', language).catch(() => []),
-        ]);
-        paymentTypeOptions.value = paymentTypes;
-        paymentMethodOptions.value = paymentMethods;
-        transactionTypeOptions.value = transactionTypes;
-    } catch {
-        paymentTypeOptions.value = [];
-        paymentMethodOptions.value = [];
-        transactionTypeOptions.value = [];
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    activeTransactionTypeOptions.value = [];
+    transactionTypeOptions.value = fallbackTransactionTypes;
+    const language = String(locale.value || 'zh-CN');
+    const [paymentTypes, paymentMethods, transactionTypes] = await Promise.allSettled([
+        loadDictOptions('acquiring_payment_method', language),
+        loadDictOptions('card_brand', language),
+        loadTransactionDictOptions('transaction_type', language),
+    ]);
+    if (paymentTypes.status === 'fulfilled') {
+        paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes.value, []);
+    }
+    if (paymentMethods.status === 'fulfilled') {
+        paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods.value, []);
+    }
+    if (transactionTypes.status === 'fulfilled') {
+        activeTransactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes.value, []);
+        transactionTypeOptions.value = mergeTransactionDictOptions(activeTransactionTypeOptions.value, fallbackTransactionTypes);
     }
 }
 
@@ -497,12 +558,26 @@ function dimensionItems(group: string, value?: string) {
     return value ? [{ value, label: enumText(group, value) }] : [];
 }
 
-function candidateMoney(value: number | string | null | undefined, row: SettlementCandidate) {
-    return moneyTextByExponent(value, row.labelCurrency, row.labelCurrencyExponent);
+function paymentTypeLogoKeys(option: SelectOption): PaymentLogoKey[] {
+    return assetLogoKeys(paymentLogoKeys(option.value, option));
 }
 
-function candidateAmount(row: SettlementCandidate) {
-    return candidateMoney(row.labelAmount, row);
+function paymentMethodLogoKeys(option: SelectOption): PaymentLogoKey[] {
+    return assetLogoKeys(cardLogoKeys(option.value, option));
+}
+
+function selectedDimensionLogoKeys(
+    value: string | undefined,
+    options: SelectOption[],
+    resolver: (option: SelectOption) => PaymentLogoKey[],
+) {
+    if (!value) return [];
+    const option = options.find((item) => item.value === value) || { value, label: value };
+    return resolver(option);
+}
+
+function assetLogoKeys(keys: PaymentLogoKey[]) {
+    return keys.filter((key) => Boolean(getPaymentLogo(key).asset));
 }
 
 function hasAmount(value?: number | string | null) {
@@ -567,6 +642,8 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .settlement-list-page--embedded { min-height: 0; padding: 14px 0 0; background: transparent; }
 .settlement-list-page--read-only .candidate-toolbar { justify-content: flex-end; }
 .fixed-status-field :deep(.el-form-item__content) { min-height: 32px; align-items: center; }
+.candidate-payment-option { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.candidate-payment-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settlement-dialog-form { margin-top: 20px; }
 .settlement-dialog-form :deep(.el-date-editor) { width: 100%; }
 .candidate-action span, .candidate-composition span, small { color: var(--el-text-color-secondary); font-size: 12px; }

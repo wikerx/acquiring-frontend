@@ -34,7 +34,7 @@
                 </el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button v-hasPermi="'system:calendar:export'" type="warning" plain :icon="Download" size="small" :disabled="!calendar.year" @click="exportYear">
+                <el-button v-hasPermi="'system:calendar:export'" type="warning" plain :icon="Download" size="small" :disabled="!calendar.year" :loading="exporting" @click="exportYear">
                     {{ $t('common.export') }}
                 </el-button>
             </el-col>
@@ -197,12 +197,13 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { Calendar, CircleCheck, Download, EditPen, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import {
     confirmHolidayCalendarYear,
-    exportHolidayCalendarYear,
     getHolidayCalendarMonth,
     initializeHolidayCalendarYear,
     saveHolidayCalendarDays,
+    submitHolidayCalendarExportTask,
     type HolidayCalendarDay,
     type HolidayCalendarMonth,
 } from '@/api/system/holiday-calendar';
@@ -214,10 +215,12 @@ type BatchDateMode = 'RANGE' | 'MULTIPLE';
 
 const now = new Date();
 const { t } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
 const canEdit = userStore.hasPermission('system:calendar:edit');
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const saving = ref(false);
 const query = reactive({ year: now.getFullYear(), month: now.getMonth() + 1 });
 const calendar = ref<HolidayCalendarMonth>({ year: null, days: [] });
@@ -342,10 +345,25 @@ async function confirmYear() {
 }
 
 async function exportYear() {
+    exporting.value = true;
     try {
-        await exportHolidayCalendarYear(query.year);
+        const task = await submitHolidayCalendarExportTask({
+            requestId: `holiday-calendar-export-${globalThis.crypto.randomUUID()}`,
+            query: { year: query.year },
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 

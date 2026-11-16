@@ -11,7 +11,7 @@
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'system:config:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'system:config:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'system:config:remove'">{{ $t('common.delete') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:config:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'system:config:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="info" plain :icon="Refresh" size="small" @click="handleRefreshCache" v-hasPermi="'system:config:refresh'">{{ $t('system.config.refreshCache') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
@@ -57,13 +57,16 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchConfigs, saveConfig, updateConfig, deleteConfig, exportConfigs, refreshConfigCache, type SysConfig } from '@/api/system/config';
+import { searchConfigs, saveConfig, updateConfig, deleteConfig, submitSystemConfigExportTask, refreshConfigCache, type SysConfig } from '@/api/system/config';
 
 const { t } = useI18n();
+const router = useRouter();
 const showSearch = ref(true); const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<SysConfig[]>([]); const sel = ref<SysConfig[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ configName: '', configGroup: '', status: undefined as number | undefined });
@@ -119,11 +122,21 @@ async function handleDelete(target: SysConfig | SysConfig[]) {
   try { await Promise.all(targets.map((item) => deleteConfig(item.configKey))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportConfigs({ pageNo: page.value, pageSize: pageSize.value, configName: query.configName || undefined, configGroup: query.configGroup || undefined, status: query.status });
-    ElMessage.success(t('common.export'));
+    const task = await submitSystemConfigExportTask({
+      requestId: createExportRequestId('system-config'),
+      query: { configName: query.configName || undefined, configGroup: query.configGroup || undefined, status: query.status },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (e: any) { ElMessage.error(e?.message || t('common.loadFailed')); }
+  finally { exporting.value = false; }
 }
+function createExportRequestId(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }
 async function handleRefreshCache() { try { await refreshConfigCache(); ElMessage.success(t('common.success')); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); } }
 
 function vt(v: unknown) { return ({ 1: 'String', 2: 'Number', 3: 'Boolean', 4: 'JSON' } as Record<number, string>)[Number(v)] || '-'; }

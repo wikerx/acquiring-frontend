@@ -1,10 +1,30 @@
 import type { FeeRule, FeeRuleInput, FeeVersion, FeeVersionInput } from '@/api/fee';
-import { BusinessResultError, resolveFriendlyRequestMessage } from '@acquiring/shared';
+import {
+    BusinessResultError,
+    formatMoneyAmount,
+    formatPercentageValue,
+    resolveFriendlyRequestMessage,
+} from '@acquiring/shared';
 import { i18n } from '@/i18n';
 
 export type TagType = 'success' | 'warning' | 'info' | 'primary' | 'danger';
 
-const DEFAULT_RISK_TRANSACTION_TYPES = ['AUTHORIZATION', 'PRE_AUTHORIZATION', 'PAYMENT'];
+const DEFAULT_TRANSACTION_TYPES_BY_FEE_CATEGORY: Readonly<Partial<Record<
+    FeeRuleInput['feeCategory'], readonly string[]
+>>> = {
+    TRANSACTION_FEE: ['PAYMENT', 'AUTHORIZATION', 'PRE_AUTHORIZATION'],
+    REFUND_FEE: ['REFUND'],
+    RISK_FEE: ['PAYMENT', 'AUTHORIZATION', 'PRE_AUTHORIZATION'],
+    DISPUTE_FEE: ['CHARGEBACK', 'REPRESENTMENT'],
+    SETTLEMENT_FX_FEE: [
+        'PAYMENT',
+        'CAPTURE',
+        'PRE_AUTH_COMPLETION',
+        'REFUND',
+        'CHARGEBACK',
+        'REPRESENTMENT',
+    ],
+};
 const SETTLEMENT_FX_FEE_NAME = '结算货币兑换费';
 const EXCLUSIVE_MODE_CATEGORIES = new Set<FeeRuleInput['feeCategory']>([
     'TRANSACTION_FEE',
@@ -28,14 +48,16 @@ export function feeRequestErrorMessage(error: unknown, fallback: string) {
         : message;
 }
 
-export function createEmptyRule(): FeeRuleInput {
+export function createEmptyRule(
+    feeCategory: FeeRuleInput['feeCategory'] = 'TRANSACTION_FEE',
+): FeeRuleInput {
     return {
-        feeCategory: 'TRANSACTION_FEE',
+        feeCategory,
         ruleName: '',
         transactionType: '',
         paymentType: '',
         paymentMethod: 'ALL',
-        transactionTypes: [],
+        transactionTypes: defaultTransactionTypes(feeCategory) || [],
         paymentTypes: [],
         paymentMethods: ['ALL'],
         riskServiceType: 'NONE',
@@ -54,8 +76,7 @@ export function createEmptyRule(): FeeRuleInput {
 }
 
 export function createRiskRule(riskServiceType: 'INTERNAL' | 'EXTERNAL' | 'THREE_DS' = 'INTERNAL'): FeeRuleInput {
-    const rule = createEmptyRule();
-    rule.feeCategory = 'RISK_FEE';
+    const rule = createEmptyRule('RISK_FEE');
     rule.riskServiceType = riskServiceType;
     rule.chargeTrigger = 'NO_CHARGE';
     rule.percentageRate = '';
@@ -80,8 +101,6 @@ function createDefaultRiskRule(
 ) {
     const rule = createRiskRule(riskServiceType);
     rule.ruleName = ruleName;
-    rule.transactionType = DEFAULT_RISK_TRANSACTION_TYPES[0];
-    rule.transactionTypes = [...DEFAULT_RISK_TRANSACTION_TYPES];
     rule.paymentType = 'BANK_CARD';
     rule.paymentTypes = ['BANK_CARD'];
     rule.paymentMethod = 'ALL';
@@ -92,11 +111,8 @@ function createDefaultRiskRule(
 
 /** Create the only settlement currency conversion fee allowed in one fee version. */
 export function createSettlementFxRule(): FeeRuleInput {
-    const rule = createEmptyRule();
-    rule.feeCategory = 'SETTLEMENT_FX_FEE';
+    const rule = createEmptyRule('SETTLEMENT_FX_FEE');
     rule.ruleName = SETTLEMENT_FX_FEE_NAME;
-    rule.transactionType = 'ALL';
-    rule.transactionTypes = ['ALL'];
     rule.paymentType = 'ALL';
     rule.paymentTypes = ['ALL'];
     rule.paymentMethod = 'ALL';
@@ -164,8 +180,8 @@ export function normalizeFeeVersionForSubmit(value: FeeVersionInput): FeeVersion
             return {
                 ...normalizedRule,
                 ruleName: SETTLEMENT_FX_FEE_NAME,
-                transactionType: 'ALL',
-                transactionTypes: ['ALL'],
+                transactionType: '',
+                transactionTypes: selectedValues(rule.transactionTypes, rule.transactionType),
                 paymentType: 'ALL',
                 paymentTypes: ['ALL'],
                 paymentMethod: 'ALL',
@@ -191,6 +207,8 @@ function ruleToInput(rule: FeeRule): FeeRuleInput {
     if (rule.feeCategory === 'SETTLEMENT_FX_FEE') {
         return {
             ...createSettlementFxRule(),
+            transactionType: rule.transactionType,
+            transactionTypes: responseValues(rule.transactionTypes, rule.transactionType),
             percentageRate: rule.percentageRate,
             fixedAmountUsd: rule.fixedAmountUsd,
             minimumAmountUsd: rule.minimumAmountUsd,
@@ -323,6 +341,15 @@ export function validateFeeVersion(value: FeeVersionInput, options: { changeReas
     for (const [index, rule] of value.rules.entries()) {
         if (rule.feeCategory === 'SETTLEMENT_FX_FEE') {
             if (rule.feeMode !== 'STANDARD') return t('feeAccount.validation.standardSettlementFxFee');
+            const transactionTypes = selectedValues(rule.transactionTypes, rule.transactionType);
+            if (!transactionTypes.length) {
+                return t('feeAccount.validation.incompleteRule', { index: index + 1 });
+            }
+            if (transactionTypes.includes('ALL') && transactionTypes.length > 1) {
+                return t('feeAccount.validation.transactionTypeConflict', { index: index + 1 });
+            }
+            expandedRuleCount += transactionTypes.length;
+            if (expandedRuleCount > 200) return t('feeAccount.validation.expansionLimit');
         } else {
             const transactionTypes = selectedValues(rule.transactionTypes, rule.transactionType);
             const paymentTypes = selectedValues(rule.paymentTypes, rule.paymentType);
@@ -413,6 +440,12 @@ export function validateFeeVersion(value: FeeVersionInput, options: { changeReas
     return '';
 }
 
+/** Resolve the defaults used only when creating a new fee rule. */
+function defaultTransactionTypes(category: FeeRuleInput['feeCategory']) {
+    const values = DEFAULT_TRANSACTION_TYPES_BY_FEE_CATEGORY[category];
+    return values ? [...values] : null;
+}
+
 function selectedValues(batchValues: string[] | undefined, compatibleValue?: string) {
     const values = batchValues !== undefined ? batchValues : compatibleValue ? [compatibleValue] : [];
     return [...new Set(values.map((item) => item.trim().toUpperCase()).filter(Boolean))];
@@ -456,12 +489,22 @@ export function feeFormula(rule: Pick<FeeRuleInput, 'feeMode' | 'percentageRate'
     if (rule.feeMode === 'TIER') {
         return rule.tierMetric === 'COUNT' ? t('feeAccount.tierCountFormula') : t('feeAccount.tierAmountFormula');
     }
-    const parts = [t('feeAccount.labelAmountFormula', { rate: rule.percentageRate || 0 }), `USD ${rule.fixedAmountUsd || 0}`];
+    const locale = String(i18n.global.locale.value || 'zh-CN');
+    const parts = [
+        t('feeAccount.labelAmountFormula', {
+            rate: formatPercentageValue(rule.percentageRate || 0, locale),
+        }),
+        `USD ${formatMoneyAmount(rule.fixedAmountUsd || 0, locale)}`,
+    ];
     if (rule.minimumAmountUsd !== null && rule.minimumAmountUsd !== undefined && rule.minimumAmountUsd !== '') {
-        parts.push(t('feeAccount.minimumFormula', { amount: rule.minimumAmountUsd }));
+        parts.push(t('feeAccount.minimumFormula', {
+            amount: formatMoneyAmount(rule.minimumAmountUsd, locale),
+        }));
     }
     if (rule.maximumAmountUsd !== null && rule.maximumAmountUsd !== undefined && rule.maximumAmountUsd !== '') {
-        parts.push(t('feeAccount.maximumFormula', { amount: rule.maximumAmountUsd }));
+        parts.push(t('feeAccount.maximumFormula', {
+            amount: formatMoneyAmount(rule.maximumAmountUsd, locale),
+        }));
     }
     return parts.join(' + ');
 }

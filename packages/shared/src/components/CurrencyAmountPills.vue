@@ -10,7 +10,15 @@
             :class="{ 'is-negative': isNegative(item.amount) }"
             :title="displayText(item)"
         >
-            <b><CurrencyDisplay :currency="item.currency" :locale="locale" size="xs" /></b>
+            <b>
+                <CurrencyDisplay
+                    v-if="showCurrencyMark"
+                    :currency="item.currency"
+                    :locale="locale"
+                    size="xs"
+                />
+                <span v-else class="currency-amount-pill__currency">{{ item.currency }}</span>
+            </b>
             <strong>{{ formattedAmount(item.amount) }}</strong>
         </span>
     </div>
@@ -18,7 +26,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { formatDecimalAmount } from '../amount';
+import { formatMoneyAmount } from '../amount';
 import CurrencyDisplay from './CurrencyDisplay.vue';
 
 export interface CurrencyAmountPillItem {
@@ -33,6 +41,7 @@ const props = withDefaults(defineProps<{
     locale?: string;
     tone?: 'green' | 'blue' | 'amber' | 'neutral';
     variant?: 'compact' | 'balance';
+    showCurrencyMark?: boolean;
 }>(), {
     items: () => [],
     fallbackCurrency: 'USD',
@@ -40,6 +49,7 @@ const props = withDefaults(defineProps<{
     locale: 'zh-CN',
     tone: 'neutral',
     variant: 'compact',
+    showCurrencyMark: true,
 });
 
 const displayItems = computed(() => {
@@ -60,7 +70,7 @@ function normalizeCurrency(currency?: string | null) {
 }
 
 function formattedAmount(amount: string | number) {
-    return formatDecimalAmount(amount, props.locale);
+    return formatMoneyAmount(amount, props.locale);
 }
 
 function displayText(item: { currency: string; amount: string | number }) {
@@ -110,6 +120,11 @@ function isNegative(amount: string | number) {
     font-size: 12px;
     font-weight: 700;
     line-height: 1;
+}
+
+.currency-amount-pill__currency {
+    display: inline-flex;
+    align-items: center;
 }
 
 .currency-amount-pill strong {

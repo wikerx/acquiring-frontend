@@ -23,8 +23,8 @@
             <el-table-column prop="merchantId" :label="t('transaction.fields.merchantId')" min-width="138" align="center"><template #default="{ row }"><el-button link type="primary" @click="openMerchant(row.merchantId)">{{ row.merchantId }}</el-button></template></el-table-column>
             <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column :label="t('transaction.settlement.reserveActionType')" min-width="140" align="center"><template #default="{ row }"><el-tag effect="plain">{{ enumText('reserveActionTypeValue', row.actionType) }}</el-tag></template></el-table-column>
-            <el-table-column :label="t('transaction.settlement.postingAmount')" min-width="150" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.amount, row.currency, row.currencyExponent) }}</template></el-table-column>
-            <el-table-column :label="t('transaction.settlement.remainingAmount')" min-width="160" align="right"><template #default="{ row }"><strong>{{ moneyTextByExponent(row.remainingAmount, row.currency, row.currencyExponent) }}</strong></template></el-table-column>
+            <el-table-column :label="t('transaction.settlement.postingAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.amount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+            <el-table-column :label="t('transaction.settlement.remainingAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.currency" :exponent="row.currencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.reserveStatus')" min-width="136" align="center"><template #default="{ row }"><el-tag :type="reserveStatusType(row.reserveStatus)" effect="plain">{{ enumText('reserveStatusValue', row.reserveStatus) }}</el-tag></template></el-table-column>
             <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" align="center"><template #default="{ row }"><el-button v-if="row.sourceTransactionId" link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button><span v-else>-</span></template></el-table-column>
             <el-table-column prop="settlementBatchNo" :label="t('transaction.settlement.batchNo')" min-width="210" align="center"><template #default="{ row }"><el-button v-if="row.settlementBatchNo" link type="primary" @click="openBatch(row.settlementBatchNo)">{{ row.settlementBatchNo }}</el-button><span v-else>-</span></template></el-table-column>
@@ -38,14 +38,14 @@
             <template v-if="detail">
                 <div class="reserve-detail__identity"><strong>{{ detail.reserveActionNo }}</strong><el-tag :type="reserveStatusType(detail.reserveStatus)" effect="plain">{{ enumText('reserveStatusValue', detail.reserveStatus) }}</el-tag></div>
                 <el-alert class="reserve-detail__status-help" type="info" :closable="false" show-icon :title="enumText('reserveStatusDescriptionValue', detail.reserveStatus)" />
-                <div class="reserve-detail__flow"><div><span>{{ t('transaction.settlement.retainedAmount') }}</span><strong>{{ moneyTextByExponent(detail.retainedAmount, detail.currency, detail.currencyExponent) }}</strong></div><div><span>{{ t('transaction.settlement.releasedAmount') }}</span><strong>{{ moneyTextByExponent(detail.releasedAmount, detail.currency, detail.currencyExponent) }}</strong></div><div class="is-current"><span>{{ t('transaction.settlement.remainingAmount') }}</span><strong>{{ moneyTextByExponent(detail.remainingAmount, detail.currency, detail.currencyExponent) }}</strong></div></div>
+                <div class="reserve-detail__flow"><div><span>{{ t('transaction.settlement.retainedAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.retainedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div><div><span>{{ t('transaction.settlement.releasedAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.releasedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div><div class="is-current"><span>{{ t('transaction.settlement.remainingAmount') }}</span><strong><CurrencyAmountDisplay :amount="detail.remainingAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" emphasized /></strong></div></div>
                 <el-descriptions :column="2" border size="small" class="reserve-detail__descriptions">
                     <el-descriptions-item :label="t('transaction.settlement.reserveNo')">{{ detail.reserveNo }}</el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.reserveActionType')">{{ enumText('reserveActionTypeValue', detail.actionType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.fields.merchantId')"><el-button link type="primary" @click="openMerchant(detail.merchantId)">{{ detail.merchantId }}</el-button></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.fundAccount')"><el-button link type="primary" @click="openAccount(detail)">{{ fundAccountText(detail) }}</el-button></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.merchantOrderNo')">{{ detail.merchantOrderNo || '-' }}</el-descriptions-item><el-descriptions-item :label="t('transaction.fields.transactionId')"><el-button v-if="detail.sourceTransactionId" link type="primary" @click="openTransaction(detail)">{{ detail.sourceTransactionId }}</el-button><span v-else>-</span></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.batchNo')" :span="2"><el-button v-if="detail.settlementBatchNo" link type="primary" @click="openBatch(detail.settlementBatchNo)">{{ detail.settlementBatchNo }}</el-button><span v-else>-</span></el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.clearing.direction')"><DirectionTag :direction="detail.direction" :label="enumText('directionValue', detail.direction)" /></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.postingAmount')">{{ moneyTextByExponent(detail.amount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.returnedAmount')">{{ moneyTextByExponent(detail.returnedAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.debitAdjustmentAmount')">{{ moneyTextByExponent(detail.debitAdjustmentAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.creditAdjustmentAmount')">{{ moneyTextByExponent(detail.creditAdjustmentAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.reversedAmount')">{{ moneyTextByExponent(detail.reversedAmount, detail.currency, detail.currencyExponent) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.clearing.direction')"><DirectionTag :direction="detail.direction" :label="enumText('directionValue', detail.direction)" /></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.postingAmount')"><CurrencyAmountDisplay :amount="detail.amount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.returnedAmount')"><CurrencyAmountDisplay :amount="detail.returnedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.debitAdjustmentAmount')"><CurrencyAmountDisplay :amount="detail.debitAdjustmentAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.creditAdjustmentAmount')"><CurrencyAmountDisplay :amount="detail.creditAdjustmentAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.reversedAmount')"><CurrencyAmountDisplay :amount="detail.reversedAmount" :currency="detail.currency" :exponent="detail.currencyExponent" :locale="String(locale)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.businessDate')">{{ detail.businessDate }}</el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.expectedReleaseDate')">{{ detail.expectedReleaseDate || '-' }}</el-descriptions-item><el-descriptions-item :label="t('transaction.settlement.actionTime')"><BaseDateTime :value="detail.actionTime" /></el-descriptions-item>
                 </el-descriptions>
             </template>
@@ -56,19 +56,24 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
-import { DirectionTag } from '@acquiring/shared';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { CurrencyAmountDisplay, DirectionTag } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { exportSettlementReserveItems, searchSettlementReserveItems, type SettlementReserveItem, type SettlementReserveItemQuery } from '@/api/settlement';
+import {
+    searchSettlementReserveItems,
+    submitSettlementReserveItemExportTask,
+    type SettlementReserveItem,
+    type SettlementReserveItemQuery,
+} from '@/api/settlement';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import CurrencySelect from '@/views/exchange/CurrencySelect.vue';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { businessDateFromBusinessNo, defaultDateRange, moneyTextByExponent } from '@/views/settlement/shared';
+import { businessDateFromBusinessNo, defaultDateRange, requestKey } from '@/views/settlement/shared';
 
-const { t, te } = useI18n();
+const { locale, t, te } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const actionTypes = ['HOLD','RETURN','RELEASE','ADJUSTMENT','REVERSAL_HOLD','REVERSAL_RETURN','REVERSAL_RELEASE','REVERSAL_ADJUSTMENT'];
@@ -82,7 +87,28 @@ onMounted(async()=>{query.settlementBatchNo=routeText('settlementBatchNo');query
 async function loadData(){loading.value=true;try{const result=await searchSettlementReserveItems(requestQuery());rows.value=result.records||[];total.value=result.total||0}catch(error){showError(error)}finally{loading.value=false}}
 function handleSearch(){query.pageNo=1;loadData()}
     function handleReset(){Object.assign(query,{settlementBatchNo:undefined,merchantId:undefined,reserveNo:undefined,reserveActionNo:undefined,sourceTransactionId:undefined,merchantOrderNo:undefined,reserveStatus:undefined,actionType:undefined,currency:undefined,pageNo:1});dateRange.value=defaultDateRange();transactionTimeRange.value=[];expectedReleaseDateRange.value=[];loadData()}
-async function handleExport(){exporting.value=true;try{await exportSettlementReserveItems(requestQuery())}catch(error){showError(error)}finally{exporting.value=false}}
+async function handleExport(){
+    exporting.value = true;
+    try {
+        const task = await submitSettlementReserveItemExportTask({
+            requestId: requestKey('settlement-reserve-item-export'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        showError(error, 'common.exportFailed');
+    } finally {
+        exporting.value = false;
+    }
+}
 function openDetail(row:SettlementReserveItem){detail.value=row;detailVisible.value=true}
 function openMerchant(merchantId:string){router.push({path:'/merchant/info',query:{merchantId}})}
 function openAccount(row:SettlementReserveItem){router.push({path:'/fund/account',query:{merchantId:row.merchantId,accountNo:row.accountNo||undefined}})}
@@ -92,7 +118,12 @@ function fundAccountText(row:SettlementReserveItem){return row.accountNo||`#${ro
 function routeText(key:string){const value=route.query[key];return typeof value==='string'&&value.trim()?value.trim():undefined}
 function enumText(group:string,value?:string){if(!value)return '-';const key=`transaction.settlement.${group}.${value}`;return te(key)?t(key):value}
 function reserveStatusType(value?:string){if(value==='RELEASED'||value==='RETURNED')return 'success';if(value==='HELD'||value==='PARTIALLY_RETURNED'||value==='RELEASABLE')return 'warning';if(value==='FROZEN')return 'danger';if(value==='REVERSED')return 'info';return 'primary'}
-function showError(error:unknown){ElMessage.error((error as {friendlyMessage?:string})?.friendlyMessage||(error instanceof Error?error.message:t('common.loadFailed')))}
+function showError(error:unknown, key = 'common.loadFailed') {
+    ElMessage.error(
+        (error as { friendlyMessage?: string })?.friendlyMessage
+        || (error instanceof Error ? error.message : t(key)),
+    );
+}
 </script>
 
 <style scoped>

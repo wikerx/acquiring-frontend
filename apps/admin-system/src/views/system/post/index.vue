@@ -11,7 +11,7 @@
             <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'system:post:add'">{{ $t('common.add') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!selectedRows.length || selectedRows.length !== 1" @click="handleUpdate(selectedRows[0])" v-hasPermi="'system:post:edit'">{{ $t('common.edit') }}</el-button></el-col>
             <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete()" v-hasPermi="'system:post:remove'">{{ $t('common.delete') }}</el-button></el-col>
-            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:post:export'">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'system:post:export'">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
 
@@ -50,15 +50,18 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchPosts, createPost, updatePost, deletePost, exportPosts, type SysPost } from '@/api/system/post';
+import { searchPosts, createPost, updatePost, deletePost, submitPostExportTask, type SysPost } from '@/api/system/post';
 
 const { t } = useI18n();
+const router = useRouter();
 type PostRow = SysPost;
 const showSearch = ref(true); const query = reactive<Record<string, unknown>>({}); const queryFormRef = ref<FormInstance>();
 const loading = ref(false); const rows = ref<PostRow[]>([]); const total = ref(0); const page = ref(1); const pageSize = ref(10);
+const exporting = ref(false);
 const selectedRows = ref<PostRow[]>([]); const open = ref(false);
 const formMode = ref<'create' | 'edit'>('create'); const activeRow = ref<PostRow | null>(null); const formRef = ref<FormInstance>();
 const dialogTitle = computed(() => formMode.value === 'create' ? t('common.add') : t('common.edit'));
@@ -84,10 +87,30 @@ async function submit() { const v = await formRef.value?.validate().catch(() => 
 async function toggleStatus(row: PostRow) { const ns = row.status === 1 ? 0 : 1; const at = ns === 1 ? t('common.enable') : t('common.disable'); try { await ElMessageBox.confirm(t('system.role.statusToggleConfirm', { action: at, name: row.postName }), t('common.confirm'), { type: ns === 1 ? 'success' : 'warning' }); } catch { return; } try { await updatePost(row.id!, { postCode: row.postCode, postName: row.postName, sortNo: row.sortNo, status: ns }); ElMessage.success(t('common.success')); loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function handleDelete(row?: PostRow) { const targets = row ? [row] : selectedRows.value; if (!targets.length) { ElMessage.warning(t('common.pleaseSelect')); return; } try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: targets.map((item) => item.postName).join('、') }), t('common.delete'), { type: 'warning' }); } catch { return; } try { await Promise.all(targets.map((item) => deletePost(item.id!))); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); } }
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportPosts();
-        ElMessage.success(t('common.export'));
-    } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); }
+        const task = await submitPostExportTask({
+            requestId: `post-export-${globalThis.crypto.randomUUID()}`,
+            query: {
+                postCode: sv(query.postCode),
+                postName: sv(query.postName),
+                status: nv(query.status),
+            },
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (e) {
+        ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
+    }
 }
 function sv(v: unknown) { return String(v || '').trim() || undefined; }
 function nv(v: unknown) { return typeof v === 'number' ? v : undefined; }

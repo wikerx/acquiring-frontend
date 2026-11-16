@@ -9,28 +9,29 @@ export function formatDecimalAmount(
     minimumFractionDigits = 2,
     maximumFractionDigits = 8,
 ): string {
-    const amountText = String(value).trim();
+    const sourceText = String(value).trim();
+    const amountText = expandScientificDecimal(sourceText) ?? sourceText;
     const decimalMatch = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(amountText);
     if (!decimalMatch) {
         return amountText;
     }
 
     const [, sign, integerText, fractionText = ''] = decimalMatch;
-    const signedInteger = `${sign}${integerText}`;
     const groupedInteger = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
-        .format(BigInt(signedInteger));
+        .format(BigInt(integerText));
+    const signedGroupedInteger = sign ? `${sign}${groupedInteger}` : groupedInteger;
     const significantFractionLength = fractionText.replace(/0+$/, '').length;
     const displayFractionLength = Math.min(
         maximumFractionDigits,
         Math.max(minimumFractionDigits, significantFractionLength),
     );
     if (displayFractionLength === 0) {
-        return groupedInteger;
+        return signedGroupedInteger;
     }
 
     const decimalSeparator = new Intl.NumberFormat(locale).formatToParts(1.1)
         .find((part) => part.type === 'decimal')?.value ?? '.';
-    return `${groupedInteger}${decimalSeparator}${fractionText.padEnd(displayFractionLength, '0').slice(0, displayFractionLength)}`;
+    return `${signedGroupedInteger}${decimalSeparator}${fractionText.padEnd(displayFractionLength, '0').slice(0, displayFractionLength)}`;
 }
 
 /**
@@ -41,7 +42,8 @@ export function roundDecimalAmount(
     value: string | number,
     fractionDigits = 2,
 ): string {
-    const amountText = String(value).trim();
+    const sourceText = String(value).trim();
+    const amountText = expandScientificDecimal(sourceText) ?? sourceText;
     const decimalMatch = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(amountText);
     if (!decimalMatch || !Number.isInteger(fractionDigits) || fractionDigits < 0) {
         return amountText;
@@ -65,6 +67,107 @@ export function roundDecimalAmount(
 }
 
 /**
+ * Monetary values use at most two decimal places in the operator, merchant,
+ * and checkout interfaces. A zero-decimal contract such as JPY remains
+ * zero-decimal, while larger backend exponents are capped for presentation.
+ */
+export function resolveMoneyFractionDigits(exponent?: number | null): number {
+    if (typeof exponent !== 'number' || !Number.isInteger(exponent) || exponent < 0) {
+        return 2;
+    }
+    return Math.min(exponent, 2);
+}
+
+/**
+ * Format a monetary value exactly from its decimal string, capped at two
+ * places and without padding insignificant trailing zeroes.
+ */
+export function formatMoneyAmount(
+    value: string | number | null | undefined,
+    locale = 'zh-CN',
+    exponent?: number | null,
+    emptyText = '-',
+): string {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return emptyText;
+    }
+    const normalized = normalizeDecimalAmount(value);
+    if (normalized === null) {
+        return String(value).trim();
+    }
+    const digits = resolveMoneyFractionDigits(exponent);
+    return formatDecimalAmount(
+        roundDecimalAmount(normalized, digits),
+        locale,
+        0,
+        digits,
+    );
+}
+
+/** Format an exchange rate with three to eight decimals and no scientific notation. */
+export function formatExchangeRate(
+    value: string | number | null | undefined,
+    locale = 'zh-CN',
+    emptyText = '-',
+): string {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return emptyText;
+    }
+    const normalized = normalizeDecimalAmount(value);
+    if (normalized === null) {
+        return String(value).trim();
+    }
+    return formatDecimalAmount(
+        roundDecimalAmount(normalized, 8),
+        locale,
+        3,
+        8,
+    );
+}
+
+/** Format the numeric portion of a percentage with a bounded display precision. */
+export function formatPercentageValue(
+    value: string | number | null | undefined,
+    locale = 'zh-CN',
+    emptyText = '-',
+    maximumFractionDigits = 2,
+): string {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return emptyText;
+    }
+    const normalized = normalizeDecimalAmount(value);
+    if (normalized === null) {
+        return String(value).trim();
+    }
+    const fractionDigits = Number.isInteger(maximumFractionDigits) && maximumFractionDigits >= 0
+        ? maximumFractionDigits
+        : 2;
+    return formatDecimalAmount(
+        roundDecimalAmount(normalized, fractionDigits),
+        locale,
+        0,
+        fractionDigits,
+    );
+}
+
+/** Format a percentage without changing its backend value semantics. */
+export function formatPercentageRate(
+    value: string | number | null | undefined,
+    locale = 'zh-CN',
+    emptyText = '-',
+    maximumFractionDigits = 2,
+): string {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return emptyText;
+    }
+    if (normalizeDecimalAmount(value) === null) {
+        return String(value).trim();
+    }
+    const formatted = formatPercentageValue(value, locale, emptyText, maximumFractionDigits);
+    return `${formatted}%`;
+}
+
+/**
  * Normalize a decimal amount without passing through JavaScript floating point.
  * Invalid values and values exceeding the requested currency exponent return null.
  */
@@ -75,7 +178,12 @@ export function normalizeDecimalAmount(
     if (value === null || value === undefined) {
         return null;
     }
-    const match = /^([+-]?)(\d+)(?:\.(\d*))?$/.exec(String(value).trim());
+    const sourceText = String(value).trim();
+    const decimalText = expandScientificDecimal(sourceText);
+    if (decimalText === null) {
+        return null;
+    }
+    const match = /^([+-]?)(\d+)(?:\.(\d*))?$/.exec(decimalText);
     if (!match) {
         return null;
     }
@@ -91,6 +199,33 @@ export function normalizeDecimalAmount(
     const isZero = normalizedInteger === '0' && normalizedFraction.length === 0;
     const normalizedSign = sign === '-' && !isZero ? '-' : '';
     return `${normalizedSign}${normalizedInteger}${normalizedFraction ? `.${normalizedFraction}` : ''}`;
+}
+
+/**
+ * Expand a backend decimal such as 0E-8 without using floating point. The
+ * exponent bound prevents malformed remote input from allocating huge strings.
+ */
+function expandScientificDecimal(value: string): string | null {
+    if (!/[eE]/.test(value)) {
+        return value;
+    }
+    const match = /^([+-]?)(\d+)(?:\.(\d*))?[eE]([+-]?\d+)$/.exec(value);
+    if (!match) {
+        return null;
+    }
+    const [, sign, integerText, fractionText = '', exponentText] = match;
+    const exponent = Number(exponentText);
+    if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 1000) {
+        return null;
+    }
+    const digits = `${integerText}${fractionText}`;
+    const decimalIndex = integerText.length + exponent;
+    const unsigned = decimalIndex <= 0
+        ? `0.${'0'.repeat(-decimalIndex)}${digits}`
+        : decimalIndex >= digits.length
+            ? `${digits}${'0'.repeat(decimalIndex - digits.length)}`
+            : `${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
+    return `${sign}${unsigned}`;
 }
 
 /**

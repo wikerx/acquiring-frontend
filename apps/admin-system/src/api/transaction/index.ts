@@ -13,6 +13,7 @@ import type {
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface TransactionPageQuery extends PageQuery {
     merchantId?: string;
@@ -76,7 +77,8 @@ export interface MerchantNotificationRetryRequest {
 
 export interface MerchantNotificationDetail {
     notification: TransactionRecord;
-    deliveryLogs: TransactionRecord[];
+    /** @deprecated 投递记录改由独立分页接口返回。 */
+    deliveryLogs?: TransactionRecord[];
 }
 
 export interface TransactionOrder {
@@ -96,6 +98,7 @@ export interface TransactionOrder {
     processStage?: string;
     labelCurrency?: string;
     labelAmount?: number | string;
+    labelCurrencyExponent?: number;
     transactionCurrency?: string;
     transactionAmount?: number | string;
     currentCurrency?: string;
@@ -111,6 +114,11 @@ export interface TransactionOrder {
     internalResultMessage?: string;
     payerResultMessage?: string;
     merchantNotificationStatus?: string;
+    labelAuthorizedAmount?: number | string;
+    labelCapturedAmount?: number | string;
+    labelRefundedAmount?: number | string;
+    labelAvailableCaptureAmount?: number | string;
+    labelAvailableRefundAmount?: number | string;
     authorizedAmount?: number | string;
     capturedAmount?: number | string;
     refundedAmount?: number | string;
@@ -158,6 +166,7 @@ export interface TransactionOperation {
     processStage?: string;
     labelCurrency?: string;
     labelAmount?: number | string;
+    labelCurrencyExponent?: number;
     transactionCurrency?: string;
     transactionAmount?: number | string;
     currencyExponent?: number;
@@ -170,6 +179,11 @@ export interface TransactionOperation {
     openApiResultCode?: string;
     internalResultMessage?: string;
     payerResultMessage?: string;
+    labelAuthorizedAmount?: number | string;
+    labelCapturedAmount?: number | string;
+    labelRefundedAmount?: number | string;
+    labelAvailableCaptureAmount?: number | string;
+    labelAvailableRefundAmount?: number | string;
     authorizedAmount?: number | string;
     capturedAmount?: number | string;
     refundedAmount?: number | string;
@@ -255,6 +269,40 @@ export interface TransactionFlowEvent extends Record<string, unknown> {
     traceId?: string;
 }
 
+export interface TransactionAmountChange extends Record<string, unknown> {
+    amountChangeId?: string;
+    transactionId?: string;
+    operationId?: string;
+    changeType?: string;
+    amountCurrency?: string;
+    changeAmount?: number | string;
+    labelAmountCurrency?: string;
+    labelChangeAmount?: number | string;
+    labelAuthorizedBefore?: number | string;
+    labelAuthorizedAfter?: number | string;
+    labelCapturedBefore?: number | string;
+    labelCapturedAfter?: number | string;
+    labelRefundedBefore?: number | string;
+    labelRefundedAfter?: number | string;
+    labelAvailableCaptureBefore?: number | string;
+    labelAvailableCaptureAfter?: number | string;
+    labelAvailableRefundBefore?: number | string;
+    labelAvailableRefundAfter?: number | string;
+    authorizedBefore?: number | string;
+    authorizedAfter?: number | string;
+    capturedBefore?: number | string;
+    capturedAfter?: number | string;
+    refundedBefore?: number | string;
+    refundedAfter?: number | string;
+    availableCaptureBefore?: number | string;
+    availableCaptureAfter?: number | string;
+    availableRefundBefore?: number | string;
+    availableRefundAfter?: number | string;
+    changeReason?: string;
+    changeTime?: string;
+    createTime?: string;
+}
+
 export interface TransactionDetail {
     order?: TransactionOrder;
     billingCardHolderInfo?: TransactionContactInfo;
@@ -264,7 +312,7 @@ export interface TransactionDetail {
     statusHistory: Record<string, unknown>[];
     flowEvents: TransactionFlowEvent[];
     riskEvents: Record<string, unknown>[];
-    amountChanges: Record<string, unknown>[];
+    amountChanges: TransactionAmountChange[];
     channelRequests: Record<string, unknown>[];
     channelInteractionLogs: Record<string, unknown>[];
     channelCallbacks: Record<string, unknown>[];
@@ -272,6 +320,18 @@ export interface TransactionDetail {
     merchantNotifications: Record<string, unknown>[];
     merchantNotificationLogs: Record<string, unknown>[];
     merchantApiInteractionLogs?: Record<string, unknown>[];
+}
+
+export type TransactionDetailScope = 'orders' | 'operations';
+
+export type TransactionDetailSection = 'TIMELINE' | 'CHANNEL' | 'CALLBACK' | 'NOTIFICATION' | 'MERCHANT_API';
+
+export interface TransactionDetailRecord {
+    recordType: string;
+    recordId: string;
+    recordTime?: string;
+    payloadAvailable: boolean;
+    record: Record<string, unknown>;
 }
 
 export type TransactionRecord = Record<string, unknown>;
@@ -631,8 +691,8 @@ export interface ClearingReserveLine {
 
 export interface ClearingRecordDetail {
     summary: ClearingRecordSummary;
-    transactionDetails: ClearingTransactionLine[];
-    reserveDetails: ClearingReserveLine[];
+    transactionDetails?: ClearingTransactionLine[];
+    reserveDetails?: ClearingReserveLine[];
 }
 
 export interface ClearingActionRequest {
@@ -874,6 +934,17 @@ export async function exportTransactionOrders(data: TransactionPageQuery) {
     await downloadExcel('/admin/transactions/orders/export', { data });
 }
 
+export async function submitTransactionOrderExportTask(data: {
+    requestId: string;
+    query: TransactionPageQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/orders/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchTransactionOperations(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<PageResult<TransactionOperation>>>('/admin/transactions/operations/search', data);
     return unwrapResult(result.data);
@@ -881,6 +952,17 @@ export async function searchTransactionOperations(data: TransactionPageQuery) {
 
 export async function exportTransactionOperations(data: TransactionPageQuery) {
     await downloadExcel('/admin/transactions/operations/export', { data });
+}
+
+export async function submitTransactionOperationExportTask(data: {
+    requestId: string;
+    query: TransactionPageQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/operations/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function searchTransactionOperationsWithSummary(data: TransactionPageQuery) {
@@ -939,6 +1021,52 @@ export async function getTransactionOrderDetail(
             rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
         },
     });
+    return unwrapResult(result.data);
+}
+
+/** 分页读取交易详情页签中的脱敏摘要记录。 */
+export async function getTransactionDetailRecords(
+    scope: TransactionDetailScope,
+    transactionId: string,
+    transactionDateTime: string,
+    rootTransactionDateTime: string,
+    section: TransactionDetailSection,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<TransactionDetailRecord>>>(
+        `/admin/transactions/${scope}/${encodeURIComponent(transactionId)}/detail-records`,
+        {
+            params: {
+                transactionDateTime: normalizeTransactionShardTime(transactionDateTime),
+                rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
+                section,
+                pageNo,
+                pageSize,
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+/** 按记录号加载日志的完整脱敏正文。 */
+export async function getTransactionDetailRecordPayload(
+    scope: TransactionDetailScope,
+    transactionId: string,
+    transactionDateTime: string,
+    rootTransactionDateTime: string,
+    recordType: string,
+    recordId: string,
+) {
+    const result = await http.get<CommonResult<TransactionDetailRecord>>(
+        `/admin/transactions/${scope}/${encodeURIComponent(transactionId)}/detail-records/${encodeURIComponent(recordType)}/${encodeURIComponent(recordId)}`,
+        {
+            params: {
+                transactionDateTime: normalizeTransactionShardTime(transactionDateTime),
+                rootTransactionDateTime: normalizeTransactionShardTime(rootTransactionDateTime),
+            },
+        },
+    );
     return unwrapResult(result.data);
 }
 
@@ -1030,8 +1158,38 @@ export async function getMerchantNotificationDetail(notifyId: string, transactio
     return unwrapResult(result.data);
 }
 
+export async function getMerchantNotificationDeliveryLogs(
+    notifyId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<TransactionRecord>>>(
+        `/admin/transactions/merchant-notifications/${notifyId}/delivery-logs`,
+        {
+            params: {
+                transactionDateTime: normalizeTransactionShardTime(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
 export async function exportMerchantNotifications(data: MerchantNotificationQuery) {
     await downloadExcel('/admin/transactions/merchant-notifications/export', { data });
+}
+
+export async function submitMerchantNotificationExportTask(data: {
+    requestId: string;
+    query: MerchantNotificationQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/merchant-notifications/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function retryMerchantNotification(data: MerchantNotificationRetryRequest) {
@@ -1058,6 +1216,17 @@ export async function getRefundManagementDetail(transactionId: string, transacti
 
 export async function exportRefundManagement(data: RefundManagementQuery) {
     await downloadExcel('/admin/transactions/refunds/export', { data });
+}
+
+export async function submitRefundExportTask(data: {
+    requestId: string;
+    query: RefundManagementQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/refunds/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function approveRefund(approvalId: string, data: RefundApprovalDecisionRequest) {
@@ -1093,6 +1262,17 @@ export async function getChannelMatchAbnormalityDetail(eventId: string, transact
 
 export async function exportChannelMatchAbnormalities(data: ChannelMatchAbnormalQuery) {
     await downloadExcel('/admin/transactions/channel-match-abnormalities/export', { data });
+}
+
+export async function submitChannelMatchAbnormalExportTask(data: {
+    requestId: string;
+    query: ChannelMatchAbnormalQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/transactions/channel-match-abnormalities/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function claimChannelMatchAbnormality(
@@ -1153,6 +1333,44 @@ export async function getClearingRecordDetail(transactionId: string, transaction
     const result = await http.get<CommonResult<ClearingRecordDetail>>(
         `/admin/clearing/records/${encodeURIComponent(transactionId)}`,
         { params: { transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime) } },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchClearingTransactionDetails(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<ClearingTransactionLine>>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}/transaction-details`,
+        {
+            params: {
+                transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
+    );
+    return unwrapResult(result.data);
+}
+
+export async function searchClearingReserveDetails(
+    transactionId: string,
+    transactionDateTime: string,
+    pageNo = 1,
+    pageSize = 10,
+) {
+    const result = await http.get<CommonResult<PageResult<ClearingReserveLine>>>(
+        `/admin/clearing/records/${encodeURIComponent(transactionId)}/reserve-details`,
+        {
+            params: {
+                transactionDateTime: normalizeTransactionDateTimeParam(transactionDateTime),
+                pageNo,
+                pageSize,
+            },
+        },
     );
     return unwrapResult(result.data);
 }

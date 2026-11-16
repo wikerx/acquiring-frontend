@@ -15,6 +15,7 @@
             class="transaction-time-range-filter__timezone"
             :placeholder="t('common.pleaseSelect')"
             filterable
+            :disabled="timeZoneDisabled"
             @change="handleTimeZoneChange"
         >
             <el-option v-for="item in timezoneOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -51,6 +52,7 @@ const props = defineProps<{
     defaultPreset?: string;
     preset?: string;
     quickOptions?: Array<{ value: string; label: string; days: number }>;
+    timeZoneDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{

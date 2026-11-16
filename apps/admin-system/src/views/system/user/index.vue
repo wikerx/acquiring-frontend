@@ -39,7 +39,7 @@
                 <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'system:user:remove'">{{ $t('common.delete') }}</el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'system:user:export'">{{ $t('common.export') }}</el-button>
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'system:user:export'">{{ $t('common.export') }}</el-button>
             </el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleQuery" /></el-col>
         </el-row>
@@ -355,16 +355,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableInstance } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download, View, MoreFilled, QuestionFilled } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import {
     createUser,
     deleteUsers,
     disableUserMfa,
     exemptUserMfa,
-    exportUsers,
     getUserRoleOptions,
     getUserRoles,
     grantUserRoles,
@@ -374,6 +374,7 @@ import {
     resetUserPassword,
     searchUserMfaLogs,
     searchUsers,
+    submitSystemUserExportTask,
     sendUserEmailVerification,
     unlockUserMfa,
     updateUser,
@@ -402,6 +403,7 @@ import {
 } from '@/views/transaction/shared';
 
 const { locale, t } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
 
 interface UserRow extends SysUserAccount { statusTag: CommonStatus; lockedText: string; }
@@ -422,6 +424,7 @@ const showSearch = ref(true);
 const query = reactive<Record<string, unknown>>({});
 const queryFormRef = ref<FormInstance>();
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<UserRow[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -629,7 +632,11 @@ async function handleStatusChange(row: UserRow) {
     const nextStatus = row.status === 1 ? 0 : 1;
     const actionText = nextStatus === 1 ? t('common.enable') : t('common.disable');
     try {
-        await ElMessageBox.confirm(t('system.user.statusToggleConfirm', { action: actionText, name: row.loginAccount }), t('common.confirm'), { type: nextStatus === 1 ? 'success' : 'warning' });
+        await ElMessageBox.confirm(
+            t('system.user.statusToggleConfirm', { action: actionText, name: row.loginAccount }),
+            t('common.operationConfirm'),
+            { type: nextStatus === 1 ? 'success' : 'warning', confirmButtonText: actionText },
+        );
         await updateUserStatus({ accountId: row.accountId, status: nextStatus });
         ElMessage.success(t('common.success'));
         loadData();
@@ -641,7 +648,11 @@ async function handleDelete(rowsParam?: UserRow[]) {
     if (!targets.length) { ElMessage.warning(t('common.pleaseSelect')); return; }
     const names = targets.map((r) => r.loginAccount).join('、');
     try {
-        await ElMessageBox.confirm(t('system.user.deleteConfirm', { name: names }), t('common.delete'), { type: 'warning' });
+        await ElMessageBox.confirm(
+            t('system.user.deleteConfirm', { name: names }),
+            t('common.delete'),
+            { type: 'error', icon: markRaw(Delete), confirmButtonText: t('common.delete'), confirmButtonClass: 'feedback-danger-button' },
+        );
         await deleteUsers(targets.map((item) => item.accountId));
         ElMessage.success(t('common.deleteSuccess'));
         loadData();
@@ -651,12 +662,26 @@ async function handleDelete(rowsParam?: UserRow[]) {
 }
 
 async function handleExport() {
+    exporting.value = true;
     try {
-        await exportUsers({ pageNo: page.value, pageSize: pageSize.value, loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus(), activationStatus: activationStatusFilter(), emailVerificationStatus: emailVerificationStatusFilter() });
-        ElMessage.success(t('common.export'));
+        const task = await submitSystemUserExportTask({
+            requestId: createExportRequestId('system-user'),
+            query: { loginAccount: keyword(), deptId: numericDeptId(), status: numericStatus(), activationStatus: activationStatusFilter(), emailVerificationStatus: emailVerificationStatusFilter() },
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function handleUserCommand(command: string, row: UserRow) {

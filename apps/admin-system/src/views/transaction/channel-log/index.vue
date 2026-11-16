@@ -43,9 +43,9 @@
                 </template>
             </el-table-column>
             <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="120" align="center" />
-            <el-table-column :label="t('transaction.fields.transactionType')" width="150" align="center">
+            <el-table-column :label="t('transaction.fields.transactionType')" width="176" align="center">
                 <template #default="{ row }">
-                    <el-tag v-if="row.transactionType" size="small" effect="plain">{{ transactionTypeText(row.transactionType) }}</el-tag>
+                    <TransactionTypeDisplay v-if="row.transactionType" :value="row.transactionType" :label="transactionTypeText(row.transactionType)" />
                     <span v-else>-</span>
                 </template>
             </el-table-column>
@@ -95,6 +95,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { View } from '@element-plus/icons-vue';
+import { TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';

@@ -21,7 +21,7 @@
           <div class="merchant-profile-form__metadata">
             <span v-if="form.countryCode">{{ form.countryCode }}</span>
             <span v-if="form.merchantCategoryCode">MCC {{ form.merchantCategoryCode }}</span>
-            <span v-if="form.settlementCurrency">{{ form.settlementCurrency }}</span>
+            <CurrencyDisplay v-if="form.settlementCurrency" :currency="form.settlementCurrency" :locale="String(locale)" size="xs" />
           </div>
         </div>
         <div class="merchant-profile-form__application">
@@ -967,6 +967,7 @@
     Wallet,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
+  import { CurrencyDisplay } from '@acquiring/shared';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import type { SysDictData } from '@/api/system/dict';
   import type {

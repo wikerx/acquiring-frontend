@@ -2,6 +2,7 @@ import type { CommonResult, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface IsoCountry {
     id: number;
@@ -65,4 +66,11 @@ export async function exportCountries() {
     await downloadExcel('/admin/base/countries/export', {
         method: 'get',
     });
+}
+
+export async function submitCountryExportTask(data: { requestId: string; query: IsoCountryQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/base/countries/export-task', data,
+    );
+    return unwrapResult(result.data);
 }

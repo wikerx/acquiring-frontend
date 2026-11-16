@@ -78,6 +78,19 @@ layout changed. Report failures and skipped checks accurately; do not use old ou
   CSRF/origin policy, and error handling in the established shared paths.
 - Do not render raw HTML or external URLs without the existing sanitization/origin policy.
 
+### File Template Governance
+
+- Reusable upload/input file templates for Admin and Merchant must be downloaded through the
+  managed Template Center APIs. Business pages reference a stable `templateCode`; they must not
+  embed template binaries, construct object-storage URLs, or introduce a new standalone template
+  endpoint.
+- Localized template names are extension-free base download filenames. The backend appends the
+  immutable extension from the template definition.
+- A direct legacy template endpoint is allowed only when it is registered in the governance check
+  with a removal date and the matching backend method carries `@LegacyFileTemplateAdapter`.
+- Do not bypass `npm run test:governance:file-templates`. The maintained contract is
+  `acquiring-orchestration/docs/standards/file-template-center-governance.md`.
+
 ### Money, Status, And Time
 
 - Treat monetary values as contract strings or exact minor units; do not perform financial decisions

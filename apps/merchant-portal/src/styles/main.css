@@ -75,6 +75,65 @@ body {
     box-shadow: 0 20px 50px rgb(15 23 42 / 18%);
 }
 
+.el-message-box {
+    --el-messagebox-width: 492px;
+    width: min(492px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    padding: 0;
+}
+
+.el-message-box,
+.el-overlay-dialog .base-feedback-dialog.el-dialog {
+    max-width: calc(100vw - 32px);
+    border: 1px solid var(--merchant-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgb(16 24 40 / 8%);
+}
+
+.el-overlay-dialog .base-feedback-dialog.el-dialog { margin: auto !important; overflow: hidden; }
+
+.el-message-box__header {
+    padding: 22px 52px 10px 24px;
+}
+
+.el-message-box__header.show-close {
+    padding-right: 52px;
+}
+
+.el-message-box__title { color: var(--merchant-ink); font-size: 17px; font-weight: 600; line-height: 26px; }
+.el-message-box__headerbtn { top: 12px; right: 12px; width: 36px; height: 36px; }
+.el-message-box__content { padding: 10px 24px 22px; color: var(--merchant-ink); font-size: 15px; line-height: 24px; overflow-wrap: anywhere; }
+.el-message-box__container { align-items: center; gap: 16px; }
+.el-message-box__status { width: 24px; height: 24px; flex: 0 0 24px; background: transparent; font-size: 24px; }
+.el-message-box__message { font-size: 15px; font-weight: 500; line-height: 24px; }
+.el-message-box__btns { display: flex; justify-content: flex-end; gap: 12px; padding: 0 24px 22px; }
+.el-message-box__btns .el-button { min-width: 88px; height: 36px; margin-left: 0; padding: 0 20px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.el-message-box__btns .feedback-danger-button.el-button {
+    --el-button-bg-color: var(--el-color-danger);
+    --el-button-border-color: var(--el-color-danger);
+    --el-button-hover-bg-color: var(--el-color-danger-light-3);
+    --el-button-hover-border-color: var(--el-color-danger-light-3);
+    --el-button-active-bg-color: var(--el-color-danger-dark-2);
+    --el-button-active-border-color: var(--el-color-danger-dark-2);
+}
+.el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__header { padding: 22px 52px 10px 24px; border-bottom: 0; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__title { color: var(--merchant-ink); font-size: 17px; font-weight: 600; line-height: 26px; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__headerbtn { top: 12px; right: 12px; width: 36px; height: 36px; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__body { padding: 10px 24px 22px !important; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__footer { padding: 0 24px 22px; border-top: 0; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer { justify-content: flex-end; gap: 12px; padding: 0; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer .el-button { min-width: 88px; height: 36px; padding: 0 20px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.el-message { max-width: calc(100vw - 32px); border-radius: 8px; box-shadow: 0 8px 24px rgb(15 23 42 / 10%); }
+
+@media (max-width: 480px) {
+    .el-message-box { width: calc(100vw - 32px); max-width: calc(100vw - 32px); }
+    .el-overlay-dialog .base-feedback-dialog.el-dialog { max-width: calc(100vw - 24px); }
+    .el-message-box__header,
+    .el-message-box__content,
+    .el-message-box__btns { padding-right: 16px; padding-left: 16px; }
+    .el-message-box__status { flex-basis: 24px; }
+}
+
 .el-dialog__header {
     flex: 0 0 auto;
     margin-right: 0;
@@ -4533,7 +4592,13 @@ body {
     font-weight: 650;
 }
 
-.merchant-home-amount-table__row b {
+.merchant-home-amount-currency {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.merchant-home-amount-currency .currency-display__content strong {
     color: #275fbb;
     font-size: 11px;
 }

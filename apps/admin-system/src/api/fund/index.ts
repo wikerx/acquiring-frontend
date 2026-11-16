@@ -2,6 +2,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 /** 资金接口的金额响应和请求均使用十进制字符串，禁止降级为 JavaScript number。 */
 export type FundDecimalValue = string;
@@ -198,6 +199,12 @@ export async function exportFundAccounts(data: FundAccountQuery) {
     await downloadExcel('/admin/fund-accounts/export', { data });
 }
 
+/** 提交资金账户异步导出任务，服务端会忽略浏览器分页并冻结当前数据范围。 */
+export async function submitFundAccountExportTask(data: { requestId: string; query: FundAccountQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/fund-accounts/export-task', data);
+    return unwrapResult(result.data);
+}
+
 export async function getFundAccount(id: number) {
     const result = await http.get<CommonResult<FundAccount>>(`/admin/fund-accounts/${id}`);
     return unwrapResult(result.data);
@@ -212,6 +219,17 @@ export async function exportFundLedgers(id: number, data: FundDetailQuery) {
     await downloadExcel(`/admin/fund-accounts/${id}/ledgers/export`, { data });
 }
 
+/** 提交指定资金账户余额流水异步导出任务。 */
+export async function submitFundLedgerExportTask(
+    id: number,
+    data: { requestId: string; query: FundDetailQuery },
+) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        `/admin/fund-accounts/${id}/ledgers/export-task`, data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchAllFundLedgers(data: FundDetailQuery) {
     const result = await http.post<CommonResult<PageResult<FundLedger>>>('/admin/fund-accounts/ledgers/search', data);
     return unwrapResult(result.data);
@@ -219,6 +237,14 @@ export async function searchAllFundLedgers(data: FundDetailQuery) {
 
 export async function exportAllFundLedgers(data: FundDetailQuery) {
     await downloadExcel('/admin/fund-accounts/ledgers/export', { data });
+}
+
+/** 提交全局余额流水异步导出任务。 */
+export async function submitAllFundLedgerExportTask(data: { requestId: string; query: FundDetailQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/fund-accounts/ledgers/export-task', data,
+    );
+    return unwrapResult(result.data);
 }
 
 async function changeFundAccountStatus(id: number, action: 'freeze' | 'unfreeze' | 'close' | 'reopen', data: FundAccountStatusRequest) {
@@ -271,6 +297,14 @@ export async function exportFundRecharges(data: FundRechargeQuery) {
     await downloadExcel('/admin/fund-accounts/recharges/export', { data });
 }
 
+/** 提交充值申请异步导出任务。 */
+export async function submitFundRechargeExportTask(data: { requestId: string; query: FundRechargeQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/fund-accounts/recharges/export-task', data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchFundDeductions(data: FundDeductionQuery) {
     const result = await http.post<CommonResult<PageResult<FundDeduction>>>('/admin/fund-accounts/deductions/search', data);
     return unwrapResult(result.data);
@@ -303,4 +337,12 @@ export async function rejectFundDeduction(id: number, comment: string) {
 
 export async function exportFundDeductions(data: FundDeductionQuery) {
     await downloadExcel('/admin/fund-accounts/deductions/export', { data });
+}
+
+/** 提交扣减申请异步导出任务。 */
+export async function submitFundDeductionExportTask(data: { requestId: string; query: FundDeductionQuery }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/fund-accounts/deductions/export-task', data,
+    );
+    return unwrapResult(result.data);
 }

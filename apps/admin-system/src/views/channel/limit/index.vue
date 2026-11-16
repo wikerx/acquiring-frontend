@@ -48,7 +48,7 @@
             </el-table-column>
             <el-table-column :label="t('channel.limit.limitType')" min-width="130" align="center"><template #default="{ row }">{{ optionLabel(limitTypeOptions, row.limitType) }}</template></el-table-column>
             <el-table-column :label="t('channel.limit.limitAmount')" min-width="130" align="center">
-                <template #default="{ row }">{{ row.limitAmount }} {{ row.limitCurrency }}</template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.limitAmount" :currency="row.limitCurrency" :locale="String(locale)" align="center" emphasized /></template>
             </el-table-column>
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
                 <template #default="{ row }"><el-switch :model-value="row.ruleStatus" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'channel:limit:status'" /></template>
@@ -77,7 +77,8 @@
                     <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" fallback="text" size="sm" />
                     <span v-else>{{ optionLabel(paymentOptions, detailRow.paymentMethod) }}</span>
                 </el-descriptions-item>
-                <el-descriptions-item :label="t('channel.limit.limitType')">{{ limitSummary(detailRow) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.limit.limitType')">{{ optionLabel(limitTypeOptions, detailRow.limitType) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.limit.limitAmount')"><CurrencyAmountDisplay :amount="detailRow.limitAmount" :currency="detailRow.limitCurrency" :locale="String(locale)" align="start" emphasized /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.status')"><el-tag size="small" :type="statusType(detailRow.ruleStatus)">{{ statusText(detailRow.ruleStatus, t('channel.common.enabled'), t('channel.common.disabled')) }}</el-tag></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.createTime')"><BaseDateTime :value="detailRow.createTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.updateTime')"><BaseDateTime :value="detailRow.updateTime" /></el-descriptions-item>
@@ -89,10 +90,24 @@
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
                 <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%" :disabled="isDimensionMode" @change="handleChannelChange"><el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.common.businessType')" prop="businessType"><el-select v-model="form.businessType" style="width:100%" :disabled="isDimensionMode || !form.channelId" @change="handleBusinessTypeChange"><el-option v-for="item in formBusinessOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item v-if="isCreateMode" :label="t('channel.common.paymentMethod')" prop="paymentMethods"><el-select v-model="form.paymentMethods" multiple filterable style="width:100%" @change="handlePaymentMethodChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item v-else :label="t('channel.common.paymentMethod')"><el-select v-model="form.paymentMethod" clearable filterable style="width:100%" :disabled="isDimensionMode" @change="handlePaymentMethodChange"><el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item v-if="isCreateMode && includesBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands"><el-select v-model="form.cardBrands" multiple filterable style="width:100%" @change="handleCardBrandChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                <el-form-item v-else-if="!isCreateMode && isBankCardPayment" :label="t('channel.common.cardBrand')"><el-select v-model="form.cardBrand" clearable filterable style="width:100%" :disabled="isDimensionMode"><el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item v-if="isCreateMode" :label="t('channel.common.paymentMethod')" prop="paymentMethods"><el-select v-model="form.paymentMethods" multiple filterable style="width:100%" @change="handlePaymentMethodChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option></el-select></el-form-item>
+                <el-form-item v-else :label="t('channel.common.paymentMethod')">
+                    <el-select v-model="form.paymentMethod" clearable filterable style="width:100%" :disabled="isDimensionMode" @change="handlePaymentMethodChange">
+                        <template v-if="selectedFormPaymentLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedFormPaymentLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item v-if="isCreateMode && includesBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands"><el-select v-model="form.cardBrands" multiple filterable style="width:100%" @change="handleCardBrandChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option></el-select></el-form-item>
+                <el-form-item v-else-if="!isCreateMode && isBankCardPayment" :label="t('channel.common.cardBrand')">
+                    <el-select v-model="form.cardBrand" clearable filterable style="width:100%" :disabled="isDimensionMode">
+                        <template v-if="selectedFormCardBrandLogoKeys.length" #prefix>
+                            <PaymentLogoGroup :keys="selectedFormCardBrandLogoKeys" size="sm" :wrap="false" />
+                        </template>
+                        <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option>
+                    </el-select>
+                </el-form-item>
                 <el-form-item v-if="isBatchAmountMode" :label="t('channel.limit.limitType')" prop="limitTypes"><el-select v-model="form.limitTypes" multiple filterable style="width:100%" :disabled="isDimensionMode" @change="syncLimitAmountMap"><el-option v-for="item in formLimitTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <template v-if="isBatchAmountMode">
                     <el-alert v-if="isCreateMode && form.channelId && form.businessType && !formLimitTypeOptions.length" class="limit-empty-alert" type="info" :closable="false" :title="t('channel.limit.noAvailableLimitType')" />
@@ -100,14 +115,14 @@
                         <div v-for="limitType in form.limitTypes" :key="limitType" class="limit-amount-row">
                             <span class="limit-type-label">{{ optionLabel(limitTypeOptions, limitType) }}</span>
                             <el-input-number v-model="form.limitAmounts[limitType]" :min="0.01" :precision="2" :placeholder="t('channel.limit.limitAmount')" />
-                            <el-tag size="small" effect="plain">USD</el-tag>
+                            <CurrencyDisplay currency="USD" :locale="String(locale)" size="xs" variant="soft" />
                         </div>
                     </div>
                 </template>
                 <template v-else>
                     <el-form-item :label="t('channel.limit.limitType')" prop="limitType"><el-select v-model="form.limitType" filterable style="width:100%"><el-option v-for="item in limitTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                     <el-form-item :label="t('channel.limit.limitAmount')" prop="limitAmount">
-                        <div class="amount-with-currency"><el-input-number v-model="form.limitAmount" :min="0.01" :precision="2" /><el-tag size="small" effect="plain">USD</el-tag></div>
+                        <div class="amount-with-currency"><el-input-number v-model="form.limitAmount" :min="0.01" :precision="2" /><CurrencyDisplay currency="USD" :locale="String(locale)" size="xs" variant="soft" /></div>
                     </el-form-item>
                 </template>
                 <el-form-item :label="t('channel.common.status')" prop="ruleStatus"><el-select v-model="form.ruleStatus" style="width:100%"><el-option :label="t('channel.common.enabled')" :value="1" /><el-option :label="t('channel.common.disabled')" :value="0" /></el-select></el-form-item>
@@ -127,7 +142,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { CurrencyAmountDisplay, CurrencyDisplay, PaymentLogoGroup, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -225,17 +240,39 @@ const formPaymentOptions = computed(() => {
     const options = form.channelId && form.businessType
         ? paymentOptionsByBusiness.value.filter((item) => enabledCapabilityMethods.value.includes(item.value))
         : paymentOptionsByBusiness.value;
-    return dedupeOptions(options);
+    if (isCreateMode.value || !form.paymentMethod || form.paymentMethod === 'ALL') {
+        return dedupeOptions(options);
+    }
+    const currentOption = paymentOptionsByBusiness.value.find((item) => item.value === form.paymentMethod);
+    return dedupeOptions(currentOption ? [currentOption, ...options] : options);
 });
 const formCardBrandOptions = computed(() => {
     const brands = enabledCapabilities.value
         .filter((item) => item.paymentMethod === 'BANK_CARD')
         .flatMap((item) => item.cardBrands || []);
-    if (!brands.length) {
-        return cardBrandOptions.value;
-    }
     const enabledBrands = new Set(brands);
-    return cardBrandOptions.value.filter((item) => enabledBrands.has(item.value));
+    const options = brands.length
+        ? cardBrandOptions.value.filter((item) => enabledBrands.has(item.value))
+        : cardBrandOptions.value;
+    if (isCreateMode.value || !form.cardBrand || form.cardBrand === 'ALL') {
+        return options;
+    }
+    const currentOption = cardBrandOptions.value.find((item) => item.value === form.cardBrand);
+    return dedupeOptions(currentOption ? [currentOption, ...options] : options);
+});
+const selectedFormPaymentLogoKeys = computed(() => {
+    if (!form.paymentMethod || form.paymentMethod === 'ALL') {
+        return [];
+    }
+    const option = formPaymentOptions.value.find((item) => item.value === form.paymentMethod);
+    return paymentLogoKeys(form.paymentMethod, option);
+});
+const selectedFormCardBrandLogoKeys = computed(() => {
+    if (!form.cardBrand || form.cardBrand === 'ALL') {
+        return [];
+    }
+    const option = formCardBrandOptions.value.find((item) => item.value === form.cardBrand);
+    return cardLogoKeys(form.cardBrand, option);
 });
 const formLimitTypeOptions = computed(() => {
     if (!isCreateMode.value) {
@@ -674,7 +711,8 @@ function paymentOptionsFor(businessType?: string) {
 }
 
 function limitSummary(row: ChannelLimitRule) {
-    return `${optionLabel(limitTypeOptions.value, row.limitType)}：${row.limitAmount} ${row.limitCurrency}`;
+    const amount = formatMoneyAmount(row.limitAmount, String(locale.value || 'zh-CN'));
+    return `${optionLabel(limitTypeOptions.value, row.limitType)}：${row.limitCurrency} ${amount}`;
 }
 
 async function toggleStatus(row: ChannelLimitRule) {
@@ -749,5 +787,18 @@ async function handleDelete(target?: ChannelLimitRule | ChannelLimitRule[]) {
 
 .amount-with-currency :deep(.el-input-number) {
     width: 240px;
+}
+
+.channel-option-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.channel-option-display > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>

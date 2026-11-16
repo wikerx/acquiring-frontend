@@ -173,8 +173,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Download, EditPen, View } from '@element-plus/icons-vue';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -203,10 +204,10 @@ import {
   toMonitorTimeRangeQuery,
 } from '@/api/monitor/workbenchAdapters';
 import {
-  exportSecurityInterceptEvents,
   getSecurityInterceptEvent,
   markSecurityInterceptEvent,
   searchSecurityInterceptEvents,
+  submitSecurityInterceptEventExportTask,
   type SecurityInterceptEventQuery,
   type SecurityInterceptEventRow,
 } from '@/api/security/intercept-event';
@@ -217,6 +218,7 @@ import TransactionSearchPanel from '../../transaction/components/TransactionSear
  * 安全拦截事件主页面：复用既有事件分页与处置能力，并使用统一 MonitorChart 展示脱敏聚合统计。
  */
 const { t, locale } = useI18n();
+const router = useRouter();
 const markFormRef = ref<FormInstance>();
 const showSearch = ref(true);
 const loading = ref(false);
@@ -333,12 +335,31 @@ function handleRangeChange(value: MonitorTimeRangeValue) {
 async function handleExport() {
   exporting.value = true;
   try {
-    await exportSecurityInterceptEvents(buildQuery(false));
+    const task = await submitSecurityInterceptEventExportTask({
+      requestId: createExportRequestId('security-intercept-event'),
+      query: buildQuery(false),
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
   } finally {
     exporting.value = false;
   }
+}
+
+function createExportRequestId(prefix: string) {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+  }
+  return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function openDetail(row: SecurityInterceptEventRow) {

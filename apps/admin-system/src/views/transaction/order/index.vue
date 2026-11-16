@@ -25,7 +25,8 @@
             </el-form-item>
             <el-form-item :label="t('transaction.fields.transactionStatus')">
                 <el-select v-model="query.transactionStatus" :placeholder="t('common.pleaseSelect')" clearable>
-                    <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    <template #prefix><TransactionStatusDisplay v-if="query.transactionStatus" :value="query.transactionStatus" icon-only /></template>
+                    <el-option v-for="item in activeStatusOptions" :key="item.value" :label="item.label" :value="item.value"><TransactionStatusDisplay :value="item.value" :label="item.label" align="start" /></el-option>
                 </el-select>
             </el-form-item>
             <template #time>
@@ -70,13 +71,13 @@
                     <CopyableText :value="row.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionType')" width="140" align="center">
-                <template #default="{ row }"><el-tag size="small" effect="plain">{{ tagText(typeOptions, row.transactionType) }}</el-tag></template>
+            <el-table-column :label="t('transaction.fields.transactionType')" width="176" align="center">
+                <template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="tagText(typeOptions, row.transactionType)" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.lifecycleStatus')" width="145" align="center">
                 <template #default="{ row }">
                     <el-tooltip :content="lifecycleTooltip(row)" placement="top">
-                        <el-tag size="small" :type="lifecycleTagType(row)">{{ lifecycleText(row) }}</el-tag>
+                        <TransactionStatusDisplay :value="row.transactionStatus" :label="lifecycleText(row)" />
                     </el-tooltip>
                 </template>
             </el-table-column>
@@ -87,20 +88,38 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.currentAmount')" width="150" align="center">
-                <template #default="{ row }">{{ moneyText(row.currentAmount ?? row.transactionAmount, row.currentCurrency || row.transactionCurrency, row.currencyExponent) }}</template>
+            <el-table-column :label="t('transaction.fields.labelAmount')" width="176" align="center">
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.labelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="center" /></template>
+            </el-table-column>
+            <el-table-column :label="t('transaction.fields.channelTransactionAmount')" width="184" align="center">
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.transactionAmount" :currency="row.transactionCurrency" :exponent="row.currencyExponent" :locale="String(locale)" align="center" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.fields.transactionRate')" width="128" align="center">
                 <template #default="{ row }">{{ rateText(row.transactionRate) }}</template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.authorizedAmount')" width="150" align="center">
-                <template #default="{ row }">{{ moneyText(row.authorizedAmount, row.transactionCurrency, row.currencyExponent) }}</template>
+            <el-table-column :label="t('transaction.fields.authorizedAmount')" width="244" align="center">
+                <template #default="{ row }">
+                    <div class="transaction-dual-amount">
+                        <span><small>{{ t('transaction.fields.labelAmount') }}</small><CurrencyAmountDisplay :amount="row.labelAuthorizedAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></span>
+                        <span><small>{{ t('transaction.fields.channelTransactionAmount') }}</small><CurrencyAmountDisplay :amount="row.authorizedAmount" :currency="row.transactionCurrency" :exponent="row.currencyExponent" :locale="String(locale)" size="xs" /></span>
+                    </div>
+                </template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.capturedAmount')" width="150" align="center">
-                <template #default="{ row }">{{ moneyText(row.capturedAmount, row.transactionCurrency, row.currencyExponent) }}</template>
+            <el-table-column :label="t('transaction.fields.capturedAmount')" width="244" align="center">
+                <template #default="{ row }">
+                    <div class="transaction-dual-amount">
+                        <span><small>{{ t('transaction.fields.labelAmount') }}</small><CurrencyAmountDisplay :amount="row.labelCapturedAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></span>
+                        <span><small>{{ t('transaction.fields.channelTransactionAmount') }}</small><CurrencyAmountDisplay :amount="row.capturedAmount" :currency="row.transactionCurrency" :exponent="row.currencyExponent" :locale="String(locale)" size="xs" /></span>
+                    </div>
+                </template>
             </el-table-column>
-            <el-table-column :label="t('transaction.fields.refundedAmount')" width="150" align="center">
-                <template #default="{ row }">{{ moneyText(row.refundedAmount, row.transactionCurrency, row.currencyExponent) }}</template>
+            <el-table-column :label="t('transaction.fields.refundedAmount')" width="244" align="center">
+                <template #default="{ row }">
+                    <div class="transaction-dual-amount">
+                        <span><small>{{ t('transaction.fields.labelAmount') }}</small><CurrencyAmountDisplay :amount="row.labelRefundedAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></span>
+                        <span><small>{{ t('transaction.fields.channelTransactionAmount') }}</small><CurrencyAmountDisplay :amount="row.refundedAmount" :currency="row.transactionCurrency" :exponent="row.currencyExponent" :locale="String(locale)" size="xs" /></span>
+                    </div>
+                </template>
             </el-table-column>
             <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="120" align="center" />
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="140" align="center">
@@ -139,6 +158,7 @@
             v-model:visible="detailVisible"
             :title="t('transaction.detail.title')"
             :detail="detail"
+            detail-scope="orders"
             :focus-transaction-id="selectedDetailTransactionId"
             :display-time-zone="query.queryTimeZone"
             :loading="detailLoading"
@@ -148,16 +168,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
+import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { safeErrorType } from '@acquiring/shared';
+import { useRouter } from 'vue-router';
+import { CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay, safeErrorType } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
-    exportTransactionOrders,
     getTransactionOrderDetail,
     searchTransactionOrdersWithSummary,
+    submitTransactionOrderExportTask,
     type TransactionDetail,
     type TransactionAmountSummary,
     type TransactionOrder,
@@ -176,7 +198,11 @@ import {
     DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
     defaultTransactionTodayRange,
     ensureTransactionTimezoneOptions,
+    fallbackTransactionStatusOptions,
+    fallbackTransactionStatusScopeOptions,
+    fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
+    mergeTransactionDictOptions,
     moneyText,
     openTransactionDetail,
     rateText,
@@ -184,12 +210,12 @@ import {
     responseTooltip,
     splitDateRange,
     statusOptionTagType,
-    statusTagType,
     tagText,
     type TransactionDictOption,
 } from '../shared';
 
 const { t, locale } = useI18n();
+const router = useRouter();
 const showSearch = ref(true);
 const loading = ref(false);
 const exporting = ref(false);
@@ -223,11 +249,12 @@ const query = reactive({
     transactionStatus: '',
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
-const typeOptions = ref<TransactionDictOption[]>([]);
-const statusOptions = ref<TransactionDictOption[]>([]);
-const channelMatchStatusOptions = ref<TransactionDictOption[]>([]);
-const reconciliationStatusOptions = ref<TransactionDictOption[]>([]);
-const settlementStatusOptions = ref<TransactionDictOption[]>([]);
+const typeOptions = ref<TransactionDictOption[]>(fallbackTransactionTypeOptions(t));
+const statusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusOptions(t));
+const activeStatusOptions = ref<TransactionDictOption[]>([]);
+const channelMatchStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'channelMatch'));
+const reconciliationStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'reconciliation'));
+const settlementStatusOptions = ref<TransactionDictOption[]>(fallbackTransactionStatusScopeOptions(t, 'settlement'));
 const timezoneOptions = ref<SelectOption[]>([]);
 
 const summaryItems = computed(() => [
@@ -281,12 +308,20 @@ onMounted(async () => {
     await loadData();
 });
 
+watch(locale, () => void loadDictionaries());
+
 async function loadDictionaries() {
-    typeOptions.value = [];
-    statusOptions.value = [];
-    channelMatchStatusOptions.value = [];
-    reconciliationStatusOptions.value = [];
-    settlementStatusOptions.value = [];
+    const fallbackTypes = fallbackTransactionTypeOptions(t);
+    const fallbackStatuses = fallbackTransactionStatusOptions(t);
+    const fallbackChannelMatches = fallbackTransactionStatusScopeOptions(t, 'channelMatch');
+    const fallbackReconciliations = fallbackTransactionStatusScopeOptions(t, 'reconciliation');
+    const fallbackSettlements = fallbackTransactionStatusScopeOptions(t, 'settlement');
+    typeOptions.value = fallbackTypes;
+    statusOptions.value = fallbackStatuses;
+    activeStatusOptions.value = [];
+    channelMatchStatusOptions.value = fallbackChannelMatches;
+    reconciliationStatusOptions.value = fallbackReconciliations;
+    settlementStatusOptions.value = fallbackSettlements;
     try {
         const [types, statuses, channelMatches, reconciliations, settlements, timezones] = await Promise.all([
             loadTransactionDictOptions('transaction_type', String(locale.value || 'zh-CN')),
@@ -296,11 +331,12 @@ async function loadDictionaries() {
             loadTransactionDictOptions('settlement_status', String(locale.value || 'zh-CN')).catch(() => []),
             loadDictOptions('sys_timezone', String(locale.value || 'zh-CN')).catch(() => []),
         ]);
-        typeOptions.value = types;
-        statusOptions.value = statuses;
-        channelMatchStatusOptions.value = channelMatches;
-        reconciliationStatusOptions.value = reconciliations;
-        settlementStatusOptions.value = settlements;
+        typeOptions.value = mergeTransactionDictOptions(types, fallbackTypes);
+        activeStatusOptions.value = mergeTransactionDictOptions(statuses, []);
+        statusOptions.value = mergeTransactionDictOptions(activeStatusOptions.value, fallbackStatuses);
+        channelMatchStatusOptions.value = mergeTransactionDictOptions(channelMatches, fallbackChannelMatches);
+        reconciliationStatusOptions.value = mergeTransactionDictOptions(reconciliations, fallbackReconciliations);
+        settlementStatusOptions.value = mergeTransactionDictOptions(settlements, fallbackSettlements);
         timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
     } catch (error) {
         console.warn('[admin-system] transaction dictionaries unavailable', safeErrorType(error));
@@ -323,10 +359,29 @@ async function loadData() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportTransactionOrders(buildQuery());
+        const task = await submitTransactionOrderExportTask({
+            requestId: createExportRequestId('transaction-order'),
+            query: buildQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
@@ -392,16 +447,6 @@ function lifecycleTooltip(row: TransactionOrder) {
     return `${tagText(typeOptions.value, row.transactionType)} / ${lifecycleText(row)}`;
 }
 
-function lifecycleTagType(row: TransactionOrder) {
-    const value = row.lifecycleStatus || row.transactionStatus;
-    if (['VOIDED', 'FULLY_REFUNDED'].includes(value)) {
-        return 'warning';
-    }
-    if (['PARTIALLY_REFUNDED', 'PARTIALLY_CAPTURED', 'CAPTURED'].includes(value)) {
-        return 'primary';
-    }
-    return statusTagType(row.transactionStatus, statusOptions.value);
-}
 </script>
 
 <style scoped>
@@ -491,6 +536,27 @@ function lifecycleTagType(row: TransactionOrder) {
 .transaction-capability-tag.is-enabled::before {
     opacity: 1;
     box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.transaction-dual-amount {
+    display: grid;
+    gap: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-dual-amount span {
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.transaction-dual-amount small {
+    color: var(--el-text-color-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    text-align: right;
 }
 
 </style>

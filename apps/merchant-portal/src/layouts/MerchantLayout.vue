@@ -67,7 +67,7 @@
                         >
                             <template #reference>
                                 <button class="merchant-user-trigger" type="button" :aria-label="t('layout.userMenu')">
-                                    <span class="merchant-user-trigger__avatar">{{ avatarText }}</span>
+                                    <span class="merchant-user-trigger__avatar"><PrivateImage :version="auth.session?.account?.avatarVersion" :load="loadAvatar" :alt="t('media.avatar')" :fallback="avatarText" round /></span>
                                     <span class="merchant-user-trigger__name">{{ displayName }}</span>
                                     <el-icon class="merchant-user-trigger__arrow" :class="{ 'is-open': menuVisible }">
                                         <ArrowDown />
@@ -76,7 +76,7 @@
                             </template>
                             <div class="merchant-user-menu">
                                 <div class="merchant-user-menu__summary">
-                                    <span class="merchant-user-menu__avatar">{{ avatarText }}</span>
+                                    <span class="merchant-user-menu__avatar"><PrivateImage :version="auth.session?.account?.avatarVersion" :load="loadAvatar" :alt="t('media.avatar')" :fallback="avatarText" round /></span>
                                     <div class="merchant-user-menu__identity">
                                         <div class="merchant-user-menu__title">{{ displayName }}</div>
                                         <div v-if="loginAccount" class="merchant-user-menu__account">{{ loginAccount }}</div>
@@ -131,7 +131,7 @@
                         @click="router.push(tag.path)"
                     >
                         <el-icon v-if="tag.icon"><component :is="resolveMenuIcon(tag.icon)" /></el-icon>
-                        <span>{{ tag.label }}</span>
+                        <span>{{ resolveVisitedTagLabel(tag) }}</span>
                         <el-icon class="merchant-tag__close" @click.stop="closeTag(tag.path)">
                             <Close />
                         </el-icon>
@@ -153,6 +153,8 @@
 </template>
 
 <script setup lang="ts">
+import { PrivateImage } from '@acquiring/shared';
+import { loadAvatar } from '@/api/authApi';
 import { computed, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown, Close, Setting, SwitchButton, User } from '@element-plus/icons-vue';
@@ -348,6 +350,16 @@ function currentRouteLabel(path: string) {
         return t(titleKey);
     }
     return typeof route.meta.title === 'string' ? route.meta.title : undefined;
+}
+
+/**
+ * Resolves an opened tab from the current locale instead of retaining the language used when it was opened.
+ */
+function resolveVisitedTagLabel(tag: MenuTag) {
+    if (tag.path === PROFILE_PATH) {
+        return t('route.profile');
+    }
+    return findMenuLabel(menuItems.value, tag.path) || tag.label;
 }
 
 function profileMenuItem(): MenuItem {

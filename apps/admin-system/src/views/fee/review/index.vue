@@ -9,7 +9,7 @@
             <el-form-item><el-button :icon="Search" type="primary" size="small" @click="search">{{ $t('common.search') }}</el-button><el-button :icon="RefreshLeft" size="small" @click="reset">{{ $t('common.reset') }}</el-button></el-form-item>
         </el-form>
         <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5"><el-button v-hasPermi="'fee:review:export'" :icon="Download" type="warning" plain size="small" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
+            <el-col :span="1.5"><el-button v-hasPermi="'fee:review:export'" :icon="Download" type="warning" plain size="small" :loading="exporting" @click="handleExport">{{ $t('common.export') }}</el-button></el-col>
             <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="load" /></el-col>
         </el-row>
         <StandardTable v-loading="loading" table-key="admin-fee-review-list" :data="rows" row-key="versionId" size="small">
@@ -49,10 +49,11 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { approveFeeVersion, exportFeeReviews, getFeeTemplate, getMerchantFee, rejectFeeVersion, searchFeeReviews, type FeePlanDetail, type FeePlanQuery, type FeeReview } from '@/api/fee';
+import { useRouter } from 'vue-router';
+import { approveFeeVersion, getFeeTemplate, getMerchantFee, rejectFeeVersion, searchFeeReviews, submitFeeReviewExportTask, type FeePlanDetail, type FeePlanQuery, type FeeReview } from '@/api/fee';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -62,7 +63,9 @@ import FeeReviewDialog from '@/views/fee/components/FeeReviewDialog.vue';
 
 const loading = ref(false);
 const { t } = useI18n();
+const router = useRouter();
 const userStore = useUserStore();
+const exporting = ref(false);
 const saving = ref(false);
 const showSearch = ref(true);
 const rows = ref<FeeReview[]>([]);
@@ -86,7 +89,32 @@ async function load() {
 }
 function search() { query.value.pageNo = 1; load(); }
 function reset() { query.value = { pageNo: 1, pageSize: query.value.pageSize || 10, versionStatus: 'PENDING_REVIEW' }; load(); }
-function handleExport() { exportFeeReviews(query.value); }
+async function handleExport() {
+    exporting.value = true;
+    try {
+        const task = await submitFeeReviewExportTask(createExportRequestId('fee-review'), query.value);
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.exportFailed'));
+    } finally {
+        exporting.value = false;
+    }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 async function openDetail(row: FeeReview) {
     detail.value = row.planType === 'TEMPLATE'

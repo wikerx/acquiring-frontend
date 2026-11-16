@@ -2,6 +2,7 @@ import type { CommonResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface HolidayCalendarYear {
     id: number;
@@ -79,4 +80,10 @@ export async function exportHolidayCalendarYear(year: number) {
     await downloadExcel('/admin/system/holiday-calendar/export', {
         params: { year },
     });
+}
+
+/** Create an audited asynchronous export task for one natural year. */
+export async function submitHolidayCalendarExportTask(data: { requestId: string; query: { year: number } }) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>('/admin/system/holiday-calendar/export-task', data);
+    return unwrapResult(result.data);
 }

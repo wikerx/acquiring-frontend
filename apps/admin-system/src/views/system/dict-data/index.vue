@@ -54,7 +54,7 @@
                 <el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDataDelete(selectedRows)" v-hasPermi="'system:dictData:remove'">{{ $t('common.delete') }}</el-button>
             </el-col>
             <el-col :span="1.5">
-                <el-button type="warning" plain :icon="Download" size="small" @click="handleDataExport" v-hasPermi="'system:dictData:export'">{{ $t('common.export') }}</el-button>
+                <el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleDataExport" v-hasPermi="'system:dictData:export'">{{ $t('common.export') }}</el-button>
             </el-col>
             <el-col class="right-toolbar">
                 <RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" />
@@ -176,10 +176,10 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     createDictData,
     deleteDictDataById,
-    exportDictData,
     getDictDataDetailById,
     searchDictData,
     searchDictTypes,
+    submitDictDataExportTask,
     updateDictDataById,
     type SysDictData,
     type SysDictType,
@@ -191,6 +191,7 @@ const router = useRouter();
 
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<SysDictData[]>([]);
 const selectedRows = ref<SysDictData[]>([]);
 const total = ref(0);
@@ -453,19 +454,31 @@ async function handleDataExport() {
     if (!currentDict.value) {
         return;
     }
+    exporting.value = true;
     try {
-        await exportDictData({
-            pageNo: page.value,
-            pageSize: pageSize.value,
-            dictType: currentDict.value.dictType,
-            dictLabel: query.dictLabel || undefined,
-            dictValue: query.dictValue || undefined,
-            locale: query.locale || undefined,
-            status: query.status,
+        const task = await submitDictDataExportTask({
+            requestId: `dict-data-export-${globalThis.crypto.randomUUID()}`,
+            query: {
+                dictType: currentDict.value.dictType,
+                dictLabel: query.dictLabel || undefined,
+                dictValue: query.dictValue || undefined,
+                locale: query.locale || undefined,
+                status: query.status,
+            },
         });
-        ElMessage.success(t('common.export'));
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    } finally {
+        exporting.value = false;
     }
 }
 

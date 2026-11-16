@@ -44,54 +44,34 @@
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
                 <template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template>
             </el-table-column>
-            <el-table-column :label="t('channel.mid.paymentMethodScope')" min-width="170" align="center">
+            <el-table-column prop="paymentMethodScope" :label="t('channel.mid.paymentMethodScope')" min-width="220" align="center">
                 <template #default="{ row }">
-                    <div class="payment-scope-cell">
-                        <PaymentLogoGroup v-if="paymentScopeLogo(row).length" :keys="paymentScopeLogo(row)" fallback="text" size="sm" align="center" />
-                    </div>
+                    <ChannelPaymentScopeDisplay :keys="paymentScopeLogo(row)" :label="t('channel.mid.paymentMethodScope')" />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.mid.currencyScope')" min-width="230" align="center">
+            <el-table-column prop="currencyScope" :label="t('channel.mid.currencyScope')" min-width="250" align="center">
                 <template #default="{ row }">
-                    <el-tooltip
-                        v-if="currencyScopeTooltipCodes(row.currencyScope).length"
-                        placement="top"
-                        :show-after="180"
-                        :hide-after="80"
-                        :enterable="true"
-                        popper-class="currency-scope-popper"
-                    >
-                        <template #content>
-                            <div class="currency-scope-tooltip">
-                                <div class="currency-scope-tooltip__header">
-                                    <span>{{ t('channel.mid.currencyScope') }}</span>
-                                    <span class="currency-scope-tooltip__count">{{ currencyScopeTooltipCodes(row.currencyScope).length }}</span>
-                                </div>
-                                <div class="currency-scope-tooltip__list">
-                                    <CurrencyDisplay
-                                        v-for="currency in currencyScopeTooltipCodes(row.currencyScope)"
-                                        :key="currency"
-                                        :currency="currency"
-                                        :locale="String(locale)"
-                                        size="xs"
-                                        variant="soft"
-                                    />
-                                </div>
-                            </div>
-                        </template>
-                        <div class="currency-scope-trigger" tabindex="0" :aria-label="currencyScopeAccessibleText(row.currencyScope)">
-                            <el-tag v-if="isAllCurrencyScope(row.currencyScope)" size="small" effect="plain">{{ t('channel.mid.allScope') }}</el-tag>
-                            <div v-else class="currency-scope-cell">
-                                <CurrencyDisplay v-for="currency in currencyScopePreview(row.currencyScope)" :key="currency" :currency="currency" :locale="String(locale)" size="xs" variant="soft" />
-                                <el-tag v-if="currencyScopeRemaining(row.currencyScope)" size="small" effect="plain">+{{ currencyScopeRemaining(row.currencyScope) }}</el-tag>
-                            </div>
-                        </div>
-                    </el-tooltip>
-                    <span v-else>-</span>
+                    <ChannelCurrencyScopeDisplay
+                        :currencies="currencyScopeTooltipCodes(row.currencyScope)"
+                        :label="t('channel.mid.currencyScope')"
+                        :locale="String(locale)"
+                        :summary-label="isAllCurrencyScope(row.currencyScope) ? t('channel.mid.allScope') : ''"
+                    />
                 </template>
             </el-table-column>
-            <el-table-column :label="t('channel.mid.defaultSettlementCurrency')" width="140" align="center">
-                <template #default="{ row }"><CurrencyDisplay :currency="row.defaultSettlementCurrency" :locale="String(locale)" size="xs" /></template>
+            <el-table-column prop="defaultTransactionCurrency" :label="t('channel.mid.defaultTransactionCurrency')" min-width="190" align="center">
+                <template #default="{ row }">
+                    <span class="default-currency-display">
+                        <CurrencyDisplay :currency="row.defaultTransactionCurrency" :locale="String(locale)" size="xs" variant="soft" />
+                        <span class="default-currency-display__badge">
+                            <el-icon><Check /></el-icon>
+                            {{ t('channel.capability.defaultBadge') }}
+                        </span>
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="defaultSettlementCurrency" :label="t('channel.mid.defaultSettlementCurrency')" min-width="190" align="center">
+                <template #default="{ row }"><CurrencyDisplay :currency="row.defaultSettlementCurrency" :locale="String(locale)" size="xs" variant="soft" /></template>
             </el-table-column>
             <el-table-column prop="settlementCycle" :label="t('channel.mid.settlementCycle')" width="100" align="center" />
             <el-table-column prop="mcc" label="MCC" width="90" align="center" />
@@ -130,7 +110,13 @@
                     <span class="mid-detail__label">{{ t('channel.mid.transactionTypeScope') }}</span>
                     <div class="mid-detail__value">
                         <div v-if="transactionScopeItems(detailRow.businessType, detailRow.transactionTypeScope).length" class="tag-list tag-list-left">
-                            <el-tag v-for="item in transactionScopeItems(detailRow.businessType, detailRow.transactionTypeScope)" :key="item.value" size="small" effect="plain">{{ item.label }}</el-tag>
+                            <TransactionTypeDisplay
+                                v-for="item in transactionScopeItems(detailRow.businessType, detailRow.transactionTypeScope)"
+                                :key="item.value"
+                                :value="item.value"
+                                :label="item.label"
+                                align="start"
+                            />
                         </div>
                         <span v-else>-</span>
                     </div>
@@ -146,6 +132,7 @@
                     </div>
                 </div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.allowedCountryScope') }}</span><div class="mid-detail__value">{{ countryScopeText(detailRow.allowedCountryScope) }}</div></div>
+                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultTransactionCurrency') }}</span><div class="mid-detail__value"><CurrencyDisplay :currency="detailRow.defaultTransactionCurrency" :locale="String(locale)" show-name size="sm" variant="soft" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultSettlementCurrency') }}</span><div class="mid-detail__value"><CurrencyDisplay :currency="detailRow.defaultSettlementCurrency" :locale="String(locale)" show-name size="sm" variant="soft" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCycle') }}</span><div class="mid-detail__value">{{ detailRow.settlementCycle }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCutoffTime') }}</span><div class="mid-detail__value">{{ detailRow.settlementCutoffTime || '-' }}</div></div>
@@ -226,8 +213,15 @@
                             />
                         </el-form-item>
                         <el-form-item :label="t('channel.mid.currencyScope')" prop="currencyCodes">
-                            <el-select v-model="form.currencyCodes" multiple filterable collapse-tags collapse-tags-tooltip :placeholder="t('channel.mid.currencySelectPlaceholder')" style="width:100%">
+                            <el-select v-model="form.currencyCodes" multiple filterable collapse-tags collapse-tags-tooltip :placeholder="t('channel.mid.currencySelectPlaceholder')" style="width:100%" @change="handleCurrencyScopeChange">
                                 <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
+                                    <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item :label="t('channel.mid.defaultTransactionCurrency')" prop="defaultTransactionCurrency">
+                            <el-select v-model="form.defaultTransactionCurrency" filterable :placeholder="t('channel.mid.defaultTransactionCurrencyPlaceholder')" style="width:100%">
+                                <el-option v-for="item in defaultTransactionCurrencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
                                     <CurrencyDisplay :currency="item.alpha3Code" :icon-key="item.iconKey" :chinese-name="item.chineseName" :english-name="item.englishName" :currency-symbol="item.currencySymbol" :locale="String(locale)" show-name size="sm" />
                                 </el-option>
                             </el-select>
@@ -311,13 +305,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { Check, Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { CurrencyDisplay, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { CurrencyDisplay, PaymentLogoGroup, TransactionTypeDisplay, type PaymentLogoKey } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
+import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
 import { searchCountries, type IsoCountry } from '@/api/base/country';
 import { getMccOptions, type MccOption } from '@/api/base/mcc';
 import {
@@ -368,6 +364,7 @@ interface MidFormState {
     currencyCodes: string[];
     countryAll: boolean;
     countryCodes: string[];
+    defaultTransactionCurrency: string;
     defaultSettlementCurrency: string;
     settlementDays: number;
     settlementCutoffTime: string;
@@ -426,6 +423,7 @@ const emptyForm = (): MidFormState => ({
     currencyCodes: [],
     countryAll: true,
     countryCodes: [],
+    defaultTransactionCurrency: 'USD',
     defaultSettlementCurrency: 'USD',
     settlementDays: 1,
     settlementCutoffTime: '00:00:00',
@@ -457,6 +455,10 @@ const availableBusinessOptions = computed(() => {
 });
 
 const paymentMethodOptions = computed(() => form.businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value);
+const defaultTransactionCurrencyOptions = computed(() => {
+    const allowed = supportedDefaultTransactionCurrencies();
+    return currencyOptions.value.filter((item) => allowed.has(normalizeCode(item.alpha3Code)));
+});
 
 const paymentScopeTree = computed<PaymentScopeNode[]>(() => capabilityOptions.value.map((item) => {
     const paymentLabel = optionLabel(paymentMethodOptions.value, item.paymentMethod);
@@ -484,6 +486,7 @@ const rules = computed<FormRules>(() => ({
     paymentScopes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredPaymentMethodScope'), trigger: 'change' }],
     currencyCodes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredCurrencyScope'), trigger: 'change' }],
     countryCodes: [{ validator: validateCountryScope, trigger: 'change' }],
+    defaultTransactionCurrency: [{ required: true, message: t('channel.mid.requiredDefaultTransactionCurrency'), trigger: 'change' }],
     defaultSettlementCurrency: [{ required: true, message: t('channel.mid.requiredDefaultSettlementCurrency'), trigger: 'change' }],
     settlementDays: [{ required: true, message: t('channel.mid.requiredSettlementCycle'), trigger: 'change' }],
     settlementTimeZone: [{ required: true, message: t('channel.mid.requiredSettlementTimeZone'), trigger: 'change' }],
@@ -590,6 +593,7 @@ async function applyRowToForm(row: ChannelMidConfig) {
     form.currencyCodes = splitScope(row.currencyScope);
     form.countryAll = row.allowedCountryScope === 'ALL';
     form.countryCodes = form.countryAll ? [] : splitScope(row.allowedCountryScope);
+    form.defaultTransactionCurrency = row.defaultTransactionCurrency || 'USD';
     form.defaultSettlementCurrency = row.defaultSettlementCurrency || 'USD';
     form.settlementDays = parseSettlementDays(row.settlementCycle);
     form.settlementCutoffTime = row.settlementCutoffTime || '00:00:00';
@@ -604,6 +608,7 @@ async function applyRowToForm(row: ChannelMidConfig) {
     await loadChannelDependentOptions(false);
     form.paymentScopes = paymentScopesFromRow(row);
     syncPaymentScopesWithCapabilities();
+    syncDefaultTransactionCurrency();
 }
 
 async function handleChannelChange() {
@@ -680,9 +685,7 @@ function syncPaymentScopesWithCapabilities() {
 function applyCapabilityCurrencyDefaults() {
     const codes = capabilityOptions.value.flatMap((item) => item.currencyCodes || []).map(normalizeCode);
     form.currencyCodes = Array.from(new Set(codes.length ? codes : form.currencyCodes));
-    if (!form.defaultSettlementCurrency && form.currencyCodes.length) {
-        form.defaultSettlementCurrency = form.currencyCodes[0];
-    }
+    syncDefaultTransactionCurrency();
 }
 
 function applyMetadataDefaults() {
@@ -706,6 +709,11 @@ function handleCountryAllChange(value: string | number | boolean) {
 
 function handlePaymentScopeChange() {
     form.paymentScopes = normalizePaymentScopes(form.paymentScopes);
+    syncDefaultTransactionCurrency();
+}
+
+function handleCurrencyScopeChange() {
+    syncDefaultTransactionCurrency();
 }
 
 async function submitForm() {
@@ -744,6 +752,7 @@ function buildPayload(): Partial<ChannelMidConfig> {
         transactionTypeScope: deriveTransactionTypeScope(),
         currencyScope: joinScope(form.currencyCodes),
         allowedCountryScope: form.countryAll ? 'ALL' : joinScope(form.countryCodes),
+        defaultTransactionCurrency: normalizeCode(form.defaultTransactionCurrency),
         defaultSettlementCurrency: normalizeCode(form.defaultSettlementCurrency),
         settlementCycle: `T+${form.settlementDays || 0}`,
         settlementCutoffTime: blankToUndefined(form.settlementCutoffTime),
@@ -929,6 +938,38 @@ function selectedPaymentMethods() {
     return Array.from(methods);
 }
 
+function supportedDefaultTransactionCurrencies() {
+    const selectedMethods = new Set(selectedPaymentMethods());
+    const selectedCapabilities = capabilityOptions.value.filter((item) => selectedMethods.has(normalizeCode(item.paymentMethod)));
+    if (!selectedCapabilities.length) {
+        return new Set<string>();
+    }
+    const common = new Set((selectedCapabilities[0].currencyCodes || []).map(normalizeCode));
+    selectedCapabilities.slice(1).forEach((capability) => {
+        const supported = new Set((capability.currencyCodes || []).map(normalizeCode));
+        [...common].forEach((currency) => {
+            if (!supported.has(currency)) common.delete(currency);
+        });
+    });
+    const allowedByMid = new Set(form.currencyCodes.map(normalizeCode));
+    [...common].forEach((currency) => {
+        if (!allowedByMid.has(currency)) common.delete(currency);
+    });
+    return common;
+}
+
+function syncDefaultTransactionCurrency() {
+    const supported = supportedDefaultTransactionCurrencies();
+    if (supported.has(normalizeCode(form.defaultTransactionCurrency))) {
+        return;
+    }
+    const configuredDefaults = capabilityOptions.value
+        .filter((item) => selectedPaymentMethods().includes(normalizeCode(item.paymentMethod)))
+        .map((item) => normalizeCode(item.defaultTransactionCurrency))
+        .filter((currency) => supported.has(currency));
+    form.defaultTransactionCurrency = configuredDefaults[0] || [...supported][0] || '';
+}
+
 function selectedCardBrands() {
     const brands = form.paymentScopes
         .map(parsePaymentScopeValue)
@@ -1007,23 +1048,11 @@ function currencyScopeCodes(value?: string) {
     return isAllCurrencyScope(value) ? [] : splitScope(value);
 }
 
-function currencyScopePreview(value?: string) {
-    return currencyScopeCodes(value).slice(0, 3);
-}
-
-function currencyScopeRemaining(value?: string) {
-    return Math.max(currencyScopeCodes(value).length - currencyScopePreview(value).length, 0);
-}
-
 function currencyScopeTooltipCodes(value?: string) {
     if (isAllCurrencyScope(value)) {
         return currencyOptions.value.map((item) => normalizeCode(item.alpha3Code)).filter(Boolean);
     }
     return currencyScopeCodes(value);
-}
-
-function currencyScopeAccessibleText(value?: string) {
-    return `${t('channel.mid.currencyScope')}: ${currencyScopeTooltipCodes(value).join(', ')}`;
 }
 
 function countryScopeText(value?: string) {
@@ -1174,15 +1203,57 @@ function midTargetName(row: ChannelMidConfig) {
 
 .payment-scope-cell {
     display: flex;
-    flex-direction: column;
+    width: 100%;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 4px;
     min-width: 0;
     line-height: 1.35;
 }
 
+.payment-scope-cell :deep(.payment-logo-group) {
+    justify-content: center;
+    gap: 6px;
+}
+
 .payment-scope-cell--detail {
+    justify-content: flex-start;
     align-items: flex-start;
+}
+
+.payment-scope-cell--detail :deep(.payment-logo-group) {
+    justify-content: flex-start;
+}
+
+.default-currency-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 2px;
+    border: 1px solid #a7dfc2;
+    border-radius: 6px;
+    background: #f0faf5;
+}
+
+.default-currency-display :deep(.currency-display--soft) {
+    border-color: transparent;
+    background: transparent;
+}
+
+.default-currency-display__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #167252;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.default-currency-display__badge .el-icon {
+    font-size: 12px;
 }
 
 .currency-scope-cell {
@@ -1192,68 +1263,6 @@ function midTargetName(row: ChannelMidConfig) {
     justify-content: center;
     gap: 5px;
     min-width: 0;
-}
-
-.currency-scope-trigger {
-    display: inline-flex;
-    max-width: 100%;
-    padding: 2px;
-    border-radius: 4px;
-    cursor: help;
-    outline: none;
-    transition: background-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.currency-scope-trigger:hover,
-.currency-scope-trigger:focus-visible {
-    background: var(--el-color-primary-light-9);
-    box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
-}
-
-.currency-scope-tooltip {
-    width: min(360px, calc(100vw - 48px));
-}
-
-.currency-scope-tooltip__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 8px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid rgb(255 255 255 / 18%);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.4;
-}
-
-.currency-scope-tooltip__count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 20px;
-    padding: 0 6px;
-    border-radius: 10px;
-    background: rgb(255 255 255 / 16%);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-}
-
-.currency-scope-tooltip__list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    max-height: 220px;
-    padding: 1px;
-    overflow-y: auto;
-}
-
-:global(.currency-scope-popper) {
-    max-width: none !important;
-    padding: 10px 12px !important;
-    border-color: var(--el-color-primary-dark-2) !important;
-    box-shadow: 0 8px 24px rgb(15 51 97 / 22%) !important;
 }
 
 .currency-scope-cell--detail {

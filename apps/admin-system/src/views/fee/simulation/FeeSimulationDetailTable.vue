@@ -28,7 +28,7 @@
             </el-table-column>
             <el-table-column :label="$t('feeAccount.feeAmount')" min-width="128" align="right">
                 <template #default="{ row }">
-                    <BaseAmount v-if="row.finalFeeUsd !== null && row.finalFeeUsd !== undefined" :value="row.finalFeeUsd" currency="USD" currency-display="code" :fraction-digits="2" />
+                    <CurrencyAmountDisplay v-if="row.finalFeeUsd !== null && row.finalFeeUsd !== undefined" :amount="row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" />
                     <span v-else>-</span>
                 </template>
             </el-table-column>
@@ -36,7 +36,7 @@
         <div v-if="showSummary" class="simulation-detail-table__summary">
             <div class="simulation-detail-table__total">
                 <span>{{ $t('feeAccount.feeTotal') }}</span>
-                <strong><BaseAmount :value="totalFeeUsd" currency="USD" currency-display="code" :fraction-digits="2" /></strong>
+                <strong><CurrencyAmountDisplay :amount="totalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" emphasized /></strong>
             </div>
             <div v-if="feeTotalFormula || netSettlementFormula" class="simulation-detail-table__formulas">
                 <div v-if="feeTotalFormula"><span>{{ $t('feeAccount.feeTotalFormula') }}</span><code>{{ feeTotalFormula }}</code></div>
@@ -48,8 +48,8 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { CurrencyAmountDisplay } from '@acquiring/shared';
 import type { DecimalValue, FeeSimulationDetail } from '@/api/fee';
-import BaseAmount from '@/components/BaseAmount/index.vue';
 
 withDefaults(defineProps<{
     details: FeeSimulationDetail[];
@@ -65,7 +65,7 @@ withDefaults(defineProps<{
     netSettlementFormula: '',
 });
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 
 function feeTypeText(detail: FeeSimulationDetail) {
     if (detail.itemType === 'RESERVE' || detail.feeCategory === 'RESERVE') return t('feeAccount.itemTypeValue.RESERVE');

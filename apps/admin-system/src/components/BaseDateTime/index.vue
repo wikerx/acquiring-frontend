@@ -20,7 +20,11 @@ const formattedValue = computed(() => {
 <style scoped>
 .base-date-time {
     display: inline-block;
-    min-width: 148px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 </style>

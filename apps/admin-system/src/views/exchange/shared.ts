@@ -87,12 +87,7 @@ export function secondsText(t: TranslateFn, value?: number) {
     return t('exchange.fields.secondsValue', { value: value ?? '-' });
 }
 
-export function formatRate(value?: string | number | null) {
-    if (value === undefined || value === null || value === '') {
-        return '-';
-    }
-    return String(value);
-}
+export { formatExchangeRate as formatRate } from '@acquiring/shared';
 
 export function formatCurrency(t: TranslateFn, value?: string | null) {
     if (!value) {

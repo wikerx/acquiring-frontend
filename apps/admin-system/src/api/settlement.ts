@@ -3,6 +3,7 @@ import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadExcel } from '@/utils/download';
+import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 /** 保留数据库 DATETIME(3) 路由值，仅转换为 Spring MVC 接收的 ISO LocalDateTime。 */
 function normalizeSettlementTransactionDateTimeParam(value: string) {
@@ -54,6 +55,19 @@ export interface SettlementProfileUpdateRequest {
     businessTimeZone: string;
     dailyCutoffTime: string;
     expectedVersion: number;
+    requestKey: string;
+    reason: string;
+}
+
+export interface SettlementProfileCreateRequest {
+    requestKey: string;
+    merchantId: string;
+    settlementAccountId: number;
+    targetCurrency: string;
+    businessTimeZone: string;
+    dailyCutoffTime: string;
+    processingMode: string;
+    reason: string;
 }
 
 export interface SettlementCandidateQuery extends PageQuery {
@@ -426,6 +440,17 @@ export interface SettlementResultItemQuery extends PageQuery {
     endBusinessDate: string;
 }
 
+export async function submitSettlementBatchSummaryExportTask(data: {
+    requestId: string;
+    settlementBatchNo: string;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/batch-summaries/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export interface SettlementReserveItemQuery extends PageQuery {
     settlementBatchNo?: string;
     merchantId?: string;
@@ -736,6 +761,17 @@ export async function exportSettlementReviews(data: SettlementReviewQuery) {
     await downloadExcel('/admin/settlement/review-orders/export', { data });
 }
 
+export async function submitSettlementReviewExportTask(data: {
+    requestId: string;
+    query: SettlementReviewQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/review-orders/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReversals(data: SettlementReversalQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReversal>>>(
         '/admin/settlement/reversal-orders/search', data,
@@ -827,6 +863,17 @@ export async function exportSettlementResultItems(data: SettlementResultItemQuer
     await downloadExcel('/admin/settlement/result-items/export', { data });
 }
 
+export async function submitSettlementResultItemExportTask(data: {
+    requestId: string;
+    query: SettlementResultItemQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/result-items/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementReserveItems(data: SettlementReserveItemQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementReserveItem>>>(
         '/admin/settlement/reserve-items/search', data,
@@ -857,6 +904,17 @@ export async function exportSettlementReserveItems(data: SettlementReserveItemQu
     await downloadExcel('/admin/settlement/reserve-items/export', { data });
 }
 
+export async function submitSettlementReserveItemExportTask(data: {
+    requestId: string;
+    query: SettlementReserveItemQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/reserve-items/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchSettlementPostings(data: SettlementPostingQuery) {
     const result = await http.post<CommonResult<PageResult<SettlementPosting>>>(
         '/admin/settlement/postings/search', data,
@@ -866,6 +924,17 @@ export async function searchSettlementPostings(data: SettlementPostingQuery) {
 
 export async function exportSettlementPostings(data: SettlementPostingQuery) {
     await downloadExcel('/admin/settlement/postings/export', { data });
+}
+
+export async function submitSettlementPostingExportTask(data: {
+    requestId: string;
+    query: SettlementPostingQuery;
+}) {
+    const result = await http.post<CommonResult<ExportTaskSummary>>(
+        '/admin/settlement/postings/export-task',
+        data,
+    );
+    return unwrapResult(result.data);
 }
 
 export async function searchSettlementProfiles(data: SettlementProfileQuery) {
@@ -878,6 +947,13 @@ export async function searchSettlementProfiles(data: SettlementProfileQuery) {
 export async function getSettlementProfile(settlementProfileNo: string) {
     const result = await http.get<CommonResult<SettlementProfile>>(
         `/admin/settlement/profiles/${encodeURIComponent(settlementProfileNo)}`,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function createSettlementProfile(data: SettlementProfileCreateRequest) {
+    const result = await http.post<CommonResult<SettlementProfile>>(
+        '/admin/settlement/profiles', data,
     );
     return unwrapResult(result.data);
 }

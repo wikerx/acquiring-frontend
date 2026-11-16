@@ -87,6 +87,8 @@ export interface MerchantInfo {
     activationReady?: boolean;
     /** Stable readiness issue codes returned by the backend for locale-specific rendering. */
     readinessIssues?: string[];
+    /** Non-sensitive effective payment capabilities and their activation gaps. */
+    paymentCapabilityReadiness?: MerchantPaymentCapabilityReadiness;
     settlementCurrency: string;
     timezone: string;
     riskLevel: number;
@@ -99,6 +101,24 @@ export interface MerchantInfo {
     fundAccountNo?: string;
     fundAccountStatus?: string;
     currentFeeVersionNo?: number;
+}
+
+/** 实际可路由的原子支付能力；不包含渠道、MID 或任何密钥信息。 */
+export interface MerchantPaymentCapability {
+    transactionType: string;
+    paymentType: string;
+    paymentMethod: string;
+    currency: string;
+}
+
+/** 管理端最终开通检查使用的支付能力摘要。 */
+export interface MerchantPaymentCapabilityReadiness {
+    activeBindingCount: number;
+    unavailableBindingCount: number;
+    capabilities: MerchantPaymentCapability[];
+    routeConflicts: MerchantPaymentCapability[];
+    feeGaps: MerchantPaymentCapability[];
+    feeAmbiguities: MerchantPaymentCapability[];
 }
 
 /** 商户法人、董事、UBO 与授权人资料；证件号仅在新增或换证时传明文。 */
@@ -375,6 +395,7 @@ export type MerchantSaveRequest = Omit<MerchantInfo,
     | 'reviewSubmittable'
     | 'activationReady'
     | 'readinessIssues'
+    | 'paymentCapabilityReadiness'
     | 'gmtCreate'
     | 'gmtModified'
     | 'jwtKey'

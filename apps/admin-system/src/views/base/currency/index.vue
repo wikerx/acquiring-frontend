@@ -10,7 +10,7 @@
       <el-col :span="1.5"><el-button type="primary" plain :icon="Plus" size="small" @click="handleAdd" v-hasPermi="'base:currency:add'">{{ $t('common.add') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="!sel.length || sel.length !== 1" @click="handleUpdate(sel[0])" v-hasPermi="'base:currency:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!sel.length" @click="handleDelete(sel)" v-hasPermi="'base:currency:remove'">{{ $t('common.delete') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:currency:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="warning" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'base:currency:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="handleSearch" /></el-col>
     </el-row>
 
@@ -35,7 +35,17 @@
       <el-table-column prop="chineseName" :label="$t('base.currency.chineseName')" min-width="160" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="englishName" :label="$t('base.currency.englishName')" min-width="180" align="center" :show-overflow-tooltip="true" />
       <el-table-column prop="fractionDigits" :label="$t('base.currency.minorUnit')" width="80" align="center" />
-      <el-table-column prop="minimumAmount" :label="$t('base.currency.minAmount')" width="100" align="center" />
+      <el-table-column :label="$t('base.currency.minAmount')" min-width="150" align="center">
+        <template #default="{ row }">
+          <CurrencyAmountDisplay
+            :amount="row.minimumAmount"
+            :currency="row.alpha3Code"
+            :exponent="row.fractionDigits"
+            :locale="String(locale)"
+            align="center"
+          />
+        </template>
+      </el-table-column>
       <el-table-column :label="$t('common.status')" width="80" align="center">
         <template #default="{ row }"><el-switch :model-value="row.status" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'base:currency:changeStatus'" /></template>
       </el-table-column>
@@ -105,13 +115,15 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { CurrencyDisplay, suggestedCurrencyIconKey } from '@acquiring/shared';
+import { useRouter } from 'vue-router';
+import { CurrencyAmountDisplay, CurrencyDisplay, suggestedCurrencyIconKey } from '@acquiring/shared';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
-import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, exportCurrencies, loadCurrencyPresentations, type IsoCurrency } from '@/api/base/currency';
+import { searchCurrencies, createCurrency, updateCurrency, changeCurrencyStatus, deleteCurrency, submitCurrencyExportTask, loadCurrencyPresentations, type IsoCurrency } from '@/api/base/currency';
 
-const { t } = useI18n();
-const showSearch = ref(true); const loading = ref(false);
+const { locale, t } = useI18n();
+const router = useRouter();
+const showSearch = ref(true); const loading = ref(false); const exporting = ref(false);
 const rows = ref<IsoCurrency[]>([]); const sel = ref<IsoCurrency[]>([]);
 const total = ref(0); const page = ref(1); const pageSize = ref(10);
 const query = reactive({ keyword: '', status: undefined as number | undefined });
@@ -189,10 +201,19 @@ async function handleDelete(target: IsoCurrency | IsoCurrency[]) {
   try { await Promise.all(targets.map((item) => deleteCurrency(item.id))); ElMessage.success(t('common.deleteSuccess')); await loadCurrencyPresentations().catch(() => undefined); loadData(); } catch (e: any) { ElMessage.error(e?.message || t('common.saveFailed')); }
 }
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportCurrencies();
-    ElMessage.success(t('common.export'));
-  } catch { ElMessage.error(t('common.loadFailed')); }
+    const task = await submitCurrencyExportTask({
+      requestId: `currency-export-${globalThis.crypto.randomUUID()}`,
+      query: { ...query },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      { confirmButtonText: t('operations.exportTask.openDownloadCenter'), cancelButtonText: t('common.close'), type: 'success' },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
+  } catch (error: any) { ElMessage.error(error?.message || t('common.loadFailed')); }
+  finally { exporting.value = false; }
 }
 
 function initializeIconEditor(iconKey?: string) {

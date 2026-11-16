@@ -140,10 +140,10 @@
                 <div v-for="field in group.fields" :key="field.key" class="diff-row">
                   <span class="diff-row__label">{{ t(field.labelKey) }}</span>
                   <span class="diff-row__value is-current">
-                    {{ displayValue(detail.currentProfile?.[field.key]) }}
+                    {{ displayValue(field.key, detail.currentProfile?.[field.key], detail.currentProfile) }}
                   </span>
                   <span class="diff-row__value is-proposed">
-                    {{ displayValue(detail.proposedProfile?.[field.key]) }}
+                    {{ displayValue(field.key, detail.proposedProfile?.[field.key], detail.proposedProfile) }}
                   </span>
                 </div>
               </template>
@@ -195,7 +195,7 @@
               <el-table-column :label="t('merchant.info.fileSize')" width="110" align="right">
                 <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
               </el-table-column>
-              <el-table-column :label="t('common.createTime')" width="180">
+              <el-table-column :label="t('common.createTime')" width="180" align="center">
                 <template #default="{ row }"><BaseDateTime :value="row.gmtCreate" /></template>
               </el-table-column>
               <el-table-column :label="t('common.operation')" width="100" align="center">
@@ -301,6 +301,7 @@
     Search,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
+  import { formatMoneyAmount } from '@acquiring/shared';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
   import {
@@ -342,7 +343,7 @@
     reviewed: [request: MerchantProfileChangeRequest];
   }>();
 
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const requests = ref<MerchantProfileChangeRequest[]>([]);
   const detail = ref<MerchantProfileChangeRequest>();
   const selectedRequestNo = ref('');
@@ -597,8 +598,22 @@
     return t('merchant.info.reviewReject');
   }
 
-  function displayValue(value: unknown) {
+  const moneyProfileFields = new Set<SnapshotField>([
+    'expectedMonthlyVolume',
+    'averageTicket',
+    'maxTicket',
+  ]);
+
+  function displayValue(
+    fieldKey: SnapshotField,
+    value: unknown,
+    snapshot?: MerchantProfileChangeSnapshot,
+  ) {
     if (value === null || value === undefined || value === '') return '-';
+    if (moneyProfileFields.has(fieldKey) && (typeof value === 'number' || typeof value === 'string')) {
+      const currency = String(snapshot?.expectedVolumeCurrency || '').trim().toUpperCase();
+      return `${currency} ${formatMoneyAmount(value, String(locale.value || 'zh-CN'))}`.trim();
+    }
     if (typeof value === 'boolean') return t(value ? 'common.yes' : 'common.no');
     if (Array.isArray(value)) return value.length ? value.join(', ') : '-';
     return String(value);

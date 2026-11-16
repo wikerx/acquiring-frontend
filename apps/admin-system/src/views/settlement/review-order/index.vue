@@ -68,7 +68,7 @@
                 <template #default="{ row }"><el-tag size="small" effect="plain" :type="statusTagType(row.reviewStatus)">{{ statusText(row.reviewStatus) }}</el-tag></template>
             </el-table-column>
             <el-table-column :label="t('transaction.settlement.netAmount')" min-width="164" align="right">
-                <template #default="{ row }">{{ moneyTextByExponent(row.netAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template>
+                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.netAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
             </el-table-column>
             <el-table-column prop="candidateCount" :label="t('transaction.settlement.candidateCount')" width="104" align="center" />
             <el-table-column prop="submittedByAccountName" :label="t('transaction.settlement.submitter')" min-width="126" align="center" />
@@ -156,7 +156,7 @@
                     <el-descriptions-item :label="t('transaction.settlement.settlementAccount')">{{ settlementAccountText(detail.review) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.businessDate')">{{ detail.review.businessDate }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.businessTimeZone')">{{ detail.review.businessTimeZone }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.netAmount')">{{ moneyTextByExponent(detail.review.netAmount, detail.review.targetCurrency, detail.review.targetCurrencyExponent) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.netAmount')"><CurrencyAmountDisplay :amount="detail.review.netAmount" :currency="detail.review.targetCurrency" :exponent="detail.review.targetCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.candidateCount')">{{ detail.review.candidateCount }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.projectableCandidateCount')">{{ detail.review.projectableCandidateCount }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.submitter')">{{ detail.review.submittedByAccountName || '-' }}</el-descriptions-item>
@@ -204,7 +204,7 @@
                 <el-table v-if="detail.rates.length" :data="detail.rates" border size="small">
                     <el-table-column :label="t('transaction.settlement.sourceCurrency')" width="120" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.sourceCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
                     <el-table-column :label="t('transaction.settlement.targetCurrency')" width="120" align="center"><template #default="{ row }"><CurrencyDisplay :currency="row.targetCurrency" :locale="documentLocale" size="xs" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.directRate')" min-width="180" align="right"><template #default="{ row }">{{ decimalText(row.directRate) }}</template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.directRate')" min-width="180" align="right"><template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.settlement.rateSource')" min-width="160" align="center"><template #default="{ row }">{{ enumText('rateSourceValue', row.rateSource) }}</template></el-table-column>
                     <el-table-column prop="quoteId" :label="t('transaction.settlement.quoteId')" min-width="180" align="center" />
                 </el-table>
@@ -213,12 +213,12 @@
                 <h3 class="detail-section-title">{{ t('transaction.settlement.resultSummary') }}</h3>
                 <el-table v-if="detail.summaries.length" :data="detail.summaries" border size="small">
                     <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.fields.transactionType')" min-width="140" align="center"><template #default="{ row }">{{ enumText('transactionTypeValue', row.transactionType) }}</template></el-table-column>
+                    <el-table-column :label="t('transaction.fields.transactionType')" min-width="160" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
                     <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="160" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.direction')" width="100" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="160" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="160" align="right"><template #default="{ row }">{{ moneyTextByExponent(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                 </el-table>
                 <el-empty v-else :description="t('transaction.settlement.resultSummaryEmpty')" />
                         </template>
@@ -346,13 +346,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { Document, Download, Refresh, RefreshLeft, Search, Tickets, View } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
     BusinessResultError,
+    CurrencyAmountDisplay,
     CurrencyDisplay,
     DirectionTag,
     downloadSettlementVoucherPdf,
@@ -360,12 +361,12 @@ import {
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
+    TransactionTypeDisplay,
     type SettlementVoucherDocument,
     type SettlementVoucherStatusTone,
 } from '@acquiring/shared';
 import {
     decideSettlementReview,
-    exportSettlementReviews,
     getSettlementReview,
     getSettlementReviewDecisionTask,
     getSettlementReviewVoucher,
@@ -373,6 +374,7 @@ import {
     searchSettlementReviewCandidates,
     searchSettlementReviews,
     submitSettlementReviewDecisionTask,
+    submitSettlementReviewExportTask,
     type SettlementReview,
     type SettlementReviewCandidate,
     type SettlementReviewDecisionTask,
@@ -387,12 +389,17 @@ import { useUserStore } from '@/store/modules/user';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { loadDictOptions, type SelectOption } from '@/views/channel/shared';
 import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
-import { loadTransactionDictOptions } from '@/views/transaction/shared';
+import {
+    fallbackCardBrandOptions,
+    fallbackPaymentMethodOptions,
+    fallbackTransactionTypeOptions,
+    loadTransactionDictOptions,
+    mergeTransactionDictOptions,
+} from '@/views/transaction/shared';
 import {
     businessDateFromBusinessNo,
-    decimalText,
     defaultDateRange,
-    moneyTextByExponent,
+    rateText,
     requestKey,
     statusTagType,
 } from '@/views/settlement/shared';
@@ -438,9 +445,9 @@ const candidateQuery = reactive({ pageNo: 1, pageSize: 10 });
 const decisionAction = ref<DecisionAction>('approve');
 const decisionForm = reactive({ comment: '' });
 const decisionTaskResumeForm = reactive({ reason: '' });
-const paymentTypeOptions = ref<SelectOption[]>([]);
-const paymentMethodOptions = ref<SelectOption[]>([]);
-const transactionTypeOptions = ref<SelectOption[]>([]);
+const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
+const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
+const transactionTypeOptions = ref<SelectOption[]>(fallbackTransactionTypeOptions(t));
 const decisionTitle = computed(() => t(`transaction.settlement.decisionTitle.${decisionAction.value}`));
 const decisionTaskFailureText = computed(() => {
     if (!decisionTask.value) return '';
@@ -482,16 +489,24 @@ onMounted(async () => {
 
 onBeforeUnmount(stopDecisionPolling);
 
+watch(locale, () => void loadDimensionDictionaries());
+
 async function loadDimensionDictionaries() {
+    const fallbackPaymentTypes = fallbackPaymentMethodOptions(t);
+    const fallbackPaymentMethods = fallbackCardBrandOptions();
+    const fallbackTransactionTypes = fallbackTransactionTypeOptions(t);
+    paymentTypeOptions.value = fallbackPaymentTypes;
+    paymentMethodOptions.value = fallbackPaymentMethods;
+    transactionTypeOptions.value = fallbackTransactionTypes;
     const language = String(locale.value || 'zh-CN');
     const [paymentTypes, paymentMethods, transactionTypes] = await Promise.all([
         loadDictOptions('acquiring_payment_method', language).catch(() => []),
         loadDictOptions('card_brand', language).catch(() => []),
         loadTransactionDictOptions('transaction_type', language).catch(() => []),
     ]);
-    paymentTypeOptions.value = paymentTypes;
-    paymentMethodOptions.value = paymentMethods;
-    transactionTypeOptions.value = transactionTypes;
+    paymentTypeOptions.value = mergeTransactionDictOptions(paymentTypes, fallbackPaymentTypes);
+    paymentMethodOptions.value = mergeTransactionDictOptions(paymentMethods, fallbackPaymentMethods);
+    transactionTypeOptions.value = mergeTransactionDictOptions(transactionTypes, fallbackTransactionTypes);
 }
 
 function requestQuery(): SettlementReviewQuery {
@@ -533,12 +548,31 @@ function handleReset() {
 async function handleExport() {
     exporting.value = true;
     try {
-        await exportSettlementReviews(requestQuery());
+        const task = await submitSettlementReviewExportTask({
+            requestId: createExportRequestId('settlement-review'),
+            query: requestQuery(),
+        });
+        await ElMessageBox.confirm(
+            t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+            t('operations.exportTask.submittedTitle'),
+            {
+                confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+                cancelButtonText: t('common.close'),
+                type: 'success',
+            },
+        ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
     } catch (error) {
         ElMessage.error(errorText(error, 'common.exportFailed'));
     } finally {
         exporting.value = false;
     }
+}
+
+function createExportRequestId(prefix: string) {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return `${prefix}-export-${globalThis.crypto.randomUUID()}`;
+    }
+    return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function openDetail(row: SettlementReview) {

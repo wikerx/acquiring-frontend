@@ -63,7 +63,7 @@
       <el-col :span="1.5"><el-button type="success" plain :icon="Edit" size="small" :disabled="selectedRows.length !== 1" @click="handleEdit(selectedRows[0])" v-hasPermi="'base:cardBin:edit'">{{ $t('common.edit') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="danger" plain :icon="Delete" size="small" :disabled="!selectedRows.length" @click="handleDelete(selectedRows)" v-hasPermi="'base:cardBin:remove'">{{ $t('common.delete') }}</el-button></el-col>
       <el-col :span="1.5"><el-button type="warning" plain :icon="Aim" size="small" @click="openMatchDialog" v-hasPermi="'base:cardBin:match'">{{ $t('base.cardBin.matchTest') }}</el-button></el-col>
-      <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" @click="handleExport" v-hasPermi="'base:cardBin:export'">{{ $t('common.export') }}</el-button></el-col>
+      <el-col :span="1.5"><el-button type="info" plain :icon="Download" size="small" :loading="exporting" @click="handleExport" v-hasPermi="'base:cardBin:export'">{{ $t('common.export') }}</el-button></el-col>
       <el-col :span="1.5"><el-button plain :icon="Upload" size="small" @click="handleInitLegacy" v-hasPermi="'base:cardBin:init'">{{ $t('base.cardBin.initLegacy') }}</el-button></el-col>
       <el-col class="right-toolbar"><RightToolbar @toggle-search="showSearch = !showSearch" @refresh="loadData" /></el-col>
     </el-row>
@@ -76,7 +76,12 @@
         <template #default="{ row }"><el-tag size="small" effect="plain">{{ row.binLength }}</el-tag></template>
       </el-table-column>
       <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="128" align="center" :show-overflow-tooltip="true">
-        <template #default="{ row }"><span>{{ row.cardBrandName || row.cardBrand }}</span></template>
+        <template #default="{ row }">
+          <div class="card-brand-value">
+            <PaymentLogoMark v-if="cardBrandLogoKeyByValue(row.cardBrand)" :logo-key="cardBrandLogoKeyByValue(row.cardBrand)" size="sm" compact fallback="text" />
+            <span v-else>{{ row.cardBrandName || row.cardBrand || '-' }}</span>
+          </div>
+        </template>
       </el-table-column>
       <el-table-column prop="cardSubBrand" :label="$t('base.cardBin.cardSubBrand')" min-width="150" align="center" :show-overflow-tooltip="true" />
       <el-table-column :label="$t('base.cardBin.cardType')" width="112" align="center">
@@ -203,7 +208,12 @@
         <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ detailRow.cardBinStart }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardBinEnd')">{{ detailRow.cardBinEnd }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.binLength')">{{ detailRow.binLength }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('base.cardBin.cardBrand')">{{ detailRow.cardBrandName || detailRow.cardBrand }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('base.cardBin.cardBrand')">
+          <div class="card-brand-value card-brand-value--start">
+            <PaymentLogoMark v-if="cardBrandLogoKeyByValue(detailRow.cardBrand)" :logo-key="cardBrandLogoKeyByValue(detailRow.cardBrand)" size="sm" compact fallback="text" />
+            <span v-else>{{ detailRow.cardBrandName || detailRow.cardBrand || '-' }}</span>
+          </div>
+        </el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardSubBrand')">{{ detailRow.cardSubBrand || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardType')">{{ detailRow.cardTypeName || detailRow.cardType }}</el-descriptions-item>
         <el-descriptions-item :label="$t('base.cardBin.cardLevel')">{{ detailRow.cardLevel || '-' }}</el-descriptions-item>
@@ -241,7 +251,12 @@
         </el-alert>
         <el-descriptions v-if="matchResult.bestMatch" :title="$t('base.cardBin.bestMatch')" :column="1" border class="one-column-detail">
           <el-descriptions-item :label="$t('base.cardBin.cardBinStart')">{{ matchResult.bestMatch.cardBinStart }}</el-descriptions-item>
-          <el-descriptions-item :label="$t('base.cardBin.cardBrand')">{{ matchResult.bestMatch.cardBrandName || matchResult.bestMatch.cardBrand }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('base.cardBin.cardBrand')">
+            <div class="card-brand-value card-brand-value--start">
+              <PaymentLogoMark v-if="cardBrandLogoKeyByValue(matchResult.bestMatch.cardBrand)" :logo-key="cardBrandLogoKeyByValue(matchResult.bestMatch.cardBrand)" size="sm" compact fallback="text" />
+              <span v-else>{{ matchResult.bestMatch.cardBrandName || matchResult.bestMatch.cardBrand || '-' }}</span>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.cardType')">{{ matchResult.bestMatch.cardTypeName || matchResult.bestMatch.cardType }}</el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.issuerCountry')">{{ matchResult.bestMatch.issuerCountryName || '-' }}</el-descriptions-item>
           <el-descriptions-item :label="$t('base.cardBin.issuerBank')">{{ matchResult.bestMatch.issuerBank || '-' }}</el-descriptions-item>
@@ -250,7 +265,14 @@
           <el-table-column prop="cardBinStart" :label="$t('base.cardBin.cardBinStart')" width="128" align="center" />
           <el-table-column prop="cardBinEnd" :label="$t('base.cardBin.cardBinEnd')" width="128" align="center" />
           <el-table-column prop="binLength" :label="$t('base.cardBin.binLength')" width="90" align="center" />
-          <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="120" align="center"><template #default="{ row }">{{ row.cardBrandName || row.cardBrand }}</template></el-table-column>
+          <el-table-column :label="$t('base.cardBin.cardBrand')" min-width="120" align="center">
+            <template #default="{ row }">
+              <div class="card-brand-value">
+                <PaymentLogoMark v-if="cardBrandLogoKeyByValue(row.cardBrand)" :logo-key="cardBrandLogoKeyByValue(row.cardBrand)" size="sm" compact fallback="text" />
+                <span v-else>{{ row.cardBrandName || row.cardBrand || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column :label="$t('base.cardBin.cardType')" width="110" align="center"><template #default="{ row }">{{ row.cardTypeName || row.cardType }}</template></el-table-column>
           <el-table-column prop="issuerCountryName" :label="$t('base.cardBin.issuerCountry')" min-width="150" align="center" />
           <el-table-column prop="issuerBank" :label="$t('base.cardBin.issuerBank')" min-width="180" align="center" :show-overflow-tooltip="true" />
@@ -266,6 +288,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Aim, Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
@@ -273,7 +296,7 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
   addCardBin,
   deleteCardBin,
-  exportCardBins,
+  submitCardBinExportTask,
   getCardBin,
   getCardBinOptions,
   initCardBinFromLegacyDb,
@@ -290,8 +313,10 @@ import {
 } from '@/api/base/cardBin';
 
 const { t } = useI18n();
+const router = useRouter();
 const showSearch = ref(true);
 const loading = ref(false);
+const exporting = ref(false);
 const rows = ref<CardBinRecord[]>([]);
 const selectedRows = ref<CardBinRecord[]>([]);
 const total = ref(0);
@@ -466,11 +491,25 @@ async function handleStatus(row: CardBinRecord, status: number) {
 }
 
 async function handleExport() {
+  exporting.value = true;
   try {
-    await exportCardBins({ ...query });
-    ElMessage.success(t('common.success'));
+    const task = await submitCardBinExportTask({
+      requestId: `card-bin-export-${globalThis.crypto.randomUUID()}`,
+      query: { ...query },
+    });
+    await ElMessageBox.confirm(
+      t('operations.exportTask.submitted', { taskNo: task.taskNo }),
+      t('operations.exportTask.submittedTitle'),
+      {
+        confirmButtonText: t('operations.exportTask.openDownloadCenter'),
+        cancelButtonText: t('common.close'),
+        type: 'success',
+      },
+    ).then(() => router.push('/operations/export-tasks')).catch(() => undefined);
   } catch (error: any) {
     ElMessage.error(error?.message || t('common.loadFailed'));
+  } finally {
+    exporting.value = false;
   }
 }
 
@@ -654,6 +693,17 @@ function countryFlagByValue(value?: string): string {
   max-width: 38px;
   max-height: 14px;
   object-fit: contain;
+}
+
+.card-brand-value {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-brand-value--start {
+  justify-content: flex-start;
 }
 
 .option-flag {
