@@ -48,11 +48,17 @@
                         <section class="transaction-finance-detail__section">
                             <div class="transaction-finance-detail__heading">
                                 <strong>{{ t('transaction.clearing.transactionLedger') }}</strong>
-                                <el-tag size="small" effect="plain">{{ clearingDetail.transactionDetails?.length || 0 }}</el-tag>
+                                <el-tag size="small" effect="plain">{{ clearingTransactionLoading ? '…' : clearingTransactionError ? '—' : clearingTransactionTotal }}</el-tag>
+                            </div>
+                            <div v-if="clearingTransactionError" class="transaction-finance-detail__error">
+                                <el-alert :title="t('transaction.clearing.transactionDetailLoadFailed')" type="error" :closable="false" show-icon />
+                                <el-button :icon="Refresh" @click="loadClearingTransactions">{{ t('common.refresh') }}</el-button>
                             </div>
                             <StandardTable
+                                v-else
+                                v-loading="clearingTransactionLoading"
                                 table-key="transaction-finance-clearing-items"
-                                :data="clearingDetail.transactionDetails || []"
+                                :data="clearingTransactionRows"
                                 row-key="clearingDetailNo"
                                 size="small"
                                 :empty-text="t('transaction.detail.empty')"
@@ -79,16 +85,34 @@
                                     <template #default="{ row }">{{ enumText('clearing.recordStatusValue', row.recordStatus) }}</template>
                                 </el-table-column>
                             </StandardTable>
+                            <el-pagination
+                                v-if="clearingTransactionTotal > 0 && !clearingTransactionError"
+                                v-model:current-page="clearingTransactionPage"
+                                v-model:page-size="clearingTransactionPageSize"
+                                class="transaction-finance-detail__pagination"
+                                :total="clearingTransactionTotal"
+                                :page-sizes="[10, 20, 50, 100]"
+                                layout="total, sizes, prev, pager, next"
+                                background
+                                @current-change="loadClearingTransactions"
+                                @size-change="resetClearingTransactionPage"
+                            />
                         </section>
 
                         <section class="transaction-finance-detail__section">
                             <div class="transaction-finance-detail__heading">
                                 <strong>{{ t('transaction.clearing.reserveLedger') }}</strong>
-                                <el-tag size="small" type="warning" effect="plain">{{ clearingDetail.reserveDetails?.length || 0 }}</el-tag>
+                                <el-tag size="small" type="warning" effect="plain">{{ clearingReserveLoading ? '…' : clearingReserveError ? '—' : clearingReserveTotal }}</el-tag>
+                            </div>
+                            <div v-if="clearingReserveError" class="transaction-finance-detail__error">
+                                <el-alert :title="t('transaction.clearing.reserveDetailLoadFailed')" type="error" :closable="false" show-icon />
+                                <el-button :icon="Refresh" @click="loadClearingReserves">{{ t('common.refresh') }}</el-button>
                             </div>
                             <StandardTable
+                                v-else
+                                v-loading="clearingReserveLoading"
                                 table-key="transaction-finance-clearing-reserves"
-                                :data="clearingDetail.reserveDetails || []"
+                                :data="clearingReserveRows"
                                 row-key="reserveClearingDetailNo"
                                 size="small"
                                 :empty-text="t('transaction.detail.empty')"
@@ -113,6 +137,18 @@
                                 </el-table-column>
                                 <el-table-column prop="expectedReserveReleaseDate" :label="t('transaction.clearing.expectedReleaseDate')" width="150" align="center" />
                             </StandardTable>
+                            <el-pagination
+                                v-if="clearingReserveTotal > 0 && !clearingReserveError"
+                                v-model:current-page="clearingReservePage"
+                                v-model:page-size="clearingReservePageSize"
+                                class="transaction-finance-detail__pagination"
+                                :total="clearingReserveTotal"
+                                :page-sizes="[10, 20, 50, 100]"
+                                layout="total, sizes, prev, pager, next"
+                                background
+                                @current-change="loadClearingReserves"
+                                @size-change="resetClearingReservePage"
+                            />
                         </section>
                     </template>
                     <el-empty
@@ -342,7 +378,11 @@ import {
 } from '@/api/settlement';
 import {
     getClearingRecordDetail,
+    searchClearingReserveDetails,
+    searchClearingTransactionDetails,
     type ClearingRecordDetail,
+    type ClearingReserveLine,
+    type ClearingTransactionLine,
     type TransactionDetail,
     type TransactionOperation,
 } from '@/api/transaction';
@@ -388,6 +428,21 @@ const clearingDetail = ref<ClearingRecordDetail | null>(null);
 const clearingLoading = ref(false);
 const clearingLoaded = ref(false);
 const clearingError = ref('');
+const clearingTransactionRows = ref<ClearingTransactionLine[]>([]);
+const clearingTransactionLoading = ref(false);
+const clearingTransactionError = ref(false);
+const clearingTransactionPage = ref(1);
+const clearingTransactionPageSize = ref(10);
+const clearingTransactionTotal = ref(0);
+const clearingReserveRows = ref<ClearingReserveLine[]>([]);
+const clearingReserveLoading = ref(false);
+const clearingReserveError = ref(false);
+const clearingReservePage = ref(1);
+const clearingReservePageSize = ref(10);
+const clearingReserveTotal = ref(0);
+let clearingStateVersion = 0;
+let clearingTransactionRequestId = 0;
+let clearingReserveRequestId = 0;
 
 const reconciliationRows = ref<SettlementReconciliationRecord[]>([]);
 const reconciliationLoading = ref(false);
@@ -424,11 +479,24 @@ watch(activeSection, () => {
 });
 
 function resetState() {
+    clearingStateVersion += 1;
+    clearingTransactionRequestId += 1;
+    clearingReserveRequestId += 1;
     activeSection.value = defaultSection();
     clearingDetail.value = null;
     clearingLoading.value = false;
     clearingLoaded.value = false;
     clearingError.value = '';
+    clearingTransactionRows.value = [];
+    clearingTransactionLoading.value = false;
+    clearingTransactionError.value = false;
+    clearingTransactionPage.value = 1;
+    clearingTransactionTotal.value = 0;
+    clearingReserveRows.value = [];
+    clearingReserveLoading.value = false;
+    clearingReserveError.value = false;
+    clearingReservePage.value = 1;
+    clearingReserveTotal.value = 0;
     reconciliationRows.value = [];
     reconciliationLoading.value = false;
     reconciliationLoaded.value = false;
@@ -493,21 +561,107 @@ async function loadReconciliation(force = false) {
 async function loadClearing(force = false) {
     if (!canViewClearing.value || clearingLoading.value || (clearingLoaded.value && !force)) return;
     const requestIdentity = identityKey.value;
+    const requestVersion = clearingStateVersion;
+    clearingTransactionRequestId += 1;
+    clearingReserveRequestId += 1;
+    clearingTransactionRows.value = [];
+    clearingTransactionLoading.value = false;
+    clearingTransactionError.value = false;
+    clearingTransactionPage.value = 1;
+    clearingTransactionTotal.value = 0;
+    clearingReserveRows.value = [];
+    clearingReserveLoading.value = false;
+    clearingReserveError.value = false;
+    clearingReservePage.value = 1;
+    clearingReserveTotal.value = 0;
     clearingLoading.value = true;
     clearingError.value = '';
     try {
         const result = await getClearingRecordDetail(transactionId.value, transactionDateTime.value);
-        if (requestIdentity !== identityKey.value) return;
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value) return;
         clearingDetail.value = result;
         clearingLoaded.value = true;
+        if (result?.summary) {
+            void Promise.all([loadClearingTransactions(), loadClearingReserves()]);
+        }
     } catch (error: unknown) {
-        if (requestIdentity !== identityKey.value) return;
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value) return;
         clearingDetail.value = null;
         clearingLoaded.value = true;
         clearingError.value = errorMessage(error, t('transaction.clearing.detailLoadFailed'));
     } finally {
-        if (requestIdentity === identityKey.value) clearingLoading.value = false;
+        if (requestVersion === clearingStateVersion && requestIdentity === identityKey.value) clearingLoading.value = false;
     }
+}
+
+async function loadClearingTransactions() {
+    if (!canViewClearing.value || !clearingDetail.value?.summary) return;
+    const requestIdentity = identityKey.value;
+    const requestVersion = clearingStateVersion;
+    const requestId = ++clearingTransactionRequestId;
+    clearingTransactionLoading.value = true;
+    clearingTransactionError.value = false;
+    try {
+        const result = await searchClearingTransactionDetails(
+            transactionId.value,
+            transactionDateTime.value,
+            clearingTransactionPage.value,
+            clearingTransactionPageSize.value,
+        );
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value
+            || requestId !== clearingTransactionRequestId) return;
+        clearingTransactionRows.value = result.records || [];
+        clearingTransactionTotal.value = result.total || 0;
+    } catch {
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value
+            || requestId !== clearingTransactionRequestId) return;
+        clearingTransactionRows.value = [];
+        clearingTransactionTotal.value = 0;
+        clearingTransactionError.value = true;
+    } finally {
+        if (requestVersion === clearingStateVersion && requestIdentity === identityKey.value
+            && requestId === clearingTransactionRequestId) clearingTransactionLoading.value = false;
+    }
+}
+
+async function loadClearingReserves() {
+    if (!canViewClearing.value || !clearingDetail.value?.summary) return;
+    const requestIdentity = identityKey.value;
+    const requestVersion = clearingStateVersion;
+    const requestId = ++clearingReserveRequestId;
+    clearingReserveLoading.value = true;
+    clearingReserveError.value = false;
+    try {
+        const result = await searchClearingReserveDetails(
+            transactionId.value,
+            transactionDateTime.value,
+            clearingReservePage.value,
+            clearingReservePageSize.value,
+        );
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value
+            || requestId !== clearingReserveRequestId) return;
+        clearingReserveRows.value = result.records || [];
+        clearingReserveTotal.value = result.total || 0;
+    } catch {
+        if (requestVersion !== clearingStateVersion || requestIdentity !== identityKey.value
+            || requestId !== clearingReserveRequestId) return;
+        clearingReserveRows.value = [];
+        clearingReserveTotal.value = 0;
+        clearingReserveError.value = true;
+    } finally {
+        if (requestVersion === clearingStateVersion && requestIdentity === identityKey.value
+            && requestId === clearingReserveRequestId) clearingReserveLoading.value = false;
+    }
+}
+
+function resetClearingTransactionPage() {
+    clearingTransactionPage.value = 1;
+    void loadClearingTransactions();
+}
+
+function resetClearingReservePage() {
+    clearingReservePage.value = 1;
+    void loadClearingReserves();
 }
 
 async function loadSettlement(force = false) {
