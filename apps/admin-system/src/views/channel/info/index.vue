@@ -37,7 +37,7 @@
 
         <StandardTable table-key="channel-info" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column prop="logoVersion" :label="t('media.logo')" width="100" align="center"><template #default="{ row }"><span class="channel-logo"><PrivateImage :version="row.logoVersion" :load="() => loadChannelLogo(row.id)" :alt="t('media.logo')" preview /></span></template></el-table-column>
+            <el-table-column prop="logoVersion" :label="t('media.logo')" width="100" align="center"><template #default="{ row }"><ChannelIdentity :presentation="channelPresentation(row)" fallback="—" scope="INFO" preview /></template></el-table-column>
             <el-table-column prop="channelCode" :label="t('channel.info.channelCode')" min-width="130" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelCnName" :label="t('channel.info.channelCnName')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="channelEnName" :label="t('channel.info.channelEnName')" min-width="180" align="center" :show-overflow-tooltip="true" />
@@ -90,7 +90,7 @@
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.info.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small" class="channel-detail-descriptions">
-                <el-descriptions-item :label="t('media.logo')"><span class="channel-logo channel-logo--detail"><PrivateImage :version="detailRow.logoVersion" :load="() => loadChannelLogo(detailRow!.id)" :alt="t('media.logo')" preview /></span></el-descriptions-item>
+                <el-descriptions-item :label="t('media.logo')"><ChannelIdentity :presentation="channelPresentation(detailRow)" fallback="—" scope="INFO" size="detail" preview /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelCode')">{{ detailRow.channelCode }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelCnName')">{{ detailRow.channelCnName }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.info.channelEnName')">{{ detailRow.channelEnName }}</el-descriptions-item>
@@ -230,10 +230,11 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElDialog, ElDrawer, ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
-import { PrivateImage, ImagePicker, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { ImagePicker, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -708,6 +709,10 @@ function channelStatusTargetName(row: ChannelInfo) {
     return row.channelCnName || row.channelEnName || row.channelCode || String(row.id);
 }
 
+function channelPresentation(row: ChannelInfo) {
+    return { id: row.id, channelCode: row.channelCode, channelCnName: row.channelCnName, channelEnName: row.channelEnName, logoVersion: row.logoVersion };
+}
+
 function secondsText(value?: number) {
     return value ? `${value}s` : '-';
 }
@@ -997,9 +1002,4 @@ function secondsText(value?: number) {
         padding-top: 0;
     }
 }
-</style>
-
-<style scoped>
-.channel-logo { display: inline-flex; width: 68px; height: 34px; align-items: center; justify-content: center; }
-.channel-logo--detail { width: 180px; height: 92px; }
 </style>

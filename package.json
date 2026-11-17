@@ -27,6 +27,8 @@
     "build:cashier": "npm run build:checkout",
     "test:amount": "npm --workspace @acquiring/shared run test:amount",
     "test:submission-guard": "npm --workspace @acquiring/shared run test:submission-guard",
+    "test:channel-presentation": "node --test packages/shared/tests/channelPresentation.test.mjs",
+    "test:e2e:channel": "playwright test --config=playwright.channel.config.ts",
     "test:e2e:admin": "playwright test --config=playwright.admin.config.ts",
     "test:e2e:login": "playwright test --config=playwright.login.config.ts",
     "test:e2e:merchant": "playwright test e2e/merchant-transaction-notification.spec.ts",

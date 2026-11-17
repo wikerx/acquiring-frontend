@@ -46,7 +46,7 @@
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="eventCode" :label="t('channel.alert.eventCode')" min-width="170" align="center" :show-overflow-tooltip="true" />
             <el-table-column prop="ruleName" :label="t('channel.alert.ruleName')" min-width="170" align="center" :show-overflow-tooltip="true" />
-            <el-table-column :label="t('channel.common.channel')" min-width="170" align="center" :show-overflow-tooltip="true"><template #default="{ row }">{{ channelDisplayText(row) }}</template></el-table-column>
+            <el-table-column :label="t('channel.common.channel')" min-width="170" align="center" :show-overflow-tooltip="true"><template #default="{ row }"><ChannelIdentity :record="row" :fallback="channelDisplayText(row)" scope="ALERT_EVENT" /></template></el-table-column>
             <el-table-column :label="t('channel.alert.ruleType')" min-width="140" align="center"><template #default="{ row }">{{ optionLabel(ruleTypeOptions, row.ruleType) }}</template></el-table-column>
             <el-table-column :label="t('channel.alert.alertLevel')" width="120" align="center"><template #default="{ row }"><el-tag size="small" :type="alertLevelType(row.alertLevel)">{{ optionLabel(alertLevelOptions, row.alertLevel) }}</el-tag></template></el-table-column>
             <el-table-column :label="t('channel.alert.triggerValue')" min-width="120" align="center"><template #default="{ row }">{{ triggerValueText(row) }}</template></el-table-column>
@@ -72,7 +72,7 @@
                     <el-descriptions-item :label="t('channel.alert.eventCode')">{{ detailRow.eventCode }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.alert.ruleCode')">{{ detailRow.ruleCode }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.alert.ruleName')">{{ detailRow.ruleName }}</el-descriptions-item>
-                    <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('channel.common.channel')"><ChannelIdentity :record="detailRow" :fallback="channelDisplayText(detailRow)" scope="ALERT_EVENT" size="detail" /></el-descriptions-item>
                     <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('channel.capability.paymentScope')">
                         <PaymentLogoGroup
@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { onMounted, reactive, ref, watch } from 'vue';
 import { FULL_DAY_RANGE_DEFAULT_TIMES, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { ElMessage, ElMessageBox } from 'element-plus';

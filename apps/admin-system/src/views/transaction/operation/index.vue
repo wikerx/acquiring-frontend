@@ -170,7 +170,7 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
-            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="116" align="center" />
+            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="116" align="center"><template #default="{ row }"><ChannelIdentity :record="row" :fallback="row.channelCode || '-'" scope="OPERATION" /></template></el-table-column>
             <el-table-column :label="t('transaction.fields.paymentMethodCardBrand')" width="138" align="center">
                 <template #default="{ row }">
                     <PaymentLogoGroup v-if="paymentLogos(row).length" :keys="paymentLogos(row)" size="sm" align="center" />
@@ -383,6 +383,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';

@@ -54,7 +54,7 @@
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column prop="merchantId" :label="t('channel.binding.merchantId')" min-width="150" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true">
-                <template #default="{ row }">{{ channelDisplayText(row) }}</template>
+                <template #default="{ row }"><ChannelIdentity :record="row" :fallback="channelDisplayText(row)" scope="MID_BINDING" /></template>
             </el-table-column>
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
                 <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
@@ -87,7 +87,7 @@
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.binding.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
                 <el-descriptions-item :label="t('channel.binding.merchantId')">{{ detailRow.merchantId }}</el-descriptions-item>
-                <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.channel')"><ChannelIdentity :record="detailRow" :fallback="channelDisplayText(detailRow)" scope="MID_BINDING" size="detail" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ businessTypeText(detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.mid.channelMid')">{{ detailRow.channelMid }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.status')"><el-tag size="small" :type="statusType(detailRow.bindingStatus)">{{ statusText(detailRow.bindingStatus, t('channel.common.enabled'), t('channel.common.disabled')) }}</el-tag></el-descriptions-item>
@@ -152,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';

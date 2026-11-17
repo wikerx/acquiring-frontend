@@ -226,7 +226,7 @@
                             </el-table-column>
                             <el-table-column prop="candidatePriority" :label="t('channel.route.candidatePriority')" width="110" align="center" />
                             <el-table-column v-if="detailRow.ruleType === 'WEIGHT'" :label="t('channel.route.candidateWeight')" width="110" align="center"><template #default="{ row }">{{ row.candidateWeight }}%</template></el-table-column>
-                            <el-table-column :label="t('channel.common.channel')" min-width="210" align="center"><template #default="{ row }">{{ candidateChannelText(row) }}</template></el-table-column>
+                            <el-table-column :label="t('channel.common.channel')" min-width="210" align="center"><template #default="{ row }"><ChannelIdentity :record="row" :fallback="candidateChannelText(row)" scope="ROUTE" size="detail" /></template></el-table-column>
                             <el-table-column :label="t('channel.route.mid')" min-width="230" align="center"><template #default="{ row }">{{ candidateMidText(row) }}</template></el-table-column>
                             <el-table-column :label="t('channel.common.status')" width="100" align="center"><template #default="{ row }"><el-tag size="small" :type="row.candidateStatus === 1 ? 'success' : 'info'">{{ row.candidateStatus === 1 ? t('channel.common.enabled') : t('channel.common.disabled') }}</el-tag></template></el-table-column>
                         </el-table>
@@ -369,6 +369,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { ArrowDown, CircleCheck, Clock, CopyDocument, Delete, Edit, House, Plus, Promotion, Refresh, Search, User, VideoPause, View, WarningFilled } from '@element-plus/icons-vue';

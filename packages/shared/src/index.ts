@@ -3,6 +3,7 @@ import { createDuplicateSubmissionGuard } from './submissionGuard';
 export * from './brand';
 export { default as PrivateImage } from './components/PrivateImage.vue';
 export { default as ImagePicker } from './components/ImagePicker.vue';
+export { default as ChannelDisplay } from './components/ChannelDisplay.vue';
 export * from './amount';
 export * from './refund';
 export { default as RefundFields } from './components/RefundFields.vue';

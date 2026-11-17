@@ -50,7 +50,7 @@
                 </div>
                 <div v-if="activeCandidates[0]" class="fixed-target__current">
                     <span>{{ t('channel.route.currentTarget') }}</span>
-                    <strong>{{ candidateChannelText(activeCandidates[0]) }}</strong>
+                    <strong><ChannelIdentity :record="activeCandidates[0]" :fallback="candidateChannelText(activeCandidates[0])" scope="ROUTE" size="detail" /></strong>
                     <span>{{ candidateMidText(activeCandidates[0]) }}</span>
                     <el-button type="danger" link :icon="Delete" @click="removeOne(activeCandidates[0])">{{ t('channel.common.delete') }}</el-button>
                 </div>
@@ -147,7 +147,7 @@
                         <el-table :data="selectedPageRows" row-key="midConfigId" height="280" size="small" :empty-text="t('channel.route.noSelectedMids')" @selection-change="selectedSelection = $event">
                             <el-table-column type="selection" width="40" align="center" />
                             <el-table-column :label="t('channel.route.selectedMid')" min-width="190" align="left" show-overflow-tooltip>
-                                <template #default="{ row }"><div class="mid-identity"><strong>{{ row.midName || row.channelMid || row.midConfigId }}</strong><span>{{ candidateChannelText(row) }} · {{ row.channelMid || row.midConfigId }}</span></div></template>
+                                <template #default="{ row }"><div class="mid-identity"><strong>{{ row.midName || row.channelMid || row.midConfigId }}</strong><span><ChannelIdentity :record="row" :fallback="candidateChannelText(row)" scope="ROUTE" /> · {{ row.channelMid || row.midConfigId }}</span></div></template>
                             </el-table-column>
                             <el-table-column v-if="routeType === 'PRIORITY'" :label="t('channel.route.candidatePriority')" width="104" align="center">
                                 <template #default="{ row, $index }">
@@ -190,6 +190,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Delete, Refresh, Search } from '@element-plus/icons-vue';
 import { CurrencyDisplay, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';

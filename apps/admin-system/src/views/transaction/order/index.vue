@@ -121,7 +121,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="120" align="center" />
+            <el-table-column prop="channelCode" :label="t('transaction.fields.channelCode')" width="120" align="center"><template #default="{ row }"><ChannelIdentity :record="row" :fallback="row.channelCode || '-'" scope="ORDER" /></template></el-table-column>
             <el-table-column :label="t('transaction.fields.channelMatchStatus')" width="140" align="center">
                 <template #default="{ row }"><TransactionStageStatusDisplay domain="matching" :value="row.channelMatchStatus" :label="tagText(channelMatchStatusOptions, row.channelMatchStatus)" /></template>
             </el-table-column>
@@ -168,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
@@ -222,6 +223,7 @@ const detailLoading = ref(false);
 const detailVisible = ref(false);
 const merchantVisible = ref(false);
 const rows = ref<TransactionOrder[]>([]);
+let hasRequestedData = false;
 const detail = ref<TransactionDetail | null>(null);
 const selectedDetailTransactionId = ref('');
 const selectedMerchantId = ref('');
@@ -304,7 +306,8 @@ function amountSummaryDetails(items?: TransactionAmountSummary[]) {
 
 onMounted(async () => {
     await loadDictionaries();
-    await loadData();
+    // 初始化期间已手动搜索时，以用户查询为准，避免字典返回后再次提交同一请求。
+    if (!hasRequestedData) await loadData();
 });
 
 watch(locale, () => void loadDictionaries());
@@ -344,6 +347,7 @@ async function loadDictionaries() {
 }
 
 async function loadData() {
+    hasRequestedData = true;
     loading.value = true;
     try {
         const result = await searchTransactionOrdersWithSummary(buildQuery(page.value, pageSize.value));

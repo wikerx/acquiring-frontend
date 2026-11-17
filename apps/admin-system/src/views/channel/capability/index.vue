@@ -58,7 +58,7 @@
 
         <StandardTable table-key="channel-capability" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
-            <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true"><template #default="{ row }">{{ channelDisplayText(row) }}</template></el-table-column>
+            <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true"><template #default="{ row }"><ChannelIdentity :record="row" :fallback="channelDisplayText(row)" scope="CAPABILITY" /></template></el-table-column>
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
                 <template #default="{ row }">{{ optionLabel(businessOptions, row.businessType) }}</template>
             </el-table-column>
@@ -126,7 +126,7 @@
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.capability.detailTitle')" size="lg">
             <el-descriptions v-if="detailRow" :column="1" border size="small">
-                <el-descriptions-item :label="t('channel.common.channel')">{{ channelDisplayText(detailRow) }}</el-descriptions-item>
+                <el-descriptions-item :label="t('channel.common.channel')"><ChannelIdentity :record="detailRow" :fallback="channelDisplayText(detailRow)" scope="CAPABILITY" size="detail" /></el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.capability.paymentScope')">
                     <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" fallback="text" size="sm" />
@@ -246,6 +246,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Check, Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';

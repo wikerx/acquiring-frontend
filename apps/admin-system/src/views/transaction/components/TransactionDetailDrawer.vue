@@ -44,10 +44,12 @@
                 <div class="transaction-detail__hero-item transaction-detail__hero-channel">
                     <span class="transaction-detail__hero-label">{{ t('transaction.fields.channelCode') }}</span>
                     <div class="transaction-detail__channel-value">
-                        <div class="transaction-detail__channel-main">
-                            <strong>{{ summaryChannelCode }}</strong>
-                            <span v-if="summaryChannelFullName">{{ summaryChannelFullName }}</span>
-                        </div>
+                        <ChannelIdentity :record="summaryRecord" :fallback="summaryChannelCode" :scope="detailScope === 'operations' ? 'OPERATION' : 'ORDER'" size="detail">
+                            <div class="transaction-detail__channel-main">
+                                <strong>{{ summaryChannelCode }}</strong>
+                                <span v-if="summaryChannelFullName">{{ summaryChannelFullName }}</span>
+                            </div>
+                        </ChannelIdentity>
                         <div class="transaction-detail__payment-method">
                             <LegacyPaymentLogoGroup v-if="summaryPaymentLogos.length" :keys="summaryPaymentLogos" size="md" align="start" />
                             <span v-else>{{ summaryPaymentText }}</span>
@@ -118,7 +120,7 @@
                             <LegacyPaymentLogoGroup v-if="paymentLogos(detail.order).length" :keys="paymentLogos(detail.order)" size="sm" align="start" class="transaction-detail__inline-logos" />
                             <span v-else>{{ paymentText(detail.order?.paymentMethod, detail.order?.paymentBrand) }}</span>
                         </el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.fields.channelCode')">{{ detail.order?.channelCode || '-' }}</el-descriptions-item>
+                        <el-descriptions-item :label="t('transaction.fields.channelCode')"><ChannelIdentity :record="detail.order" :fallback="detail.order?.channelCode || '-'" :scope="detailScope === 'operations' ? 'OPERATION' : 'ORDER'" size="detail" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.channelOrderNo')"><CopyableText :value="detail.order?.channelOrderNo" :label="t('transaction.fields.channelOrderNo')" wrap /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.fields.transactionDateTime')">
                             <BaseDateTime :value="detail.order?.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="displayTimeZone" />
@@ -361,6 +363,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';

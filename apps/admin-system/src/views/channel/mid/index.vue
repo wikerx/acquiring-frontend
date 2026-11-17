@@ -38,7 +38,7 @@
         <StandardTable table-key="channel-mid" v-loading="loading" :data="rows" row-key="id" size="small" @selection-change="selectedRows = $event">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column :label="t('channel.common.channel')" min-width="180" align="center" :show-overflow-tooltip="true">
-                <template #default="{ row }">{{ channelDisplayText(row) }}</template>
+                <template #default="{ row }"><ChannelIdentity :record="row" :fallback="channelDisplayText(row)" scope="MID" /></template>
             </el-table-column>
             <el-table-column prop="channelMid" :label="t('channel.mid.channelMid')" min-width="160" align="center" :show-overflow-tooltip="true" />
             <el-table-column :label="t('channel.common.businessType')" width="110" align="center">
@@ -94,7 +94,7 @@
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.mid.detailTitle')" size="lg">
             <div v-if="detailRow" class="mid-detail">
-                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.common.channel') }}</span><div class="mid-detail__value">{{ channelDisplayText(detailRow) }}</div></div>
+                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.common.channel') }}</span><div class="mid-detail__value"><ChannelIdentity :record="detailRow" :fallback="channelDisplayText(detailRow)" scope="MID" size="detail" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.channelMid') }}</span><div class="mid-detail__value">{{ detailRow.channelMid }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.terminalId') }}</span><div class="mid-detail__value">{{ detailRow.terminalId || '-' }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.common.businessType') }}</span><div class="mid-detail__value">{{ optionLabel(businessOptions, detailRow.businessType) }}</div></div>
@@ -303,6 +303,7 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Check, Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
