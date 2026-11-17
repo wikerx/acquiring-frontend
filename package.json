@@ -28,6 +28,7 @@
     "test:amount": "npm --workspace @acquiring/shared run test:amount",
     "test:submission-guard": "npm --workspace @acquiring/shared run test:submission-guard",
     "test:e2e:admin": "playwright test --config=playwright.admin.config.ts",
+    "test:e2e:login": "playwright test --config=playwright.login.config.ts",
     "test:e2e:merchant": "playwright test e2e/merchant-transaction-notification.spec.ts",
     "test:governance:file-templates": "node scripts/verify-file-template-governance.mjs",
     "test:governance:submissions": "node scripts/verify-submission-governance.mjs",

@@ -1,3 +1,4 @@
+import { loadPrivateImageBlob } from '@/utils/download';
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
@@ -561,7 +562,7 @@ export async function searchPaymentRouteChangeLogs(id: number, data: PageQuery &
 
 
 export async function loadChannelLogo(id: number): Promise<Blob> {
-    return (await http.get<Blob>(`/admin/channel/info/${id}/logo`, { responseType: 'blob' })).data;
+    return loadPrivateImageBlob(`/admin/channel/info/${id}/logo`);
 }
 export async function saveChannelWithLogo(id: number | null, metadata: Partial<ChannelInfo>, file: File | null, removeLogo = false): Promise<ChannelInfo> {
     const data = new FormData();

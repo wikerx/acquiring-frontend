@@ -73,6 +73,11 @@ export default {
     moreFailureDetails: '{count} more failure reason(s) are available in the downloaded details.',
     failureSequence: 'No.',
     failureReason: 'Failure reason',
+    batchNo: 'Import batch',
+    validationErrorCount: 'Invalid rows',
+    rollbackTitle: 'Validation failed · Entire batch rolled back',
+    rollbackSummary: '{total} rows checked, {errors} invalid rows, and 0 rows written.',
+    rollbackNote: 'The entire batch was rolled back, including valid rows. Download all error details, correct the file, and submit the complete file again.',
     resultTitle: {
       success: 'Import completed · All successful',
       partial: 'Import completed · Partially successful',
@@ -5913,6 +5918,8 @@ export default {
       success: 'Review completed. The notification email will be sent after commit.',
     },
     common: {
+      reviewUnavailable: 'Manual review (unavailable)',
+      selectExecutableDecision: 'Manual review is unavailable. Select Pass or Reject before saving.',
       ruleName: 'Rule Name',
       matchValue: 'Match Value',
       country: 'Country / Region',

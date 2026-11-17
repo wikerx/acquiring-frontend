@@ -85,7 +85,6 @@
                                 autocomplete="current-password"
                                 :prefix-icon="Lock"
                                 size="default"
-                                @keyup.enter="handleLogin"
                             />
                         </el-form-item>
                         <el-form-item prop="verifyCode">
@@ -95,7 +94,6 @@
                                     :placeholder="$t('login.verifyCode')"
                                     :prefix-icon="Key"
                                     size="default"
-                                    @keyup.enter="handleLogin"
                                 />
                                 <button
                                     class="verify-code-image"
@@ -360,14 +358,16 @@ async function handleSendVerifyCode(options: { showError?: boolean } = {}) {
 }
 
 async function handleLogin() {
-    const valid = await formRef.value?.validate().catch(() => false);
-    if (!valid) return;
-    if (!form.verifyCodeId) {
-        ElMessage.warning(t('login.getVerifyCodeFirst'));
-        return;
-    }
+    if (loading.value) return;
+    // 校验也是异步步骤，必须在校验前锁定，避免连续提交同时通过校验。
     loading.value = true;
     try {
+        const valid = await formRef.value?.validate().catch(() => false);
+        if (!valid) return;
+        if (!form.verifyCodeId) {
+            ElMessage.warning(t('login.getVerifyCodeFirst'));
+            return;
+        }
         const result = await user.login(form);
         await handleLoginResponse(result);
     } catch (error) {
@@ -424,12 +424,11 @@ async function loadMfaBindInfo() {
 }
 
 async function handleMfaSubmit() {
-    const valid = await mfaFormRef.value?.validate().catch(() => false);
-    if (!valid || !loginTicket.value) {
-        return;
-    }
+    if (mfaLoading.value) return;
     mfaLoading.value = true;
     try {
+        const valid = await mfaFormRef.value?.validate().catch(() => false);
+        if (!valid || !loginTicket.value) return;
         if (loginStage.value === 'bind') {
             await user.confirmMfaBind(loginTicket.value, mfaForm.totpCode);
         } else {

@@ -1,7 +1,7 @@
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
-import { downloadExcel } from '@/utils/download';
+import { downloadExcel, downloadBlob } from '@/utils/download';
 import type { ExportTaskSummary } from '@/api/operations/exportTask';
 
 export interface RiskOption {
@@ -457,14 +457,33 @@ export async function downloadRiskTemplate(moduleType: string, functionCode: str
     });
 }
 
+export interface RiskImportResult {
+    batchNo?: string;
+    totalCount?: number;
+    rolledBack?: boolean;
+    successCount: number;
+    failureCount: number;
+    errors: string[];
+}
+
+/** 下载原导入账号有权访问的完整脱敏错误报告。 */
+export async function downloadRiskImportFailures(batchNo: string) {
+    await downloadBlob(`/admin/risk/imports/${encodeURIComponent(batchNo)}/failures`, {
+        method: 'get', fileName: `${batchNo}-failures.csv`,
+    });
+}
+
 export async function importRiskConfig(moduleType: string, functionCode: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    const result = await http.post<CommonResult<{ successCount: number; failureCount: number; errors: string[] }>>(
+    const result = await http.post<CommonResult<RiskImportResult>>(
         `/admin/risk/${moduleType}/${functionCode}/import`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } },
     );
+    // 业务码仍为失败；只有明确的整批回滚结果交由导入弹窗展示，其他异常继续抛出。
+    if (result.data.code !== 'T200' && result.data.data?.rolledBack === true
+        && result.data.data.successCount === 0 && result.data.data.batchNo) return result.data.data;
     return unwrapResult(result.data);
 }
 

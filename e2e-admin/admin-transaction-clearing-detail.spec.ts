@@ -383,6 +383,27 @@ test('keeps supported financial actions disabled when status or available amount
     }
 });
 
+test('shows unavailable review rejection as failed while preserving historical review and 3DS waiting', async ({ page }) => {
+    await mockAdminApis(page, () => {});
+    const flowEvents = [
+        { flowEventId: 1, transactionId, eventType: 'RISK_CHECKED', eventStage: 'RISK', eventStatus: 'FAILED', riskDecision: 'REVIEW', eventContent: 'QA review rejected', eventTime: transactionDateTime },
+        { flowEventId: 2, transactionId, eventType: 'RISK_CHECKED', eventStage: 'RISK', eventStatus: 'PENDING', riskDecision: 'REVIEW', eventContent: 'QA historical review', eventTime: transactionDateTime },
+        { flowEventId: 3, transactionId, eventType: 'RISK_CHECKED', eventStage: 'RISK', eventStatus: 'PENDING', riskDecision: 'REQUIRE_3DS', eventContent: 'QA 3DS waiting', eventTime: transactionDateTime },
+    ];
+    await page.route(`**/admin/transactions/operations/${transactionId}/detail-records?**`, (route) => fulfill(route, {
+        total: flowEvents.length, pageNo: 1, pageSize: 10, pages: 1,
+        records: flowEvents.map((record) => ({ recordType: 'FLOW_EVENT', recordId: String(record.flowEventId), record })),
+    }));
+    await page.goto('/transaction/operation');
+    await page.getByRole('button', { name: '详情', exact: true }).first().click();
+    const drawer = page.getByRole('dialog', { name: '交易详情' });
+    await drawer.getByRole('tab', { name: '流程时间轴', exact: true }).click();
+    const events = drawer.locator('.transaction-flow__event');
+    await expect(events.filter({ hasText: 'QA review rejected' })).toHaveClass(/is-danger/);
+    await expect(events.filter({ hasText: 'QA historical review' })).toHaveClass(/is-warning/);
+    await expect(events.filter({ hasText: 'QA 3DS waiting' })).toHaveClass(/is-warning/);
+});
+
 async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => void,
     actionPermissions: string[] = [], includeDetailPermission = true, records = [operation]) {
     await page.addInitScript(() => localStorage.setItem('acquiring_admin_locale', 'zh-CN'));

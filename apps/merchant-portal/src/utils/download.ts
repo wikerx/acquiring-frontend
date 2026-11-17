@@ -69,3 +69,8 @@ async function resolveBlobErrorMessage(blob: Blob) {
         return 'Download failed';
     }
 }
+
+/** 通过本应用受控客户端读取已生成的私有图片，不重新生成导出文件或触发文件保存。 */
+export async function loadPrivateImageBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
+    return (await http.get<Blob>(url, { params, responseType: 'blob' })).data;
+}

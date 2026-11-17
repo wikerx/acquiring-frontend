@@ -421,7 +421,7 @@
       <template #footer><div class="dialog-footer"><el-button type="primary" :loading="approvalSaving" @click="submitApproval">{{ $t('common.confirm') }}</el-button><el-button @click="approvalOpen = false">{{ $t('common.cancel') }}</el-button></div></template>
     </el-dialog>
 
-    <BaseImportDialog v-model="importOpen" :subject="currentFunctionName" :template-permission="`${current.permissionPrefix}:template`" :loading="importLoading" :result="importResult" @submit="handleImport" @download-template="handleTemplate" @reset-result="importOutcome = null" />
+    <BaseImportDialog v-model="importOpen" :subject="currentFunctionName" :template-permission="`${current.permissionPrefix}:template`" :loading="importLoading" :result="importResult" :download-errors="importResult?.rolledBack && importResult.batchNo ? () => downloadRiskImportFailures(importResult!.batchNo!) : undefined" @submit="handleImport" @download-template="handleTemplate" @reset-result="importOutcome = null" />
 
     <CommonDetailDrawer v-model:visible="detailOpen" :title="$t('common.detail')" size="lg">
       <el-descriptions v-if="detailRow" :column="1" border size="small">
@@ -486,7 +486,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { listChannelOptions, searchChannelCapabilities, type ChannelCapability, type ChannelOption } from '@/api/channel';
 import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
-import { approveRiskSourceUrl, batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, submitRiskConfigExportTask, getRiskOptions, importRiskConfig, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
+import { approveRiskSourceUrl, batchRemoveRiskRecords, createRiskRule, createRiskSourceUrls, downloadRiskTemplate, submitRiskConfigExportTask, getRiskOptions, importRiskConfig, downloadRiskImportFailures, pageRiskRules, removeRiskRecord, updateRiskRule, updateRiskStatus, type RiskOptions, type RiskRecord, type RiskRuleQuery } from '@/api/risk';
 import { cardBrandLabel, cardBrandLogoKeyByValue, detectCardBrand, emptyRiskOptions, localizeRiskOptions, resolveRiskFunction, resolveRiskRuleProfile, riskFunctionName, riskOptionLabel } from '@/views/risk/shared';
 import { cardLogoKeys, loadDictOptions, paymentLogoKeys, type SelectOption } from '@/views/channel/shared';
 
@@ -512,7 +512,7 @@ const loading = ref(false);
 const importOpen = ref(false);
 const importLoading = ref(false);
 const importOutcome = ref<
-  | { type: 'success'; successCount: number; failureCount: number; errors: string[] }
+  | { type: 'success'; successCount: number; failureCount: number; errors: string[]; rolledBack?: boolean; totalCount?: number; batchNo?: string }
   | { type: 'error'; message?: string }
   | null
 >(null);
@@ -526,6 +526,9 @@ const importResult = computed(() => {
         successCount: outcome.successCount,
         failureCount: outcome.failureCount,
         errors: outcome.errors,
+        rolledBack: outcome.rolledBack,
+        totalCount: outcome.totalCount,
+        batchNo: outcome.batchNo,
       }
     : { type: 'error' as const, message: outcome.message || t('risk.common.importFailed') };
 });
@@ -552,7 +555,7 @@ const channelOptions = ref<ChannelOption[]>([]);
 const channelCapabilities = ref<ChannelCapability[]>([]);
 const acquiringPaymentMethodOptions = ref<SelectOption[]>([]);
 const query = reactive<RiskRuleQuery>({});
-const form = reactive<RiskRecord>({ status: 1, merchantScope: 'GLOBAL', riskLevel: 'MEDIUM', decisionAction: 'REVIEW', elementsJson: '{}' } as RiskRecord);
+const form = reactive<RiskRecord>({ status: 1, merchantScope: 'GLOBAL', riskLevel: 'MEDIUM', decisionAction: 'REJECT', elementsJson: '{}' } as RiskRecord);
 type DetailItem = {
   label: string;
   value?: string | number;
@@ -670,7 +673,7 @@ const countryOptionsForRule = computed(() => options.value.countryOptions.map((i
 const merchantScopeOptions = computed(() => localizeRiskOptions(options.value.merchantScopeOptions, t, 'merchantScope'));
 const statusOptions = computed(() => localizeRiskOptions(options.value.statusOptions, t, 'status'));
 const riskLevelOptions = computed(() => localizeRiskOptions(options.value.riskLevelOptions, t, 'riskLevel'));
-const decisionActionOptions = computed(() => localizeRiskOptions(options.value.decisionActionOptions, t, 'decisionAction'));
+const decisionActionOptions = computed(() => localizeRiskOptions(options.value.decisionActionOptions.filter((item) => item.value !== 'REVIEW'), t, 'decisionAction'));
 const limitTypeOptions = computed(() => localizeRiskOptions(options.value.limitTypeOptions, t, 'limitType'));
 const sourceUrlQueryValue = computed({
   get: () => isSourceUrlRule.value ? query.sourceUrl : query.matchValue,
@@ -904,6 +907,10 @@ async function openMerchantLimitDimensionEdit(row: RiskRecord) {
   }
 }
 async function submitForm() {
+  if (!isThreeDsRule.value && form.decisionAction === 'REVIEW') {
+    ElMessage.warning(t('risk.common.selectExecutableDecision'));
+    return;
+  }
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
   try {
@@ -1074,13 +1081,16 @@ async function handleImport(file: File) {
       successCount: result.successCount,
       failureCount: result.failureCount,
       errors: result.errors || [],
+      rolledBack: result.rolledBack,
+      totalCount: result.totalCount,
+      batchNo: result.batchNo,
     };
   } catch (error: any) {
     importOutcome.value = { type: 'error', message: error?.message };
   } finally {
     importLoading.value = false;
   }
-  if (importOutcome.value?.type === 'success') await loadData();
+  if (importOutcome.value?.type === 'success' && !importOutcome.value.rolledBack) await loadData();
 }
 
 function buildRulePayload() {
@@ -2131,6 +2141,7 @@ function riskLevelText(value?: string | number) {
 }
 
 function decisionActionText(value?: string | number) {
+  if (value === 'REVIEW') return t('risk.common.reviewUnavailable');
   return optionLabel(decisionActionOptions.value, value);
 }
 
@@ -2172,7 +2183,7 @@ function defaultRuleRiskLevel() {
 
 function defaultRuleDecisionAction() {
   if (['sourceUrl', 'merchantLimit', 'frequency'].includes(current.value.functionCode)) return 'REJECT';
-  return 'REVIEW';
+  return 'REJECT';
 }
 
 function riskLevelTagType(value?: string) {

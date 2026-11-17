@@ -480,6 +480,8 @@ function timelineStatus(row: TimelineRow) {
         if (eventType === 'STATUS_RECORDED') return 'SUCCESS';
         if (eventType === 'CHANNEL_CALLBACK_PROCESSED') return businessStatus || status;
         if (/REJECT|DECLIN/.test(riskDecision)) return 'FAILED';
+        // 历史 REVIEW 可继续只读展示；新请求关闭复核后产生的失败事件必须按实际终态呈现。
+        if (riskDecision === 'REVIEW' && isDefinitiveFailureStatus(status)) return status;
         if (/REVIEW|REQUIRE_?3DS/.test(riskDecision)) return 'PROCESSING';
         if (riskDecision === 'PASS') return 'SUCCESS';
         if (isDefinitiveFailureStatus(status)) return status;

@@ -1,3 +1,4 @@
+import { loadPrivateImageBlob } from '@/utils/download';
 import type {
     AccountActivationCompleteRequest,
     AccountActivationCompleteResponse,
@@ -146,7 +147,7 @@ export async function completeAccountActivation(
 
 
 export async function loadAvatar(): Promise<Blob> {
-    return (await http.get<Blob>('/merchant/auth/avatar', { responseType: 'blob' })).data;
+    return loadPrivateImageBlob('/merchant/auth/avatar');
 }
 export async function saveAvatar(file: File | null): Promise<string | null> {
     if (!file) {

@@ -65,8 +65,9 @@
       <div v-if="hasCountSummary" class="base-import-dialog__counts">
         <div><span>{{ t('feedback.totalCount') }}</span><strong>{{ totalCount }}</strong></div>
         <div class="is-success"><span>{{ t('feedback.successCount') }}</span><strong>{{ successCount }}</strong></div>
-        <div class="is-failure"><span>{{ t('feedback.failureCount') }}</span><strong>{{ failureCount }}</strong></div>
+        <div class="is-failure"><span>{{ t(result.rolledBack ? 'feedback.validationErrorCount' : 'feedback.failureCount') }}</span><strong>{{ failureCount }}</strong></div>
       </div>
+      <p v-if="result.batchNo" class="base-import-dialog__failure-note">{{ t('feedback.batchNo') }}: {{ result.batchNo }}</p>
 
       <p v-if="resultTone === 'error' && !hasCountSummary" class="base-import-dialog__failure-note">
         <el-icon><WarningFilled /></el-icon>
@@ -80,15 +81,15 @@
       <div v-if="failureErrors.length" class="base-import-dialog__errors">
         <div class="base-import-dialog__errors-heading">
           <strong>{{ t('feedback.failureDetails') }}</strong>
-          <el-button link type="primary" :icon="Download" @click="downloadFailureDetails">{{ t('feedback.downloadFailureDetails') }}</el-button>
+          <el-button link type="primary" :icon="Download" :loading="downloadingErrors" @click="downloadFailureDetails">{{ t('feedback.downloadFailureDetails') }}</el-button>
         </div>
         <ol>
           <li v-for="(message, index) in visibleFailureErrors" :key="`${index}-${message}`">
             <span>{{ index + 1 }}</span><p>{{ message }}</p>
           </li>
         </ol>
-        <p v-if="failureErrors.length > visibleFailureErrors.length" class="base-import-dialog__errors-more">
-          {{ t('feedback.moreFailureDetails', { count: failureErrors.length - visibleFailureErrors.length }) }}
+        <p v-if="remainingErrorCount" class="base-import-dialog__errors-more">
+          {{ t('feedback.moreFailureDetails', { count: remainingErrorCount }) }}
         </p>
       </div>
     </section>
@@ -124,7 +125,7 @@
         </template>
         <template v-else-if="result">
           <el-button v-if="resultTone !== 'success'" @click="prepareRetry">{{ t('feedback.chooseAnotherFile') }}</el-button>
-          <el-button v-if="failureErrors.length" :icon="Download" @click="downloadFailureDetails">{{ t('feedback.downloadFailureDetails') }}</el-button>
+          <el-button v-if="failureErrors.length" :icon="Download" :loading="downloadingErrors" @click="downloadFailureDetails">{{ t('feedback.downloadFailureDetails') }}</el-button>
           <el-button type="primary" @click="handleVisible(false)">{{ resultTone === 'success' ? t('common.confirm') : t('common.close') }}</el-button>
         </template>
         <template v-else>
@@ -139,6 +140,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { CircleCheck, CircleClose, Close, Document, Download, FolderOpened, InfoFilled, Loading, UploadFilled, WarningFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { resolveFriendlyRequestMessage } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 
 type ImportFeedbackResult = {
@@ -147,6 +150,9 @@ type ImportFeedbackResult = {
   successCount?: number;
   failureCount?: number;
   errors?: string[];
+  rolledBack?: boolean;
+  totalCount?: number;
+  batchNo?: string;
 };
 
 const props = defineProps<{
@@ -156,6 +162,7 @@ const props = defineProps<{
   templatePermission: string;
   confirmText?: string;
   result?: ImportFeedbackResult | null;
+  downloadErrors?: () => Promise<void>;
 }>();
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
@@ -167,13 +174,16 @@ const { t } = useI18n();
 const inputRef = ref<HTMLInputElement>();
 const selectedFile = ref<File | null>(null);
 const validationError = ref('');
+const downloadingErrors = ref(false);
 
 const successCount = computed(() => Math.max(0, Number(props.result?.successCount || 0)));
 const failureCount = computed(() => Math.max(0, Number(props.result?.failureCount || 0)));
-const totalCount = computed(() => successCount.value + failureCount.value);
+const totalCount = computed(() => props.result?.totalCount ?? successCount.value + failureCount.value);
 const hasCountSummary = computed(() => props.result?.successCount !== undefined || props.result?.failureCount !== undefined);
 const failureErrors = computed(() => (props.result?.errors || []).filter((message) => Boolean(message?.trim())));
 const visibleFailureErrors = computed(() => failureErrors.value.slice(0, 5));
+const remainingErrorCount = computed(() => Math.max(0,
+  (props.downloadErrors ? failureCount.value : failureErrors.value.length) - visibleFailureErrors.value.length));
 const resultTone = computed<'success' | 'partial' | 'failure' | 'error'>(() => {
   if (props.result?.type === 'error') return 'error';
   if (failureCount.value > 0 && successCount.value > 0) return 'partial';
@@ -181,13 +191,14 @@ const resultTone = computed<'success' | 'partial' | 'failure' | 'error'>(() => {
   return 'success';
 });
 const resultTagType = computed(() => resultTone.value === 'success' ? 'success' : resultTone.value === 'partial' ? 'warning' : 'danger');
-const resultTitle = computed(() => t(`feedback.resultTitle.${resultTone.value}`));
+const resultTitle = computed(() => props.result?.rolledBack ? t('feedback.rollbackTitle') : t(`feedback.resultTitle.${resultTone.value}`));
 const resultTagText = computed(() => t(`feedback.resultTag.${resultTone.value}`));
 const resultDescription = computed(() => {
+  if (props.result?.rolledBack) return t('feedback.rollbackSummary', { total: totalCount.value, errors: failureCount.value });
   if (hasCountSummary.value) return t('feedback.importCountSummary', { total: totalCount.value, success: successCount.value, failure: failureCount.value });
   return props.result?.message || t('feedback.importFailed');
 });
-const resultNote = computed(() => t(`feedback.resultNote.${resultTone.value}`, { count: failureCount.value }));
+const resultNote = computed(() => props.result?.rolledBack ? t('feedback.rollbackNote') : t(`feedback.resultNote.${resultTone.value}`, { count: failureCount.value }));
 
 watch(() => props.modelValue, (visible) => { if (!visible) clearFile(); });
 
@@ -226,7 +237,15 @@ function csvCell(value: string | number) {
   const text = String(value ?? '');
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
-function downloadFailureDetails() {
+async function downloadFailureDetails() {
+  if (downloadingErrors.value) return;
+  if (props.downloadErrors) {
+    downloadingErrors.value = true;
+    try { await props.downloadErrors(); }
+    catch (error) { ElMessage.error(resolveFriendlyRequestMessage(error, String(document.documentElement.lang || 'zh-CN'))); }
+    finally { downloadingErrors.value = false; }
+    return;
+  }
   if (!failureErrors.value.length) return;
   const rows = [
     [t('feedback.failureSequence'), t('feedback.failureReason')],

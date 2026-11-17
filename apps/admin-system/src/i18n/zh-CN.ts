@@ -73,6 +73,11 @@ export default {
     moreFailureDetails: '还有 {count} 条失败原因，请下载明细查看。',
     failureSequence: '序号',
     failureReason: '失败原因',
+    batchNo: '导入批次',
+    validationErrorCount: '校验错误行',
+    rollbackTitle: '校验失败，整批未导入',
+    rollbackSummary: '共 {total} 行，发现 {errors} 行校验错误，本批成功写入 0 行。',
+    rollbackNote: '整个批次已回滚，包括校验通过的行。请下载完整错误明细，修正后重新提交整个文件。',
     resultTitle: {
       success: '导入完成 · 全部成功',
       partial: '导入完成 · 部分成功',
@@ -5648,6 +5653,8 @@ export default {
       success: '审核完成，通知邮件将在事务提交后发送',
     },
     common: {
+      reviewUnavailable: '人工复核（未开放）',
+      selectExecutableDecision: '人工复核暂不开放，请选择通过或拒绝后保存。',
       ruleName: '规则名称',
       matchValue: '匹配值',
       country: '国家/地区',

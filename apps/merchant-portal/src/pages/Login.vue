@@ -81,7 +81,6 @@
                                 autocomplete="current-password"
                                 show-password
                                 :placeholder="t('login.passwordPlaceholder')"
-                                @keyup.enter="handleLogin"
                             />
                         </el-form-item>
                         <div class="merchant-login-form__tools">
@@ -92,7 +91,6 @@
                                 <el-input
                                     v-model.trim="form.verifyCode"
                                     :placeholder="t('login.verifyCodePlaceholder')"
-                                    @keyup.enter="handleLogin"
                                 />
                                 <button
                                     class="merchant-login-verify-code__image"
@@ -108,7 +106,7 @@
                                 </button>
                             </div>
                         </el-form-item>
-                        <el-button type="primary" class="merchant-login-submit" :loading="loading || loadingCredential" @click="handleLogin">
+                        <el-button type="primary" class="merchant-login-submit" native-type="submit" :loading="loading || loadingCredential">
                             {{ t('login.submit') }}
                         </el-button>
                     </el-form>
@@ -174,7 +172,7 @@
                                     autofocus
                                 />
                             </el-form-item>
-                            <el-button type="primary" class="merchant-login-submit" :loading="mfaLoading" @click="handleMfaSubmit">
+                            <el-button type="primary" class="merchant-login-submit" native-type="submit" :loading="mfaLoading">
                                 {{ mfaLoading ? t('login.mfaVerifying') : mfaSubmitText }}
                             </el-button>
                         </el-form>
@@ -411,6 +409,7 @@ function isRateLimitedError(error: unknown) {
 }
 
 async function handleLogin() {
+    if (loading.value || loadingCredential.value) return;
     if (!form.merchantId || !form.loginAccount || !form.password) {
         ElMessage.warning(t('login.loginFieldsRequired'));
         return;
@@ -506,6 +505,7 @@ async function reloadMfaBindInfo() {
 }
 
 async function handleMfaSubmit() {
+    if (mfaLoading.value) return;
     if (!loginTicket.value) {
         ElMessage.error(t('login.mfaTicketMissing'));
         return;
