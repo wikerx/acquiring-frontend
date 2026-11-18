@@ -212,6 +212,7 @@ const taskTypeOptions: MerchantExportTaskType[] = [
 ];
 const statusOptions: MerchantExportTaskStatus[] = ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED'];
 const taskTypeI18nKeys: Record<string, string> = {
+  MERCHANT_PAYMENT_LINK: 'exportTask.type.MERCHANT_PAYMENT_LINK',
   MERCHANT_TRANSACTION_OPERATION: 'exportTask.type.MERCHANT_TRANSACTION_OPERATION',
   MERCHANT_REFUND: 'exportTask.type.MERCHANT_REFUND',
   MERCHANT_SETTLEMENT_BATCH: 'exportTask.type.MERCHANT_SETTLEMENT_BATCH',

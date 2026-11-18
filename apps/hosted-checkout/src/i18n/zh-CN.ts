@@ -1,4 +1,28 @@
 export default {
+  paymentLinkEntry: {
+    lastFailed: '最后一次支付失败',
+    failedNotice: '该次支付未成功。链接过期后无法再次付款，请联系商户。',
+    unavailable: '此订单当前无法继续付款，请联系商户。',
+    title: '安全付款邀请',
+    loading: '正在确认支付链接…',
+    pay: '进入安全收银台',
+    retry: '重新确认',
+    refresh: '刷新支付结果',
+    secure: '由 Vexra 提供托管收单服务',
+    notFound: '无法打开支付链接，请向商户获取有效链接。',
+    error: '暂时无法确认链接状态，请稍后重试。',
+    starting: '正在打开收银台…',
+    expiry: '有效期至',
+    language: '语言',
+    status: {
+      ACTIVE: '此链接仅允许一次成功付款。付款失败后可使用原链接重试。',
+      COMPLETED: '此订单已完成付款，无需重复支付。',
+      DISABLED: '商户已停用此链接，请联系商户。',
+      EXPIRED: '此支付链接已过期，请联系商户。',
+    },
+    processing: '付款正在处理中，请等待最终结果，勿重复付款。',
+    startError: '无法打开收银台，请重新确认链接状态后重试。',
+  },
   topbar: {
     language: '语言',
     english: '英文',

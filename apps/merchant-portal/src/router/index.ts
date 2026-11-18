@@ -18,6 +18,7 @@ declare module 'vue-router' {
 }
 
 const staticChildren: RouteRecordRaw[] = [
+    { path: 'transaction/payment-link', component: () => import('@/pages/transaction/payment-link/index.vue'), meta: { titleKey: 'paymentLink.title', permission: 'merchant:transaction:payment-link:list' } },
     { path: 'home', component: () => import('@/pages/home/index.vue'), meta: { titleKey: 'route.home' } },
     { path: 'profile', component: () => import('@/pages/profile/index.vue'), meta: { titleKey: 'route.profile' } },
     { path: 'transaction/order', component: () => import('@/pages/transaction/order/index.vue'), meta: { titleKey: 'route.transactionOrder', permission: 'merchant:transaction:order:list' } },

@@ -1,6 +1,8 @@
+import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+    paymentLink: paymentLinkMessagesEn,
   media: {
     "serviceUnavailable": "Image safety checks or storage are temporarily unavailable. Please try again later.",
     "choose": "Choose image",
@@ -167,7 +169,8 @@ export default {
     retryAccepted: 'Export task queued again',
     retryFailed: 'Failed to retry export task',
     type: {
-      MERCHANT_TRANSACTION_OPERATION: 'Transaction Records',
+      MERCHANT_PAYMENT_LINK: 'Payment Links',
+        MERCHANT_TRANSACTION_OPERATION: 'Transaction Records',
       MERCHANT_REFUND: 'Refund Records',
       MERCHANT_SETTLEMENT_BATCH: 'Settlement Batches',
       MERCHANT_SETTLEMENT_SUMMARY: 'Settlement Summary',

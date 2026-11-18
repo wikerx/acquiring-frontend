@@ -1,6 +1,8 @@
+import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+    paymentLink: paymentLinkMessagesZh,
   media: {
     "serviceUnavailable": "图片安全检查或保存服务暂不可用，请稍后重试。",
     "choose": "选择图片",
@@ -166,7 +168,8 @@ export default {
     retryAccepted: '导出任务已重新排队',
     retryFailed: '导出任务重试失败',
     type: {
-      MERCHANT_TRANSACTION_OPERATION: '交易查询',
+      MERCHANT_PAYMENT_LINK: '支付链接',
+        MERCHANT_TRANSACTION_OPERATION: '交易查询',
       MERCHANT_REFUND: '退款记录',
       MERCHANT_SETTLEMENT_BATCH: '结算批次',
       MERCHANT_SETTLEMENT_SUMMARY: '结算汇总',

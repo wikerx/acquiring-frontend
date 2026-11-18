@@ -24,6 +24,7 @@ const MENU_ROUTE_TITLE_KEYS: Record<string, string> = {
     '/access-config/source-url': 'route.sourceUrl',
     '/access-config/ip-whitelist': 'route.ipWhitelist',
     '/transaction': 'route.transactionManage',
+    '/transaction/payment-link': 'paymentLink.title',
     '/transaction/order': 'route.transactionOrder',
     '/transaction/refund': 'route.transactionRefund',
     '/transaction/notification': 'route.transactionNotification',

@@ -1,6 +1,9 @@
+import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+    admin_payment_link_v1: 'Pay by Link',
+    paymentLink: paymentLinkMessagesEn,
   media: {
     "serviceUnavailable": "Image safety checks or storage are temporarily unavailable. Please try again later.",
     "choose": "Choose image",
@@ -324,6 +327,7 @@ export default {
       type: {
         ADMIN_OPERATIONAL_WORK_ITEM: 'Operational Work Items',
         ADMIN_TRANSACTION_ORDER: 'Transaction Orders',
+        ADMIN_PAYMENT_LINK: 'Payment Links',
         ADMIN_TRANSACTION_OPERATION: 'Transaction Operations',
         ADMIN_MERCHANT_NOTIFICATION: 'Merchant Notifications',
         ADMIN_SETTLEMENT_TRANSACTION: 'Settlement Transactions',

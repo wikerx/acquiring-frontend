@@ -82,7 +82,7 @@
                         </div>
                         <span>{{ t('checkout.secure') }}</span>
                     </div>
-                    <div class="checkout-order-list">
+                    <div v-if="orderItems.length" class="checkout-order-list">
                         <article v-for="item in orderItems" :key="item.name" class="checkout-order-item">
                             <div class="checkout-order-item__thumb">{{ item.initial }}</div>
                             <div>
@@ -847,6 +847,7 @@ const orderItems = computed(() => {
             amount: formatMoney(item.amount, item.currency || order.value?.currency),
         }));
     }
+    if (!order.value?.subject && !order.value?.description) return [];
     return [{
         initial: (order.value?.subject || 'O').slice(0, 1).toUpperCase(),
         name: order.value?.subject || t('checkout.orderItemDefault'),
@@ -1675,6 +1676,11 @@ async function refreshSessionEncryption() {
             cover: routeCover.value,
             clientContext: buildClientContext(),
         });
+        if (normalizeCode(response.pageState) === 'BLOCKED') {
+            hydrateSession(response);
+            blockCheckout('checkout.invalidLink');
+            return;
+        }
         session.value.cardEncryption = response.cardEncryption;
         if (response.paymentResult) {
             handlePaymentResult(response.paymentResult);

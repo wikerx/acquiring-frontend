@@ -126,7 +126,9 @@ export function toSourceTimeZoneInstant(value: string | number | Date | null | u
         return new Date(sourceAsUtc.getTime() - fixedOffsetMinutes * 60 * 1000);
     }
     const formattedAsSource = formatDateTimeInTimeZone(sourceAsUtc, sourceTimeZone).replace(' ', 'T');
-    const sourceOffsetMillis = new Date(`${formattedAsSource}Z`).getTime() - sourceAsUtc.getTime();
+    // 格式化结果只有秒，偏移计算也按整秒对齐，避免把原始毫秒再次加回时间。
+    const sourceWholeSecond = sourceAsUtc.getTime() - sourceAsUtc.getUTCMilliseconds();
+    const sourceOffsetMillis = new Date(`${formattedAsSource}Z`).getTime() - sourceWholeSecond;
     return new Date(sourceAsUtc.getTime() - sourceOffsetMillis);
 }
 

@@ -1,4 +1,31 @@
 export default {
+  paymentLinkEntry: {
+    lastFailed: 'Last payment attempt failed',
+    failedNotice:
+      'This attempt did not succeed. Once the link expires, contact the merchant to arrange payment.',
+    unavailable:
+      'This order cannot accept another payment at this time. Please contact the merchant.',
+    title: 'Secure payment invitation',
+    loading: 'Checking this payment link…',
+    pay: 'Continue to secure checkout',
+    retry: 'Check again',
+    refresh: 'Refresh payment status',
+    secure: 'Hosted acquiring payments by Vexra',
+    notFound: 'This payment link is unavailable. Ask the merchant for a valid link.',
+    error: 'We could not confirm this link. Please try again shortly.',
+    starting: 'Opening secure checkout…',
+    expiry: 'Expires at',
+    language: 'Language',
+    status: {
+      ACTIVE:
+        'This link can collect one successful payment. You can retry failed payments using the same link.',
+      COMPLETED: 'This order has been paid. No further payment is needed.',
+      DISABLED: 'The merchant disabled this link. Please contact the merchant.',
+      EXPIRED: 'This payment link expired. Please contact the merchant.',
+    },
+    processing: 'A payment is being processed. Wait for the final result and do not pay again.',
+    startError: 'Unable to open checkout. Check the link status before trying again.',
+  },
   topbar: {
     language: 'Language',
     english: 'English',
@@ -95,7 +122,8 @@ export default {
     failureReason: 'Failure Reason',
     failureReasonValue: 'Issuer declined',
     failureReasons: {
-      F1000: 'The transaction was declined. Please contact your card issuer or try a different payment method.',
+      F1000:
+        'The transaction was declined. Please contact your card issuer or try a different payment method.',
       PAYMENT_TIMEOUT: 'The payment deadline has passed and this link can no longer be used',
       RISK_REJECTED: 'The transaction did not pass security checks',
       ROUTE_FAILED: 'No payment route is currently available',

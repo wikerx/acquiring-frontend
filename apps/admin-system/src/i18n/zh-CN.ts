@@ -1,6 +1,9 @@
+import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+    admin_payment_link_v1: '支付链接',
+    paymentLink: paymentLinkMessagesZh,
   media: {
     "serviceUnavailable": "图片安全检查或保存服务暂不可用，请稍后重试。",
     "choose": "选择图片",
@@ -322,6 +325,7 @@ export default {
       type: {
         ADMIN_OPERATIONAL_WORK_ITEM: '统一运营待办',
         ADMIN_TRANSACTION_ORDER: '交易主单',
+        ADMIN_PAYMENT_LINK: '支付链接',
         ADMIN_TRANSACTION_OPERATION: '交易操作流水',
         ADMIN_MERCHANT_NOTIFICATION: '商户通知记录',
         ADMIN_SETTLEMENT_TRANSACTION: '结算交易明细',
