@@ -84,6 +84,7 @@ export default {
     payAmount: '支付 {amount}',
     submitting: '支付处理中...',
     paymentDeadline: '剩余付款时间',
+    paymentDeadlineDuration: '{days}天 {hours}时 {minutes}分 {seconds}秒',
     paymentDeadlineExpired: '付款链接',
     paymentDeadlineExpiredValue: '已过期',
     submitFailed: '支付提交失败，请检查卡片信息后重试。',

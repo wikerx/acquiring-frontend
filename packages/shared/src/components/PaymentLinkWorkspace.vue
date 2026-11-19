@@ -13,6 +13,15 @@
     <el-alert v-if="filterError" :title="filterError" type="error" :closable="false" show-icon>
       <el-button link @click="loadFilters">{{ t('paymentLink.retry') }}</el-button>
     </el-alert>
+    <el-alert
+      v-if="summaryError && summaryError !== error"
+      :title="summaryError"
+      type="error"
+      :closable="false"
+      show-icon
+    >
+      <el-button link @click="reload">{{ t('paymentLink.retry') }}</el-button>
+    </el-alert>
     <component
       :is="searchPanelComponent"
       :visible="showSearch"
@@ -180,7 +189,7 @@
         size="small"
         :table-key="`${scope}-payment-links-v1`"
         border
-        :empty-text="t('paymentLink.empty')"
+        :empty-text="error || t('paymentLink.empty')"
       >
         <el-table-column
           prop="linkId"
@@ -298,6 +307,7 @@
         </el-table-column>
       </component>
       <el-pagination
+        v-if="!error"
         v-model:current-page="query.pageNo"
         v-model:page-size="query.pageSize"
         :total="total"
@@ -964,6 +974,7 @@
   const loading = ref(false);
   const exporting = ref(false);
   const error = ref('');
+  const summaryError = ref('');
   let generation = 0;
   let destroyed = false;
   const detail = ref<PaymentLinkView & { orderNo: string }>();
@@ -1153,20 +1164,43 @@
     const seq = ++generation;
     loading.value = true;
     error.value = '';
+    summaryError.value = '';
     try {
       const input = normalizedQuery();
-      const [page, aggregate] = await Promise.all([
-        props.api.search(input),
-        props.api.summary(input),
+      await Promise.all([
+        props.api
+          .search(input)
+          .then((page) => {
+            if (seq !== generation || destroyed) return;
+            rows.value = page.records;
+            total.value = page.total;
+          })
+          .catch((cause) => {
+            if (seq !== generation || destroyed) return;
+            error.value = userFacingErrorMessage(cause, t('paymentLink.error'));
+            rows.value = [];
+            total.value = 0;
+          })
+          .finally(() => {
+            if (seq === generation) loading.value = false;
+          }),
+        props.api
+          .summary(input)
+          .then((aggregate) => {
+            if (seq !== generation || destroyed) return;
+            summary.value = aggregate;
+          })
+          .catch((cause) => {
+            if (seq !== generation || destroyed) return;
+            summaryError.value = userFacingErrorMessage(cause, t('paymentLink.error'));
+            summary.value = undefined;
+          }),
       ]);
-      if (seq !== generation || destroyed) return;
-      rows.value = page.records;
-      total.value = page.total;
-      summary.value = aggregate;
     } catch (cause) {
-      if (seq === generation) {
+      if (seq === generation && !destroyed) {
         error.value = userFacingErrorMessage(cause, t('paymentLink.error'));
         rows.value = [];
+        total.value = 0;
         summary.value = undefined;
       }
     } finally {

@@ -711,9 +711,11 @@ body {
     min-height: 50px;
     padding: 10px 14px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    row-gap: 6px;
     border: 1px solid #dbe4f0;
     border-radius: 8px;
     background: #f8fafc;
@@ -721,15 +723,18 @@ body {
 }
 
 .checkout-deadline__label {
+    flex-shrink: 0;
     font-size: 13px;
     font-weight: 700;
 }
 
 .checkout-deadline strong {
     min-width: 76px;
+    margin-left: auto;
     color: #1d4ed8;
     font-variant-numeric: tabular-nums;
     text-align: right;
+    white-space: nowrap;
 }
 
 .checkout-deadline--expired {

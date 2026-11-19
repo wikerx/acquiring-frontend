@@ -34,6 +34,7 @@ async function workspace(
   scope: 'admin' | 'merchant',
   width: number,
   readOnly = false,
+  readFailure?: 'search' | 'summary' | 'filters',
 ) {
   const page = await browser.newPage({ viewport: { width, height: width > 2000 ? 1800 : 1000 } });
   const errors: string[] = [];
@@ -46,6 +47,8 @@ async function workspace(
     exported = 0;
   const calls: string[] = [];
   let latestSearch: Record<string, unknown> = {};
+  let failingRead = readFailure;
+  const readError = `QA ${readFailure} temporarily unavailable`;
   const prefix =
     scope === 'admin' ? 'transaction:payment-link:' : 'merchant:transaction:payment-link:';
   await page.addInitScript(
@@ -61,6 +64,12 @@ async function workspace(
     const input = route.request().postDataJSON();
     const reply = (data: unknown) => route.fulfill({ json: good(data) });
     calls.push(path);
+    if (
+      (failingRead === 'filters' && path.endsWith('/payment-links/filter-options')) ||
+      (failingRead === 'search' && path.endsWith('/payment-links/search')) ||
+      (failingRead === 'summary' && path.endsWith('/payment-links/summary'))
+    )
+      return route.fulfill({ json: { code: 'F503', message: readError, data: null } });
     if (path === `/${scope}/auth/me`)
       return reply({
         account: {
@@ -226,6 +235,31 @@ async function workspace(
   });
   await page.goto(`http://127.0.0.1:${scope === 'admin' ? 5194 : 5195}/transaction/payment-link`);
   await page.locator('.pl-workspace').waitFor();
+  if (readFailure) {
+    const alert = page.locator('.pl-workspace > .el-alert').filter({ hasText: readError });
+    await expect(alert).toBeVisible();
+    if (readFailure === 'search') {
+      await expect(page.locator('.pl-list .el-table__empty-text')).toHaveText(readError);
+      await expect(page.locator('.pl-list .el-pagination')).toHaveCount(0);
+      await expect(page.locator('.pl-summary .pl-metric--total strong')).toHaveText('1');
+    } else {
+      await expect(page.getByRole('button', { name: '详情', exact: true }).first()).toBeVisible();
+      if (readFailure === 'summary')
+        await expect(page.locator('.pl-summary .pl-metric--total strong')).toHaveText('—');
+      else await expect(page.locator('.pl-summary .pl-metric--total strong')).toHaveText('1');
+    }
+    await page.screenshot({ path: test.info().outputPath('partial-read-failure.png'), fullPage: true });
+    failingRead = undefined;
+    await alert.getByRole('button', { name: '重试', exact: true }).click();
+    await expect(alert).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '详情', exact: true }).first()).toBeVisible();
+    await expect(page.locator('.pl-list .el-pagination')).toBeVisible();
+    await expect(page.locator('.pl-summary .pl-metric--total strong')).toHaveText('1');
+    assert.equal(creates + sends + exported, 0);
+    assert.deepEqual(errors, []);
+    await page.close();
+    return;
+  }
   await page.getByRole('button', { name: '详情', exact: true }).first().waitFor();
   assert.equal(
     await page
@@ -327,7 +361,9 @@ async function workspace(
   await expect(dialog.getByRole('combobox', { name: '*币种', exact: true })).toBeVisible();
   await expect(dialog.getByRole('radio', { name: '1 小时', exact: true })).toBeChecked();
   await expect(dialog.locator('.pl-two .currency-display').first()).toContainText('USD');
-  await dialog.getByRole('checkbox', { name: /Visa/ }).waitFor();
+  // Element Plus 的原生 input 为零尺寸；检查可见品牌标签与真实勾选状态。
+  await expect(dialog.getByText('Visa', { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByRole('checkbox', { name: /Visa/ })).toBeChecked();
   if (!(scope === 'merchant' && width === 1440))
     await dialog.getByLabel('链接名称', { exact: true }).fill('新建验收链接');
   if (scope === 'merchant' && width === 1440) {
@@ -337,7 +373,9 @@ async function workspace(
     const expiryBox = await dialog.locator('.pl-expiry-controls .el-date-editor').boundingBox();
     assert.ok(expiryBox && expiryBox.width >= 210);
   } else if (width === 2560 || scope === 'admin') {
-    await dialog.getByRole('radio', { name: width === 2560 ? '30 天' : '72 小时', exact: true }).check();
+    const duration = width === 2560 ? '30 天' : '72 小时';
+    await dialog.getByText(duration, { exact: true }).click();
+    await expect(dialog.getByRole('radio', { name: duration, exact: true })).toBeChecked();
   }
   await dialog.getByLabel('金额', { exact: true }).fill('99.00');
   await dialog.screenshot({ path: test.info().outputPath('create.png') });
@@ -403,6 +441,10 @@ async function payer(
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   let starts = 0;
+  const loadedScripts: string[] = [];
+  page.on('request', (request) => {
+    if (request.resourceType() === 'script') loadedScripts.push(new URL(request.url()).pathname);
+  });
   await page.route('**/checkout/api/v1/payment-links/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/resolve')) {
@@ -446,6 +488,7 @@ async function payer(
     );
     assert.equal(starts, 0);
   }
+  assert.equal(loadedScripts.some((path) => path.endsWith('/src/App.vue')), false);
   assert.equal(await page.evaluate(() => Boolean(localStorage.getItem('opaqueToken'))), false);
   assert.equal(await page.locator('meta[name="referrer"]').getAttribute('content'), 'no-referrer');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
@@ -515,6 +558,15 @@ for (const scope of ['admin', 'merchant'] as const) {
   test(`${scope} 只读权限不展示写入入口或邮件投递`, async ({ browser }) => {
     await workspace(browser, scope, 1440, true);
   });
+}
+for (const scope of ['admin', 'merchant'] as const) {
+  for (const width of [1440, 390]) {
+    for (const failure of ['search', 'summary', 'filters'] as const) {
+      test(`${scope} ${width} 管理查询 ${failure} 局部失败与重试`, async ({ browser }) => {
+        await workspace(browser, scope, width, true, failure);
+      });
+    }
+  }
 }
 for (const state of ['ACTIVE', 'COMPLETED', 'DISABLED', 'EXPIRED']) {
   test(`付款入口 ${state}: 状态和提交边界`, async ({ browser }) => {

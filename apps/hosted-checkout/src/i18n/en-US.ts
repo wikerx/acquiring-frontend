@@ -93,6 +93,7 @@ export default {
     payAmount: 'Pay {amount}',
     submitting: 'Processing payment...',
     paymentDeadline: 'Time remaining to pay',
+    paymentDeadlineDuration: '{days}d {hours}h {minutes}m {seconds}s',
     paymentDeadlineExpired: 'Payment link',
     paymentDeadlineExpiredValue: 'Expired',
     submitFailed: 'Payment could not be submitted. Please check the card details and try again.',

@@ -724,10 +724,16 @@ const paymentDeadlineText = computed(() => {
     if (remaining <= 0) {
         return t('checkout.paymentDeadlineExpiredValue');
     }
-    const hours = Math.floor(remaining / 3600);
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
     const minutes = Math.floor((remaining % 3600) / 60);
     const seconds = remaining % 60;
-    return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
+    return t('checkout.paymentDeadlineDuration', {
+        days,
+        hours: String(hours).padStart(2, '0'),
+        minutes: String(minutes).padStart(2, '0'),
+        seconds: String(seconds).padStart(2, '0'),
+    });
 });
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
@@ -1443,7 +1449,7 @@ function applyPageState(pageState?: string) {
     blockCheckout('checkout.invalidLink');
 }
 
-/** 使用服务端响应时间校准 24 小时提交截止倒计时。 */
+/** 使用服务端响应时间校准提交截止倒计时，兼容跨天有效期。 */
 function startPaymentDeadline(expireTime?: string, serverTime?: string) {
     clearPaymentDeadline();
     const expireAt = parseTimestamp(expireTime);
