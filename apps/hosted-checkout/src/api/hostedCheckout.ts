@@ -31,6 +31,8 @@ export interface HostedCheckoutSession {
     pageState: CheckoutPageState | string;
     merchant?: {
         displayName?: string;
+        supportedPaymentMethods?: string[];
+        supportedCardBrands?: string[];
         logoUrl?: string;
     };
     order?: {

@@ -639,3 +639,6 @@ export * from './paymentLink';
 export * from './paymentLinkMessages';
 export { default as PaymentLinkStatusDisplay } from './components/PaymentLinkStatusDisplay.vue';
 export { default as PaymentLinkWorkspace } from './components/PaymentLinkWorkspace.vue';
+export { default as CheckoutOrderSummary } from './components/CheckoutOrderSummary.vue';
+export { default as CheckoutMerchantLogo } from './components/CheckoutMerchantLogo.vue';
+export * from './paymentLinkPresentation';

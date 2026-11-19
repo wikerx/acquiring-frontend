@@ -6,6 +6,7 @@ import mastercardLogo from './assets/payment-icons/normalized/mastercard.png';
 import jcbLogo from './assets/payment-icons/normalized/jcb.png';
 import maestroLogo from './assets/payment-icons/normalized/maestro.png';
 import unionPayLogo from './assets/payment-icons/normalized/union-pay.png';
+import bankCardLogo from './assets/payment-icons/cards/bank-card.svg';
 import httpsLogo from './assets/payment-icons/security/https.svg';
 import pciDssLogo from './assets/payment-icons/security/pci-dss.svg';
 import sslLogo from './assets/payment-icons/security/ssl.svg';
@@ -184,6 +185,8 @@ export const PAYMENT_LOGO_REGISTRY: Record<PaymentLogoKey, PaymentLogoConfig> = 
         kind: 'card-brand',
         label: 'Bank Card',
         textFallback: 'Bank Card',
+        asset: bankCardLogo,
+        assetSource: 'Local generic bank card symbol; no card brand implied',
     },
     digitalWallet: {
         key: 'digitalWallet',

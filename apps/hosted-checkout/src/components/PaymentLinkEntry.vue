@@ -1,71 +1,95 @@
 <template>
-  <main class="link-entry">
-    <header>
-      <VexraBrandLogo system="checkout" mode="full" /><label
-        >{{ t('paymentLinkEntry.language')
-        }}<select :value="locale" @change="changeLanguage">
-          <option value="en-US">English</option>
-          <option value="zh-CN">简体中文</option>
-        </select></label
-      >
-    </header>
-    <section class="link-card" :aria-busy="loading || starting" aria-live="polite">
-      <div class="link-lock" aria-hidden="true">{{ link?.status === 'COMPLETED' ? '✓' : '↗' }}</div>
-      <p class="link-eyebrow">{{ t('paymentLinkEntry.title') }}</p>
-      <p v-if="loading">{{ t('paymentLinkEntry.loading') }}</p>
-      <template v-else-if="link">
-        <h1>{{ link.merchantDisplayName }}</h1>
-        <h2 v-if="link.linkName">{{ link.linkName }}</h2>
-        <CurrencyAmountDisplay
-          :amount="link.amount"
-          :exponent="link.currencyExponent"
-          :currency="link.currency"
-          size="lg"
-          :locale="locale"
-          emphasized
-        />
-        <p v-if="link.description" class="link-description">{{ link.description }}</p>
-        <p class="link-state" :class="{ 'link-state--success': link.status === 'COMPLETED' }">
-          {{
-            link.processing
-              ? t('paymentLinkEntry.processing')
-              : link.status === 'ACTIVE' && !link.payable
-                ? t('paymentLinkEntry.unavailable')
-                : t(`paymentLinkEntry.status.${link.status}`)
-          }}
-        </p>
-        <div
-          v-if="link.lastFailedTime && !link.processing && link.status !== 'COMPLETED'"
-          class="link-last-failure"
-        >
-          <strong>{{ t('paymentLinkEntry.lastFailed') }}</strong>
-          <p>{{ formatDateTime(link.lastFailedTime) }} (UTC+08:00)</p>
-          <p>{{ t('paymentLinkEntry.failedNotice') }}</p>
-        </div>
-        <p class="link-expiry">{{ t('paymentLinkEntry.expiry') }} · {{ expiry }}</p>
-        <button
-          v-if="link.payable && !link.processing"
-          class="link-primary"
-          :disabled="starting"
-          @click="start"
-        >
-          {{ t(starting ? 'paymentLinkEntry.starting' : 'paymentLinkEntry.pay') }}
-        </button>
-        <button v-if="link.processing" class="link-primary" :disabled="starting" @click="resolve()">
-          {{ t('paymentLinkEntry.refresh') }}
-        </button>
-      </template>
-      <p v-if="error" role="alert" class="link-error">{{ error }}</p>
-      <button
-        v-if="error"
-        class="link-secondary"
-        :disabled="loading || starting"
-        @click="resolve()"
-      >
-        {{ t('paymentLinkEntry.retry') }}
-      </button>
+  <main class="checkout-shell">
+    <CheckoutTopbar :locale="locale" :status="statusLabel" @change="changeLanguage" />
+    <section
+      v-if="link"
+      class="checkout-layout"
+      :aria-busy="loading || starting"
+      aria-live="polite"
+    >
+      <CheckoutOrderSummary
+        :merchant-name="link.merchantDisplayName"
+        :formatted-amount="formattedAmount"
+        :items="items"
+        :labels="{
+          merchant: t('checkout.merchantStore'),
+          summary: t('checkout.orderSummary'),
+          secure: t('checkout.secure'),
+          total: t('checkout.total'),
+        }"
+      />
+      <section class="checkout-form-panel">
+        <article class="checkout-section-card link-payment-card">
+          <div class="checkout-section-card__header">
+            <div>
+              <p>{{ t('paymentLinkEntry.title') }}</p>
+              <h2>{{ t('paymentLinkEntry.confirmTitle') }}</h2>
+            </div>
+          </div>
+          <div class="link-amount">
+            <span>{{ t('checkout.total') }}</span
+            ><strong>{{ formattedAmount }}</strong>
+          </div>
+          <p class="link-state" :class="{ 'link-state--success': link.status === 'COMPLETED' }">
+            {{
+              link.processing
+                ? t('paymentLinkEntry.processing')
+                : link.status === 'ACTIVE' && !link.payable
+                  ? t('paymentLinkEntry.unavailable')
+                  : t(`paymentLinkEntry.status.${link.status}`)
+            }}
+          </p>
+          <div
+            v-if="link.lastFailedTime && !link.processing && link.status !== 'COMPLETED'"
+            class="link-last-failure"
+          >
+            <strong>{{ t('paymentLinkEntry.lastFailed') }}</strong>
+            <p>{{ formatDateTime(link.lastFailedTime) }} (UTC+08:00)</p>
+            <p>{{ t('paymentLinkEntry.failedNotice') }}</p>
+          </div>
+          <div class="link-expiry">
+            <span>{{ t('paymentLinkEntry.expiry') }}</span
+            ><time>{{ expiry }}</time>
+          </div>
+          <p v-if="error" role="alert" class="link-error">{{ error }}</p>
+          <button
+            v-if="link.payable && !link.processing"
+            class="checkout-submit"
+            :disabled="starting || loading"
+            @click="start"
+          >
+            {{ t(starting ? 'paymentLinkEntry.starting' : 'paymentLinkEntry.pay') }}
+          </button>
+          <button
+            v-if="link.processing"
+            class="checkout-submit"
+            :disabled="starting || loading"
+            @click="resolve()"
+          >
+            {{ t('paymentLinkEntry.refresh') }}
+          </button>
+          <button
+            v-if="error"
+            class="link-secondary"
+            :disabled="loading || starting"
+            @click="resolve()"
+          >
+            {{ t('paymentLinkEntry.retry') }}
+          </button>
+        </article>
+      </section>
     </section>
-    <p class="link-footer">{{ t('paymentLinkEntry.secure') }}</p>
+    <section v-else class="checkout-status-shell" aria-live="polite" :aria-busy="loading">
+      <article class="checkout-status-card">
+        <h1>{{ t('paymentLinkEntry.title') }}</h1>
+        <p v-if="loading">{{ t('paymentLinkEntry.loading') }}</p>
+        <p v-if="error" role="alert" class="link-error">{{ error }}</p>
+        <button v-if="error" class="link-secondary" :disabled="loading" @click="resolve()">
+          {{ t('paymentLinkEntry.retry') }}
+        </button>
+      </article>
+    </section>
+    <CheckoutTrustFooter />
   </main>
 </template>
 <script setup lang="ts">
@@ -74,12 +98,15 @@
   import axios, { type AxiosError } from 'axios';
   import {
     createDuplicateSubmissionGuard,
-    CurrencyAmountDisplay,
-    VexraBrandLogo,
+    CheckoutOrderSummary,
+    formatMoneyAmount,
     type CommonResult,
     formatDateTime,
   } from '@acquiring/shared';
   import { setLocale } from '../i18n';
+  import { paymentLinkStatusDelay, usePaymentLinkError } from '../utils/paymentLinkState';
+  import CheckoutTopbar from './CheckoutTopbar.vue';
+  import CheckoutTrustFooter from './CheckoutTrustFooter.vue';
   interface PublicLink {
     linkName: string;
     description?: string;
@@ -119,16 +146,34 @@
   const link = ref<PublicLink>();
   const loading = ref(false);
   const starting = ref(false);
-  const error = ref('');
+  const { key: errorKey, message: error } = usePaymentLinkError(t);
   const requestId = crypto.randomUUID();
   let manualLanguage = false;
   let destroyed = false;
   let checking = false;
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const statusLabel = computed(() =>
+    !link.value
+      ? undefined
+      : link.value.processing
+        ? t('topbar.processing')
+        : link.value.status === 'ACTIVE' && !link.value.payable
+          ? t('paymentLinkEntry.unavailableLabel')
+          : t(`paymentLinkEntry.statusLabels.${link.value.status}`),
+  );
   const expiry = computed(() => `${formatDateTime(link.value?.expireTime)} (UTC+08:00)`);
-  function changeLanguage(event: Event) {
-    const value = (event.target as HTMLSelectElement).value;
+  const formattedAmount = computed(() =>
+    link.value
+      ? `${link.value.currency} ${formatMoneyAmount(link.value.amount, String(locale.value), link.value.currencyExponent)}`
+      : '—',
+  );
+  const items = computed(() =>
+    link.value && (link.value.linkName || link.value.description)
+      ? [{ name: link.value.linkName || t('checkout.orderSummary'), meta: link.value.description }]
+      : [],
+  );
+  function changeLanguage(value: string) {
     manualLanguage = true;
     setLocale(value === 'zh-CN' ? 'zh-CN' : 'en-US');
   }
@@ -140,14 +185,8 @@
     clearTimer();
     const value = link.value;
     if (destroyed || document.hidden || !value || failures >= 8) return;
-    let delay: number;
-    if (value.processing) delay = Math.min(30000, 5000 * (1 + failures));
-    else if (value.status === 'ACTIVE' && value.payable) {
-      const deadline = Date.parse(value.expireTime + '+08:00');
-      const serverNow = Date.parse(value.serverTime + '+08:00');
-      if (!Number.isFinite(deadline) || !Number.isFinite(serverNow)) return;
-      delay = Math.max(500, deadline - serverNow + 200);
-    } else return;
+    const delay = paymentLinkStatusDelay(value, failures);
+    if (delay === null) return;
     timer = setTimeout(() => {
       void resolve(true);
     }, delay);
@@ -157,7 +196,7 @@
     checking = true;
     clearTimer();
     if (!silent) loading.value = true;
-    error.value = '';
+    errorKey.value = '';
     try {
       if (!token) throw new Error('Invalid link');
       const response = await http.post<CommonResult<PublicLink>>(
@@ -176,7 +215,7 @@
     } catch {
       failures += 1;
       if (!destroyed)
-        error.value = t(token ? 'paymentLinkEntry.error' : 'paymentLinkEntry.notFound');
+        errorKey.value = token ? 'paymentLinkEntry.error' : 'paymentLinkEntry.notFound';
     } finally {
       checking = false;
       if (!destroyed) {
@@ -192,7 +231,7 @@
   async function start() {
     if (starting.value || !link.value?.payable || link.value.processing) return;
     starting.value = true;
-    error.value = '';
+    errorKey.value = '';
     let navigating = false;
     try {
       const response = await http.post<CommonResult<{ checkoutUrl: string }>>(
@@ -217,7 +256,7 @@
       window.location.replace(next.toString());
     } catch {
       navigating = false;
-      error.value = t('paymentLinkEntry.startError');
+      errorKey.value = 'paymentLinkEntry.startError';
       scheduleStatusCheck();
     } finally {
       if (!navigating) starting.value = false;
@@ -235,159 +274,78 @@
   });
 </script>
 <style scoped>
-  .link-entry {
-    max-width: 1060px;
-    margin: 0 auto;
-    padding: 30px 24px;
-    min-height: 100dvh;
-    box-sizing: border-box;
-    color: #172026;
-  }
-  .link-entry header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-  }
-  .link-entry header :deep(svg),
-  .link-entry header :deep(img) {
-    max-width: 150px;
-  }
-  .link-entry label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: #475569;
-  }
-  .link-entry select {
-    border: 1px solid #d7dfed;
-    border-radius: 8px;
-    padding: 8px;
-    background: #fff;
-  }
-  .link-card {
-    max-width: 520px;
-    margin: 60px auto 20px;
-    padding: 38px;
-    box-sizing: border-box;
-    background: #fff;
-    border: 1px solid #dbe4f3;
-    border-radius: 20px;
-    box-shadow: 0 18px 70px #17316d0d;
-    text-align: center;
-    overflow-wrap: anywhere;
-  }
-  .link-lock {
-    width: 52px;
-    height: 52px;
-    margin: 0 auto 20px;
+  .link-payment-card {
     display: grid;
-    place-items: center;
-    background: #eff6ff;
-    color: #2563eb;
-    border-radius: 16px;
-    font-size: 28px;
+    gap: 24px;
   }
-  .link-eyebrow {
-    font-size: 13px;
+  .link-payment-card .checkout-section-card__header {
+    margin-bottom: 0;
+  }
+  .link-amount {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5eaf6;
+  }
+  .link-amount > span,
+  .link-expiry > span {
     color: #64748b;
+    font-size: 13px;
   }
-  h1 {
-    font-size: 23px;
-    line-height: 1.5;
-    margin: 10px 0;
-  }
-  h2 {
-    font-size: 16px;
-    color: #475569;
-    font-weight: 500;
-    margin: 0 0 24px;
-  }
-  .link-description {
-    white-space: pre-wrap;
-    line-height: 1.8;
-    color: #475569;
-    text-align: start;
-    margin-top: 26px;
+  .link-amount strong {
+    font-size: 30px;
+    color: #0b1026;
   }
   .link-state {
-    margin: 28px 0 16px;
-    padding: 14px;
+    margin: 0;
+    padding: 18px;
+    border-radius: 14px;
+    background: #f6f8ff;
     color: #475569;
-    background: #f5f8ff;
-    border-radius: 8px;
     font-size: 14px;
-    line-height: 1.7;
+    line-height: 1.8;
   }
   .link-state--success {
-    color: #166534;
+    color: #15803d;
     background: #f0fdf4;
   }
-  .link-last-failure {
-    padding: 14px;
-    border-radius: 8px;
-    background: #fef2f2;
-    color: #991b1b;
-    font-size: 13px;
-    line-height: 1.7;
-  }
   .link-expiry {
-    color: #64748b;
-    font-size: 12px;
-    line-height: 1.7;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 16px;
+    font-size: 13px;
+    color: #475569;
   }
-  .link-primary,
-  .link-secondary {
-    display: block;
-    width: 100%;
-    padding: 15px;
-    border: 0;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 24px;
+  .link-last-failure {
+    border-left: 3px solid #f59e0b;
+    padding: 4px 16px;
+    color: #92400e;
+    font-size: 13px;
+    line-height: 1.6;
   }
-  .link-primary {
-    background: #2563eb;
-    color: #fff;
-  }
-  .link-secondary {
-    background: #eff6ff;
-    color: #1d4ed8;
-  }
-  button:disabled {
-    opacity: 0.6;
-    cursor: wait;
-  }
-  button:focus-visible,
-  select:focus-visible {
-    outline: 3px solid #93c5fd;
-    outline-offset: 3px;
+  .link-last-failure p {
+    margin: 8px 0 0;
   }
   .link-error {
     color: #b91c1c;
-    line-height: 1.7;
+    line-height: 1.6;
     font-size: 14px;
   }
-  .link-footer {
-    text-align: center;
-    font-size: 12px;
-    color: #64748b;
+  .link-secondary {
+    background: #fff;
+    border: 1px solid #d7dff1;
+    color: #334155;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-weight: 600;
+    cursor: pointer;
   }
-  @media (max-width: 600px) {
-    .link-entry {
-      padding: 20px 16px;
-    }
-    .link-card {
-      margin-top: 36px;
-      padding: 28px 20px;
-    }
-    .link-entry label {
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 3px;
-    }
+  button:disabled {
+    cursor: wait;
+    opacity: 0.6;
   }
 </style>

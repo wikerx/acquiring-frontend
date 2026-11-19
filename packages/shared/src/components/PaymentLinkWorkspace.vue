@@ -116,11 +116,13 @@
       </template>
     </component>
     <section class="pl-summary" aria-live="polite">
-      <div v-for="key in summaryKeys" :key="key" class="pl-metric" :class="`pl-metric--${key}`">
-        <span>{{ t(`paymentLink.${key}`) }}</span
-        ><strong>{{ summary ? summary[key] : '—' }}</strong>
+      <div class="pl-counts">
+        <div v-for="key in summaryKeys" :key="key" class="pl-metric" :class="`pl-metric--${key}`">
+          <span>{{ t(`paymentLink.${key}`) }}</span>
+          <strong>{{ summary ? summary[key] : '—' }}</strong>
+        </div>
       </div>
-      <div class="pl-metric pl-collected">
+      <div class="pl-collected">
         <span>{{ t('paymentLink.successfulAmounts') }}</span>
         <div v-if="summary">
           <CurrencyAmountDisplay
@@ -307,8 +309,10 @@
     </section>
     <el-dialog
       v-model="createOpen"
+      class="dialog-layout-preserve"
+      destroy-on-close
       :title="t('paymentLink.create')"
-      width="min(980px, 96vw)"
+      width="min(1160px, 96vw)"
       :close-on-click-modal="false"
       :close-on-press-escape="!creating"
       :show-close="!creating"
@@ -318,9 +322,9 @@
         ref="createForm"
         :model="form"
         :rules="rules"
-        label-position="right"
-        :label-width="String(locale).startsWith('zh') ? '112px' : '148px'"
-        size="small"
+        :validate-on-rule-change="false"
+        label-position="top"
+        size="default"
         class="pl-create-form"
         @submit.prevent="createLink"
       >
@@ -339,26 +343,28 @@
               }}</el-button></el-alert
             >
             <div v-loading="optionsLoading">
-              <el-form-item :label="t('paymentLink.linkName')" prop="linkName"
-                ><el-input
-                  v-model="form.linkName"
-                  :placeholder="t('paymentLink.optionalName')"
-                  maxlength="120"
-                  show-word-limit
-                  :disabled="creating"
-              /></el-form-item>
-              <el-form-item :label="t('paymentLink.orderNo')" prop="merchantOrderNo"
-                ><el-input
-                  v-model="form.merchantOrderNo"
-                  maxlength="64"
-                  :placeholder="t('paymentLink.autoOrder')"
-                  :disabled="creating"
-              /></el-form-item>
+              <div class="pl-two">
+                <el-form-item :label="t('paymentLink.linkName')" prop="linkName"
+                  ><el-input
+                    v-model="form.linkName"
+                    :placeholder="t('paymentLink.optionalName')"
+                    maxlength="120"
+                    show-word-limit
+                    :disabled="creating"
+                /></el-form-item>
+                <el-form-item :label="t('paymentLink.orderNo')" prop="merchantOrderNo"
+                  ><el-input
+                    v-model="form.merchantOrderNo"
+                    maxlength="64"
+                    :placeholder="t('paymentLink.autoOrder')"
+                    :disabled="creating"
+                /></el-form-item>
+              </div>
               <el-form-item :label="t('paymentLink.description')" prop="description"
                 ><el-input
                   v-model="form.description"
                   type="textarea"
-                  :rows="3"
+                  :rows="2"
                   maxlength="500"
                   show-word-limit
                   :placeholder="t('paymentLink.descriptionHint')"
@@ -388,41 +394,39 @@
                     v-model="form.amount"
                     inputmode="decimal"
                     maxlength="25"
+                    :placeholder="
+                      t(
+                        amountExponent === 0
+                          ? 'paymentLink.integerAmountHint'
+                          : 'paymentLink.amountHint',
+                      )
+                    "
                     :disabled="creating"
                 /></el-form-item>
               </div>
               <div class="pl-expiry-section">
                 <el-form-item :label="t('paymentLink.expiryMode')" prop="expireTime">
                   <div class="pl-expiry-controls">
-                    <el-radio-group v-model="expiryMode" :disabled="creating">
-                      <el-radio-button value="quick">{{
-                        t('paymentLink.expiryQuick')
-                      }}</el-radio-button>
-                      <el-radio-button value="custom">{{
-                        t('paymentLink.expiryCustom')
-                      }}</el-radio-button>
-                    </el-radio-group>
-                    <el-select
-                      v-if="expiryMode === 'quick'"
-                      v-model="form.expireMinutes"
+                    <el-radio-group
+                      :model-value="expiryMode === 'quick' ? form.expireMinutes : undefined"
                       :disabled="creating"
-                      :aria-label="t('paymentLink.expiryQuick')"
+                      @change="chooseExpiry"
                     >
-                      <el-option
+                      <el-radio-button
                         v-for="minutes in expiryDurations"
                         :key="minutes"
                         :value="minutes"
-                        :label="t(`paymentLink.durations.${minutes}`)"
-                      />
-                    </el-select>
+                        >{{ t(`paymentLink.durations.${minutes}`) }}</el-radio-button
+                      >
+                    </el-radio-group>
                     <el-date-picker
-                      v-else
                       v-model="form.expireTime"
                       type="datetime"
                       format="YYYY-MM-DD HH:mm:ss"
                       value-format="YYYY-MM-DDTHH:mm:ss"
-                      :placeholder="t('paymentLink.expiryCustom')"
+                      :aria-label="t('paymentLink.expiryCustom')"
                       :disabled="creating"
+                      @change="expiryMode = 'custom'"
                     />
                   </div>
                 </el-form-item>
@@ -439,14 +443,26 @@
               <el-form-item prop="cardBrands" :label="t('paymentLink.brands')"
                 ><el-checkbox-group v-model="form.cardBrands" :disabled="creating"
                   ><el-checkbox v-for="brand in currentBrands" :key="brand" :value="brand"
-                    ><PaymentMethodDisplay
-                      :payment-types="[{ value: 'BANK_CARD', label: t('paymentLink.bankCard') }]"
-                      :payment-methods="[{ value: brand, label: brand }]" /></el-checkbox
-                ></el-checkbox-group>
+                    ><PaymentLogoGroup
+                      aria-hidden="true"
+                      :keys="resolvePaymentLogoKeys('BANK_CARD', brand)"
+                      size="sm"
+                    /><span>{{ brandName(brand) }}</span></el-checkbox
+                  ></el-checkbox-group
+                >
                 <p class="pl-hint">{{ t('paymentLink.allBrands') }}</p></el-form-item
               >
+              <el-form-item v-if="otherPaymentMethods.length" :label="t('paymentLink.otherMethods')">
+                <div class="pl-other-methods">
+                  <div v-for="method in otherPaymentMethods" :key="method" class="pl-other-method" aria-disabled="true">
+                    <PaymentLogoGroup :keys="resolvePaymentLogoKeys(method)" size="sm" />
+                    <span>{{ methodName(method) }}</span>
+                    <small>{{ t('paymentLink.methodUnavailable') }}</small>
+                  </div>
+                </div>
+              </el-form-item>
               <el-alert
-                v-if="options && !options.currencies.length"
+                v-if="options && form.currency && !currentBrands.length"
                 :title="t('paymentLink.noMethods')"
                 type="warning"
                 :closable="false"
@@ -461,12 +477,22 @@
             </div>
           </div>
           <aside class="pl-preview">
-            <span>{{ t('paymentLink.preview') }}</span>
-            <h3>{{ options?.merchantDisplayName || '—' }}</h3>
-            <h4 v-if="form.linkName">{{ form.linkName }}</h4>
-            <CurrencyAmountDisplay :amount="form.amount || '0'" :currency="form.currency" />
-            <p v-if="form.description" class="pl-description">{{ form.description }}</p>
-            <p class="pl-hint">{{ t('paymentLink.previewHint') }}</p>
+            <div class="pl-preview-heading">
+              <strong>{{ t('paymentLink.preview') }}</strong
+              ><span>{{ t('paymentLink.previewHint') }}</span>
+            </div>
+            <CheckoutOrderSummary
+              :merchant-name="options?.merchantDisplayName"
+              :order-reference="form.merchantOrderNo"
+              :formatted-amount="previewAmount"
+              :items="previewItems"
+              :labels="receiptLabels"
+            />
+            <div class="pl-preview-methods" v-if="form.cardBrands?.length">
+              <span>{{ t('paymentLink.brands') }}</span
+              ><PaymentLogoGroup :keys="previewLogoKeys" size="sm" wrap />
+            </div>
+            <div class="pl-preview-pay" aria-hidden="true">{{ t('paymentLink.payNow') }}</div>
           </aside>
         </div>
       </el-form>
@@ -476,7 +502,7 @@
           <el-button
             type="primary"
             :loading="creating"
-            :disabled="!options?.currencies.length || optionsLoading"
+            :disabled="!currentBrands.length || optionsLoading"
             @click="createLink"
             >{{ t('paymentLink.create') }}</el-button
           >
@@ -514,7 +540,9 @@
                   v-for="key in detailKeys"
                   :key="key"
                   :label="t(`paymentLink.${key === 'merchantId' ? 'merchant' : key}`)"
-                  >{{ detail[key] || '—' }}</el-descriptions-item
+                  >{{
+                    key === 'creator' ? creatorLabel(detail) : detail[key] || '—'
+                  }}</el-descriptions-item
                 >
                 <el-descriptions-item :label="t('paymentLink.amount')"
                   ><CurrencyAmountDisplay
@@ -602,7 +630,7 @@
                     type="primary"
                     @click="emit('openTransaction', row)"
                     >{{ row.transactionId }}</el-button
-                  ><span v-else>{{ row.transactionId || '—' }}</span></template
+                  ><span v-else>{{ row.transactionId || t('paymentLink.noSystemOrder') }}</span></template
                 ></el-table-column
               >
               <el-table-column :label="t('paymentLink.amount')" min-width="155"
@@ -657,10 +685,16 @@
               ><el-table-column
                 prop="locale"
                 :label="t('paymentLink.mailLocale')" /><el-table-column
-                prop="createdBy"
-                :label="t('paymentLink.actor')" /><el-table-column
-                :label="t('paymentLink.createTime')"
-                width="190"
+                :label="t('paymentLink.actor')"
+                min-width="220"
+                ><template #default="{ row }"
+                  ><span
+                    class="pl-operator-name"
+                    :title="row.createdBy ? `ID: ${row.createdBy}` : undefined"
+                    >{{ operatorName(row.createdAppCode, row.createdBy, row.createdByName) }}</span
+                  ></template
+                ></el-table-column
+              ><el-table-column :label="t('paymentLink.createTime')" width="190"
                 ><template #default="{ row }"
                   ><component
                     :is="dateTimeComponent"
@@ -675,11 +709,19 @@
                     ? t(`paymentLink.events.${row.eventType}`)
                     : row.eventType
                 }}</template></el-table-column
+              ><el-table-column :label="t('paymentLink.actorSource')" min-width="110"
+                ><template #default="{ row }">{{
+                  actorSource(row.actorAppCode)
+                }}</template></el-table-column
+              ><el-table-column :label="t('paymentLink.actor')" min-width="220"
+                ><template #default="{ row }"
+                  ><span
+                    class="pl-operator-name"
+                    :title="row.actorId ? `ID: ${row.actorId}` : undefined"
+                    >{{ operatorName(row.actorAppCode, row.actorId, row.actorName) }}</span
+                  ></template
+                ></el-table-column
               ><el-table-column
-                prop="actorAppCode"
-                :label="t('paymentLink.creator')" /><el-table-column
-                prop="actorId"
-                :label="t('paymentLink.actor')" /><el-table-column
                 prop="reason"
                 :label="t('paymentLink.reason')"
                 min-width="180" /><el-table-column :label="t('paymentLink.createTime')" width="190"
@@ -706,11 +748,25 @@
       width="min(520px, 94vw)"
       @closed="clearShare"
       ><div v-loading="shareLoading" class="pl-share">
-        <el-alert :title="t('paymentLink.shareHint')" type="info" :closable="false" /><el-input
-          :model-value="shareUrl"
-          readonly
-          :aria-label="t('paymentLink.share')"
-        /><img v-if="qr" :src="qr" :alt="t('paymentLink.qrCode')" width="220" height="220" />
+        <div v-if="selected" class="pl-share-heading">
+          <span>{{ t('paymentLink.sharePayment') }}</span>
+          <h3>{{ selected.linkName || selected.merchantOrderNo }}</h3>
+          <CurrencyAmountDisplay
+            :currency="selected.currency"
+            :amount="selected.amount"
+            :exponent="selected.currencyExponent"
+            size="lg"
+          />
+        </div>
+        <div class="pl-qr-frame">
+          <img v-if="qr" :src="qr" :alt="t('paymentLink.qrCode')" width="200" height="200" /><span
+            v-else
+            >—</span
+          >
+        </div>
+        <p class="pl-share-caption">{{ t('paymentLink.scanToPay') }}</p>
+        <el-input :model-value="shareUrl" readonly :aria-label="t('paymentLink.share')" />
+        <p class="pl-hint">{{ t('paymentLink.shareHint') }}</p>
         <div class="pl-buttons">
           <el-button type="primary" :disabled="!shareUrl" @click="copyLink">{{
             t('paymentLink.copy')
@@ -826,6 +882,16 @@
   import CurrencyAmountDisplay from './CurrencyAmountDisplay.vue';
   import CurrencyDisplay from './CurrencyDisplay.vue';
   import PaymentMethodDisplay from './PaymentMethodDisplay.vue';
+  import CheckoutOrderSummary from './CheckoutOrderSummary.vue';
+  import PaymentLogoGroup from './PaymentLogoGroup.vue';
+  import { getPaymentLogo, resolvePaymentLogoKeys } from '../paymentBrand';
+  import { formatMoneyAmount } from '../amount';
+  import {
+    isPaymentLinkAmountValid,
+    paymentLinkDefaultCurrency,
+    paymentLinkActorSource,
+    paymentLinkOperatorName,
+  } from '../paymentLinkPresentation';
   import TransactionStatusDisplay from './TransactionStatusDisplay.vue';
   import PaymentLinkStatusDisplay from './PaymentLinkStatusDisplay.vue';
 
@@ -840,6 +906,7 @@
     timeRangeComponent: Component;
     timezoneOptions: Array<{ value: string; label: string }>;
     normalizeTimeRange: (range: string[], timeZone: string) => string[];
+    formatInstant: (value: number, timeZone: string) => string;
     resolveQueryRange: (range: string[], preset: string, timeZone: string) => string[];
     merchantSelect?: Component;
     makeQr: (url: string) => Promise<string>;
@@ -850,6 +917,12 @@
     downloadCenter: [];
   }>();
   const { t, te, locale } = useI18n();
+  const actorSource = (appCode?: string) => paymentLinkActorSource(appCode, t);
+  const operatorName = (appCode?: string, id?: string, name?: string) =>
+    paymentLinkOperatorName(appCode, id, name, t);
+  function creatorLabel(value: PaymentLinkView) {
+    return `${actorSource(value.createdAppCode)} · ${operatorName(value.createdAppCode, value.createdBy, value.createdByName)}`;
+  }
   const statuses: PaymentLinkStatus[] = ['ACTIVE', 'COMPLETED', 'DISABLED', 'EXPIRED'];
   const summaryKeys = ['total', 'active', 'completed', 'processing', 'failedAttempts'] as const;
   const detailKeys = [
@@ -860,7 +933,7 @@
     'redirectUrl',
     'creator',
   ] as const;
-  // Detail labels and values use an explicit projection; order and creator have separate backend names.
+  // 详情使用明确的接口投影；操作人名称在展示时随语言变化，ID 保留用于追溯。
   const dateKeys = ['expireTime', 'createTime', 'paidTime'] as const;
   const query = reactive<PaymentLinkQuery>({ pageNo: 1, pageSize: 10 });
   const timeZone = ref('Asia/Shanghai');
@@ -893,7 +966,7 @@
   const error = ref('');
   let generation = 0;
   let destroyed = false;
-  const detail = ref<PaymentLinkView & { orderNo: string; creator: string }>();
+  const detail = ref<PaymentLinkView & { orderNo: string }>();
   const detailOpen = ref(false);
   const detailLoading = ref(false);
   const tab = ref('info');
@@ -920,8 +993,8 @@
       description: '',
       currency: '',
       amount: '',
-      expireMinutes: 1440,
-      expireTime: '',
+      expireMinutes: 60,
+      expireTime: props.formatInstant(Date.now() + 60 * 60000, timeZone.value).replace(' ', 'T'),
       locale: 'AUTO',
       cardBrands: [],
       notifyUrl: '',
@@ -935,7 +1008,49 @@
       (minutes) => minutes <= (options.value?.maxExpireMinutes ?? 43200),
     ),
   );
+  const otherPaymentMethods = computed(() => (options.value?.paymentMethodsByCurrency?.[form.currency] || []).filter((method) => method !== 'BANK_CARD'));
+  function methodName(method: string) {
+    const key = resolvePaymentLogoKeys(method)[0];
+    return key ? getPaymentLogo(key).label : method;
+  }
   const currentBrands = computed(() => options.value?.cardBrandsByCurrency[form.currency] || []);
+  const amountExponent = computed(() => options.value?.currencyExponents?.[form.currency] ?? 2);
+  const receiptLabels = computed(() => ({
+    merchant: t('paymentLink.receiptMerchant'),
+    summary: t('paymentLink.receiptSummary'),
+    secure: t('paymentLink.receiptSecure'),
+    total: t('paymentLink.receiptTotal'),
+  }));
+  const previewAmount = computed(() =>
+    form.currency && isPaymentLinkAmountValid(form.amount, amountExponent.value)
+      ? `${form.currency} ${formatMoneyAmount(form.amount, String(locale.value), amountExponent.value)}`
+      : '—',
+  );
+  const previewItems = computed(() =>
+    form.linkName || form.description
+      ? [{ name: form.linkName || t('paymentLink.description'), meta: form.description }]
+      : [],
+  );
+  const previewLogoKeys = computed(() => [
+    ...new Set(
+      (form.cardBrands || []).flatMap((brand) => resolvePaymentLogoKeys('BANK_CARD', brand)),
+    ),
+  ]);
+  function brandName(brand: string) {
+    const key = resolvePaymentLogoKeys('BANK_CARD', brand)[0];
+    return key ? getPaymentLogo(key).label : brand;
+  }
+  function chooseExpiry(value: string | number | boolean | undefined) {
+    const minutes = Number(value);
+    if (!expiryDurations.value.includes(minutes)) return;
+    expiryMode.value = 'quick';
+    form.expireMinutes = minutes;
+    form.expireTime = props
+      .formatInstant(Date.now() + minutes * 60000, timeZone.value)
+      .replace(' ', 'T');
+    createForm.value?.clearValidate('expireTime');
+  }
+  let optionMerchant = '';
   let createSnapshot = '';
   const emailOpen = ref(false);
   const sending = ref(false);
@@ -965,11 +1080,18 @@
     ],
     amount: [
       {
+        required: true,
         validator: (_rule, value: string, callback) =>
           callback(
-            /^[0-9]{1,14}(\.[0-9]{1,6})?$/.test(value) && /[1-9]/.test(value)
+            isPaymentLinkAmountValid(value, amountExponent.value)
               ? undefined
-              : new Error(t('paymentLink.invalidAmount')),
+              : new Error(
+                  t(
+                    amountExponent.value === 0
+                      ? 'paymentLink.invalidIntegerAmount'
+                      : 'paymentLink.invalidAmount',
+                  ),
+                ),
           ),
         trigger: 'blur',
       },
@@ -977,7 +1099,6 @@
     expireTime: [
       {
         validator: (_rule, _value, callback) => {
-          if (expiryMode.value === 'quick') return callback();
           const normalized = props.normalizeTimeRange([form.expireTime || ''], timeZone.value)[0];
           const remaining = Date.parse(normalized + '+08:00') - Date.now();
           callback(
@@ -993,6 +1114,8 @@
     redirectUrl: [{ validator: validateUrl, trigger: 'blur' }],
   }));
   function selectCurrencyBrands() {
+    if (form.amount) void createForm.value?.validateField('amount').catch(() => false);
+    else createForm.value?.clearValidate('amount');
     form.cardBrands = [...(options.value?.cardBrandsByCurrency[form.currency] || [])];
   }
 
@@ -1123,9 +1246,11 @@
       const data = await props.api.options(createMerchant.value);
       if (seq !== optionsGeneration) return;
       options.value = data;
-      form.currency = data.currencies.includes(form.currency)
-        ? form.currency
-        : data.currencies[0] || '';
+      form.currency =
+        optionMerchant === data.merchantId && data.currencies.includes(form.currency)
+          ? form.currency
+          : paymentLinkDefaultCurrency(data.currencies, data.defaultCurrency);
+      optionMerchant = data.merchantId;
       form.cardBrands = [...(data.cardBrandsByCurrency[form.currency] || [])];
     } catch (cause) {
       if (seq === optionsGeneration)
@@ -1144,11 +1269,9 @@
       const input = {
         ...form,
         linkName: form.linkName.trim(),
-        expireMinutes: expiryMode.value === 'quick' ? form.expireMinutes : undefined,
-        expireTime:
-          expiryMode.value === 'custom'
-            ? props.normalizeTimeRange([form.expireTime || ''], timeZone.value)[0]
-            : undefined,
+        // 固定用户看到的截止时间，重试时不重新计算，保持创建请求幂等。
+        expireMinutes: undefined,
+        expireTime: props.normalizeTimeRange([form.expireTime || ''], timeZone.value)[0],
         merchantOrderNo: form.merchantOrderNo?.trim(),
         notifyUrl: form.notifyUrl?.trim() || undefined,
         redirectUrl: form.redirectUrl?.trim() || undefined,
@@ -1183,7 +1306,6 @@
       detail.value = {
         ...value,
         orderNo: value.merchantOrderNo,
-        creator: `${value.createdAppCode} / ${value.createdBy}`,
       };
     } catch (cause) {
       detail.value = undefined;
@@ -1229,6 +1351,7 @@
     void loadTab();
   });
   async function openShare(row: PaymentLinkView) {
+    selected.value = row;
     const seq = ++shareGeneration;
     shareOpen.value = true;
     shareLoading.value = true;
@@ -1352,22 +1475,14 @@
 </script>
 
 <style scoped>
-  .pl-expiry-controls {
-    display: grid;
-    gap: 8px;
-    width: 100%;
-    min-width: 0;
-  }
-  .pl-expiry-controls :deep(.el-radio-group) {
-    flex-wrap: nowrap;
-  }
-  .pl-expiry-controls :deep(.el-date-editor input) {
-    font-variant-numeric: tabular-nums;
-  }
-  .pl-expiry-controls :deep(.el-date-editor) {
-    width: 100%;
+  .pl-operator-name {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
   }
   .pl-workspace {
+    container: pl-workspace / inline-size;
     display: grid;
     align-content: start;
     grid-auto-rows: max-content;
@@ -1400,74 +1515,97 @@
     margin-left: 0;
   }
   .pl-summary {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     border: 1px solid var(--el-border-color-light);
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--el-bg-color);
     overflow: hidden;
   }
-  .pl-metric {
+  .pl-counts {
     display: grid;
-    grid-template-columns: 140px minmax(0, 1fr);
-    align-items: stretch;
-    min-height: 42px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .pl-metric {
+    position: relative;
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 6px;
     min-width: 0;
-    border-right: 1px solid var(--el-border-color-lighter);
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 14px 20px;
   }
-  .pl-metric:nth-child(even) {
-    border-right: 0;
+  .pl-metric + .pl-metric::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 18px;
+    bottom: 18px;
+    border-left: 1px solid var(--el-border-color-lighter);
   }
-  .pl-metric:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
-  .pl-metric > span:first-child {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-left: 3px solid var(--el-color-primary);
-    border-right: 1px solid var(--el-border-color-lighter);
-    background: var(--el-fill-color-light);
+  .pl-metric > span,
+  .pl-collected > span:first-child {
     color: var(--el-text-color-regular);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
   }
-  .pl-metric strong {
-    justify-self: start;
-    align-self: center;
-    margin: 6px 12px;
-    padding: 2px 9px;
-    border: 1px solid var(--el-color-primary-light-8);
-    border-radius: 4px;
-    background: var(--el-color-primary-light-9);
-    color: var(--el-color-primary);
-    font-size: 16px;
+  .pl-metric > strong {
+    color: var(--el-text-color-primary);
+    font-size: 22px;
+    line-height: 28px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  .pl-metric--completed > span:first-child {
-    border-left-color: var(--el-color-success);
+  .pl-metric--active > strong,
+  .pl-metric--processing > strong {
+    color: var(--el-color-primary);
   }
-  .pl-metric--completed strong {
+  .pl-metric--completed > strong {
     color: var(--el-color-success);
-    border-color: var(--el-color-success-light-8);
-    background: var(--el-color-success-light-9);
   }
-  .pl-metric--failedAttempts > span:first-child {
-    border-left-color: var(--el-color-danger);
-  }
-  .pl-metric--failedAttempts strong {
+  .pl-metric--failedAttempts > strong {
     color: var(--el-color-danger);
-    border-color: var(--el-color-danger-light-8);
-    background: var(--el-color-danger-light-9);
+  }
+  .pl-collected {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    min-width: 0;
+    padding: 10px 20px;
+    border-top: 1px solid var(--el-border-color-lighter);
+    background: var(--el-fill-color-lighter);
   }
   .pl-collected > div {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+    gap: 8px 20px;
+    min-width: 0;
+  }
+  @container pl-workspace (max-width: 740px) {
+    .pl-counts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .pl-metric:nth-child(4)::before {
+      display: none;
+    }
+    .pl-metric {
+      padding: 12px 16px;
+    }
+    .pl-collected {
+      padding: 10px 16px;
+    }
+  }
+  @container pl-workspace (max-width: 460px) {
+    .pl-counts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .pl-metric:nth-child(4)::before {
+      display: block;
+    }
+    .pl-metric:nth-child(odd)::before {
+      display: none;
+    }
   }
   .pl-list {
     padding: 12px;
@@ -1499,15 +1637,18 @@
     margin-top: 14px;
     gap: 6px;
   }
-  .pl-create-form {
-    max-height: calc(100vh - 260px);
-    overflow: auto;
+  .pl-create-form.el-form {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    max-height: none;
+    overflow: visible;
     padding: 2px 6px 0 0;
   }
   .pl-create-grid {
     display: grid;
     align-items: start;
-    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     gap: 24px;
   }
   .pl-create-form :deep(.el-select),
@@ -1515,8 +1656,8 @@
     width: 100%;
   }
   .pl-create-form :deep(.el-form-item__label) {
-    white-space: nowrap;
-    font-size: 12px;
+    white-space: normal;
+    font-size: 13px;
   }
   .pl-create-form :deep(.el-form-item) {
     margin-bottom: 18px;
@@ -1537,26 +1678,81 @@
   .pl-preview {
     position: sticky;
     top: 0;
-    align-self: start;
-    border: 1px solid var(--el-border-color-light);
-    border-radius: 6px;
-    padding: 16px;
+    min-width: 0;
+    padding: 18px;
+    border-radius: 16px;
     background: var(--el-fill-color-light);
-    overflow-wrap: anywhere;
+    border: 1px solid var(--el-border-color-light);
   }
-  .pl-preview > span {
+  .pl-preview-heading {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .pl-preview-heading strong {
+    font-size: 14px;
+  }
+  .pl-preview-heading span {
+    font-size: 12px;
     color: var(--el-text-color-secondary);
+    line-height: 1.6;
+  }
+  .pl-other-methods { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pl-other-method { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--el-border-color-light); border-radius: 6px; color: var(--el-text-color-regular); background: var(--el-fill-color-light); }
+  .pl-other-method small { color: var(--el-text-color-secondary); font-size: 11px; }
+  .pl-preview-methods {
+    display: grid;
+    gap: 12px;
+    padding: 18px 0;
     font-size: 12px;
   }
-  .pl-preview h3 {
-    margin: 16px 0 8px;
-    font-size: 14px;
-    line-height: 22px;
+  .pl-preview-pay {
+    padding: 14px;
+    border-radius: 12px;
+    text-align: center;
+    background: linear-gradient(110deg, #7c3aed, #1e3aff);
+    color: #fff;
+    font-weight: 600;
   }
-  .pl-preview h4 {
-    margin: 0 0 14px;
-    font-size: 13px;
-    font-weight: 500;
+  .pl-expiry-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  .pl-expiry-controls :deep(.el-radio-group) {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .pl-expiry-controls :deep(.el-date-editor) {
+    flex: 1 1 220px;
+    width: auto;
+  }
+  .pl-create-form :deep(.el-form-item__content) {
+    min-width: 0;
+  }
+  .pl-create-form :deep(.el-form-item__error) {
+    position: static;
+    line-height: 1.5;
+  }
+  .pl-create-form :deep(.el-checkbox) {
+    height: auto;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 6px;
+  }
+  .pl-create-form :deep(.el-checkbox.is-checked) {
+    border-color: var(--el-color-primary-light-5);
+    background: var(--el-color-primary-light-9);
+  }
+  .pl-create-form :deep(.el-checkbox__label) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    white-space: normal;
   }
   .pl-hint {
     color: var(--el-text-color-secondary);
@@ -1573,6 +1769,43 @@
     overflow-wrap: anywhere;
     font-size: 13px;
     line-height: 1.7;
+  }
+  .pl-share-heading {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    text-align: center;
+    width: 100%;
+  }
+  .pl-share-heading > span,
+  .pl-share-caption {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    margin: 0;
+  }
+  .pl-share-heading h3 {
+    margin: 0;
+    font-size: 17px;
+    overflow-wrap: anywhere;
+  }
+  .pl-qr-frame {
+    display: grid;
+    place-items: center;
+    min-height: 232px;
+    width: 232px;
+    padding: 16px;
+    box-sizing: border-box;
+    background: #fff;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgb(15 23 42 / 5%);
+  }
+  .pl-share > .pl-hint {
+    margin: 0;
+    text-align: center;
+  }
+  .pl-share > .pl-buttons {
+    justify-content: center;
   }
   .pl-share {
     display: grid;
@@ -1603,15 +1836,6 @@
     .pl-two {
       grid-template-columns: minmax(0, 1fr);
       gap: 0;
-    }
-    .pl-summary {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .pl-metric {
-      border-right: 0;
-    }
-    .pl-metric:nth-last-child(2) {
-      border-bottom: 1px solid var(--el-border-color-lighter);
     }
     .pl-create-form :deep(.el-form-item) {
       display: block;

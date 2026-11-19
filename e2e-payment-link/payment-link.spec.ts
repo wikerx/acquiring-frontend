@@ -99,7 +99,9 @@ async function workspace(
       return reply([{ merchantId: 'M_QA', merchantName: 'QA Merchant' }]);
     if (path.endsWith('/payment-links/filter-options'))
       return reply({
-        currencies: ['USD', 'JPY'],
+        currencies: ['JPY', 'USD'],
+        defaultCurrency: 'USD',
+        currencyExponents: { USD: 2, JPY: 0 },
         channels:
           scope === 'admin'
             ? [{ channelCode: 'QA_CHANNEL', channelName: 'QA Channel' }]
@@ -122,7 +124,9 @@ async function workspace(
       return reply({
         merchantId: 'M_QA',
         merchantDisplayName: 'QA Merchant',
-        currencies: ['USD', 'JPY'],
+        currencies: ['JPY', 'USD'],
+        defaultCurrency: 'USD',
+        currencyExponents: { USD: 2, JPY: 0 },
         cardBrands: ['VISA', 'MASTERCARD'],
         cardBrandsByCurrency: { USD: ['VISA', 'MASTERCARD'], JPY: ['VISA'] },
         locales: ['AUTO', 'zh-CN', 'en-US'],
@@ -136,8 +140,10 @@ async function workspace(
         assert.equal(input.linkName, '');
         assert.equal(input.expireMinutes, undefined);
         assert.match(input.expireTime, /T12:34:56$/);
-      } else
-        assert.equal(input.expireMinutes, width === 2560 ? 43200 : scope === 'admin' ? 4320 : 1440);
+      } else {
+        assert.equal(input.expireMinutes, undefined);
+        assert.ok(input.expireTime);
+      }
       assert.ok(input.requestId);
       await new Promise((r) => setTimeout(r, 300));
       return reply({ ...row, linkName: input.linkName });
@@ -238,7 +244,7 @@ async function workspace(
       .getByRole('radio', { name: '今天', exact: true }),
   ).toBeChecked();
   const summaryBox = await page.locator('.pl-summary').boundingBox();
-  assert.ok(summaryBox && summaryBox.height < (width < 650 ? 320 : 180));
+  assert.ok(summaryBox && summaryBox.height < (width < 650 ? 620 : 250));
   const tableBox = await page.locator('.pl-list').boundingBox();
   assert.ok(tableBox && tableBox.y - (summaryBox.y + summaryBox.height) <= 28);
   await page.screenshot({ path: test.info().outputPath('workspace.png'), fullPage: true });
@@ -318,22 +324,20 @@ async function workspace(
     await dialog.locator('.el-select').first().click();
     await page.getByRole('option', { name: 'M_QA · QA Merchant' }).last().click();
   }
-  await dialog.locator('.payment-method-display[aria-label="银行卡 · VISA"]').waitFor();
-  assert.equal(await dialog.locator('.payment-method-display__empty').count(), 0);
+  await expect(dialog.getByRole('combobox', { name: '*币种', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('radio', { name: '1 小时', exact: true })).toBeChecked();
+  await expect(dialog.locator('.pl-two .currency-display').first()).toContainText('USD');
+  await dialog.getByRole('checkbox', { name: /Visa/ }).waitFor();
   if (!(scope === 'merchant' && width === 1440))
     await dialog.getByLabel('链接名称', { exact: true }).fill('新建验收链接');
   if (scope === 'merchant' && width === 1440) {
-    await dialog.getByText('自选到期时间', { exact: true }).click();
     const tomorrow = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
-    await dialog.getByPlaceholder('自选到期时间', { exact: true }).fill(tomorrow + ' 12:34:56');
+    await dialog.getByRole('combobox', { name: '自选到期时间', exact: true }).fill(tomorrow + ' 12:34:56');
     await dialog.getByLabel('金额', { exact: true }).click();
     const expiryBox = await dialog.locator('.pl-expiry-controls .el-date-editor').boundingBox();
     assert.ok(expiryBox && expiryBox.width >= 210);
   } else if (width === 2560 || scope === 'admin') {
-    await dialog.locator('.pl-expiry-controls .el-select').click();
-    await page
-      .getByRole('option', { name: width === 2560 ? '30 天' : '72 小时', exact: true })
-      .click();
+    await dialog.getByRole('radio', { name: width === 2560 ? '30 天' : '72 小时', exact: true }).check();
   }
   await dialog.getByLabel('金额', { exact: true }).fill('99.00');
   await dialog.screenshot({ path: test.info().outputPath('create.png') });

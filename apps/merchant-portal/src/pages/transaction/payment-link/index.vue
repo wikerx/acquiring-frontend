@@ -10,6 +10,7 @@
     :time-range-component="TransactionTimeRangeFilter"
     :timezone-options="timezoneOptions"
     :normalize-time-range="normalizeTimeRange"
+    :format-instant="formatDateTimeInTimeZone"
     :resolve-query-range="resolveTransactionQueryRange"
     :make-qr="makeQr"
     :notify="notify"
@@ -38,7 +39,7 @@
     loadTransactionDictOptions,
     resolveTransactionQueryRange,
   } from '../shared';
-  import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
+  import { formatDateTimeFromSourceTimeZone, formatDateTimeInTimeZone } from '@/utils/format';
   import SearchPanel from './SearchPanel.vue';
   import { useAuthStore } from '@/stores/authStore';
 

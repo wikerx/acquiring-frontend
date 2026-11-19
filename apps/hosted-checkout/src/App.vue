@@ -1,33 +1,10 @@
 <template>
     <main class="checkout-shell">
-        <header class="checkout-topbar">
-            <div class="checkout-topbar__brand">
-                <img class="checkout-topbar__logo" :src="checkoutBrand.logos.horizontal" :alt="checkoutBrand.name" />
-                <span>{{ checkoutBrand.subtitleEn }}</span>
-            </div>
-            <div class="checkout-topbar__meta">
-                <span v-if="session?.checkoutSessionId" class="checkout-topbar__status">
-                    {{ statusChipText }}
-                </span>
-                <label class="checkout-topbar__locale">
-                    <span class="checkout-topbar__locale-control">
-                        <img
-                            class="checkout-topbar__locale-flag"
-                            :src="activeLocaleFlag.src"
-                            :alt="activeLocaleFlag.alt"
-                        />
-                        <select
-                            v-model="language"
-                            :aria-label="t('topbar.language')"
-                            @change="handleLocaleChange(language)"
-                        >
-                            <option value="en-US">{{ t('topbar.english') }}</option>
-                            <option value="zh-CN">{{ t('topbar.chinese') }}</option>
-                        </select>
-                    </span>
-                </label>
-            </div>
-        </header>
+        <CheckoutTopbar
+            :locale="language"
+            :status="session?.checkoutSessionId ? statusChipText : undefined"
+            @change="handleLocaleChange"
+        />
 
         <div class="checkout-trustbar">
             <div class="checkout-trustbar__item checkout-trustbar__item--secure">
@@ -40,10 +17,10 @@
                 class="checkout-trustbar__item checkout-trustbar__item--cards"
                 :aria-label="t('trustbar.cards')"
             >
-                <PaymentLogoGroup :keys="trustbarLogoKeys" size="sm" align="start" />
+                <PaymentMethodCarousel :keys="trustbarLogoKeys" :label="t('trustbar.cards')" :previous-label="t('trustbar.previous')" :next-label="t('trustbar.next')" />
             </div>
             <div v-if="session?.merchant?.displayName" class="checkout-trustbar__item checkout-trustbar__item--merchant">
-                <strong>{{ t('trustbar.merchant') }}</strong>
+                <CheckoutMerchantLogo :src="session.merchant.logoUrl" />
                 <span>{{ merchantName }}</span>
             </div>
         </div>
@@ -60,44 +37,14 @@
         </section>
 
         <section v-else-if="runtimeState === 'checkout'" class="checkout-layout">
-            <aside class="checkout-sidebar">
-                <div class="checkout-sidebar__merchant">
-                    <img
-                        class="checkout-sidebar__merchant-logo"
-                        :src="session?.merchant?.logoUrl || checkoutBrand.logos.icon"
-                        :alt="merchantName"
-                    />
-                    <div>
-                        <p class="checkout-sidebar__eyebrow">{{ t('checkout.merchantStore') }}</p>
-                        <h1>{{ merchantName }}</h1>
-                        <span>{{ orderReferenceText }}</span>
-                    </div>
-                </div>
-
-                <article class="checkout-summary-card">
-                    <div class="checkout-summary-card__header">
-                        <div>
-                            <p>{{ t('checkout.orderSummary') }}</p>
-                            <strong>{{ formattedAmount }}</strong>
-                        </div>
-                        <span>{{ t('checkout.secure') }}</span>
-                    </div>
-                    <div v-if="orderItems.length" class="checkout-order-list">
-                        <article v-for="item in orderItems" :key="item.name" class="checkout-order-item">
-                            <div class="checkout-order-item__thumb">{{ item.initial }}</div>
-                            <div>
-                                <strong>{{ item.name }}</strong>
-                                <p>{{ item.meta }}</p>
-                            </div>
-                            <span>{{ item.amount }}</span>
-                        </article>
-                    </div>
-                    <div class="checkout-summary-card__total">
-                        <span>{{ t('checkout.total') }}</span>
-                        <strong>{{ formattedAmount }}</strong>
-                    </div>
-                </article>
-            </aside>
+            <CheckoutOrderSummary
+                :merchant-name="merchantName"
+                :merchant-logo="session?.merchant?.logoUrl"
+                :order-reference="orderReferenceText"
+                :formatted-amount="formattedAmount"
+                :items="orderItems"
+                :labels="{ merchant: t('checkout.merchantStore'), summary: t('checkout.orderSummary'), secure: t('checkout.secure'), total: t('checkout.total') }"
+            />
 
             <section class="checkout-form-panel">
                 <article class="checkout-section-card">
@@ -151,12 +98,14 @@
                         <div class="checkout-field-grid">
                             <label class="checkout-field">
                                 <span>{{ t('checkout.country') }}</span>
-                                <div class="checkout-country-select">
+                                <div ref="countrySelectRoot" class="checkout-country-select">
                                     <button
                                         class="checkout-country-select__button"
                                         type="button"
                                         :aria-expanded="countryDropdownOpen"
                                         :disabled="countryOptions.length === 0"
+                                        :aria-label="t('checkout.country')"
+                                        @keydown.esc="countryDropdownOpen = false"
                                         @click="countryDropdownOpen = !countryDropdownOpen"
                                     >
                                         <span class="checkout-country-select__value">
@@ -172,13 +121,14 @@
                                         </span>
                                         <span class="checkout-country-select__chevron" aria-hidden="true">⌄</span>
                                     </button>
-                                    <div v-if="countryDropdownOpen && countryOptions.length > 0" class="checkout-country-select__menu">
+                                    <div v-if="countryDropdownOpen && countryOptions.length > 0" class="checkout-country-select__menu" @keydown.esc="countryDropdownOpen = false">
+                                        <input v-model="countrySearch" class="checkout-country-select__search" :placeholder="t('checkout.countrySearch')" :aria-label="t('checkout.countrySearch')" autocomplete="off" />
                                         <button
-                                            v-for="country in countryOptions"
+                                            v-for="country in filteredCountries"
                                             :key="country.countryCode"
                                             class="checkout-country-select__option"
                                             type="button"
-                                            @click="handleCountryChange(country.countryCode)"
+                                            @click="handleCountryChange(country.countryCodeAlpha3)"
                                         >
                                             <span class="checkout-country-select__icon">
                                                 <img
@@ -186,7 +136,7 @@
                                                     :src="country.flagIconUrl"
                                                     :alt="country.countryCode"
                                                 />
-                                                <span v-else aria-hidden="true">GL</span>
+                                                <span v-else aria-hidden="true">🌐</span>
                                             </span>
                                             <span>{{ country.countryName }}</span>
                                         </button>
@@ -230,12 +180,6 @@
                             <p>{{ t('checkout.paymentMethod') }}</p>
                             <h2>{{ t('checkout.chooseMethod') }}</h2>
                         </div>
-                        <PaymentLogoGroup
-                            class="checkout-section-card__logos"
-                            :keys="paymentHeaderLogoKeys"
-                            size="sm"
-                            align="end"
-                        />
                     </div>
 
                     <div v-if="supportedPaymentMethods.length === 0" class="checkout-inline-note checkout-inline-note--error">
@@ -248,23 +192,13 @@
                             :key="method.id"
                             class="checkout-payment-item"
                         >
-                            <button
-                                :class="['checkout-payment-option', { 'is-active': selectedPaymentMethod === method.id }]"
-                                type="button"
-                                @click="selectedPaymentMethod = method.id"
-                            >
-                                <span class="checkout-payment-option__radio" aria-hidden="true"></span>
-                                <span class="checkout-payment-option__body">
-                                    <strong>{{ method.label }}</strong>
-                                </span>
-                                <PaymentLogoGroup
-                                    v-if="method.logoKeys.length"
-                                    class="checkout-payment-option__logos"
-                                    :keys="method.logoKeys"
-                                    size="sm"
-                                    align="end"
-                                />
-                            </button>
+                            <div :class="['checkout-payment-option', { 'is-active': selectedPaymentMethod === method.id }]">
+                                <button class="checkout-payment-option__select" type="button" :aria-pressed="selectedPaymentMethod === method.id" @click="selectedPaymentMethod = method.id">
+                                    <span class="checkout-payment-option__radio" aria-hidden="true"></span>
+                                    <span class="checkout-payment-option__body"><strong>{{ method.label }}</strong></span>
+                                </button>
+                                <PaymentMethodCarousel v-if="method.logoKeys.length" class="checkout-payment-option__logos" :keys="method.logoKeys" overflow-only :label="method.label" :previous-label="t('trustbar.previous')" :next-label="t('trustbar.next')" />
+                            </div>
 
                             <div
                                 v-if="selectedPaymentMethod === method.id && method.paymentMethod === 'BANK_CARD'"
@@ -422,7 +356,7 @@
                     <div v-for="item in localizedStatusDetailRows" :key="item.label" class="checkout-status-detail__row">
                         <span>{{ item.label }}</span>
                         <PaymentLogoGroup
-                            v-if="item.type === 'paymentLogo'"
+                            v-if="item.type === 'paymentLogo' && item.logoKeys?.length"
                             class="checkout-status-detail__payment-logo"
                             :keys="item.logoKeys"
                             size="sm"
@@ -519,7 +453,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { PaymentLogoGroup, formatMoneyAmount, getSystemBrand, resolveTransactionStatusIcon, type PaymentLogoKey } from '@acquiring/shared';
+import { CheckoutMerchantLogo, CheckoutOrderSummary, PaymentLogoGroup, formatMoneyAmount, getSystemBrand, resolveTransactionStatusIcon, resolvePaymentLogoKeys, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { setLocale } from './i18n';
 import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkoutConfig';
@@ -539,8 +473,11 @@ import {
     type HostedCheckoutSession,
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
+import CheckoutTopbar from './components/CheckoutTopbar.vue';
 import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
 import { resolveMerchantPostUrl } from './utils/urlSecurity';
+import PaymentMethodCarousel from './components/PaymentMethodCarousel.vue';
+import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutReceiptIdentity, checkoutResultLogoKeys } from './utils/checkoutPresentation';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutStatusViewState = 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
@@ -606,20 +543,9 @@ interface ThreeDsContinuationContext {
 
 const DEFAULT_LOCALE: CheckoutLocale = 'en-US';
 const LOCALE_KEY = 'acquiring_checkout_locale';
-const COUNTRY_KEY = 'acquiring_checkout_country';
 const MANUAL_LOCALE_KEY = 'acquiring_checkout_locale_manual';
 const DEVICE_ID_KEY = 'acquiring_checkout_device_id';
 const LANGUAGE_OPTIONS: CheckoutLocale[] = ['en-US', 'zh-CN'];
-const LANGUAGE_FLAG_ASSETS: Record<CheckoutLocale, { src: string; alt: string }> = {
-    'en-US': {
-        src: new URL('./assets/flags/us.svg', import.meta.url).href,
-        alt: 'English',
-    },
-    'zh-CN': {
-        src: new URL('./assets/flags/cn.svg', import.meta.url).href,
-        alt: '中文',
-    },
-};
 const POLLING_MAX_ATTEMPTS = 30;
 const THREE_DS_RECOVERY_WAIT_SECONDS = 660;
 const THREE_DS_METHOD_WAIT_MS = 10_000;
@@ -644,6 +570,7 @@ const CARD_BRAND_LOGOS: Record<string, PaymentLogoKey> = {
     AMERICAN_EXPRESS: 'americanExpress',
     DISCOVER: 'discover',
     DINERS: 'dinersClub',
+    DINERS_CLUB: 'dinersClub',
     UNIONPAY: 'unionPay',
 };
 const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
@@ -664,7 +591,6 @@ const FAILURE_REASON_I18N_KEYS: Record<string, string> = {
 const checkoutBrand = getSystemBrand('checkout');
 const { t, locale } = useI18n();
 const language = ref(locale.value);
-const activeLocaleFlag = computed(() => LANGUAGE_FLAG_ASSETS[normalizeLocale(language.value)]);
 const runtimeState = ref<CheckoutRuntimeState>('loading');
 const statusViewState = computed<CheckoutStatusViewState>(() => {
     if (runtimeState.value === 'success') {
@@ -696,8 +622,15 @@ const session = ref<HostedCheckoutSession | null>(null);
 const paymentResult = ref<HostedCheckoutPaymentResult | null>(null);
 const selectedPaymentMethod = ref('');
 const countryOptions = ref<CheckoutCountryConfig[]>([]);
-const selectedCountryCode = ref(readStoredValue(COUNTRY_KEY));
+const selectedCountryCode = ref('USA');
+const countryManuallySelected = ref(false);
+const countrySearch = ref('');
+const filteredCountries = computed(() => {
+    const query = countrySearch.value.trim().toLocaleLowerCase();
+    return countryOptions.value.filter((country) => !query || [country.countryName, country.countryNameLocal, country.countryCode, country.countryCodeAlpha3].some((value) => value.toLocaleLowerCase().includes(query)));
+});
 const countryDropdownOpen = ref(false);
+const countrySelectRoot = ref<HTMLElement | null>(null);
 const countryLoadFailed = ref(false);
 const countryLoading = ref(false);
 const threeDsFrame = ref<HTMLIFrameElement | null>(null);
@@ -798,6 +731,7 @@ const paymentDeadlineText = computed(() => {
 });
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
+const systemFailure = computed(() => normalizeCode(paymentResult.value?.failure?.reasonCode) === 'F2000');
 const hasMerchantRedirect = computed(() => resolveMerchantRedirectUrl() !== null);
 const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionType === 'HTML'
     ? paymentResult.value?.threeDsAction?.html || ''
@@ -807,19 +741,18 @@ const threeDsFrameKey = computed(() => (
     `${paymentResult.value?.checkoutAttemptId || 'pending'}:${threeDsPhase.value || 'unknown'}`
 ));
 
-const paymentHeaderLogoKeys = computed<PaymentLogoKey[]>(() => {
-    const logos = supportedPaymentMethods.value.flatMap((method) => method.logoKeys);
-    return uniqueLogos(logos);
-});
-const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => paymentHeaderLogoKeys.value);
+const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => checkoutMerchantLogoKeys(
+    session.value?.merchant,
+    session.value?.paymentMethods || [],
+    resolvePaymentLogoKeys,
+));
 
 const selectedCountry = computed(() => (
-    countryOptions.value.find((country) => country.countryCode === selectedCountryCode.value)
-    || countryOptions.value[0]
+    countryOptions.value.find((country) => country.countryCodeAlpha3 === selectedCountryCode.value)
 ));
 
 const selectedCountryIcon = computed(() => (
-    selectedCountry.value?.flagIconUrl ? '' : 'GL'
+    selectedCountry.value?.flagIconUrl ? '' : '🌐'
 ));
 
 const selectedCountryLabel = computed(() => (
@@ -839,11 +772,7 @@ const orderItems = computed(() => {
         return parsedItems.map((item, index) => ({
             initial: item.name?.slice(0, 1).toUpperCase() || String(index + 1),
             name: item.name || t('checkout.orderItemFallback', { index: index + 1 }),
-            meta: [
-                item.currency || order.value?.currency,
-                item.amount,
-                item.quantity ? `x ${item.quantity}` : '',
-            ].filter(Boolean).join(' '),
+            meta: item.quantity ? t('checkout.itemQuantity', { count: item.quantity }) : '',
             amount: formatMoney(item.amount, item.currency || order.value?.currency),
         }));
     }
@@ -852,7 +781,6 @@ const orderItems = computed(() => {
         initial: (order.value?.subject || 'O').slice(0, 1).toUpperCase(),
         name: order.value?.subject || t('checkout.orderItemDefault'),
         meta: order.value?.description || t('checkout.orderItemDescriptionFallback'),
-        amount: formattedAmount.value,
     }];
 });
 
@@ -861,12 +789,12 @@ const localizedStatusDetailRows = computed(() => {
     const rows = [
         { label: t('status.amount'), value: formattedResultAmount.value },
         { label: t('status.merchantOrder'), value: result?.merchantOrderNo || order.value?.orderNo || '-' },
-        { label: t('status.paymentMethod'), value: '', type: 'paymentLogo', logoKeys: statusPaymentLogoKeys.value },
+        { label: t('status.paymentMethod'), value: t('checkout.bankCardLabel'), type: 'paymentLogo', logoKeys: statusPaymentLogoKeys.value },
     ];
     if (statusViewState.value === 'success') {
         rows.push(
             { label: t('status.authorizationCode'), value: result?.authCode || '-' },
-            { label: t('status.paymentId'), value: result?.transactionId || paymentResult.value?.checkoutAttemptId || '-' },
+            { label: t('status.paymentId'), value: result?.transactionId || '-' },
             { label: t('status.time'), value: formatDateTime(result?.transactionDateTime) },
         );
         return rows;
@@ -884,7 +812,7 @@ const localizedStatusDetailRows = computed(() => {
         ];
     }
     rows.push(
-        { label: t('status.paymentId'), value: paymentResult.value?.checkoutAttemptId || '-' },
+        { label: t('status.paymentAttemptId'), value: paymentResult.value?.checkoutAttemptId || '-' },
         { label: t('status.pollingInterval'), value: t('status.pollingIntervalValue', { seconds: pollingIntervalSeconds.value }) },
     );
     return rows;
@@ -925,7 +853,7 @@ const localizedStatusConfig = computed(() => {
             eyebrow: t('status.failedEyebrow'),
             title: t('status.failedTitle'),
             description: t('status.failedDescription'),
-            message: t('status.failedMessage'),
+            message: t(systemFailure.value ? 'status.systemFailureHelp' : 'status.failedMessage'),
             primaryAction: retryAvailable.value ? t('status.failedPrimary') : t('status.failedSecondary'),
             secondaryAction: t('status.failedSecondary'),
         };
@@ -968,14 +896,12 @@ const selectedMethod = computed(() => (
     || supportedPaymentMethods.value[0]
 ));
 const selectedMethodLabel = computed(() => selectedMethod.value?.label || '');
-const statusPaymentLogoKeys = computed<PaymentLogoKey[]>(() => {
-    const resultLogo = CARD_BRAND_LOGOS[normalizeCode(paymentResult.value?.result?.cardBrand)];
-    if (resultLogo) {
-        return [resultLogo];
-    }
-    const firstSelectedLogo = selectedMethod.value?.logoKeys?.[0];
-    return firstSelectedLogo ? [firstSelectedLogo] : ['visa'];
-});
+const statusPaymentLogoKeys = computed<PaymentLogoKey[]>(() => checkoutResultLogoKeys(
+    paymentResult.value?.result?.paymentMethod,
+    paymentResult.value?.result?.cardBrand,
+    resolvePaymentLogoKeys,
+    ['bankCard'],
+));
 const pollingIntervalSeconds = computed(() => (
     paymentResult.value?.polling?.intervalSeconds
     || checkoutInfo.value?.pollingIntervalSeconds
@@ -988,20 +914,19 @@ watch(supportedPaymentMethods, (methods) => {
     }
 }, { immediate: true });
 
-watch(selectedCountry, (country) => {
-    if (country?.countryCode) {
-        selectedCountryCode.value = country.countryCode;
-    }
-}, { immediate: true });
-
 function handleLocaleChange(value: string) {
     applyLocale(normalizeLocale(value), true);
+}
+
+function closeCountryOutside(event: PointerEvent) {
+    if (event.target instanceof Node && !countrySelectRoot.value?.contains(event.target)) countryDropdownOpen.value = false;
 }
 
 function handleCountryChange(countryCode: string) {
     selectedCountryCode.value = countryCode;
     countryDropdownOpen.value = false;
-    writeStoredValue(COUNTRY_KEY, countryCode);
+    countryManuallySelected.value = true;
+    countrySearch.value = '';
 }
 
 function applyLocale(value: CheckoutLocale, manual: boolean) {
@@ -1068,12 +993,7 @@ async function loadCountries() {
     } finally {
         countryLoading.value = false;
     }
-    if (!countryOptions.value.some((country) => country.countryCode === selectedCountryCode.value)) {
-        selectedCountryCode.value = countryOptions.value[0]?.countryCode || '';
-        if (selectedCountryCode.value) {
-            writeStoredValue(COUNTRY_KEY, selectedCountryCode.value);
-        }
-    }
+    selectedCountryCode.value = checkoutCountryCode(countryOptions.value, selectedCountryCode.value);
 }
 
 async function initializeCheckout() {
@@ -1136,6 +1056,10 @@ function hydrateSession(response: HostedCheckoutSession) {
 
 function hydratePrefill(response: HostedCheckoutSession) {
     const prefill = response.billingInfo || response.payerInfo;
+    if (!countryManuallySelected.value) {
+        const country = response.billingInfo?.country || response.payerInfo?.country || 'USA';
+        selectedCountryCode.value = countryOptions.value.length ? checkoutCountryCode(countryOptions.value, country) : normalizeCode(country);
+    }
     if (!prefill) {
         return;
     }
@@ -1147,9 +1071,6 @@ function hydratePrefill(response: HostedCheckoutSession) {
     billingForm.city = prefill.city || '';
     billingForm.street = prefill.street || '';
     billingForm.postal = prefill.postal || '';
-    if (prefill.country) {
-        selectedCountryCode.value = normalizeCode(prefill.country);
-    }
     if (!cardForm.cardholderName) {
         cardForm.cardholderName = [prefill.firstName, prefill.lastName].filter(Boolean).join(' ');
     }
@@ -1732,7 +1653,7 @@ function blockCheckout(messageKey: string) {
 
 /** 使用稳定失败原因码选择当前语言文案，禁止展示渠道或后端返回的原始消息。 */
 function localizedFailureReason(reasonCode?: string): string {
-    const key = FAILURE_REASON_I18N_KEYS[normalizeCode(reasonCode)] || 'status.failureReasons.UNKNOWN';
+    const key = normalizeCode(reasonCode) === 'F2000' ? 'status.failureReasons.SYSTEM_ERROR' : FAILURE_REASON_I18N_KEYS[normalizeCode(reasonCode)] || 'status.failureReasons.UNKNOWN';
     return t(key);
 }
 
@@ -2161,6 +2082,7 @@ async function downloadCurrentReceipt() {
 
         const receiptStatus = refreshedViewState as ReceiptStatus;
         const result = paymentResult.value?.result;
+        const receiptIdentity = checkoutReceiptIdentity(result?.transactionId, paymentResult.value?.checkoutAttemptId);
         const paymentDetails = [
             result?.paymentMethod || selectedMethodLabel.value || t('checkout.bankCardLabel'),
             result?.cardBrand,
@@ -2176,8 +2098,8 @@ async function downloadCurrentReceipt() {
             },
             { label: t('status.paymentMethod'), value: paymentDetails || '-' },
             {
-                label: t('status.paymentId'),
-                value: result?.transactionId || paymentResult.value?.checkoutAttemptId || '-',
+                label: t(receiptIdentity.kind === 'systemOrder' ? 'status.paymentId' : 'status.paymentAttemptId'),
+                value: receiptIdentity.value,
             },
         ];
         if (result?.transactionDateTime) {
@@ -2301,7 +2223,6 @@ function mockSession(token = 'dev-token'): HostedCheckoutSession {
         pageState: 'PAYABLE',
         merchant: {
             displayName: 'Vexra Lifestyle Flagship',
-            logoUrl: checkoutBrand.logos.icon,
         },
         order: {
             orderNo: token === 'dev-unpaid' ? 'DEVUNPAID202607270001' : 'DEV202607270001',
@@ -2453,6 +2374,7 @@ function isDevToken(token: string): boolean {
 applyLocale(resolveInitialLocale(), false);
 
 onMounted(async () => {
+    document.addEventListener('pointerdown', closeCountryOutside);
     window.addEventListener('message', handleThreeDsReturnMessage);
     await initializeCheckout();
     if (runtimeState.value === 'checkout') {
@@ -2461,6 +2383,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', closeCountryOutside);
     window.removeEventListener('message', handleThreeDsReturnMessage);
     clearPolling();
     clearThreeDsContinuation();

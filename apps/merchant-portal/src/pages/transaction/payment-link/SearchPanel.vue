@@ -5,7 +5,7 @@
       inline
       size="small"
       class="search-form pl-search-form"
-      label-width="92px"
+      :label-width="String(locale).startsWith('zh') ? '92px' : '128px'"
       @submit.prevent="$emit('search')"
     >
       <div class="pl-search-fields"><slot /></div>
@@ -22,6 +22,8 @@
   </section>
 </template>
 <script setup lang="ts">
+  import { useI18n } from 'vue-i18n';
+  const { locale } = useI18n();
   import { Search, RefreshLeft } from '@element-plus/icons-vue';
   defineOptions({ inheritAttrs: false });
   defineProps<{
@@ -34,21 +36,20 @@
 </script>
 <style scoped>
   .pl-search-form {
-    display: grid;
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px 18px;
     width: 100%;
     margin: 0;
   }
   .pl-search-fields,
   .pl-search-time {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px 18px;
-    min-width: 0;
+    display: contents;
   }
   .pl-search-fields :deep(.el-form-item) {
-    flex: 0 1 340px;
+    flex: 1 1 280px;
+    max-width: 360px;
     min-width: 0;
     margin: 0;
   }
@@ -62,10 +63,13 @@
     width: 100%;
   }
   .pl-search-time :deep(.transaction-time-form-item) {
-    flex: 1 1 800px;
+    flex: 1 1 880px;
     max-width: 100%;
     min-width: 0;
     margin: 0;
+  }
+  .pl-search-time :deep(.transaction-time-range-filter) {
+    max-width: none;
   }
   .pl-search-actions {
     display: flex;
@@ -77,6 +81,7 @@
     .pl-search-fields :deep(.el-form-item),
     .pl-search-time :deep(.el-form-item) {
       flex-basis: 100%;
+      max-width: none;
       display: block;
       width: 100%;
     }

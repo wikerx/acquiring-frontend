@@ -55,16 +55,20 @@ export interface PaymentLinkView {
   paidTime?: string;
   createdAppCode: string;
   createdBy: string;
+  createdByName?: string;
   disableReason?: string;
   version: number;
   notifyUrl?: string;
   redirectUrl?: string;
 }
 export interface PaymentLinkOptions {
+  defaultCurrency?: string;
+  currencyExponents: Record<string, number>;
   merchantId: string;
   merchantDisplayName: string;
   currencies: string[];
   cardBrands: string[];
+  paymentMethodsByCurrency?: Record<string, string[]>;
   cardBrandsByCurrency: Record<string, string[]>;
   locales: string[];
   minExpireMinutes: number;
@@ -108,13 +112,15 @@ export interface PaymentLinkDelivery {
   emailRecordId?: number;
   createdAppCode: string;
   createdBy: string;
+  createdByName?: string;
   createTime: string;
 }
 export interface PaymentLinkEvent {
   eventId: string;
   eventType: string;
   actorAppCode: string;
-  actorId: string;
+  actorId?: string;
+  actorName?: string;
   reason?: string;
   createTime: string;
 }

@@ -10,6 +10,7 @@
     :time-range-component="TransactionTimeRangeFilter"
     :timezone-options="timezoneOptions"
     :normalize-time-range="normalizeTimeRange"
+    :format-instant="formatDateTimeInTimeZone"
     :resolve-query-range="resolveTransactionQueryRange"
     :merchant-select="MerchantRemoteSelect"
     :make-qr="makeQr"
@@ -39,7 +40,7 @@
     loadTransactionDictOptions,
     resolveTransactionQueryRange,
   } from '../shared';
-  import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
+  import { formatDateTimeFromSourceTimeZone, formatDateTimeInTimeZone } from '@/utils/format';
   import SearchPanel from '../components/TransactionSearchPanel.vue';
   import { useUserStore } from '@/store/modules/user';
   import MerchantRemoteSelect from './MerchantSelect.vue';

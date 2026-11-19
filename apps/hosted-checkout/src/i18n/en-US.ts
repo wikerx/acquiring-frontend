@@ -1,5 +1,13 @@
 export default {
   paymentLinkEntry: {
+    unavailableLabel: 'Unavailable',
+    confirmTitle: 'Review your payment',
+    statusLabels: {
+      ACTIVE: 'Ready to pay',
+      COMPLETED: 'Paid',
+      DISABLED: 'Disabled',
+      EXPIRED: 'Expired',
+    },
     lastFailed: 'Last payment attempt failed',
     failedNotice:
       'This attempt did not succeed. Once the link expires, contact the merchant to arrange payment.',
@@ -40,10 +48,11 @@ export default {
   trustbar: {
     ssl: '256-bit SSL',
     sslDesc: 'Encrypted session',
-    cards: 'Global Cards',
-    cardsDesc: 'Visa / MC / JCB / AE',
-    merchant: 'Merchant',
-    merchantDesc: 'Vexra Lifestyle Flagship',
+    cards: 'Merchant payment methods',
+    pause: 'Pause logos',
+    play: 'Resume logos',
+    previous: 'Previous payment method',
+    next: 'Next payment method',
   },
   checkout: {
     merchantStore: 'Merchant Store',
@@ -51,6 +60,7 @@ export default {
     orderReferenceDynamic: 'Order reference {orderNo}',
     orderReferencePending: 'Order reference pending',
     orderSummary: 'Order Summary',
+    itemQuantity: 'Quantity: {count}',
     secure: 'Secure',
     total: 'Total',
     contactInfo: 'Contact Information',
@@ -58,8 +68,9 @@ export default {
     email: 'Email',
     firstName: 'First Name',
     lastName: 'Last Name',
-    country: 'Country',
-    selectCountry: 'Select country',
+    country: 'Country/Region',
+    countrySearch: 'Search country/region or code',
+    selectCountry: 'Select country/region',
     countryFallback: 'Country list is temporarily unavailable. Please try again later.',
     countryRetry: 'Reload',
     state: 'State / Province',
@@ -116,12 +127,15 @@ export default {
     amount: 'Order Amount',
     merchantOrder: 'Merchant Order',
     paymentMethod: 'Payment Method',
-    paymentId: 'Payment ID',
+    paymentId: 'System Order No.',
+    paymentAttemptId: 'Payment attempt ID',
     time: 'Time',
     authorizationCode: 'Authorization Code',
     failureReason: 'Failure Reason',
     failureReasonValue: 'Issuer declined',
+    systemFailureHelp: 'Check the order status or contact the merchant for assistance.',
     failureReasons: {
+      SYSTEM_ERROR: 'The payment service could not complete processing',
       F1000:
         'The transaction was declined. Please contact your card issuer or try a different payment method.',
       PAYMENT_TIMEOUT: 'The payment deadline has passed and this link can no longer be used',
