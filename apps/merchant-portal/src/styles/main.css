@@ -2931,7 +2931,7 @@ body {
     font-size: clamp(38px, 3.15vw, 54px);
     line-height: 1.1;
     letter-spacing: -0.025em;
-    text-wrap: balance;
+    /*text-wrap: balance;*/
 }
 
 .merchant-login-hero__title-group p {

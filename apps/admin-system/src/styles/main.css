@@ -2886,7 +2886,7 @@ textarea {
     letter-spacing: -0.025em;
     word-break: normal;
     overflow-wrap: anywhere;
-    text-wrap: balance;
+    /*text-wrap: balance;*/
 }
 
 .login-hero__title-group p {
