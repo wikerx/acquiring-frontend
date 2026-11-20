@@ -89,6 +89,11 @@ export interface MerchantInfo {
     readinessIssues?: string[];
     /** Non-sensitive effective payment capabilities and their activation gaps. */
     paymentCapabilityReadiness?: MerchantPaymentCapabilityReadiness;
+    /** 查询时按业务分组的能力结果，旧版详情可能不返回。 */
+    currentPaymentCapabilities?: {
+        acquiring?: MerchantCurrentBusinessCapability | null;
+        payout?: MerchantCurrentBusinessCapability | null;
+    } | null;
     settlementCurrency: string;
     timezone: string;
     riskLevel: number;
@@ -119,6 +124,15 @@ export interface MerchantPaymentCapabilityReadiness {
     routeConflicts: MerchantPaymentCapability[];
     feeGaps: MerchantPaymentCapability[];
     feeAmbiguities: MerchantPaymentCapability[];
+}
+
+export interface MerchantCurrentBusinessCapability
+    extends Omit<MerchantPaymentCapabilityReadiness, 'activeBindingCount' | 'unavailableBindingCount'> {
+    evaluationStatus: 'EVALUATED' | 'NOT_EVALUATED' | 'UNAVAILABLE';
+    activeBindingCount?: number | null;
+    unavailableBindingCount?: number | null;
+    evaluatedAt?: string | null;
+    executionStatus?: 'NOT_CONNECTED' | null;
 }
 
 /** 商户法人、董事、UBO 与授权人资料；证件号仅在新增或换证时传明文。 */
@@ -396,6 +410,7 @@ export type MerchantSaveRequest = Omit<MerchantInfo,
     | 'activationReady'
     | 'readinessIssues'
     | 'paymentCapabilityReadiness'
+    | 'currentPaymentCapabilities'
     | 'gmtCreate'
     | 'gmtModified'
     | 'jwtKey'

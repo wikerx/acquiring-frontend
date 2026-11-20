@@ -192,6 +192,7 @@
               type="primary"
               link
               :icon="View"
+              :loading="detailLoadingId === row.id"
               @click="openDetail(row)"
               v-hasPermi="'merchant:info:detail'"
               >{{ $t('common.detail') }}</el-button
@@ -272,6 +273,8 @@
     <MerchantProfileDetailDrawer
       v-model:visible="detailVisible"
       :merchant="detailMerchant"
+      :capability-loading="detailLoadingId === detailMerchant?.id && Boolean(detailLoadingId)"
+      :capability-load-failed="detailFailedId === detailMerchant?.id && Boolean(detailFailedId)"
       :can-edit="canEditMerchant"
       :can-activate="canActivateMerchant"
       :can-view-fee="canViewMerchantFee"
@@ -283,6 +286,7 @@
       :action-loading="profileActionLoading"
       :document-busy-id="documentBusyId"
       @edit="openForm('edit', detailMerchant)"
+      @reload-capabilities="detailMerchant && openDetail(detailMerchant)"
       @configure-fee="goToMerchantFee(detailMerchant?.merchantId)"
       @bind-channel="goToMerchantChannel(detailMerchant?.merchantId)"
       @fund-account="goToFundAccount(detailMerchant?.merchantId)"
@@ -1084,6 +1088,9 @@
   const formMerchant = ref<MerchantInfo>();
   const detailVisible = ref(false);
   const detailMerchant = ref<MerchantInfo>();
+  const detailLoadingId = ref<string>();
+  const detailFailedId = ref<string>();
+  let detailRequest = 0;
   const profileChangeReviewVisible = ref(false);
   const profileActionLoading = ref(false);
   const documentBusyId = ref<string>();
@@ -1199,11 +1206,21 @@
   }
   async function openDetail(row: MerchantInfo) {
     if (!row.id) return;
+    const request = ++detailRequest;
+    const wasOpen = detailVisible.value;
+    detailLoadingId.value = row.id;
+    detailFailedId.value = undefined;
     try {
-      detailMerchant.value = await getMerchant(row.id);
+      const merchant = await getMerchant(row.id);
+      if (request !== detailRequest || (wasOpen && !detailVisible.value)) return;
+      detailMerchant.value = merchant;
       detailVisible.value = true;
     } catch (error: any) {
+      if (request !== detailRequest || (wasOpen && !detailVisible.value)) return;
+      detailFailedId.value = row.id;
       ElMessage.error(error?.message || t('common.loadFailed'));
+    } finally {
+      if (request === detailRequest) detailLoadingId.value = undefined;
     }
   }
 
@@ -1406,16 +1423,17 @@
   }
 
   async function refreshOpenedMerchant(id: string) {
+    const request = detailRequest;
     const merchant = await getMerchant(id);
-    updateOpenedMerchant(merchant);
+    updateOpenedMerchant(merchant, request === detailRequest && !detailLoadingId.value);
     await loadData();
   }
 
-  function updateOpenedMerchant(merchant: MerchantInfo) {
+  function updateOpenedMerchant(merchant: MerchantInfo, updateDetail = true) {
     if (!formMerchant.value || formMerchant.value.id === merchant.id) {
       formMerchant.value = merchant;
     }
-    if (detailMerchant.value?.id === merchant.id) {
+    if (updateDetail && detailMerchant.value?.id === merchant.id) {
       detailMerchant.value = merchant;
     }
   }

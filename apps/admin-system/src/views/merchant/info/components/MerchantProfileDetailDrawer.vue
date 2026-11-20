@@ -96,13 +96,14 @@
               <div>
                 <h4>{{ t('merchant.info.activationWorkbenchTitle') }}</h4>
                 <p>
-                  {{ merchant.activationReady
+                  {{ isActivated ? t('merchant.info.activationWorkbenchActivated') : merchant.activationReady
                     ? t('merchant.info.activationWorkbenchReady')
                     : t('merchant.info.activationWorkbenchBlocked', { count: merchant.readinessIssues?.length || 0 }) }}
                 </p>
               </div>
               <el-tag :type="merchant.activationReady ? 'success' : 'warning'" effect="light">
-                {{ merchant.activationReady ? t('merchant.info.stageReady') : t('merchant.info.stageBlocked') }}
+                {{ isActivated ? lifecycleText('activation', merchant.activationStatus)
+                  : merchant.activationReady ? t('merchant.info.stageReady') : t('merchant.info.stageBlocked') }}
               </el-tag>
             </section>
 
@@ -118,11 +119,11 @@
                 <div class="activation-stage-row__content">
                   <div class="activation-stage-row__title">
                     <h4>{{ stage.title }}</h4>
-                    <el-tag :type="stage.status === 'READY' ? 'success' : 'warning'" size="small" effect="plain">
+                    <el-tag v-if="!isActivated" :type="stage.status === 'READY' ? 'success' : 'warning'" size="small" effect="plain">
                       {{ stage.status === 'READY' ? t('merchant.info.stageReady') : t('merchant.info.stageBlocked') }}
                     </el-tag>
                   </div>
-                  <p>{{ stage.description }}</p>
+                  <p v-if="!isActivated">{{ stage.description }}</p>
                   <div v-if="stage.issues.length" class="activation-stage-row__issues">
                     <span v-for="issue in stage.issues" :key="issue">{{ readinessIssueText(issue, t) }}</span>
                   </div>
@@ -143,70 +144,74 @@
                   <h4>{{ t('merchant.info.effectivePaymentCapabilities') }}</h4>
                   <p>{{ t('merchant.info.effectivePaymentCapabilitiesDesc') }}</p>
                 </div>
-                <div class="activation-capabilities__metrics">
-                  <span>{{ t('merchant.info.activeBindingCount') }} <b>{{ paymentReadiness?.activeBindingCount || 0 }}</b></span>
-                  <span>{{ t('merchant.info.unavailableBindingCount') }} <b>{{ paymentReadiness?.unavailableBindingCount || 0 }}</b></span>
-                </div>
               </header>
-              <el-table
-                v-if="paymentReadiness?.capabilities?.length"
-                :data="paymentReadiness.capabilities"
-                size="small"
-                border
-                :row-key="capabilityKey"
-              >
-                <el-table-column :label="t('merchant.info.transactionType')" min-width="150">
-                  <template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="optionText('transactionType', row.transactionType)" align="start" /></template>
-                </el-table-column>
-                <el-table-column :label="t('merchant.info.paymentType')" min-width="130">
-                  <template #default="{ row }">
-                    <PaymentLogoGroup
-                      v-if="paymentTypeLogoKeys(row.paymentType).length"
-                      :keys="paymentTypeLogoKeys(row.paymentType)"
-                      size="sm"
-                      align="start"
-                      :wrap="false"
-                    />
-                    <span v-else>{{ optionText('paymentType', row.paymentType) }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column :label="t('merchant.info.paymentMethod')" min-width="180">
-                  <template #default="{ row }">
-                    <PaymentMethodDisplay
-                      :payment-types="[
-                        {
-                          value: row.paymentType || '',
-                          label: optionText('paymentType', row.paymentType),
-                        },
-                      ]"
-                      :payment-methods="[
-                        {
-                          value: row.paymentMethod || '',
-                          label: optionText('paymentMethod', row.paymentMethod),
-                        },
-                      ]"
-                      align="start"
-                    />
-                  </template>
-                </el-table-column>
-                <el-table-column :label="t('merchant.info.currency')" width="100" align="center">
-                  <template #default="{ row }"><CurrencyDisplay :currency="row.currency" :locale="String(locale)" size="xs" /></template>
-                </el-table-column>
-                <el-table-column :label="t('merchant.info.capabilityCheck')" min-width="260">
-                  <template #default="{ row }">
-                    <div class="capability-check-tags">
-                      <el-tag
-                        v-for="flag in capabilityFlags(row)"
-                        :key="flag.key"
-                        :type="flag.type"
-                        size="small"
-                        effect="plain"
-                      >{{ flag.label }}</el-tag>
+              <section v-for="group in capabilityGroups" :key="group.key" class="activation-capabilities__group">
+                <header class="activation-capabilities__header">
+                  <div>
+                    <div class="activation-capabilities__title">
+                      <h4>{{ t(`merchant.info.capabilityGroup.${group.key}`) }}</h4>
+                      <el-tag v-if="group.notConnected" size="small" type="warning" effect="plain">
+                        {{ t('merchant.info.capabilityExecutionNotConnected') }}
+                      </el-tag>
                     </div>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <el-empty v-else :description="t('merchant.info.noEffectivePaymentCapabilities')" />
+                    <p v-if="group.state === 'EVALUATED' && group.data?.evaluatedAt">
+                      {{ t('merchant.info.capabilityEvaluatedAt') }}
+                      <BaseDateTime :value="group.data.evaluatedAt" />
+                    </p>
+                  </div>
+                  <div class="activation-capabilities__metrics">
+                    <span>{{ t('merchant.info.activeBindingCount') }} <b>{{ group.state === 'EVALUATED' ? group.data?.activeBindingCount : '—' }}</b></span>
+                    <span>{{ t('merchant.info.unavailableBindingCount') }} <b>{{ group.state === 'EVALUATED' ? group.data?.unavailableBindingCount : '—' }}</b></span>
+                  </div>
+                </header>
+                <div v-if="group.methods.length" class="activation-capabilities__body">
+                  <div v-for="section in group.methodSections" :key="section.key" class="activation-capabilities__method-section">
+                    <h5 class="activation-capabilities__method-count">
+                      {{ t(`merchant.info.capabilityMethodCount.${section.key}`, { count: section.methods.length }) }}
+                    </h5>
+                    <ul v-if="section.methods.length" class="activation-capabilities__methods"
+                      :aria-label="t(`merchant.info.capabilityMethodCount.${section.key}`, { count: section.methods.length })">
+                      <li v-for="method in section.methods" :key="method.key" :title="method.label">
+                        <PaymentLogoGroup v-if="method.logos.length" :keys="method.logos" size="sm" align="center" />
+                        <span v-else>{{ method.label }}</span>
+                        <el-tag v-if="section.key === 'configured' && method.followUpOnly" size="small" type="info" effect="plain">
+                          {{ t('merchant.info.capabilityFollowUpOnly') }}
+                        </el-tag>
+                        <el-tag v-else-if="section.key === 'configured' && method.issues.length" size="small" type="warning" effect="plain">
+                          {{ t('merchant.info.capabilityPartiallyConfigured') }}
+                        </el-tag>
+                      </li>
+                    </ul>
+                  </div>
+                  <div v-if="group.actions.length" class="activation-capabilities__details">
+                    <span>{{ t('merchant.info.transactionType') }}</span>
+                    <ul class="activation-capabilities__actions">
+                      <li v-for="action in group.actions" :key="action">
+                        <TransactionTypeDisplay :value="action" :label="capabilityActionLabel(action)" align="start" />
+                      </li>
+                    </ul>
+                  </div>
+                  <details v-if="group.issueMethods.length" class="activation-capabilities__issues">
+                    <summary>{{ t('merchant.info.capabilityIssueSummary', { count: group.issueMethods.length }) }}</summary>
+                    <ul>
+                      <li v-for="method in group.issueMethods" :key="method.key">
+                        <strong>{{ method.label }}</strong>
+                        <div v-for="issue in method.issues" :key="`${issue.key}:${issue.transactionType}`" class="activation-capabilities__details">
+                          <el-tag :type="issue.key === 'feeAmbiguities' ? 'warning' : 'danger'" size="small" effect="plain">
+                            {{ t(`merchant.info.capabilityIssue.${issue.key}`) }}
+                          </el-tag>
+                          <TransactionTypeDisplay :value="issue.transactionType" :label="capabilityActionLabel(issue.transactionType)" align="start" />
+                          <span>{{ issue.currencies.join(t('merchant.info.capabilityListSeparator')) }}</span>
+                        </div>
+                      </li>
+                    </ul>
+                  </details>
+                </div>
+                <el-empty v-else :image-size="44" :description="capabilityEmptyText(group.state, group.data)">
+                  <el-button v-if="group.state === 'UNAVAILABLE' || group.state === 'NOT_EVALUATED'" text type="primary"
+                    @click="emit('reload-capabilities')">{{ t('merchant.info.reloadCapabilities') }}</el-button>
+                </el-empty>
+              </section>
             </section>
           </div>
         </el-tab-pane>
@@ -674,23 +679,25 @@
     Setting,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
-  import { CurrencyAmountDisplay, CurrencyDisplay, PaymentLogoGroup, PaymentMethodDisplay, TransactionTypeDisplay } from '@acquiring/shared';
+  import { CurrencyAmountDisplay, CurrencyDisplay, getPaymentLogo, PaymentLogoGroup, resolvePaymentLogoKeys, TransactionTypeDisplay } from '@acquiring/shared';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
   import type {
     MerchantDocument,
+    MerchantCurrentBusinessCapability,
     MerchantInfo,
-    MerchantPaymentCapability,
     MerchantReviewRequest,
   } from '@/api/merchant/info';
-  import { paymentLogoKeys } from '@/views/channel/shared';
   import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
   import { normalizeInternationalPhone } from '../international-phone';
   import { readinessIssueText } from '../readiness-issue';
+  import { currentCapabilityState, summarizeCurrentCapabilities } from '../current-capability';
 
   const props = defineProps<{
     visible: boolean;
     merchant?: MerchantInfo;
+    capabilityLoading?: boolean;
+    capabilityLoadFailed?: boolean;
     canEdit?: boolean;
     canActivate?: boolean;
     canViewFee?: boolean;
@@ -706,6 +713,7 @@
   const emit = defineEmits<{
     'update:visible': [value: boolean];
     edit: [];
+    'reload-capabilities': [];
     'configure-fee': [];
     'bind-channel': [];
     'fund-account': [];
@@ -720,7 +728,7 @@
     'delete-document': [document: MerchantDocument];
   }>();
 
-  const { locale, t } = useI18n();
+  const { locale, t, te } = useI18n();
   type ActivationStageAction =
     | 'edit'
     | 'settlement-profile'
@@ -771,7 +779,50 @@
   const reviewDialogTitle = computed(() =>
     t(`merchant.info.reviewDecision.${reviewDecision.value}`),
   );
-  const paymentReadiness = computed(() => props.merchant?.paymentCapabilityReadiness);
+  const isActivated = computed(() => props.merchant?.activationStatus === 'ACTIVE');
+  const capabilityGroups = computed(() => (['acquiring', 'payout'] as const).map((key) => {
+    const data = props.merchant?.currentPaymentCapabilities?.[key];
+    const state = currentCapabilityState(data, props.capabilityLoading, props.capabilityLoadFailed);
+    const summary = summarizeCurrentCapabilities(state === 'EVALUATED' ? data : undefined);
+    const methods = summary.methods.map((method) => {
+      const { paymentType, paymentMethod } = method;
+      const logos = paymentMethod === 'BANK_CARD'
+        ? ['bankCard'] as const
+        : resolvePaymentLogoKeys(paymentType === 'BANK_CARD' ? undefined : paymentType, paymentMethod);
+      const labelKey = `transaction.paymentMethod.${paymentMethod}`;
+      return {
+        ...method,
+        logos: logos.filter((logo) => Boolean(getPaymentLogo(logo).asset)),
+        label: te(labelKey) ? t(labelKey) : (logos[0] ? getPaymentLogo(logos[0]).label : paymentMethod),
+      };
+    });
+    const methodSections = key === 'acquiring'
+      ? [
+        { key: 'configured', methods: methods.filter((method) => method.configured) },
+        { key: 'pending', methods: methods.filter((method) => !method.configured) },
+      ]
+      : [{ key: 'matched', methods }];
+    return {
+      key, data, state, methods, methodSections, actions: summary.actions,
+      issueMethods: methods.filter((method) => method.issues.length),
+      notConnected: state === 'EVALUATED' && data?.executionStatus === 'NOT_CONNECTED',
+    } as const;
+  }));
+
+  function capabilityEmptyText(state: ReturnType<typeof currentCapabilityState>, data?: MerchantCurrentBusinessCapability | null) {
+    if (state === 'LOADING') return t('common.loading');
+    if (state === 'NOT_EVALUATED') return t('merchant.info.capabilityNotEvaluated');
+    if (state === 'UNAVAILABLE') return t('merchant.info.capabilityUnavailable');
+    if (data?.activeBindingCount === 0) return t('merchant.info.noActiveBindings');
+    return t('merchant.info.noEffectivePaymentCapabilities');
+  }
+
+  function capabilityActionLabel(action: string) {
+    if (action === 'PAYOUT') return t('merchant.info.capabilityGroup.payoutAction');
+    if (action === 'CANCEL') return t('common.cancel');
+    const key = `transaction.type.${action}`;
+    return te(key) ? t(key) : t('merchant.info.capabilityOtherAction');
+  }
 
   const operationalIssueGroups = {
     settlement: (issue: string) => issue.startsWith('SETTLEMENT_') || issue === 'FEE_SETTLEMENT_CYCLE_INCOMPLETE',
@@ -837,33 +888,6 @@
     else emit('technical-access');
   }
 
-  function capabilityKey(capability: MerchantPaymentCapability) {
-    return [capability.transactionType, capability.paymentType, capability.paymentMethod, capability.currency].join('|');
-  }
-
-  function includesCapability(rows: MerchantPaymentCapability[] | undefined, capability: MerchantPaymentCapability) {
-    const key = capabilityKey(capability);
-    return rows?.some((row) => capabilityKey(row) === key) === true;
-  }
-
-  function capabilityFlags(capability: MerchantPaymentCapability) {
-    const readiness = paymentReadiness.value;
-    const flags = [] as Array<{ key: string; label: string; type: 'success' | 'warning' | 'danger' }>;
-    if (includesCapability(readiness?.routeConflicts, capability)) {
-      flags.push({ key: 'route', label: t('merchant.info.routeConflict'), type: 'danger' });
-    }
-    if (includesCapability(readiness?.feeGaps, capability)) {
-      flags.push({ key: 'fee-gap', label: t('merchant.info.feeGap'), type: 'danger' });
-    }
-    if (includesCapability(readiness?.feeAmbiguities, capability)) {
-      flags.push({ key: 'fee-ambiguous', label: t('merchant.info.feeAmbiguous'), type: 'warning' });
-    }
-    if (!flags.length) {
-      flags.push({ key: 'ready', label: t('merchant.info.capabilityReady'), type: 'success' });
-    }
-    return flags;
-  }
-
   function openReview(decision: MerchantReviewRequest['decision']) {
     reviewDecision.value = decision;
     reviewComment.value = '';
@@ -914,10 +938,6 @@
     const key = `merchant.info.options.${group}.${option}`;
     const translated = t(key);
     return translated === key ? option : translated;
-  }
-
-  function paymentTypeLogoKeys(paymentType?: string) {
-    return paymentLogoKeys(paymentType);
   }
 
   function lifecycleText(group: string, status?: string) {
@@ -1186,18 +1206,97 @@
   .activation-capabilities__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 18px;
     padding: 15px 17px;
     border-bottom: 1px solid #e5ebf2;
     background: #f8fafc;
   }
 
+  .activation-capabilities__group + .activation-capabilities__group {
+    border-top: 1px solid var(--el-border-color-light);
+  }
+
+  .activation-capabilities__title,
   .activation-capabilities__metrics,
-  .capability-check-tags {
+  .activation-capabilities__methods,
+  .activation-capabilities__actions,
+  .activation-capabilities__details {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 7px;
+  }
+
+  .activation-capabilities__body {
+    display: grid;
+    gap: 10px;
+    padding: 14px 17px 16px;
+    font-size: 12px;
+  }
+
+  .activation-capabilities__method-count {
+    margin: 0;
+    color: var(--el-text-color-regular);
+    font-size: inherit;
+    font-weight: 600;
+  }
+
+  .activation-capabilities__method-section {
+    display: grid;
+    gap: 6px;
+  }
+
+  .activation-capabilities__methods,
+  .activation-capabilities__actions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .activation-capabilities__methods li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 66px;
+    max-width: 100%;
+    min-height: 36px;
+    padding: 3px 7px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 4px;
+    color: var(--el-text-color-primary);
+    background: var(--el-fill-color-lighter);
+    overflow-wrap: anywhere;
+  }
+
+  .activation-capabilities__actions {
+    gap: 5px 12px;
+  }
+
+  .activation-capabilities__details {
+    gap: 6px 10px;
+    color: var(--el-text-color-secondary);
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .activation-capabilities__issues summary {
+    width: fit-content;
+    color: var(--el-color-primary);
+    cursor: pointer;
+  }
+
+  .activation-capabilities__issues ul {
+    display: grid;
+    gap: 10px;
+    margin: 8px 0 0;
+    padding: 0 0 0 16px;
+    list-style: none;
+  }
+
+  .activation-capabilities__issues li {
+    display: grid;
+    gap: 5px;
   }
 
   .activation-capabilities__metrics span {
