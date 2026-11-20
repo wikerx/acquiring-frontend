@@ -207,7 +207,7 @@
     }
   }
   watch(
-    () => [props.application.applicationNo, auth.account?.userId],
+    [() => props.application.applicationNo, () => auth.account?.userId],
     () => {
       generation++;
       visible.value = false;

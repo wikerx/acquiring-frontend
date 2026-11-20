@@ -191,7 +191,7 @@ export async function queryCheckoutSession(payload: {
     cover?: string;
     clientContext: HostedCheckoutClientContext;
 }): Promise<HostedCheckoutSession> {
-    return postCheckout<HostedCheckoutSession>('/checkout/api/v1/session/query', payload);
+    return postCheckout<HostedCheckoutSession>('/checkout/api/v1/session/query', payload, 10000);
 }
 
 export async function submitCheckoutPayment(payload: PaymentSubmitPayload): Promise<HostedCheckoutPaymentResult> {
@@ -227,11 +227,12 @@ export async function returnCheckoutThreeDs(payload: {
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/3ds/return', payload);
 }
 
-async function postCheckout<T>(url: string, payload: unknown): Promise<T> {
+async function postCheckout<T>(url: string, payload: unknown, timeout?: number): Promise<T> {
     const result = await axios.post<CommonResult<T>>(url, payload, {
         headers: {
             'Content-Type': 'application/json',
         },
+        timeout,
     });
     // A0000 仅表示本次浏览器 API 正常返回；支付终态继续由 data.pageState 表达。
     if (result.data.code !== 'A0000') {

@@ -263,7 +263,11 @@
                                 </div>
                             </div>
                             <div v-else-if="selectedPaymentMethod === method.id" class="checkout-payment-detail">
-                                <p>{{ t('checkout.paymentMethodUnavailable') }}</p>
+                                <p role="status">{{ t(paymentMethodStatusKey(method.componentState)) }}</p>
+                                <button v-if="method.componentState === 'LOAD_FAILED'" type="button"
+                                    class="checkout-payment-option__select" @click="refreshSessionEncryption">
+                                    {{ t('checkout.retryCardSetup') }}
+                                </button>
                             </div>
                         </div>
                         <button v-if="supportedPaymentMethods.length > 4" class="checkout-payment-option__select" type="button"
@@ -489,6 +493,8 @@ import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutReceiptIdentity,
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutStatusViewState = 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutLocale = 'en-US' | 'zh-CN';
+type PaymentComponentState = 'READY' | 'NOT_INTEGRATED' | 'BACKEND_UNAVAILABLE'
+    | 'UNSUPPORTED_ENVIRONMENT' | 'LOADING' | 'LOAD_FAILED';
 
 interface PaymentOption {
     id: string;
@@ -500,6 +506,7 @@ interface PaymentOption {
     logoKeys: PaymentLogoKey[];
     threeDsMode?: string;
     canSubmit: boolean;
+    componentState: PaymentComponentState;
 }
 
 interface FieldError {
@@ -793,6 +800,8 @@ const supportedPaymentMethods = computed<PaymentOption[]>(() => {
     }
     return Array.from(grouped.values(), toPaymentOption);
 });
+const refreshingCardSetup = ref(false);
+const cardSetupFailed = ref(false);
 const showAllPaymentMethods = ref(false);
 const visiblePaymentMethods = computed(() => {
     const methods = supportedPaymentMethods.value;
@@ -1090,6 +1099,7 @@ async function initializeCheckout() {
 }
 
 function hydrateSession(response: HostedCheckoutSession) {
+    cardSetupFailed.value = false;
     session.value = response;
     paymentResult.value = response.paymentResult || null;
     startPaymentDeadline(response.checkout?.expireTime, response.checkout?.serverTime);
@@ -1131,6 +1141,7 @@ async function handleSubmitPayment() {
     }
     submitting.value = true;
     clearPolling();
+    let encrypting = false;
     try {
         if (!await ensureCardBrandSupported()) {
             return;
@@ -1165,12 +1176,14 @@ async function handleSubmitPayment() {
             handlePaymentResult(mockSuccessResult());
             return;
         }
+        encrypting = true;
         const cardDataEnvelope = await encryptCardData(
             session.value.cardEncryption,
             session.value.checkoutSessionId,
             attemptRequestId.value,
             cardData,
         );
+        encrypting = false;
         threeDsContinuation.value = { cardData, billingCardHolderInfo };
         cardForm.cvc = '';
         const response = await submitCheckoutPayment({
@@ -1190,8 +1203,12 @@ async function handleSubmitPayment() {
             handlePaymentResult(await mockThreeDsRequiredResult());
             return;
         }
-        formMessageKey.value = 'checkout.submitFailed';
-        await refreshSessionEncryption();
+        if (encrypting) {
+            cardSetupFailed.value = true;
+        } else {
+            formMessageKey.value = 'checkout.submitFailed';
+            await refreshSessionEncryption();
+        }
     } finally {
         submitting.value = false;
     }
@@ -1630,9 +1647,10 @@ async function retryPayment() {
 }
 
 async function refreshSessionEncryption() {
-    if (!routeToken.value || !session.value || isDevToken(routeToken.value)) {
+    if (refreshingCardSetup.value || !routeToken.value || !session.value || isDevToken(routeToken.value)) {
         return;
     }
+    refreshingCardSetup.value = true;
     try {
         const response = await queryCheckoutSession({
             opaqueToken: routeToken.value,
@@ -1644,12 +1662,21 @@ async function refreshSessionEncryption() {
             blockCheckout('checkout.invalidLink');
             return;
         }
-        session.value.cardEncryption = response.cardEncryption;
+        session.value = {
+            ...session.value,
+            merchant: response.merchant ?? session.value.merchant,
+            paymentOptions: response.paymentOptions,
+            paymentMethods: response.paymentMethods,
+            cardEncryption: response.cardEncryption,
+        };
+        cardSetupFailed.value = !response.cardEncryption;
         if (response.paymentResult) {
             handlePaymentResult(response.paymentResult);
         }
     } catch {
-        // The current error remains visible; a later retry will query the session again.
+        cardSetupFailed.value = true;
+    } finally {
+        refreshingCardSetup.value = false;
     }
 }
 
@@ -2031,6 +2058,7 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
         .map((brand) => CARD_BRAND_LOGOS[normalizeCode(brand)])
         .filter((logo): logo is PaymentLogoKey => Boolean(logo)));
     const isCard = code === 'BANK_CARD';
+    const componentState = resolvePaymentComponentState(method, isCard);
     const names: Record<string, string> = {
         APPLE_PAY: 'Apple Pay', GOOGLE_PAY: 'Google Pay', PAYPAL: 'PayPal', CASH_APP_PAY: 'Cash App Pay',
     };
@@ -2043,8 +2071,32 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
         brands,
         logoKeys: isCard ? cardLogos : resolvePaymentLogoKeys(code),
         threeDsMode: method.threeDsMode,
-        canSubmit: isCard && method.serverSubmitAllowed === true,
+        canSubmit: componentState === 'READY',
+        componentState,
     };
+}
+
+function resolvePaymentComponentState(method: HostedCheckoutPaymentMethod, isCard: boolean): PaymentComponentState {
+    if (!isCard) return 'NOT_INTEGRATED';
+    if (method.serverSubmitAllowed !== true
+        || (method.executionStatus != null && method.executionStatus !== 'READY')) return 'BACKEND_UNAVAILABLE';
+    if (isDevToken(routeToken.value)) return 'READY';
+    if (!window.crypto?.subtle) return 'UNSUPPORTED_ENVIRONMENT';
+    if (refreshingCardSetup.value) return 'LOADING';
+    if (cardSetupFailed.value || (session.value?.paymentOptions != null && !session.value.cardEncryption)) {
+        return 'LOAD_FAILED';
+    }
+    return 'READY';
+}
+
+function paymentMethodStatusKey(state: PaymentComponentState): string {
+    switch (state) {
+        case 'BACKEND_UNAVAILABLE': return 'checkout.paymentExecutionUnavailable';
+        case 'UNSUPPORTED_ENVIRONMENT': return 'checkout.cardBrowserUnsupported';
+        case 'LOADING': return 'checkout.loadingCardSetup';
+        case 'LOAD_FAILED': return 'checkout.cardSetupFailed';
+        default: return 'checkout.paymentMethodUnavailable';
+    }
 }
 
 function uniqueLogos(logos: PaymentLogoKey[]): PaymentLogoKey[] {
