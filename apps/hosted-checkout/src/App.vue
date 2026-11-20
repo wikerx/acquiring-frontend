@@ -193,7 +193,8 @@
                             class="checkout-payment-item"
                         >
                             <div :class="['checkout-payment-option', { 'is-active': selectedPaymentMethod === method.id }]">
-                                <button class="checkout-payment-option__select" type="button" :aria-pressed="selectedPaymentMethod === method.id" @click="selectedPaymentMethod = method.id">
+                                <button class="checkout-payment-option__select" type="button" :aria-pressed="selectedPaymentMethod === method.id"
+                                    :disabled="submitting" @click="selectPaymentMethod(method.id)">
                                     <span class="checkout-payment-option__radio" aria-hidden="true"></span>
                                     <span class="checkout-payment-option__body"><strong>{{ method.label }}</strong></span>
                                 </button>
@@ -1128,6 +1129,10 @@ function hydratePrefill(response: HostedCheckoutSession) {
     }
 }
 
+function selectPaymentMethod(methodId: string) {
+    if (!submitting.value) selectedPaymentMethod.value = methodId;
+}
+
 async function handleSubmitPayment() {
     if (submitting.value || paymentDeadlineExpired.value) {
         if (paymentDeadlineExpired.value) {
@@ -1136,14 +1141,25 @@ async function handleSubmitPayment() {
         return;
     }
     formMessageKey.value = '';
-    if (!selectedMethod.value?.canSubmit || !validateForm() || !routeToken.value || !session.value) {
+    const method = selectedMethod.value;
+    const sourceSession = session.value;
+    const token = routeToken.value;
+    const requestId = attemptRequestId.value;
+    if (method?.paymentMethod !== 'BANK_CARD' || !method.canSubmit || !validateForm() || !token || !sourceSession) {
         return;
     }
+    const mayContinue = () => session.value === sourceSession
+        && routeToken.value === token
+        && attemptRequestId.value === requestId
+        && selectedMethod.value?.id === method.id
+        && selectedMethod.value.canSubmit
+        && !paymentDeadlineExpired.value
+        && runtimeState.value === 'checkout';
     submitting.value = true;
     clearPolling();
     let encrypting = false;
     try {
-        if (!await ensureCardBrandSupported()) {
+        if (!await ensureCardBrandSupported() || !mayContinue()) {
             return;
         }
         const expiry = parseExpiry(cardForm.expiry);
@@ -1165,8 +1181,8 @@ async function handleSubmitPayment() {
             street: billingForm.street,
             postal: billingForm.postal,
         };
-        if (isDevToken(routeToken.value)) {
-            if (routeToken.value === 'dev-3ds') {
+        if (isDevToken(token)) {
+            if (token === 'dev-3ds') {
                 threeDsContinuation.value = { cardData, billingCardHolderInfo };
                 cardForm.cvc = '';
                 devStatusPolls.value = 0;
@@ -1178,19 +1194,20 @@ async function handleSubmitPayment() {
         }
         encrypting = true;
         const cardDataEnvelope = await encryptCardData(
-            session.value.cardEncryption,
-            session.value.checkoutSessionId,
-            attemptRequestId.value,
+            sourceSession.cardEncryption,
+            sourceSession.checkoutSessionId,
+            requestId,
             cardData,
         );
         encrypting = false;
+        if (!mayContinue()) return;
         threeDsContinuation.value = { cardData, billingCardHolderInfo };
         cardForm.cvc = '';
         const response = await submitCheckoutPayment({
-            opaqueToken: routeToken.value,
-            checkoutSessionId: session.value.checkoutSessionId,
-            attemptRequestId: attemptRequestId.value,
-            paymentMethod: selectedMethod.value.paymentMethod,
+            opaqueToken: token,
+            checkoutSessionId: sourceSession.checkoutSessionId,
+            attemptRequestId: requestId,
+            paymentMethod: method.paymentMethod,
             cardDataEnvelope,
             billingCardHolderInfo,
             clientContext: buildClientContext(),
