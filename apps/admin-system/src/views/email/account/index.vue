@@ -122,7 +122,7 @@
                         <el-select
                             v-model="form.merchantId"
                             filterable
-                            remote
+                            remote remote-show-suffix
                             clearable
                             reserve-keyword
                             :remote-method="searchMerchantOptions"

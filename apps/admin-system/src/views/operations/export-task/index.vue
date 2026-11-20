@@ -460,7 +460,7 @@ function formatFileSize(size?: number | null) {
 }
 
 .export-task-page__search :deep(.export-task-page__time-item .el-date-editor) {
-    width: 380px;
+    width: var(--admin-datetime-range-width);
 }
 
 .export-task-page__detail-section + .export-task-page__detail-section {

@@ -325,8 +325,8 @@ const rows = ref<SettlementCandidate[]>([]);
 const selection = ref<SettlementCandidate[]>([]);
 const total = ref(0);
 const eligibleRange = ref<[string, string]>(defaultDateRange());
-const transactionRange = ref<string[]>([]);
-const expectedReleaseRange = ref<string[]>([]);
+const transactionRange = ref<string[] | null>([]);
+const expectedReleaseRange = ref<string[] | null>([]);
 const paymentTypeOptions = ref<SelectOption[]>(fallbackPaymentMethodOptions(t));
 const paymentMethodOptions = ref<SelectOption[]>(fallbackCardBrandOptions());
 const selectedPaymentTypeLogoKeys = computed(() => selectedDimensionLogoKeys(
@@ -423,8 +423,8 @@ function requestQuery(): SettlementCandidateQuery {
         merchantId: query.merchantId || undefined,
         sourceTransactionId: query.sourceTransactionId || undefined,
         merchantOrderNo: query.merchantOrderNo || undefined,
-        beginTransactionTime: transactionRange.value[0] || undefined,
-        endTransactionTime: transactionRange.value[1] || undefined,
+        beginTransactionTime: transactionRange.value?.[0] || undefined,
+        endTransactionTime: transactionRange.value?.[1] || undefined,
         paymentType: query.paymentType || undefined,
         paymentMethod: query.paymentMethod || undefined,
         transactionType: query.transactionType || undefined,
@@ -433,8 +433,8 @@ function requestQuery(): SettlementCandidateQuery {
         sourceRevision: query.sourceRevision || undefined,
         reserveNo: props.kind === 'reserve' ? query.reserveNo || undefined : undefined,
         reserveStatus: props.kind === 'reserve' ? query.reserveStatus || undefined : undefined,
-        beginExpectedReleaseDate: props.kind === 'reserve' ? expectedReleaseRange.value[0] || undefined : undefined,
-        endExpectedReleaseDate: props.kind === 'reserve' ? expectedReleaseRange.value[1] || undefined : undefined,
+        beginExpectedReleaseDate: props.kind === 'reserve' ? expectedReleaseRange.value?.[0] || undefined : undefined,
+        endExpectedReleaseDate: props.kind === 'reserve' ? expectedReleaseRange.value?.[1] || undefined : undefined,
         due: props.kind === 'reserve' ? query.due : undefined,
         frozen: props.kind === 'reserve' ? query.frozen : undefined,
         minRemainingAmount: props.kind === 'reserve' ? query.minRemainingAmount || undefined : undefined,
@@ -623,8 +623,7 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .candidate-search-panel :deep(.transaction-search .el-form-item__content) { min-width: 0; }
 .candidate-search-panel :deep(.transaction-search .el-input),
 .candidate-search-panel :deep(.transaction-search .el-select),
-.candidate-search-panel :deep(.transaction-search .el-input-number),
-.candidate-search-panel :deep(.transaction-search .el-date-editor) { width: 100%; max-width: 100%; }
+.candidate-search-panel :deep(.transaction-search .el-input-number) { width: 100%; max-width: 100%; }
 .candidate-search-panel :deep(.transaction-search__advanced) { margin-top: 10px; padding-top: 10px; }
 .candidate-search-panel :deep(.transaction-search__actions--inline) {
     align-self: center;
@@ -638,7 +637,6 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .candidate-search-panel :deep(.candidate-range-filter) { grid-column: span 2; }
 .candidate-search-panel :deep(.candidate-eligible-filter) { width: 100%; max-width: 100%; }
 .candidate-search-panel :deep(.candidate-eligible-filter .el-form-item__content) { flex: 1 1 auto; width: auto; max-width: 320px; }
-.candidate-search-panel :deep(.candidate-eligible-filter .el-date-editor) { width: 100%; }
 .settlement-list-page--embedded { min-height: 0; padding: 14px 0 0; background: transparent; }
 .settlement-list-page--read-only .candidate-toolbar { justify-content: flex-end; }
 .fixed-status-field :deep(.el-form-item__content) { min-height: 32px; align-items: center; }

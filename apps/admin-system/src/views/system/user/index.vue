@@ -5,7 +5,7 @@
                 <el-input v-model="query.loginAccount" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item :label="$t('system.user.dept')" prop="deptId">
-                <el-tree-select v-model="query.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all style="width: 180px" :placeholder="$t('common.pleaseSelect')" />
+                <el-tree-select v-model="query.deptId" :data="deptOptions" node-key="id" :props="{ label: 'deptName', children: 'children' }" check-strictly filterable clearable :render-after-expand="false" default-expand-all  :placeholder="$t('common.pleaseSelect')" />
             </el-form-item>
             <el-form-item :label="$t('common.status')" prop="status">
                 <el-select v-model="query.status" :placeholder="$t('common.pleaseSelect')" clearable>
@@ -13,12 +13,12 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('system.user.activationStatus')" prop="activationStatus">
-                <el-select v-model="query.activationStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 170px">
+                <el-select v-model="query.activationStatus" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option v-for="item in activationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('system.user.emailVerificationStatus')" prop="emailVerificationStatus">
-                <el-select v-model="query.emailVerificationStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 150px">
+                <el-select v-model="query.emailVerificationStatus" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option v-for="item in emailVerificationStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
@@ -294,12 +294,12 @@
                     <el-input v-model.trim="mfaLogQuery.loginAccount" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleMfaLogSearch" />
                 </el-form-item>
                 <el-form-item :label="$t('system.user.mfaActionType')">
-                    <el-select v-model="mfaLogQuery.actionType" :placeholder="$t('common.pleaseSelect')" clearable style="width: 180px">
+                    <el-select v-model="mfaLogQuery.actionType" :placeholder="$t('common.pleaseSelect')" clearable >
                         <el-option v-for="item in mfaLogActionOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="$t('system.user.mfaResult')">
-                    <el-select v-model="mfaLogQuery.result" :placeholder="$t('common.pleaseSelect')" clearable style="width: 120px">
+                    <el-select v-model="mfaLogQuery.result" :placeholder="$t('common.pleaseSelect')" clearable >
                         <el-option v-for="item in mfaLogResultOptions" :key="item.value" :label="item.label" :value="item.value" />
                     </el-select>
                 </el-form-item>

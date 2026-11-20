@@ -9,7 +9,7 @@
             <el-form-item :label="t('monitor.workbench.fields.transactionId')"><el-input v-model.trim="query.transactionId" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.service')"><el-input v-model.trim="query.serviceName" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.level')">
-                <el-select v-model="query.level" clearable :placeholder="t('common.pleaseSelect')" style="width: 140px">
+                <el-select v-model="query.level" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option label="INFO" value="INFO" />
                     <el-option label="WARN" value="WARN" />
                     <el-option label="ERROR" value="ERROR" />

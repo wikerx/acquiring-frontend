@@ -45,7 +45,7 @@
                 <el-select
                     v-model="query.ownerAccountId"
                     filterable
-                    remote
+                    remote remote-show-suffix
                     clearable
                     :remote-method="searchAssignees"
                     :loading="assigneeLoading"
@@ -428,7 +428,7 @@
                     <el-select
                         v-model="actionTargetAccountId"
                         filterable
-                        remote
+                        remote remote-show-suffix
                         :remote-method="searchAssignees"
                         :loading="assigneeLoading"
                         :placeholder="t('operations.workItem.ownerPlaceholder')"
@@ -1136,9 +1136,9 @@ function ownerChangeText(item: OperationalWorkItemHistory) {
 
 .operational-work-item-page :deep(.transaction-search .transaction-time-form-item .el-form-item__content),
 .operational-work-item-page :deep(.transaction-search .operational-work-item-page__detected-time.el-date-editor) {
-    width: 380px;
+    width: var(--admin-datetime-range-width);
     max-width: 100%;
-    flex: 0 1 380px;
+    flex: 0 1 var(--admin-datetime-range-width);
 }
 
 .operational-work-item-page__sla {

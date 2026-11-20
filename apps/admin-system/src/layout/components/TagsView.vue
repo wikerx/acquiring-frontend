@@ -1,7 +1,7 @@
 <template>
     <div class="tags-workspace" :class="{ google: tagsViewStyle === 'google' }">
         <el-dropdown trigger="click" @command="navigate">
-            <button type="button" class="workspace-button pinned-button">
+            <button type="button" class="workspace-button pinned-button" :aria-label="`${t('layout.pinned')} ${pinnedTags.length}`">
                 <el-icon><Lock /></el-icon>
                 <span>{{ t('layout.pinned') }}</span>
                 <strong>{{ pinnedTags.length }}</strong>
@@ -65,7 +65,7 @@
         </button>
 
         <el-dropdown trigger="click" :disabled="hiddenTags.length === 0" @command="navigate">
-            <button type="button" class="workspace-button more-tabs-button" :disabled="hiddenTags.length === 0">
+            <button type="button" class="workspace-button more-tabs-button" :disabled="hiddenTags.length === 0" :aria-label="t('layout.moreTabs')">
                 <span>{{ t('layout.moreTabs') }}</span>
                 <strong v-if="hiddenTags.length">+{{ hiddenTags.length }}</strong>
                 <el-icon><ArrowDown /></el-icon>
@@ -87,7 +87,7 @@
 
         <el-popover v-model:visible="searchVisible" placement="bottom-end" :width="320" trigger="click" @show="focusSearch">
             <template #reference>
-                <button type="button" class="workspace-button search-button">
+                <button type="button" class="workspace-button search-button" :aria-label="t('layout.searchOpenedFunctions')">
                     <el-icon><Search /></el-icon>
                     <span>{{ t('layout.searchOpenedFunctions') }}</span>
                 </button>
@@ -118,17 +118,17 @@
 
         <span class="workspace-separator" />
 
-        <button type="button" class="workspace-button action-button" :disabled="!canCloseOthers" @click="emit('closeOthers', route.path)">
+        <button type="button" class="workspace-button action-button" :aria-label="t('layout.closeOthers')" :disabled="!canCloseOthers" @click="emit('closeOthers', route.path)">
             <el-icon><CopyDocument /></el-icon>
             <span>{{ t('layout.closeOthers') }}</span>
         </button>
-        <button type="button" class="workspace-button action-button" :disabled="!canCloseRight" @click="emit('closeRight', route.path)">
+        <button type="button" class="workspace-button action-button" :aria-label="t('layout.closeRight')" :disabled="!canCloseRight" @click="emit('closeRight', route.path)">
             <el-icon><ArrowRight /></el-icon>
             <span>{{ t('layout.closeRight') }}</span>
         </button>
 
         <el-dropdown trigger="click" @command="handleAction">
-            <button type="button" class="workspace-button action-button">
+            <button type="button" class="workspace-button action-button" :aria-label="t('layout.moreActions')">
                 <el-icon><MoreFilled /></el-icon>
                 <span>{{ t('layout.moreActions') }}</span>
             </button>
@@ -280,7 +280,15 @@ function scheduleMeasure() {
 }
 
 function centerActiveTag() {
-    tagElements.get(route.path)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    const scroller = scrollerRef.value;
+    const activeTag = tagElements.get(route.path);
+    if (!scroller || !activeTag) return;
+    const viewport = scroller.getBoundingClientRect();
+    const active = activeTag.getBoundingClientRect();
+    scroller.scrollTo({
+        left: scroller.scrollLeft + active.left - viewport.left - (scroller.clientWidth - active.width) / 2,
+        behavior: 'smooth',
+    });
     scheduleMeasure();
 }
 
@@ -373,6 +381,8 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 4px;
     box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
     height: var(--app-tags-height);
     min-height: var(--app-tags-height);
     padding: 2px 8px;
@@ -401,6 +411,11 @@ onBeforeUnmount(() => {
 
 .tags-view::-webkit-scrollbar {
     display: none;
+}
+
+/* 下拉根容器不能比内部按钮更窄，否则按钮会溢出并撑宽文档。 */
+.tags-workspace > :deep(.el-dropdown) {
+    flex: 0 0 auto;
 }
 
 .workspace-button,
@@ -593,6 +608,24 @@ onBeforeUnmount(() => {
 
     .search-button span {
         display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .tags-workspace {
+        gap: 3px;
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    /* 窄屏使用触摸滚动和更多菜单；关闭操作仍可从更多操作菜单访问。 */
+    .tags-workspace > .workspace-icon-button,
+    .tags-workspace > .action-button {
+        display: none;
+    }
+
+    .tags-view {
+        min-width: 0;
     }
 }
 </style>

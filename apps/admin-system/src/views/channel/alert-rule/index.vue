@@ -241,17 +241,17 @@
                     <div class="form-section__title">{{ t('channel.alert.notifyConfigSection') }}</div>
                     <div class="notify-grid">
                         <el-form-item :label="t('channel.alert.emailRecipients')" prop="recipientEmails">
-                            <el-select v-model="form.recipientEmails" multiple filterable remote reserve-keyword collapse-tags collapse-tags-tooltip style="width:100%" :remote-method="searchEmailOptions">
+                            <el-select v-model="form.recipientEmails" multiple filterable remote remote-show-suffix reserve-keyword collapse-tags collapse-tags-tooltip style="width:100%" :remote-method="searchEmailOptions">
                                 <el-option v-for="item in userEmailOptions" :key="item.email" :label="userEmailLabel(item)" :value="item.email" />
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.alert.emailCc')" prop="ccEmails">
-                            <el-select v-model="form.ccEmails" multiple filterable remote reserve-keyword collapse-tags collapse-tags-tooltip style="width:100%" :remote-method="searchEmailOptions">
+                            <el-select v-model="form.ccEmails" multiple filterable remote remote-show-suffix reserve-keyword collapse-tags collapse-tags-tooltip style="width:100%" :remote-method="searchEmailOptions">
                                 <el-option v-for="item in userEmailOptions" :key="item.email" :label="userEmailLabel(item)" :value="item.email" />
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.alert.emailTemplateCode')" prop="emailTemplateCode" class="notify-grid__template">
-                            <el-select v-model="form.emailTemplateCode" filterable remote reserve-keyword style="width:100%" :remote-method="searchTemplateOptions" @change="handleTemplateChange">
+                            <el-select v-model="form.emailTemplateCode" filterable remote remote-show-suffix reserve-keyword style="width:100%" :remote-method="searchTemplateOptions" @change="handleTemplateChange">
                                 <el-option v-for="item in localizedEmailTemplateOptions" :key="item.templateCode" :label="templateOptionLabel(item)" :value="item.templateCode" />
                             </el-select>
                         </el-form-item>

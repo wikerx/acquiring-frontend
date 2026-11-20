@@ -21,7 +21,7 @@
                 <el-input v-model.trim="query.responseCode" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
             </el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.result')">
-                <el-select v-model="query.result" :placeholder="t('common.pleaseSelect')" clearable style="width: 150px">
+                <el-select v-model="query.result" :placeholder="t('common.pleaseSelect')" clearable >
                     <el-option :label="t('monitor.workbench.status.success')" value="SUCCESS" />
                     <el-option :label="t('monitor.workbench.status.failed')" value="FAILED" />
                 </el-select>

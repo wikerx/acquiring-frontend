@@ -39,7 +39,7 @@
                 </el-select>
             </el-form-item>
             <template #time>
-                <el-form-item :label="t('transaction.settlement.businessDate')" class="transaction-time-form-item">
+                <el-form-item :label="t('transaction.settlement.businessDate')" class="transaction-date-form-item">
                     <el-date-picker
                         v-model="dateRange"
                         type="daterange"
@@ -314,10 +314,10 @@
 
                     <el-tab-pane v-if="canViewTransactionItems" name="transactions" lazy>
                         <template #label><span class="settlement-tab-label"><el-icon><Memo /></el-icon>{{ t('transaction.settlement.transactionItems') }}</span></template>
-                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap">
+                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap admin-date-filter-toolbar">
                             <el-input v-model.trim="transactionMerchantOrderNoFilter" clearable :placeholder="t('transaction.settlement.merchantOrderNo')" @keyup.enter="searchTransactionItems" />
                             <el-input v-model.trim="transactionIdFilter" clearable :placeholder="t('transaction.fields.transactionId')" @keyup.enter="searchTransactionItems" />
-                            <el-date-picker v-model="transactionTimeRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
+                            <AdminDateRangeFilter v-model="transactionTimeRange" type="datetimerange" :label="t('transaction.fields.transactionDateTime')" :help="t('transaction.settlement.sourceTransactionTimeHelp')" />
                             <el-button type="primary" :icon="Search" @click="searchTransactionItems">{{ t('common.search') }}</el-button>
                             <el-button :icon="RefreshLeft" @click="resetTransactionItemsFilter">{{ t('common.reset') }}</el-button>
                             <el-button v-if="canExportTransactionItems" type="warning" plain :icon="Download" :loading="transactionExporting" @click="exportTransactionItems">{{ t('common.export') }}</el-button>
@@ -338,7 +338,7 @@
 
                     <el-tab-pane v-if="canViewReserveItems" name="reserves" lazy>
                         <template #label><span class="settlement-tab-label"><el-icon><Lock /></el-icon>{{ t('transaction.settlement.reserveItems') }}</span></template>
-                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap">
+                        <div class="settlement-detail__toolbar settlement-detail__toolbar--wrap admin-date-filter-toolbar">
                             <el-input v-model.trim="reserveActionNoFilter" clearable :placeholder="t('transaction.settlement.reserveActionNo')" @keyup.enter="searchReserveItems" />
                             <el-input v-model.trim="reserveNoFilter" clearable :placeholder="t('transaction.settlement.reserveNo')" @keyup.enter="searchReserveItems" />
                             <el-input v-model.trim="reserveMerchantOrderNoFilter" clearable :placeholder="t('transaction.settlement.merchantOrderNo')" @keyup.enter="searchReserveItems" />
@@ -346,8 +346,8 @@
                             <el-select v-model="reserveStatusFilter" clearable filterable :placeholder="t('transaction.settlement.reserveStatus')"><el-option v-for="value in reserveStatuses" :key="value" :label="enumText('reserveStatusValue', value)" :value="value" /></el-select>
                             <el-select v-model="reserveActionTypeFilter" clearable filterable :placeholder="t('transaction.settlement.reserveActionType')"><el-option v-for="value in reserveActionTypes" :key="value" :label="enumText('reserveActionTypeValue', value)" :value="value" /></el-select>
                             <el-input v-model.trim="reserveCurrencyFilter" clearable maxlength="3" :placeholder="t('transaction.settlement.currency')" />
-                            <el-date-picker v-model="reserveTransactionTimeRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
-                            <el-date-picker v-model="reserveExpectedReleaseDateRange" type="daterange" value-format="YYYY-MM-DD" clearable :range-separator="t('common.to')" :start-placeholder="t('common.startTime')" :end-placeholder="t('common.endTime')" />
+                            <AdminDateRangeFilter v-model="reserveTransactionTimeRange" type="datetimerange" :label="t('transaction.fields.transactionDateTime')" :help="t('transaction.settlement.sourceTransactionTimeHelp')" />
+                            <AdminDateRangeFilter v-model="reserveExpectedReleaseDateRange" type="daterange" :label="t('transaction.settlement.expectedReleaseDate')" :help="t('transaction.settlement.expectedReleaseDateHelp')" />
                             <el-button type="primary" :icon="Search" @click="searchReserveItems">{{ t('common.search') }}</el-button>
                             <el-button :icon="RefreshLeft" @click="resetReserveItemsFilter">{{ t('common.reset') }}</el-button>
                             <el-button v-if="canExportReserveItems" type="warning" plain :icon="Download" :loading="reserveExporting" @click="exportReserveItems">{{ t('common.export') }}</el-button>
@@ -421,6 +421,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminDateRangeFilter from '@/components/AdminDateRangeFilter.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
@@ -543,7 +544,7 @@ const transactionItemsPage = ref(1);
 const transactionItemsPageSize = ref(10);
 const transactionIdFilter = ref('');
 const transactionMerchantOrderNoFilter = ref('');
-const transactionTimeRange = ref<[string, string] | []>([]);
+const transactionTimeRange = ref<[string, string] | [] | null>([]);
 const reserveItemsLoading = ref(false);
 const reserveExporting = ref(false);
 const reserveItems = ref<SettlementReserveItem[]>([]);
@@ -557,8 +558,8 @@ const reserveTransactionIdFilter = ref('');
 const reserveStatusFilter = ref('');
 const reserveActionTypeFilter = ref('');
 const reserveCurrencyFilter = ref('');
-const reserveTransactionTimeRange = ref<[string, string] | []>([]);
-const reserveExpectedReleaseDateRange = ref<[string, string] | []>([]);
+const reserveTransactionTimeRange = ref<[string, string] | [] | null>([]);
+const reserveExpectedReleaseDateRange = ref<[string, string] | [] | null>([]);
 const componentVisible = ref(false);
 const componentLoading = ref(false);
 const componentRows = ref<SettlementResultItem[]>([]);
@@ -847,8 +848,8 @@ function transactionItemQuery() {
         sourceDetailType: 'TRANSACTION_CLEARING' as const,
         sourceTransactionId: transactionIdFilter.value || undefined,
         merchantOrderNo: transactionMerchantOrderNoFilter.value || undefined,
-        beginTransactionTime: transactionTimeRange.value[0] || undefined,
-        endTransactionTime: transactionTimeRange.value[1] || undefined,
+        beginTransactionTime: transactionTimeRange.value?.[0] || undefined,
+        endTransactionTime: transactionTimeRange.value?.[1] || undefined,
         beginBusinessDate: batch?.businessDate || dateRange.value[0],
         endBusinessDate: batch?.businessDate || dateRange.value[1],
         pageNo: transactionItemsPage.value,
@@ -914,10 +915,10 @@ function reserveItemQuery() {
         reserveStatus: reserveStatusFilter.value || undefined,
         actionType: reserveActionTypeFilter.value || undefined,
         currency: reserveCurrencyFilter.value.toUpperCase() || undefined,
-        beginTransactionTime: reserveTransactionTimeRange.value[0] || undefined,
-        endTransactionTime: reserveTransactionTimeRange.value[1] || undefined,
-        beginExpectedReleaseDate: reserveExpectedReleaseDateRange.value[0] || undefined,
-        endExpectedReleaseDate: reserveExpectedReleaseDateRange.value[1] || undefined,
+        beginTransactionTime: reserveTransactionTimeRange.value?.[0] || undefined,
+        endTransactionTime: reserveTransactionTimeRange.value?.[1] || undefined,
+        beginExpectedReleaseDate: reserveExpectedReleaseDateRange.value?.[0] || undefined,
+        endExpectedReleaseDate: reserveExpectedReleaseDateRange.value?.[1] || undefined,
         beginBusinessDate: batch?.businessDate || dateRange.value[0],
         endBusinessDate: batch?.businessDate || dateRange.value[1],
         pageNo: reserveItemsPage.value,
@@ -1524,11 +1525,7 @@ watch(locale, () => void loadDimensionDictionaries());
 
 .settlement-detail__toolbar--wrap :deep(.el-input),
 .settlement-detail__toolbar--wrap :deep(.el-select) {
-    width: 210px;
-}
-
-.settlement-detail__toolbar--wrap :deep(.el-date-editor) {
-    width: 340px;
+    width: var(--admin-filter-control-width);
 }
 
 .settlement-voucher-panel {

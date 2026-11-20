@@ -59,7 +59,7 @@
           <el-radio-group v-model="workflow.scopeType" class="scope-choice-grid"><el-radio-button value="GLOBAL"><span class="choice-label"><el-icon><Collection /></el-icon><strong>{{ t('risk.trade.workflow.globalScope') }}</strong></span></el-radio-button><el-radio-button value="MERCHANT"><span class="choice-label"><el-icon><Shop /></el-icon><strong>{{ t('risk.trade.workflow.merchantScope') }}</strong></span></el-radio-button></el-radio-group>
           <el-alert v-if="workflow.scopeType === 'GLOBAL'" type="warning" :closable="false" show-icon :title="t('risk.trade.workflow.globalWarning')" />
           <FieldBlock v-else :label="t('risk.trade.workflow.targetMerchants')" required :hint="t('risk.trade.workflow.targetMerchantsHint')">
-            <el-select v-model="workflow.merchantIds" multiple filterable remote reserve-keyword collapse-tags collapse-tags-tooltip :remote-method="searchMerchantOptions" :loading="merchantLoading" :placeholder="t('risk.trade.workflow.targetMerchantsPlaceholder')" @visible-change="handleMerchantVisibleChange">
+            <el-select v-model="workflow.merchantIds" multiple filterable remote remote-show-suffix reserve-keyword collapse-tags collapse-tags-tooltip :remote-method="searchMerchantOptions" :loading="merchantLoading" :placeholder="t('risk.trade.workflow.targetMerchantsPlaceholder')" @visible-change="handleMerchantVisibleChange">
               <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" />
             </el-select>
           </FieldBlock>
@@ -70,7 +70,7 @@
           <div class="order-grid">
             <FieldBlock :label="t('risk.trade.workflow.identifierType')" required><el-select v-model="workflow.identifierType" @change="handleIdentifierTypeChange"><el-option :label="t('risk.trade.workflow.systemOrderNo')" value="SYSTEM_ORDER_NO" /><el-option :label="t('risk.trade.workflow.merchantOrderNoType')" value="MERCHANT_ORDER_NO" /></el-select></FieldBlock>
             <FieldBlock v-if="showLookupMerchantField" :label="t('risk.trade.workflow.lookupMerchant')" required :hint="t('risk.trade.workflow.lookupMerchantHint')">
-              <el-select v-model="workflow.lookupMerchantId" filterable remote clearable reserve-keyword :remote-method="searchMerchantOptions" :loading="merchantLoading" :placeholder="t('risk.trade.workflow.lookupMerchantPlaceholder')" @visible-change="handleMerchantVisibleChange"><el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" /></el-select>
+              <el-select v-model="workflow.lookupMerchantId" filterable remote remote-show-suffix clearable reserve-keyword :remote-method="searchMerchantOptions" :loading="merchantLoading" :placeholder="t('risk.trade.workflow.lookupMerchantPlaceholder')" @visible-change="handleMerchantVisibleChange"><el-option v-for="item in merchantOptions" :key="item.merchantId" :label="merchantOptionLabel(item)" :value="item.merchantId" /></el-select>
               <el-button v-if="canReuseTargetMerchant" class="lookup-merchant-switch" type="primary" link @click="useTargetMerchantForLookup">{{ t('risk.trade.workflow.useTargetMerchant') }}</el-button>
             </FieldBlock>
             <div v-else-if="workflow.identifierType === 'MERCHANT_ORDER_NO'" class="lookup-merchant-auto">

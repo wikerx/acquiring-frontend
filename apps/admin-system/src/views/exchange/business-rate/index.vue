@@ -405,11 +405,6 @@ function toBusinessRatePayload(source: BusinessRateSaveRequest) {
 
 <style scoped>
 
-:deep(.time-range-picker.el-date-editor) {
-    width: 400px;
-    max-width: calc(100vw - 160px);
-}
-
 .batch-actions {
     margin-top: 12px;
 }
@@ -428,10 +423,4 @@ function toBusinessRatePayload(source: BusinessRateSaveRequest) {
     font-weight: 700;
 }
 
-@media (max-width: 768px) {
-    :deep(.time-range-picker.el-date-editor) {
-        width: calc(100vw - 48px);
-        max-width: 100%;
-    }
-}
 </style>

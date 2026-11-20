@@ -8,7 +8,7 @@
 
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="68px">
             <el-form-item :label="$t('monitor.cacheList.cacheKey')" prop="keyPattern">
-                <el-input v-model="query.keyPattern" :placeholder="$t('monitor.cacheList.cacheKey')" clearable style="width:280px" @keyup.enter="loadData" />
+                <el-input v-model="query.keyPattern" :placeholder="$t('monitor.cacheList.cacheKey')" clearable class="search-control--wide" @keyup.enter="loadData" />
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" size="small" @click="loadData">{{ $t('common.search') }}</el-button>

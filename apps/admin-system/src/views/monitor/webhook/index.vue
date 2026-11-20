@@ -9,7 +9,7 @@
             <el-form-item :label="t('monitor.workbench.fields.transactionId')"><el-input v-model.trim="query.transactionId" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.eventType')"><el-input v-model.trim="query.eventType" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.callbackStatus')">
-                <el-select v-model="query.notifyStatus" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
+                <el-select v-model="query.notifyStatus" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option v-for="status in webhookStatuses" :key="status" :label="statusText(status)" :value="status" />
                 </el-select>
             </el-form-item>

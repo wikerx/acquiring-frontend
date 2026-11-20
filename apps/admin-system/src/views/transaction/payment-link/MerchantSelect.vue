@@ -2,7 +2,7 @@
   <el-select
     :model-value="modelValue"
     filterable
-    remote
+    remote remote-show-suffix
     clearable
     :loading="loading"
     :remote-method="load"

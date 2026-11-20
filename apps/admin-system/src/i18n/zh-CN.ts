@@ -3582,6 +3582,8 @@ export default {
       reserveItemsEmpty: '该正式批次当前没有可展示的保证金结算明细',
       merchantOrderNo: '商户订单号',
       transactionTimeRange: '交易时间',
+      sourceTransactionTimeHelp: '按结算记录关联的来源交易时间筛选；保证金释放、调整记录使用其来源事件时间。',
+      expectedReleaseDateHelp: '按保证金约定的预计释放日期筛选，可包含未来日期，不代表实际入账或动作时间。',
       componentCount: '财务组件数',
       financialComponents: '结算构成明细',
       componentEmpty: '该交易没有可展示的结算构成明细',

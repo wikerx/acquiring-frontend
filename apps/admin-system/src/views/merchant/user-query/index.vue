@@ -216,10 +216,6 @@ function menuTagType(type?: string) {
 </script>
 
 <style scoped>
-.merchant-user-query-page :deep(.el-date-editor) {
-    width: 360px;
-}
-
 .detail-section {
     margin-bottom: 12px;
 }

@@ -8,6 +8,7 @@
         clearable
         filterable
         remote
+        remote-show-suffix
         reserve-keyword
         :remote-method="handleRemoteSearch"
         :style="{ width: selectWidth }"
@@ -61,7 +62,7 @@ const options = ref<IsoCurrency[]>([]);
 const { locale, t } = useI18n();
 let requestSeq = 0;
 
-const selectWidth = computed(() => (typeof props.width === 'number' ? `${props.width}px` : props.width || '180px'));
+const selectWidth = computed(() => (typeof props.width === 'number' ? `${props.width}px` : props.width || 'var(--admin-filter-control-width)'));
 
 const displayOptions = computed(() => {
     const current = normalizeCode(props.modelValue);

@@ -346,15 +346,4 @@ function toRawRatePayload() {
 </script>
 
 <style scoped>
-:deep(.time-range-picker.el-date-editor) {
-    width: 400px;
-    max-width: calc(100vw - 160px);
-}
-
-@media (max-width: 768px) {
-    :deep(.time-range-picker.el-date-editor) {
-        width: calc(100vw - 48px);
-        max-width: 100%;
-    }
-}
 </style>

@@ -3784,6 +3784,8 @@ export default {
       reserveItemsEmpty: 'No reserve settlement details are available for this formal batch',
       merchantOrderNo: 'Merchant Order No.',
       transactionTimeRange: 'Transaction Time',
+      sourceTransactionTimeHelp: 'Filters the source transaction time linked to this settlement record. Reserve release and adjustment records use their source event time.',
+      expectedReleaseDateHelp: 'Filters the scheduled reserve release date, including future dates. This is separate from the actual posting or action time.',
       componentCount: 'Financial Components',
       financialComponents: 'Settlement Components',
       componentEmpty: 'No settlement component is available for this transaction',

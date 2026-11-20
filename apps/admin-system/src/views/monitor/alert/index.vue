@@ -6,19 +6,19 @@
 
         <el-form v-show="showSearch" :model="query" :inline="true" size="small" class="search-form" label-width="92px">
             <el-form-item :label="t('monitor.workbench.fields.source')">
-                <el-select v-model="query.sourceType" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
+                <el-select v-model="query.sourceType" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option v-for="source in alertSources" :key="source" :label="sourceText(source)" :value="source" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.level')">
-                <el-select v-model="query.level" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
+                <el-select v-model="query.level" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option label="WARNING" value="WARNING" />
                     <el-option label="ERROR" value="ERROR" />
                     <el-option label="CRITICAL" value="CRITICAL" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('common.status')">
-                <el-select v-model="query.status" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
+                <el-select v-model="query.status" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option v-for="status in alertStatuses" :key="status" :label="statusText(status)" :value="status" />
                 </el-select>
             </el-form-item>

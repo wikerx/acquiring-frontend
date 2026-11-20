@@ -132,7 +132,7 @@
           <el-select
             v-model="form.merchantId"
             filterable
-            remote
+            remote remote-show-suffix
             clearable
             :disabled="formMode === 'edit'"
             :remote-method="remoteSearchMerchants"

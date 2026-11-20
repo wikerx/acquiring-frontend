@@ -19,7 +19,7 @@
                     v-model="query.merchantId"
                     clearable
                     filterable
-                    remote
+                    remote remote-show-suffix
                     :remote-method="searchMerchantOptions"
                     :loading="merchantLoading"
                     :placeholder="t('channel.route.merchantPlaceholder')"
@@ -276,7 +276,7 @@
                                 v-model="form.merchantIds"
                                 multiple
                                 filterable
-                                remote
+                                remote remote-show-suffix
                                 reserve-keyword
                                 collapse-tags
                                 collapse-tags-tooltip

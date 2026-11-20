@@ -152,17 +152,17 @@ function timezoneLabel(option: SelectOption) {
 }
 
 .transaction-time-range-filter__picker {
-    flex: 1 1 380px;
-    width: 380px;
-    min-width: min(320px, 100%);
-    max-width: 460px;
+    flex: 0 1 var(--admin-datetime-range-width);
+    width: var(--admin-datetime-range-width);
+    min-width: 0;
+    max-width: 100%;
 }
 
 .transaction-time-range-filter :deep(.el-date-editor.transaction-time-range-filter__picker) {
-    flex: 1 1 380px;
-    width: 380px;
-    min-width: min(320px, 100%);
-    max-width: 460px;
+    flex: 0 1 var(--admin-datetime-range-width);
+    width: var(--admin-datetime-range-width);
+    min-width: 0;
+    max-width: 100%;
 }
 
 @media (max-width: 1200px) {

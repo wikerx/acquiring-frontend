@@ -6,17 +6,17 @@
                     <el-form-item :label="$t('common.keyword')"><el-input v-model="treeQuery.keyword" :placeholder="$t('base.mcc.keywordPlaceholder')" clearable @keyup.enter="loadTree" /></el-form-item>
                     <el-form-item :label="$t('base.mcc.code.mccCode')"><el-input v-model="treeQuery.mccCode" maxlength="4" clearable @keyup.enter="loadTree" /></el-form-item>
                     <el-form-item :label="$t('base.mcc.tree.nodeType')">
-                        <el-select v-model="treeQuery.nodeType" clearable :placeholder="$t('common.pleaseSelect')" style="width: 150px">
+                        <el-select v-model="treeQuery.nodeType" clearable :placeholder="$t('common.pleaseSelect')" >
                             <el-option v-for="item in nodeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                     </el-form-item>
                     <el-form-item :label="$t('base.mcc.riskLevel')">
-                        <el-select v-model="treeQuery.riskLevel" clearable :placeholder="$t('common.pleaseSelect')" style="width: 150px">
+                        <el-select v-model="treeQuery.riskLevel" clearable :placeholder="$t('common.pleaseSelect')" >
                             <el-option v-for="item in riskLevelOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                     </el-form-item>
                     <el-form-item :label="$t('common.status')">
-                        <el-select v-model="treeQuery.status" clearable :placeholder="$t('common.pleaseSelect')" style="width: 120px">
+                        <el-select v-model="treeQuery.status" clearable :placeholder="$t('common.pleaseSelect')" >
                             <el-option :label="$t('common.enable')" :value="1" />
                             <el-option :label="$t('common.disable')" :value="0" />
                         </el-select>
@@ -91,11 +91,11 @@
             <el-tab-pane :label="$t('base.mcc.tab.policy')" name="policy">
                 <el-form :model="policyQuery" :inline="true" size="small" v-show="showPolicySearch" class="search-form" label-width="108px">
                     <el-form-item :label="$t('base.mcc.code.mccCode')"><el-input v-model="policyQuery.mccCode" maxlength="4" clearable @keyup.enter="loadPolicies" /></el-form-item>
-                    <el-form-item :label="$t('base.mcc.policy.cardScheme')"><el-select v-model="policyQuery.cardScheme" clearable filterable style="width: 180px"><el-option v-for="item in cardSchemeOptions" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item>
-                    <el-form-item :label="$t('base.mcc.policy.channelScope')"><el-select v-model="policyQuery.channelScope" clearable style="width: 160px"><el-option v-for="item in scopeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                    <el-form-item :label="$t('base.mcc.policy.countryScope')"><el-select v-model="policyQuery.countryScope" clearable style="width: 160px"><el-option v-for="item in countryScopeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                    <el-form-item :label="$t('base.mcc.riskLevel')"><el-select v-model="policyQuery.riskLevel" clearable style="width: 150px"><el-option v-for="item in riskLevelOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-                    <el-form-item :label="$t('common.status')"><el-select v-model="policyQuery.status" clearable style="width: 120px"><el-option :label="$t('common.enable')" :value="1" /><el-option :label="$t('common.disable')" :value="0" /></el-select></el-form-item>
+                    <el-form-item :label="$t('base.mcc.policy.cardScheme')"><el-select v-model="policyQuery.cardScheme" clearable filterable ><el-option v-for="item in cardSchemeOptions" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item>
+                    <el-form-item :label="$t('base.mcc.policy.channelScope')"><el-select v-model="policyQuery.channelScope" clearable ><el-option v-for="item in scopeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                    <el-form-item :label="$t('base.mcc.policy.countryScope')"><el-select v-model="policyQuery.countryScope" clearable ><el-option v-for="item in countryScopeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                    <el-form-item :label="$t('base.mcc.riskLevel')"><el-select v-model="policyQuery.riskLevel" clearable ><el-option v-for="item in riskLevelOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                    <el-form-item :label="$t('common.status')"><el-select v-model="policyQuery.status" clearable ><el-option :label="$t('common.enable')" :value="1" /><el-option :label="$t('common.disable')" :value="0" /></el-select></el-form-item>
                     <el-form-item><el-button type="primary" :icon="Search" size="small" @click="handlePolicySearch">{{ $t('common.search') }}</el-button><el-button :icon="Refresh" size="small" @click="resetPolicyQuery">{{ $t('common.reset') }}</el-button></el-form-item>
                 </el-form>
 

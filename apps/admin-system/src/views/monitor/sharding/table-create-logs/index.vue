@@ -5,19 +5,19 @@
                 <el-input v-model="query.batchNo" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
             </el-form-item>
             <el-form-item :label="$t('monitor.sharding.triggerType')">
-                <el-select v-model="query.triggerType" :placeholder="$t('common.pleaseSelect')" clearable style="width: 150px">
+                <el-select v-model="query.triggerType" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option label="MANUAL" value="MANUAL" />
                     <el-option label="SCHEDULE" value="SCHEDULE" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('monitor.sharding.dryRun')">
-                <el-select v-model="query.dryRun" :placeholder="$t('common.pleaseSelect')" clearable style="width: 130px">
+                <el-select v-model="query.dryRun" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option :label="$t('common.yes')" :value="1" />
                     <el-option :label="$t('common.no')" :value="0" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('monitor.sharding.runStatus')">
-                <el-select v-model="query.runStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 170px">
+                <el-select v-model="query.runStatus" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option v-for="item in ['SUCCESS', 'PARTIAL_FAILED', 'FAILED']" :key="item" :label="item" :value="item" />
                 </el-select>
             </el-form-item>

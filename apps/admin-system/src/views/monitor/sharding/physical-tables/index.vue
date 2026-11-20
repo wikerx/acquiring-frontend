@@ -11,12 +11,12 @@
                 <el-input-number v-model="query.year" :min="2000" :max="2100" controls-position="right" style="width: 130px" />
             </el-form-item>
             <el-form-item :label="$t('monitor.sharding.quarter')">
-                <el-select v-model="query.quarter" :placeholder="$t('common.pleaseSelect')" clearable style="width: 130px">
+                <el-select v-model="query.quarter" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option v-for="item in [1, 2, 3, 4]" :key="item" :label="`Q${item}`" :value="item" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('monitor.sharding.tableStatus')">
-                <el-select v-model="query.tableStatus" :placeholder="$t('common.pleaseSelect')" clearable style="width: 150px">
+                <el-select v-model="query.tableStatus" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option v-for="item in tableStatusOptions" :key="item" :label="item" :value="item" />
                 </el-select>
             </el-form-item>

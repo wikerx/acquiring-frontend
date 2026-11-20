@@ -837,8 +837,9 @@
 
   .time-range-picker,
   .time-range-control :deep(.el-date-editor.time-range-picker) {
-    width: 430px;
-    min-width: 430px;
+    width: var(--admin-datetime-range-width);
+    min-width: 0;
+    max-width: 100%;
   }
 
   .pair-select {

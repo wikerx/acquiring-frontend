@@ -16,6 +16,10 @@
     --admin-panel-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
     --admin-panel-radius: 6px;
     --admin-control-height: 28px;
+    --admin-filter-control-width: 200px;
+    --admin-filter-wide-width: 280px;
+    --admin-date-range-width: 280px;
+    --admin-datetime-range-width: 380px;
     --app-header-height: 56px;
     --app-tags-height: 34px;
     --app-sidebar-width: 216px;
@@ -612,6 +616,8 @@ textarea {
 
 /* Layout main area */
 .layout-main {
+    min-width: 0;
+    max-width: 100%;
     min-height: 100vh;
     margin-left: var(--app-sidebar-width);
     transition: margin-left 0.28s;
@@ -1306,12 +1312,28 @@ textarea {
 .search-form .el-form-item {
     margin-right: 0;
     margin-bottom: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.search-form .el-form-item__content {
+    min-width: 0;
 }
 
 .search-form .el-form-item .el-input,
 .search-form .el-form-item .el-select,
 .search-form .el-form-item .el-date-editor {
-    width: 200px;
+    width: var(--admin-filter-control-width);
+}
+
+/* 普通筛选统一基准宽度；范围、网格和宽文本条件使用各自明确的布局。 */
+.search-form:not(.transaction-search) .el-form-item__content > :is(.el-input, .el-select, .el-cascader):not(.el-date-editor) {
+    width: var(--admin-filter-control-width);
+    max-width: 100%;
+}
+
+.search-form:not(.transaction-search) .el-form-item__content > .search-control--wide.el-input {
+    width: var(--admin-filter-wide-width);
 }
 
 .search-form .el-form-item__label {
@@ -1323,6 +1345,7 @@ textarea {
 }
 
 .search-form .el-input__inner,
+.admin-date-filter-toolbar .el-input__inner,
 .search-form .el-select__placeholder,
 .search-form .el-select__selected-item {
     font-size: 12px;
@@ -1330,7 +1353,9 @@ textarea {
 }
 
 .search-form .el-input__wrapper,
-.search-form .el-select__wrapper {
+.search-form .el-select__wrapper,
+.admin-date-filter-toolbar .el-input__wrapper,
+.admin-date-filter-toolbar .el-select__wrapper {
     min-height: var(--admin-control-height);
     border-radius: 4px;
     box-shadow: 0 0 0 1px var(--admin-panel-border) inset;
@@ -1343,7 +1368,9 @@ textarea {
 }
 
 .search-form .el-input__wrapper.is-focus,
-.search-form .el-select__wrapper.is-focused {
+.search-form .el-select__wrapper.is-focused,
+.admin-date-filter-toolbar .el-input__wrapper.is-focus,
+.admin-date-filter-toolbar .el-select__wrapper.is-focused {
     box-shadow: 0 0 0 1px var(--app-primary) inset, 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
@@ -1354,6 +1381,129 @@ textarea {
 
 .search-form:not(.transaction-search) .el-form-item:last-child {
     margin-left: auto;
+}
+
+/* 范围筛选按日期类型统一尺寸，禁止 Element Plus 的 flex: 1 拉满剩余空间。 */
+:is(.search-form, .admin-date-filter-toolbar) .el-date-editor.el-range-editor {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    height: var(--admin-control-height);
+    min-height: var(--admin-control-height);
+    box-sizing: border-box;
+    border-radius: 4px;
+    padding: 0 8px;
+    font-size: 12px;
+    --el-input-border-color: var(--admin-panel-border);
+    --el-input-hover-border-color: var(--el-border-color-hover);
+    --el-input-focus-border-color: var(--app-primary);
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-date-editor.el-date-editor--daterange {
+    width: var(--admin-date-range-width);
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-date-editor.el-date-editor--datetimerange {
+    width: var(--admin-datetime-range-width);
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-range-input {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    font-family: inherit;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-range-separator {
+    flex: 0 0 auto;
+    padding: 0 6px;
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-range__icon,
+:is(.search-form, .admin-date-filter-toolbar) .el-range__close-icon {
+    flex: 0 0 auto;
+    font-size: 14px;
+}
+
+:is(.search-form, .admin-date-filter-toolbar) .el-range-editor.is-active {
+    box-shadow: 0 0 0 1px var(--app-primary) inset, 0 0 0 2px var(--el-color-primary-light-9);
+}
+
+@media (max-width: 640px) {
+    :is(.search-form, .admin-date-filter-toolbar) .el-date-editor.el-range-editor {
+        padding-right: 6px;
+        padding-left: 6px;
+    }
+
+    :is(.search-form, .admin-date-filter-toolbar) .el-range-separator {
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    .search-form .el-form-item {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .search-form .el-form-item > .el-form-item__label {
+        justify-content: flex-start;
+        white-space: nowrap;
+    }
+
+    .search-form .el-form-item > .el-form-item__content {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    /* 日历浮层挂载在 body，窄屏上下展示双月面板，避免水平溢出。 */
+    .el-date-range-picker {
+        width: calc(100vw - 24px);
+        max-height: min(540px, calc(50dvh - 24px));
+        overflow-y: auto;
+    }
+
+    .el-date-range-picker .el-picker-panel__body {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .el-date-range-picker .el-date-range-picker__content {
+        flex: 0 0 auto;
+        float: none;
+        width: 100%;
+    }
+
+    .el-date-range-picker__time-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .el-date-range-picker__time-header > :not(.el-date-range-picker__editors-wrap) {
+        display: none;
+    }
+
+    .el-date-range-picker__time-header .el-date-range-picker__editors-wrap {
+        display: flex;
+        flex: 1 0 100%;
+    }
+
+    .el-date-range-picker__time-header .el-date-range-picker__time-picker-wrap {
+        display: block;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .el-date-range-picker__content.is-left {
+        border-right: 0;
+        border-bottom: 1px solid var(--el-border-color-light);
+    }
 }
 
 /* ===== Toolbar ===== */

@@ -75,7 +75,7 @@ const itemTypes = ['PRINCIPAL', 'FEE_COMPONENT', 'FEE_GROUP_FINAL', 'RESERVE_HOL
 const showSearch = ref(true), loading = ref(false), exporting = ref(false);
 const rows = ref<SettlementTransactionSummary[]>([]), total = ref(0);
 const dateRange = ref<[string, string]>(defaultDateRange());
-const transactionTimeRange = ref<[string, string] | []>([]);
+const transactionTimeRange = ref<[string, string] | [] | null>([]);
 const query = reactive<SettlementResultItemQuery>({ beginBusinessDate: '', endBusinessDate: '', pageNo: 1, pageSize: 10 });
 const componentVisible = ref(false), componentLoading = ref(false);
 const componentRows = ref<SettlementResultItem[]>([]), componentTotal = ref(0);
@@ -91,7 +91,7 @@ onMounted(() => {
     void loadData();
 });
 
-function requestQuery(): SettlementResultItemQuery { return { ...query, settlementBatchNo: query.settlementBatchNo || undefined, merchantId: query.merchantId || undefined, merchantOrderNo: query.merchantOrderNo || undefined, sourceTransactionId: query.sourceTransactionId || undefined, resultItemType: query.resultItemType || undefined, direction: query.direction || undefined, targetCurrency: query.targetCurrency || undefined, beginTransactionTime: transactionTimeRange.value[0] || undefined, endTransactionTime: transactionTimeRange.value[1] || undefined, beginBusinessDate: dateRange.value[0], endBusinessDate: dateRange.value[1] }; }
+function requestQuery(): SettlementResultItemQuery { return { ...query, settlementBatchNo: query.settlementBatchNo || undefined, merchantId: query.merchantId || undefined, merchantOrderNo: query.merchantOrderNo || undefined, sourceTransactionId: query.sourceTransactionId || undefined, resultItemType: query.resultItemType || undefined, direction: query.direction || undefined, targetCurrency: query.targetCurrency || undefined, beginTransactionTime: transactionTimeRange.value?.[0] || undefined, endTransactionTime: transactionTimeRange.value?.[1] || undefined, beginBusinessDate: dateRange.value[0], endBusinessDate: dateRange.value[1] }; }
 async function loadData() { loading.value = true; try { const result = await searchSettlementResultItems(requestQuery()); rows.value = result.records || []; total.value = result.total || 0; } catch (error) { showError(error, 'common.loadFailed'); } finally { loading.value = false; } }
 function handleSearch() { query.pageNo = 1; void loadData(); }
 function handleReset() { Object.assign(query, { settlementBatchNo: undefined, merchantId: undefined, merchantOrderNo: undefined, sourceTransactionId: undefined, resultItemType: undefined, direction: undefined, targetCurrency: undefined, pageNo: 1 }); dateRange.value = defaultDateRange(); transactionTimeRange.value = []; void loadData(); }
@@ -133,7 +133,6 @@ function showError(error: unknown, key: string) { ElMessage.error((error as { fr
 
 <style scoped>
 .search-form :deep(.el-input), .search-form :deep(.el-select) { width: 220px; }
-.search-form :deep(.el-date-editor) { width: 330px; }
 .component-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 14px; border-top: 1px solid var(--el-border-color); border-left: 1px solid var(--el-border-color); }
 .component-identity > div { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--el-border-color); border-bottom: 1px solid var(--el-border-color); text-align: center; }
 .component-identity span, .component-identity strong { display: block; }

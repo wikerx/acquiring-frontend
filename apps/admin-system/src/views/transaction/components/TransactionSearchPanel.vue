@@ -193,6 +193,12 @@ const advancedVisible = ref(false);
     max-width: 100%;
 }
 
+.transaction-search :deep(.transaction-date-form-item) {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
 @media (max-width: 980px) {
     .transaction-search__time-row {
         flex-direction: column;

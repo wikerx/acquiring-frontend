@@ -23,7 +23,7 @@
             </el-form-item>
             <el-form-item :label="t('monitor.workbench.fields.errorCode')"><el-input v-model.trim="query.errorCode" clearable @keyup.enter="handleSearch" /></el-form-item>
             <el-form-item :label="t('common.status')">
-                <el-select v-model="query.status" clearable :placeholder="t('common.pleaseSelect')" style="width: 150px">
+                <el-select v-model="query.status" clearable :placeholder="t('common.pleaseSelect')" >
                     <el-option :label="t('monitor.workbench.status.success')" value="SUCCESS" />
                     <el-option :label="t('monitor.workbench.status.failed')" value="FAILED" />
                     <el-option :label="t('monitor.workbench.status.processing')" value="PROCESSING" />

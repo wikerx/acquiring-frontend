@@ -7,7 +7,7 @@
                     :placeholder="t('channel.binding.merchantIdPlaceholder')"
                     clearable
                     filterable
-                    remote
+                    remote remote-show-suffix
                     :remote-method="searchMerchantOptions"
                     :loading="merchantLoading"
                     @visible-change="handleMerchantSelectVisible"
@@ -109,7 +109,7 @@
                         v-model="form.merchantId"
                         :placeholder="t('channel.binding.merchantIdPlaceholder')"
                         filterable
-                        remote
+                        remote remote-show-suffix
                         :remote-method="searchMerchantOptions"
                         :loading="merchantLoading"
                         :disabled="formMode === 'edit'"

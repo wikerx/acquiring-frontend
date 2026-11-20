@@ -5,7 +5,7 @@
                 <el-input v-model="query.keyword" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
             </el-form-item>
             <el-form-item :label="$t('common.status')">
-                <el-select v-model="query.enabled" :placeholder="$t('common.pleaseSelect')" clearable style="width: 160px">
+                <el-select v-model="query.enabled" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option :label="$t('monitor.sharding.enabled')" value="Y" />
                     <el-option :label="$t('monitor.sharding.disabled')" value="N" />
                 </el-select>

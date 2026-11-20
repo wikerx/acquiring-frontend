@@ -48,4 +48,4 @@ async function loadData(){loading.value=true;try{const result=await searchSettle
 function openBatch(row:SettlementPosting){const domainPath=row.businessType==='RESERVE_SETTLEMENT'?'/settlement/reserve-candidates':row.businessType==='TRANSACTION_SETTLEMENT'?'/settlement/transaction-candidates':'/settlement/batches';router.push({path:domainPath,query:domainPath==='/settlement/batches'?{settlementBatchNo:row.settlementBatchNo}:{view:'batches',settlementBatchNo:row.settlementBatchNo}})}function openMerchant(merchantId:string){router.push({path:'/merchant/info',query:{merchantId}})}
 function openAccount(row:SettlementPosting){router.push({path:'/fund/account',query:{merchantId:row.merchantId,settlementCurrency:row.currency}})}
 </script>
-<style scoped>.search-form :deep(.el-input),.search-form :deep(.el-select){width:220px}.search-form :deep(.el-date-editor){width:372px}</style>
+<style scoped>.search-form :deep(.el-input),.search-form :deep(.el-select){width:220px}</style>

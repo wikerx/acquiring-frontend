@@ -14,7 +14,7 @@
                 />
             </el-form-item>
             <el-form-item :label="$t('monitor.datasource.groupFilter')">
-                <el-select v-model="query.groupName" :placeholder="$t('common.pleaseSelect')" clearable style="width: 180px">
+                <el-select v-model="query.groupName" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option
                         v-for="item in groupOptions"
                         :key="item.value"
@@ -24,7 +24,7 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="$t('monitor.datasource.reachability')">
-                <el-select v-model="query.reachable" :placeholder="$t('common.pleaseSelect')" clearable style="width: 180px">
+                <el-select v-model="query.reachable" :placeholder="$t('common.pleaseSelect')" clearable >
                     <el-option :label="$t('monitor.datasource.reachable')" :value="'Y'" />
                     <el-option :label="$t('monitor.datasource.unreachable')" :value="'N'" />
                 </el-select>
