@@ -1133,11 +1133,16 @@ function selectPaymentMethod(methodId: string) {
     if (!submitting.value) selectedPaymentMethod.value = methodId;
 }
 
+function paymentSubmissionExpired(checkout: HostedCheckoutSession['checkout']): boolean {
+    const expiresAt = parseTimestamp(checkout?.expireTime);
+    return paymentDeadlineExpired.value
+        || (expiresAt !== null && Date.now() + serverClockOffsetMs.value >= expiresAt);
+}
+
 async function handleSubmitPayment() {
-    if (submitting.value || paymentDeadlineExpired.value) {
-        if (paymentDeadlineExpired.value) {
-            await refreshSessionAfterPaymentDeadline();
-        }
+    if (submitting.value) return;
+    if (paymentSubmissionExpired(session.value?.checkout)) {
+        await refreshSessionAfterPaymentDeadline();
         return;
     }
     formMessageKey.value = '';
@@ -1153,7 +1158,7 @@ async function handleSubmitPayment() {
         && attemptRequestId.value === requestId
         && selectedMethod.value?.id === method.id
         && selectedMethod.value.canSubmit
-        && !paymentDeadlineExpired.value
+        && !paymentSubmissionExpired(sourceSession.checkout)
         && runtimeState.value === 'checkout';
     submitting.value = true;
     clearPolling();
