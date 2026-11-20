@@ -45,6 +45,7 @@ export interface HostedCheckoutSession {
         itemsJson?: string;
     };
     paymentMethods?: HostedCheckoutPaymentMethod[];
+    paymentOptions?: HostedCheckoutPaymentMethod[] | null;
     checkout?: {
         expireTime?: string;
         serverTime?: string;
@@ -82,6 +83,8 @@ export interface HostedCheckoutPaymentMethod {
     channelCode?: string;
     brands?: string[];
     threeDsMode?: string;
+    serverSubmitAllowed?: boolean;
+    executionStatus?: string;
 }
 
 export interface HostedCheckoutCardBinResult {

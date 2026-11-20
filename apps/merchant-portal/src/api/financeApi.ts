@@ -17,7 +17,13 @@ export interface FeeTier {
     maximumAmountUsd?: DecimalValue | null;
 }
 
+export interface FeePaymentMethodCoverage {
+    itemKey: string;
+    name: string;
+    authorizationStatus: string;
+}
 export interface FeeRule {
+    paymentMethodCoverage?: FeePaymentMethodCoverage[] | null;
     id: number;
     feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE';
     ruleName: string;
@@ -40,6 +46,7 @@ export interface FeeRule {
 }
 
 export interface CurrentFee {
+    authorizationAssessmentStatus?: 'EVALUATED' | 'HISTORY_PENDING' | 'UNAVAILABLE';
     displayName: string;
     versionNo: number;
     effectiveTime: string;

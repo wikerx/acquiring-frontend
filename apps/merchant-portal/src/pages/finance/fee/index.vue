@@ -2,6 +2,8 @@
     <div class="page system-page merchant-redesigned-page merchant-fee-page">
         <el-empty v-if="!loading && !fee" :description="$t('finance.noActiveFee')" />
         <template v-else>
+            <el-alert :title="$t('paymentMethod.fee.hint')" type="info" :closable="false" show-icon />
+            <el-alert v-if="fee?.authorizationAssessmentStatus !== 'EVALUATED'" :title="$t(fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'paymentMethod.overview.historyPending' : 'paymentMethod.overview.unassessed')" :type="fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'warning' : 'info'" :closable="false" show-icon />
             <section v-loading="loading" class="fee-version-band">
                 <div class="fee-version-primary">
                     <span>{{ $t('finance.configurationName') }}</span>
@@ -87,6 +89,9 @@
                                     />
                                 </template>
                             </el-table-column>
+                            <el-table-column :label="$t('paymentMethod.fee.coverage')" min-width="285" align="center">
+                                <template #default="{ row }"><FeeAuthorizationCoverage :assessment-status="fee?.authorizationAssessmentStatus" :coverage="row.paymentMethodCoverage" /></template>
+                            </el-table-column>
                             <el-table-column :label="$t('finance.billingRule')" min-width="300" align="center">
                                 <template #default="{ row }"><span class="billing-rule-text">{{ billingRuleText(row) }}</span></template>
                             </el-table-column>
@@ -159,6 +164,7 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import FeePaymentScopeDisplay from '@/pages/finance/fee/components/FeePaymentScopeDisplay.vue';
+import FeeAuthorizationCoverage from '@/pages/finance/fee/components/FeeAuthorizationCoverage.vue';
 import FeeTransactionScopeDisplay from '@/pages/finance/fee/components/FeeTransactionScopeDisplay.vue';
 import {
     fallbackCardBrandOptions,
@@ -196,6 +202,7 @@ async function load() {
     try {
         fee.value = await financeApi.currentFee();
     } catch (error) {
+        if (fee.value) fee.value = { ...fee.value, authorizationAssessmentStatus: 'UNAVAILABLE' };
         ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
     } finally {
         loading.value = false;

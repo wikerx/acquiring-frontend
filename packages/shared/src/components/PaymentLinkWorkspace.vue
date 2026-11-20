@@ -450,7 +450,20 @@
                 ></el-form-item>
               </div>
               <p class="pl-hint">{{ t('paymentLink.expireHint') }} · {{ timeZone }}</p>
-              <el-form-item prop="cardBrands" :label="t('paymentLink.brands')"
+              <el-form-item
+                v-if="usesMethodKeys"
+                prop="paymentMethodKeys"
+                :label="t('paymentLink.brands')"
+              >
+                <el-checkbox-group v-model="form.paymentMethodKeys" :disabled="creating">
+                  <el-checkbox v-for="key in currentMethodKeys" :key="key" :value="key">
+                    <PaymentLogoGroup aria-hidden="true" :keys="methodKeyLogos(key)" size="sm" />
+                    <span>{{ methodKeyName(key) }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+                <p class="pl-hint">{{ t('paymentLink.scopeHint') }}</p>
+              </el-form-item>
+              <el-form-item v-else prop="cardBrands" :label="t('paymentLink.brands')"
                 ><el-checkbox-group v-model="form.cardBrands" :disabled="creating"
                   ><el-checkbox v-for="brand in currentBrands" :key="brand" :value="brand"
                     ><PaymentLogoGroup
@@ -462,9 +475,17 @@
                 >
                 <p class="pl-hint">{{ t('paymentLink.allBrands') }}</p></el-form-item
               >
-              <el-form-item v-if="otherPaymentMethods.length" :label="t('paymentLink.otherMethods')">
+              <el-form-item
+                v-if="!usesMethodKeys && otherPaymentMethods.length"
+                :label="t('paymentLink.otherMethods')"
+              >
                 <div class="pl-other-methods">
-                  <div v-for="method in otherPaymentMethods" :key="method" class="pl-other-method" aria-disabled="true">
+                  <div
+                    v-for="method in otherPaymentMethods"
+                    :key="method"
+                    class="pl-other-method"
+                    aria-disabled="true"
+                  >
                     <PaymentLogoGroup :keys="resolvePaymentLogoKeys(method)" size="sm" />
                     <span>{{ methodName(method) }}</span>
                     <small>{{ t('paymentLink.methodUnavailable') }}</small>
@@ -472,7 +493,11 @@
                 </div>
               </el-form-item>
               <el-alert
-                v-if="options && form.currency && !currentBrands.length"
+                v-if="
+                  options &&
+                  form.currency &&
+                  !(usesMethodKeys ? currentMethodKeys.length : currentBrands.length)
+                "
                 :title="t('paymentLink.noMethods')"
                 type="warning"
                 :closable="false"
@@ -498,7 +523,7 @@
               :items="previewItems"
               :labels="receiptLabels"
             />
-            <div class="pl-preview-methods" v-if="form.cardBrands?.length">
+            <div class="pl-preview-methods" v-if="previewLogoKeys.length">
               <span>{{ t('paymentLink.brands') }}</span
               ><PaymentLogoGroup :keys="previewLogoKeys" size="sm" wrap />
             </div>
@@ -543,6 +568,13 @@
               >{{ t(`paymentLink.${action}`) }}</el-button
             ><el-button @click="openDetail(detail)">{{ t('paymentLink.reload') }}</el-button>
           </div>
+          <el-alert
+            v-if="detail.paymentAvailable === false"
+            :title="t('paymentLink.currentlyUnavailable')"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
           <el-tabs v-model="tab">
             <el-tab-pane name="info" :label="t('paymentLink.tabs.info')"
               ><el-descriptions :column="1" border>
@@ -554,6 +586,11 @@
                     key === 'creator' ? creatorLabel(detail) : detail[key] || '—'
                   }}</el-descriptions-item
                 >
+                <el-descriptions-item
+                  v-if="linkScopeLogos(detail).length"
+                  :label="t('paymentLink.brands')"
+                  ><PaymentLogoGroup :keys="linkScopeLogos(detail)" size="sm" wrap
+                /></el-descriptions-item>
                 <el-descriptions-item :label="t('paymentLink.amount')"
                   ><CurrencyAmountDisplay
                     :currency="detail.currency"
@@ -640,7 +677,9 @@
                     type="primary"
                     @click="emit('openTransaction', row)"
                     >{{ row.transactionId }}</el-button
-                  ><span v-else>{{ row.transactionId || t('paymentLink.noSystemOrder') }}</span></template
+                  ><span v-else>{{
+                    row.transactionId || t('paymentLink.noSystemOrder')
+                  }}</span></template
                 ></el-table-column
               >
               <el-table-column :label="t('paymentLink.amount')" min-width="155"
@@ -774,6 +813,13 @@
             >—</span
           >
         </div>
+        <el-alert
+          v-if="selected?.paymentAvailable === false"
+          :title="t('paymentLink.currentlyUnavailable')"
+          type="warning"
+          :closable="false"
+          show-icon
+        />
         <p class="pl-share-caption">{{ t('paymentLink.scanToPay') }}</p>
         <el-input :model-value="shareUrl" readonly :aria-label="t('paymentLink.share')" />
         <p class="pl-hint">{{ t('paymentLink.shareHint') }}</p>
@@ -876,6 +922,9 @@
   import { userFacingErrorMessage } from '../index';
   import {
     newPaymentLinkRequestId,
+    paymentLinkUsesMethodKeys,
+    paymentLinkCurrentMethodKeys,
+    paymentLinkCreateWithScope,
     type PaymentLinkApi,
     type PaymentLinkAttempt,
     type PaymentLinkCollection,
@@ -1008,6 +1057,7 @@
       expireTime: props.formatInstant(Date.now() + 60 * 60000, timeZone.value).replace(' ', 'T'),
       locale: 'AUTO',
       cardBrands: [],
+      paymentMethodKeys: [],
       notifyUrl: '',
       redirectUrl: '',
     };
@@ -1019,10 +1069,39 @@
       (minutes) => minutes <= (options.value?.maxExpireMinutes ?? 43200),
     ),
   );
-  const otherPaymentMethods = computed(() => (options.value?.paymentMethodsByCurrency?.[form.currency] || []).filter((method) => method !== 'BANK_CARD'));
+  const otherPaymentMethods = computed(() =>
+    (options.value?.paymentMethodsByCurrency?.[form.currency] || []).filter(
+      (method) => method !== 'BANK_CARD',
+    ),
+  );
   function methodName(method: string) {
     const key = resolvePaymentLogoKeys(method)[0];
     return key ? getPaymentLogo(key).label : method;
+  }
+  const usesMethodKeys = computed(() => paymentLinkUsesMethodKeys(options.value));
+  const currentMethodKeys = computed(() =>
+    paymentLinkCurrentMethodKeys(options.value, form.currency),
+  );
+  function methodKeyLogos(key: string) {
+    const [kind, value] = key.split(':');
+    return kind === 'CARD_BRAND'
+      ? resolvePaymentLogoKeys('BANK_CARD', value)
+      : kind === 'METHOD'
+        ? resolvePaymentLogoKeys(value)
+        : [];
+  }
+  function methodKeyName(key: string) {
+    const [kind, value] = key.split(':');
+    return kind === 'CARD_BRAND' ? brandName(value) : kind === 'METHOD' ? methodName(value) : key;
+  }
+  function linkScopeLogos(link: PaymentLinkView) {
+    return [
+      ...new Set(
+        link.paymentMethodKeys !== undefined
+          ? link.paymentMethodKeys.flatMap(methodKeyLogos)
+          : (link.cardBrands || []).flatMap((brand) => resolvePaymentLogoKeys('BANK_CARD', brand)),
+      ),
+    ];
   }
   const currentBrands = computed(() => options.value?.cardBrandsByCurrency[form.currency] || []);
   const amountExponent = computed(() => options.value?.currencyExponents?.[form.currency] ?? 2);
@@ -1044,7 +1123,9 @@
   );
   const previewLogoKeys = computed(() => [
     ...new Set(
-      (form.cardBrands || []).flatMap((brand) => resolvePaymentLogoKeys('BANK_CARD', brand)),
+      usesMethodKeys.value
+        ? (form.paymentMethodKeys || []).flatMap(methodKeyLogos)
+        : (form.cardBrands || []).flatMap((brand) => resolvePaymentLogoKeys('BANK_CARD', brand)),
     ),
   ]);
   function brandName(brand: string) {
@@ -1080,12 +1161,12 @@
   let shareGeneration = 0;
   const rules = computed<FormRules>(() => ({
     currency: [{ required: true, message: t('paymentLink.required'), trigger: 'change' }],
-    cardBrands: [
+    [usesMethodKeys.value ? 'paymentMethodKeys' : 'cardBrands']: [
       {
         type: 'array',
         required: true,
         min: 1,
-        message: t('paymentLink.chooseBrand'),
+        message: t(usesMethodKeys.value ? 'paymentLink.chooseMethod' : 'paymentLink.chooseBrand'),
         trigger: 'change',
       },
     ],
@@ -1127,7 +1208,11 @@
   function selectCurrencyBrands() {
     if (form.amount) void createForm.value?.validateField('amount').catch(() => false);
     else createForm.value?.clearValidate('amount');
-    form.cardBrands = [...(options.value?.cardBrandsByCurrency[form.currency] || [])];
+    form.cardBrands = usesMethodKeys.value
+      ? []
+      : [...(options.value?.cardBrandsByCurrency[form.currency] || [])];
+    form.paymentMethodKeys = usesMethodKeys.value ? [...currentMethodKeys.value] : [];
+    createForm.value?.clearValidate(['cardBrands', 'paymentMethodKeys']);
   }
 
   function validateUrl(_rule: unknown, value: string, callback: (error?: Error) => void) {
@@ -1285,7 +1370,7 @@
           ? form.currency
           : paymentLinkDefaultCurrency(data.currencies, data.defaultCurrency);
       optionMerchant = data.merchantId;
-      form.cardBrands = [...(data.cardBrandsByCurrency[form.currency] || [])];
+      selectCurrencyBrands();
     } catch (cause) {
       if (seq === optionsGeneration)
         optionError.value = userFacingErrorMessage(cause, t('paymentLink.error'));
@@ -1300,16 +1385,19 @@
       if (!(await createForm.value?.validate().catch(() => false))) return;
       if (props.scope === 'admin' && !createMerchant.value)
         throw new Error(t('paymentLink.selectMerchant'));
-      const input = {
-        ...form,
-        linkName: form.linkName.trim(),
-        // 固定用户看到的截止时间，重试时不重新计算，保持创建请求幂等。
-        expireMinutes: undefined,
-        expireTime: props.normalizeTimeRange([form.expireTime || ''], timeZone.value)[0],
-        merchantOrderNo: form.merchantOrderNo?.trim(),
-        notifyUrl: form.notifyUrl?.trim() || undefined,
-        redirectUrl: form.redirectUrl?.trim() || undefined,
-      };
+      const input = paymentLinkCreateWithScope(
+        {
+          ...form,
+          linkName: form.linkName.trim(),
+          // 固定用户看到的截止时间，重试时不重新计算，保持创建请求幂等。
+          expireMinutes: undefined,
+          expireTime: props.normalizeTimeRange([form.expireTime || ''], timeZone.value)[0],
+          merchantOrderNo: form.merchantOrderNo?.trim(),
+          notifyUrl: form.notifyUrl?.trim() || undefined,
+          redirectUrl: form.redirectUrl?.trim() || undefined,
+        },
+        usesMethodKeys.value,
+      );
       const snapshot = JSON.stringify({
         ...input,
         requestId: undefined,
@@ -1320,7 +1408,12 @@
       createSnapshot = snapshot;
       const row = await props.api.create(input, createMerchant.value);
       createOpen.value = false;
-      props.notify(t('paymentLink.created'), 'success');
+      props.notify(
+        t(
+          row.paymentAvailable === false ? 'paymentLink.createdUnavailable' : 'paymentLink.created',
+        ),
+        row.paymentAvailable === false ? 'warning' : 'success',
+      );
       await reload();
       if (props.can('detail')) await openDetail(row);
       else if (props.can('share')) await openShare(row);
@@ -1731,9 +1824,25 @@
     color: var(--el-text-color-secondary);
     line-height: 1.6;
   }
-  .pl-other-methods { display: flex; flex-wrap: wrap; gap: 8px; }
-  .pl-other-method { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--el-border-color-light); border-radius: 6px; color: var(--el-text-color-regular); background: var(--el-fill-color-light); }
-  .pl-other-method small { color: var(--el-text-color-secondary); font-size: 11px; }
+  .pl-other-methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pl-other-method {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 6px;
+    color: var(--el-text-color-regular);
+    background: var(--el-fill-color-light);
+  }
+  .pl-other-method small {
+    color: var(--el-text-color-secondary);
+    font-size: 11px;
+  }
   .pl-preview-methods {
     display: grid;
     gap: 12px;

@@ -3,6 +3,8 @@ import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 
 export type WorkItemSourceType =
+    | 'PAYMENT_METHOD_APPROVAL'
+    | 'PAYMENT_METHOD_CONFIGURATION'
     | 'REFUND_APPROVAL'
     | 'SETTLEMENT_REVIEW'
     | 'EXCHANGE_RATE_ALERT'

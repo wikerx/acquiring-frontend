@@ -188,7 +188,7 @@
 
                     <div class="checkout-payment-list">
                         <div
-                            v-for="method in supportedPaymentMethods"
+                            v-for="method in visiblePaymentMethods"
                             :key="method.id"
                             class="checkout-payment-item"
                         >
@@ -201,7 +201,7 @@
                             </div>
 
                             <div
-                                v-if="selectedPaymentMethod === method.id && method.paymentMethod === 'BANK_CARD'"
+                                v-if="selectedPaymentMethod === method.id && method.canSubmit"
                                 class="checkout-payment-detail checkout-payment-detail--card"
                             >
                                 <label class="checkout-field checkout-field--full">
@@ -262,7 +262,14 @@
                                     </label>
                                 </div>
                             </div>
+                            <div v-else-if="selectedPaymentMethod === method.id" class="checkout-payment-detail">
+                                <p>{{ t('checkout.paymentMethodUnavailable') }}</p>
+                            </div>
                         </div>
+                        <button v-if="supportedPaymentMethods.length > 4" class="checkout-payment-option__select" type="button"
+                            :aria-expanded="showAllPaymentMethods" @click="showAllPaymentMethods = !showAllPaymentMethods">
+                            {{ t(showAllPaymentMethods ? 'checkout.showFewerMethods' : 'checkout.showMoreMethods') }}
+                        </button>
                     </div>
                 </article>
 
@@ -283,7 +290,7 @@
                 <button
                     class="checkout-submit"
                     type="button"
-                    :disabled="submitting || paymentDeadlineExpired || supportedPaymentMethods.length === 0"
+                    :disabled="submitting || paymentDeadlineExpired || !selectedMethod?.canSubmit"
                     @click="handleSubmitPayment"
                 >
                     {{ submitting ? t('checkout.submitting') : payButtonText }}
@@ -492,6 +499,7 @@ interface PaymentOption {
     brands: string[];
     logoKeys: PaymentLogoKey[];
     threeDsMode?: string;
+    canSubmit: boolean;
 }
 
 interface FieldError {
@@ -766,10 +774,33 @@ const selectedCountryLabel = computed(() => (
 ));
 
 const supportedPaymentMethods = computed<PaymentOption[]>(() => {
-    const methods = session.value?.paymentMethods || [];
-    return methods
-        .filter((method) => normalizeCode(method.paymentMethod) === 'BANK_CARD')
-        .map((method) => toPaymentOption(method));
+    const sessionMethods = session.value?.paymentOptions;
+    const defaults = session.value?.paymentMethods || [];
+    const methods = sessionMethods ?? defaults.filter((method) => normalizeCode(method.paymentMethod) === 'BANK_CARD');
+    const grouped = new Map<string, HostedCheckoutPaymentMethod>();
+    for (const method of methods) {
+        const code = normalizeCode(method.paymentMethod);
+        if (!code) continue;
+        const prior = grouped.get(code);
+        const canSubmit = code === 'BANK_CARD' && (sessionMethods == null || method.serverSubmitAllowed === true);
+        grouped.set(code, {
+            ...method,
+            paymentMethod: code,
+            brands: Array.from(new Set([...(prior?.brands ?? []), ...(method.brands ?? [])])),
+            serverSubmitAllowed: Boolean(prior?.serverSubmitAllowed || canSubmit),
+            threeDsMode: prior?.threeDsMode === 'AUTO' ? 'AUTO' : method.threeDsMode,
+        });
+    }
+    return Array.from(grouped.values(), toPaymentOption);
+});
+const showAllPaymentMethods = ref(false);
+const visiblePaymentMethods = computed(() => {
+    const methods = supportedPaymentMethods.value;
+    if (showAllPaymentMethods.value || methods.length <= 4) return methods;
+    const visible = methods.slice(0, 4);
+    const selected = methods.find((method) => method.id === selectedPaymentMethod.value);
+    if (selected && !visible.includes(selected)) visible[3] = selected;
+    return visible;
 });
 
 const orderItems = computed(() => {
@@ -899,7 +930,6 @@ const localizedStatusConfig = computed(() => {
 
 const selectedMethod = computed(() => (
     supportedPaymentMethods.value.find((method) => method.id === selectedPaymentMethod.value)
-    || supportedPaymentMethods.value[0]
 ));
 const selectedMethodLabel = computed(() => selectedMethod.value?.label || '');
 const statusPaymentLogoKeys = computed<PaymentLogoKey[]>(() => checkoutResultLogoKeys(
@@ -914,9 +944,15 @@ const pollingIntervalSeconds = computed(() => (
     || 3
 ));
 
+let initialPaymentChoiceMade = false;
 watch(supportedPaymentMethods, (methods) => {
-    if (!methods.some((method) => method.id === selectedPaymentMethod.value)) {
-        selectedPaymentMethod.value = methods[0]?.id || '';
+    if (!initialPaymentChoiceMade && methods.length > 0) {
+        initialPaymentChoiceMade = true;
+        selectedPaymentMethod.value = methods.find((method) => method.canSubmit)?.id
+            || methods[0]?.id || '';
+    } else if (selectedPaymentMethod.value && !methods.some((method) => method.id === selectedPaymentMethod.value)) {
+        selectedPaymentMethod.value = '';
+        formMessageKey.value = 'checkout.paymentMethodChanged';
     }
 }, { immediate: true });
 
@@ -1090,7 +1126,7 @@ async function handleSubmitPayment() {
         return;
     }
     formMessageKey.value = '';
-    if (!validateForm() || !routeToken.value || !session.value || !selectedMethod.value) {
+    if (!selectedMethod.value?.canSubmit || !validateForm() || !routeToken.value || !session.value) {
         return;
     }
     submitting.value = true;
@@ -1989,20 +2025,25 @@ function isRoutableCheckoutToken(token: string): boolean {
 }
 
 function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
+    const code = normalizeCode(method.paymentMethod);
     const brands = (method.brands || []).map(normalizeCode).filter(Boolean);
-    const logoKeys = uniqueLogos(brands
+    const cardLogos = uniqueLogos(brands
         .map((brand) => CARD_BRAND_LOGOS[normalizeCode(brand)])
         .filter((logo): logo is PaymentLogoKey => Boolean(logo)));
-    const channelCode = normalizeCode(method.channelCode || 'MPGS');
+    const isCard = code === 'BANK_CARD';
+    const names: Record<string, string> = {
+        APPLE_PAY: 'Apple Pay', GOOGLE_PAY: 'Google Pay', PAYPAL: 'PayPal', CASH_APP_PAY: 'Cash App Pay',
+    };
     return {
-        id: `${normalizeCode(method.paymentMethod)}-${channelCode}`,
-        paymentMethod: normalizeCode(method.paymentMethod),
-        channelCode,
-        label: t('checkout.bankCardLabel'),
+        id: code,
+        paymentMethod: code,
+        channelCode: method.channelCode,
+        label: isCard ? t('checkout.bankCardLabel') : names[code] || code.replaceAll('_', ' '),
         description: brands.join(' / '),
         brands,
-        logoKeys,
+        logoKeys: isCard ? cardLogos : resolvePaymentLogoKeys(code),
         threeDsMode: method.threeDsMode,
+        canSubmit: isCard && method.serverSubmitAllowed === true,
     };
 }
 

@@ -127,11 +127,16 @@
                             </div>
 
                             <div v-else-if="item.key === 'paymentCapability'" class="payment-capability-summary">
-                                <div class="integration-facts">
-                                    <span>{{ t('accessConfig.paymentMethodCount', { count: capabilityGroups.length }) }}</span>
+                                <el-alert v-if="overview.paymentCapability.assessmentStatus !== 'EVALUATED'" :title="t(overview.paymentCapability.assessmentStatus === 'HISTORY_PENDING' ? 'paymentMethod.overview.historyPending' : 'paymentMethod.overview.unassessed')" :type="overview.paymentCapability.assessmentStatus === 'HISTORY_PENDING' ? 'warning' : 'info'" :closable="false" show-icon />
+                                <div v-if="capabilityMetrics.length" class="integration-facts payment-authorization-metrics">
+                                    <span v-for="metric in capabilityMetrics" :key="metric.key">{{ t(`paymentMethod.overview.${metric.key}`) }} <b>{{ metric.value ?? t('paymentMethod.unassessed') }}</b></span>
+                                    <span v-if="overview.paymentCapability.assessedAt">{{ t('paymentMethod.overview.assessedAt') }} <BaseDateTime :value="overview.paymentCapability.assessedAt" /></span>
+                                </div>
+                                <div v-if="overview.paymentCapability.assessmentStatus === 'EVALUATED' || overview.paymentCapability.assessmentStatus === 'HISTORY_PENDING'" class="integration-facts">
+                                    <span>{{ t(overview.paymentCapability.assessmentStatus === 'EVALUATED' ? 'paymentMethod.overview.executableMethods' : 'paymentMethod.overview.observedMethods', { count: capabilityGroups.length }) }}</span>
                                 </div>
                                 <div
-                                    v-if="capabilityGroups.length"
+                                    v-if="capabilityGroups.length && ['EVALUATED', 'HISTORY_PENDING'].includes(overview.paymentCapability.assessmentStatus || '')"
                                     class="payment-capability-list"
                                     role="list"
                                     :aria-label="t('accessConfig.paymentMethods')"
@@ -150,7 +155,7 @@
                                         />
                                     </div>
                                 </div>
-                                <el-empty v-else :image-size="40" :description="t('accessConfig.paymentCapabilityEmpty')" />
+                                <el-empty v-else :image-size="40" :description="t(overview.paymentCapability.assessmentStatus === 'EVALUATED' && overview.paymentCapability.executionReadyCount != null ? 'paymentMethod.overview.noExecutableMethods' : 'paymentMethod.unassessed')" />
                             </div>
 
                             <div v-else-if="item.key === 'fee'" class="integration-facts">
@@ -186,6 +191,11 @@
                             >
                                 {{ t('accessConfig.viewProfile') }}
                             </el-button>
+                            <el-button
+                                v-else-if="item.key === 'paymentCapability' && auth.hasPermission('merchant:payment-method:view')"
+                                text type="primary" :icon="ArrowRight"
+                                @click="openManagement('/merchant-info/payment-methods')"
+                            >{{ t('paymentMethod.title') }}</el-button>
                             <div v-else-if="item.key === 'technical'" class="integration-check-row__actions">
                                 <el-button
                                     v-if="auth.hasPermission('merchant:openapi:key:view')"
@@ -240,6 +250,7 @@ import {
     type MerchantAccessRuleCheck,
 } from '@/api/accessConfigApi';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
+import { paymentCapabilityMetrics } from '@/utils/paymentAuthorizationPresentation';
 import { useAuthStore } from '@/stores/authStore';
 
 type StageKey = 'merchantProfile' | 'settlement' | 'paymentCapability' | 'fee' | 'risk' | 'technical';
@@ -305,6 +316,8 @@ const stageItems = computed<StageItem[]>(() => {
         stageItem('technical', data.technicalStatus, Connection, technicalLastUpdatedTime(data)),
     ];
 });
+
+const capabilityMetrics = computed(() => paymentCapabilityMetrics(overview.value?.paymentCapability));
 
 const capabilityGroups = computed<CapabilityGroup[]>(() => {
     const groups = new Map<string, CapabilityGroup>();

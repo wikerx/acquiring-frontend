@@ -1,7 +1,10 @@
+import paymentMethodMessages from './payment-methods.zh-CN';
 import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+    merchant_payment_methods_v1: paymentMethodMessages.title,
+    paymentMethod: paymentMethodMessages,
     paymentLink: paymentLinkMessagesZh,
   media: {
     "serviceUnavailable": "图片安全检查或保存服务暂不可用，请稍后重试。",

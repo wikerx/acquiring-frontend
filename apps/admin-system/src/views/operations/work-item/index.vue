@@ -253,7 +253,7 @@
                                     <el-dropdown-item v-if="!row.sourceManaged && canTransfer && row.workStatus !== 'CLOSED' && row.ownerAccountId" command="transfer" :icon="Promotion">
                                         {{ t('operations.workItem.transfer') }}
                                     </el-dropdown-item>
-                                    <el-dropdown-item v-if="!row.sourceManaged && canComplete && row.workStatus !== 'CLOSED'" command="complete" :icon="CircleCheck">
+                                    <el-dropdown-item v-if="!row.sourceManaged && !isPaymentMethodSource(row) && canComplete && row.workStatus !== 'CLOSED'" command="complete" :icon="CircleCheck">
                                         {{ t('operations.workItem.complete') }}
                                     </el-dropdown-item>
                                     <el-dropdown-item v-if="canRemark" command="remark" :icon="EditPen">
@@ -330,7 +330,7 @@
                     <el-descriptions class="operational-work-item-page__descriptions" :column="2" border size="small">
                         <el-descriptions-item :label="t('operations.workItem.sourceStatus')">{{ detail.workItem.sourceStatus || '-' }}</el-descriptions-item>
                         <el-descriptions-item :label="t('operations.workItem.businessNo')"><CopyableText :value="detail.workItem.businessNo || detail.workItem.sourceKey" /></el-descriptions-item>
-                        <el-descriptions-item :label="t('operations.workItem.relatedBusinessNo')"><CopyableText :value="detail.workItem.relatedBusinessNo" /></el-descriptions-item>
+                        <el-descriptions-item :label="t(isPaymentMethodSource(detail.workItem) ? 'paymentMethod.itemKey' : 'operations.workItem.relatedBusinessNo')"><CopyableText :value="detail.workItem.relatedBusinessNo" /></el-descriptions-item>
                         <el-descriptions-item :label="t('operations.workItem.transactionId')"><CopyableText :value="detail.workItem.transactionId" /></el-descriptions-item>
                         <el-descriptions-item :label="t('operations.workItem.merchant')">{{ merchantText(detail.workItem) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('operations.workItem.amount')">
@@ -410,7 +410,7 @@
                         {{ t('operations.workItem.addRemark') }}
                     </el-button>
                     <el-button
-                        v-if="detail?.workItem && !detail.workItem.sourceManaged && canComplete && detail.workItem.workStatus !== 'CLOSED'"
+                        v-if="detail?.workItem && !detail.workItem.sourceManaged && !isPaymentMethodSource(detail.workItem) && canComplete && detail.workItem.workStatus !== 'CLOSED'"
                         type="success"
                         :icon="CircleCheck"
                         @click="openActionDialog('complete', detail.workItem)"
@@ -514,6 +514,8 @@ const { locale, t } = useI18n();
 const router = useRouter();
 const userStore = useUserStore();
 const sourceOptions: WorkItemSourceType[] = [
+    'PAYMENT_METHOD_APPROVAL',
+    'PAYMENT_METHOD_CONFIGURATION',
     'REFUND_APPROVAL',
     'SETTLEMENT_REVIEW',
     'EXCHANGE_RATE_ALERT',
@@ -768,7 +770,12 @@ async function claimItem(item: OperationalWorkItem) {
     }
 }
 
+function isPaymentMethodSource(item: OperationalWorkItem) {
+    return item.sourceType === 'PAYMENT_METHOD_APPROVAL' || item.sourceType === 'PAYMENT_METHOD_CONFIGURATION';
+}
+
 function openActionDialog(type: ActionType, item: OperationalWorkItem) {
+    if (type === 'complete' && isPaymentMethodSource(item)) return;
     actionType.value = type;
     actionItem.value = item;
     actionTargetAccountId.value = undefined;
@@ -779,7 +786,7 @@ function openActionDialog(type: ActionType, item: OperationalWorkItem) {
 
 async function submitAction() {
     const item = actionItem.value;
-    if (!item) return;
+    if (!item || (actionType.value === 'complete' && isPaymentMethodSource(item))) return;
     const requiresTargetOwner = actionType.value === 'assign' || actionType.value === 'transfer';
     const requiresRemark = actionType.value === 'remark' || actionType.value === 'complete';
     if (requiresTargetOwner && !actionTargetAccountId.value) {
@@ -830,7 +837,7 @@ function commandPayload(item: OperationalWorkItem, targetAccountId?: number, rem
 
 function hasRowActions(item: OperationalWorkItem) {
     return canRemark
-        || !item.sourceManaged && canComplete && item.workStatus !== 'CLOSED'
+        || !item.sourceManaged && !isPaymentMethodSource(item) && canComplete && item.workStatus !== 'CLOSED'
         || !item.sourceManaged && canClaim && item.workStatus !== 'CLOSED' && !item.ownerAccountId
         || !item.sourceManaged && canAssign && item.workStatus !== 'CLOSED' && !item.ownerAccountId
         || !item.sourceManaged && canTransfer && item.workStatus !== 'CLOSED' && Boolean(item.ownerAccountId);
@@ -838,6 +845,8 @@ function hasRowActions(item: OperationalWorkItem) {
 
 function openSource(item: OperationalWorkItem) {
     const routes: Record<WorkItemSourceType, { path: string; query: Record<string, string> }> = {
+        PAYMENT_METHOD_APPROVAL: { path: '/merchant/payment-methods', query: { merchantId: item.merchantId || '', applicationNo: item.businessNo || '' } },
+        PAYMENT_METHOD_CONFIGURATION: { path: '/merchant/payment-methods', query: { merchantId: item.merchantId || '' } },
         REFUND_APPROVAL: { path: '/transaction/refund', query: { refundTransactionId: item.businessNo || '', sourceOccurredAt: item.sourceOccurredAt || '' } },
         SETTLEMENT_REVIEW: { path: '/settlement/review-orders', query: { reviewOrderNo: item.businessNo || item.sourceKey } },
         EXCHANGE_RATE_ALERT: { path: '/exchange/alert-event', query: { eventNo: item.businessNo || item.sourceKey, sourceOccurredAt: item.sourceOccurredAt || '' } },
@@ -874,6 +883,8 @@ function openSource(item: OperationalWorkItem) {
 
 function canOpenSource(item: OperationalWorkItem) {
     const permissions: Record<WorkItemSourceType, string> = {
+        PAYMENT_METHOD_APPROVAL: 'merchant:payment-method:view',
+        PAYMENT_METHOD_CONFIGURATION: 'merchant:payment-method:view',
         REFUND_APPROVAL: 'transaction:refund:detail',
         SETTLEMENT_REVIEW: 'settlement:review-order:detail',
         EXCHANGE_RATE_ALERT: 'exchange:alert-event:query',
@@ -948,6 +959,8 @@ function statusTagType(value: WorkItemStatus) {
 }
 
 function sourceTagType(value: WorkItemSourceType) {
+    if (value === 'PAYMENT_METHOD_APPROVAL') return 'primary';
+    if (value === 'PAYMENT_METHOD_CONFIGURATION') return 'warning';
     if (value === 'REFUND_APPROVAL') return 'danger';
     if (value === 'SETTLEMENT_REVIEW') return 'success';
     if (value === 'EXCHANGE_RATE_ALERT') return 'warning';

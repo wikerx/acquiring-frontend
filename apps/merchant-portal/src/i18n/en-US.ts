@@ -1,7 +1,10 @@
+import paymentMethodMessages from './payment-methods.en-US';
 import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+    merchant_payment_methods_v1: paymentMethodMessages.title,
+    paymentMethod: paymentMethodMessages,
     paymentLink: paymentLinkMessagesEn,
   media: {
     "serviceUnavailable": "Image safety checks or storage are temporarily unavailable. Please try again later.",

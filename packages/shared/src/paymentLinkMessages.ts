@@ -75,6 +75,11 @@ export const paymentLinkMessagesZh = {
   urlHint: '留空使用现有收银台结果页；通知地址为空仍可在商户系统查询。',
   createHint: '创建后金额和订单不可修改。停用后不可恢复。',
   created: '支付链接已创建',
+  createdUnavailable: '支付链接已创建，当前尚不可付款。',
+  currentlyUnavailable: '此链接当前尚不可付款，请联系平台完成支付接入后再通知客户付款。',
+  scopeHint:
+    '默认全选。所选方式来自商户当前授权和配置范围；创建链接不代表支付组件已接通，实际付款时重新校验。',
+  chooseMethod: '请选择至少一种支付方式',
   disabled: '支付链接已停用',
   exported: '导出任务已创建，请前往下载中心领取。',
   required: '请填写此项',
@@ -263,6 +268,12 @@ export const paymentLinkMessagesEn = {
     'Leave empty for the existing checkout result page. Results remain available in the portal without a webhook.',
   createHint: 'Amount and order cannot be changed after creation. Disabling is permanent.',
   created: 'Payment link created',
+  createdUnavailable: 'Payment link created. Payment is not currently available.',
+  currentlyUnavailable:
+    'Payment is not currently available for this link. Contact the platform to complete payment integration before inviting your customer to pay.',
+  scopeHint:
+    'All options are selected by default from current merchant authorization and configuration. Creating a link does not mean its payment components are connected. Eligibility is checked again at payment.',
+  chooseMethod: 'Select at least one payment method',
   disabled: 'Payment link disabled',
   exported: 'Export queued. Collect the file in the download center.',
   required: 'This field is required',

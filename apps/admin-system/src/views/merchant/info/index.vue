@@ -222,6 +222,9 @@
               >
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item v-if="canViewPaymentMethods" command="paymentMethods">{{
+                    $t('paymentMethod.title')
+                  }}</el-dropdown-item>
                   <el-dropdown-item v-if="canManageMerchantKey" command="keys" :icon="Key">{{
                     $t('merchant.info.keyManage')
                   }}</el-dropdown-item>
@@ -1057,7 +1060,7 @@
   import { searchDictData, type SysDictData } from '@/api/system/dict';
   import { useUserStore } from '@/store/modules/user';
 
-  type MerchantRowAction = 'freeze' | 'unfreeze' | 'keys' | 'material';
+  type MerchantRowAction = 'freeze' | 'unfreeze' | 'keys' | 'material' | 'paymentMethods';
 
   const { t, locale } = useI18n();
   const route = useRoute();
@@ -1125,6 +1128,7 @@
   const canManageMerchantKey = userStore.hasPermission('merchant:key:manage');
   const canViewMerchantMaterial = userStore.hasPermission('merchant:material:view');
   const canViewMerchantFee = userStore.hasPermission('fee:merchant:list');
+  const canViewPaymentMethods = userStore.hasPermission('merchant:payment-method:view');
   const canViewFundAccount = userStore.hasPermission('fund:account:list');
   const canBindMerchantChannel = userStore.hasPermission('channel:mid-binding:list');
   const canViewSettlementProfile = userStore.hasPermission('settlement:profile:list');
@@ -1524,10 +1528,20 @@
     const hasStatusAction =
       canChangeMerchantStatus &&
       (row.merchantStatus === 1 || (row.merchantStatus === 2 && row.activationStatus === 'ACTIVE'));
-    return canManageMerchantKey || canViewMerchantMaterial || hasStatusAction;
+    return (
+      canManageMerchantKey || canViewMerchantMaterial || canViewPaymentMethods || hasStatusAction
+    );
   }
 
   function handleMerchantRowAction(command: MerchantRowAction, row: MerchantInfo) {
+    if (command === 'paymentMethods') {
+      if (canViewPaymentMethods && row.merchantId)
+        void router.push({
+          path: '/merchant/payment-methods',
+          query: { merchantId: row.merchantId },
+        });
+      return;
+    }
     if (command === 'keys') {
       openKeys(row);
       return;

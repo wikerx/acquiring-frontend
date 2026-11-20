@@ -1,7 +1,10 @@
+import paymentMethodMessages from './payment-methods.zh-CN';
 import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+    merchant_payment_methods_v1: paymentMethodMessages.title,
+    paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: '支付链接',
     paymentLink: paymentLinkMessagesZh,
   media: {
@@ -256,6 +259,8 @@ export default {
         mine: '我的待办',
       },
       source: {
+        PAYMENT_METHOD_APPROVAL: '支付方式待审核',
+        PAYMENT_METHOD_CONFIGURATION: '支付方式配置跟进',
         REFUND_APPROVAL: '退款待审核',
         SETTLEMENT_REVIEW: '结算待复核',
         EXCHANGE_RATE_ALERT: '汇率未处理预警',

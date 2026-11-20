@@ -30,6 +30,7 @@ export interface PaymentLinkCreate {
   expireTime?: string;
   locale: string;
   cardBrands?: string[];
+  paymentMethodKeys?: string[];
   notifyUrl?: string;
   redirectUrl?: string;
 }
@@ -45,8 +46,10 @@ export interface PaymentLinkView {
   currencyExponent: number;
   locale: string;
   cardBrands?: string[];
+  paymentMethodKeys?: string[];
   status: PaymentLinkStatus;
   paymentStatus: string;
+  paymentAvailable?: boolean;
   attemptCount: number;
   transactionId?: string;
   transactionDateTime?: string;
@@ -69,6 +72,7 @@ export interface PaymentLinkOptions {
   currencies: string[];
   cardBrands: string[];
   paymentMethodsByCurrency?: Record<string, string[]>;
+  paymentMethodKeysByCurrency?: Record<string, string[]>;
   cardBrandsByCurrency: Record<string, string[]>;
   locales: string[];
   minExpireMinutes: number;
@@ -194,4 +198,39 @@ export function createPaymentLinkApi(
 
 export function newPaymentLinkRequestId(): string {
   return globalThis.crypto.randomUUID();
+}
+
+/** 新范围字段存在时以其为准；空范围不回退为历史全卡或仅卡能力。 */
+export function paymentLinkUsesMethodKeys(options?: PaymentLinkOptions): boolean {
+  return options?.paymentMethodKeysByCurrency !== undefined;
+}
+
+export function paymentLinkCurrentMethodKeys(
+  options: PaymentLinkOptions | undefined,
+  currency: string,
+): string[] {
+  const keys = options?.paymentMethodKeysByCurrency?.[currency] || [];
+  return [
+    ...new Set(
+      keys.filter((key) => {
+        if (!/^(CARD_BRAND|METHOD):[A-Z][A-Z0-9_]*$/.test(key)) return false;
+        const [kind, value] = key.split(':');
+        return (
+          !['ALL', 'NONE', 'UNKNOWN'].includes(value) &&
+          !(kind === 'METHOD' && value === 'BANK_CARD')
+        );
+      }),
+    ),
+  ];
+}
+
+/** 创建协议只发送一种范围表达，保留请求键与金额/截止时间原始事实。 */
+export function paymentLinkCreateWithScope(
+  input: PaymentLinkCreate,
+  useMethodKeys: boolean,
+): PaymentLinkCreate {
+  const { cardBrands, paymentMethodKeys, ...common } = input;
+  return useMethodKeys
+    ? { ...common, paymentMethodKeys: [...(paymentMethodKeys || [])] }
+    : { ...common, cardBrands: [...(cardBrands || [])] };
 }

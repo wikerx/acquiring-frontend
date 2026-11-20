@@ -1,7 +1,10 @@
+import paymentMethodMessages from './payment-methods.en-US';
 import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+    merchant_payment_methods_v1: paymentMethodMessages.title,
+    paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: 'Pay by Link',
     paymentLink: paymentLinkMessagesEn,
   media: {
@@ -258,6 +261,8 @@ export default {
         mine: 'My Work Items',
       },
       source: {
+        PAYMENT_METHOD_APPROVAL: 'Payment Method Review',
+        PAYMENT_METHOD_CONFIGURATION: 'Payment Method Configuration',
         REFUND_APPROVAL: 'Refund Review',
         SETTLEMENT_REVIEW: 'Settlement Review',
         EXCHANGE_RATE_ALERT: 'Exchange Rate Alert',

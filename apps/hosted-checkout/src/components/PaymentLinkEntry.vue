@@ -53,12 +53,12 @@
           </div>
           <p v-if="error" role="alert" class="link-error">{{ error }}</p>
           <button
-            v-if="link.payable && !link.processing"
+            v-if="(link.payable || link.checkoutAvailable) && !link.processing"
             class="checkout-submit"
             :disabled="starting || loading"
             @click="start"
           >
-            {{ t(starting ? 'paymentLinkEntry.starting' : 'paymentLinkEntry.pay') }}
+            {{ t(starting ? 'paymentLinkEntry.starting' : link.payable ? 'paymentLinkEntry.pay' : 'checkout.chooseMethod') }}
           </button>
           <button
             v-if="link.processing"
@@ -117,6 +117,7 @@
     locale: string;
     status: 'ACTIVE' | 'COMPLETED' | 'DISABLED' | 'EXPIRED';
     payable: boolean;
+    checkoutAvailable?: boolean;
     processing: boolean;
     lastFailedTime?: string;
     expireTime: string;
@@ -229,7 +230,7 @@
     else if (link.value?.processing || link.value?.status === 'ACTIVE') void resolve(true);
   }
   async function start() {
-    if (starting.value || !link.value?.payable || link.value.processing) return;
+    if (starting.value || !link.value || (!link.value.payable && !link.value.checkoutAvailable) || link.value.processing) return;
     starting.value = true;
     errorKey.value = '';
     let navigating = false;

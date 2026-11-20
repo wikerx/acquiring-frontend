@@ -79,6 +79,14 @@ export interface MerchantPaymentCapability {
 }
 
 export interface MerchantPaymentCapabilityCheck {
+    assessmentStatus?: 'EVALUATED' | 'HISTORY_PENDING' | 'UNAVAILABLE';
+    authorizedCount?: number | null;
+    legacyCoverageCount?: number | null;
+    configurationReadyCount?: number | null;
+    pendingConfigurationCount?: number | null;
+    restrictedCount?: number | null;
+    executionReadyCount?: number | null;
+    assessedAt?: string | null;
     status: MerchantAccessCheckStatus;
     activeBindingCount: number;
     capabilities: MerchantPaymentCapability[];
