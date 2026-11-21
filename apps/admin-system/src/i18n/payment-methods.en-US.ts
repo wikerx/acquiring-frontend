@@ -64,7 +64,7 @@ export default {
   intro:
     'Applications, authorization and actual payment capability are separate facts. Approval does not guarantee payments can be accepted now.',
   merchantId: 'Merchant ID',
-  merchantHint: 'Enter the complete merchant ID or open from merchant details',
+  merchantHint: 'Search merchant ID or name',
   chooseMerchant: 'Select a merchant first',
   methods: 'Payment methods',
   applications: 'Applications',

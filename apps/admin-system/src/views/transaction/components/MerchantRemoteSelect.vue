@@ -23,13 +23,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { MerchantInfo } from '@/api/merchant/info';
+import type { MerchantSelectOption } from '@/api/merchant/info';
 import { merchantOptionLabel, searchMerchantOptions } from '../shared';
 
 const props = withDefaults(defineProps<{
     modelValue?: string | string[];
     placeholder?: string;
     multiple?: boolean;
+    searchOptions?: (keyword: string) => Promise<MerchantSelectOption[]>;
 }>(), {
     modelValue: '',
     placeholder: '',
@@ -43,20 +44,23 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const loading = ref(false);
-const options = ref<MerchantInfo[]>([]);
+const options = ref<MerchantSelectOption[]>([]);
+let searchRequest = 0;
 
 onMounted(() => loadOptions(''));
 
 async function loadOptions(keyword: string) {
+    const request = ++searchRequest;
     loading.value = true;
     try {
+        const loadedOptions = await (props.searchOptions || searchMerchantOptions)(keyword);
+        if (request !== searchRequest) return;
         const selectedIds = new Set(Array.isArray(props.modelValue) ? props.modelValue : [props.modelValue].filter(Boolean));
         const selectedOptions = options.value.filter((item) => selectedIds.has(item.merchantId));
-        const loadedOptions = await searchMerchantOptions(keyword);
         options.value = [...selectedOptions, ...loadedOptions]
             .filter((item, index, items) => items.findIndex((candidate) => candidate.merchantId === item.merchantId) === index);
     } finally {
-        loading.value = false;
+        if (request === searchRequest) loading.value = false;
     }
 }
 

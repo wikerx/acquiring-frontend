@@ -13,7 +13,7 @@ export interface PaymentMethodRow {
   applicationStatus?: string | null;
   applicationItemId?: string | null;
   applicationVersion?: string | null;
-  businessReadiness?: 'CONDITIONAL' | 'BLOCKED' | 'UNKNOWN';
+  businessReadiness?: 'READY' | 'CONDITIONAL' | 'BLOCKED' | 'UNKNOWN';
   reasonCodes?: string[];
   feeReference?: { versionId: string; versionNo: string; effectiveTime: string } | null;
 }

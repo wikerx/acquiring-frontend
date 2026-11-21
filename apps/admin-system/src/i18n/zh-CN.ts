@@ -3,7 +3,6 @@ import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
-    merchant_payment_methods_v1: paymentMethodMessages.title,
     paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: '支付链接',
     paymentLink: paymentLinkMessagesZh,
@@ -5350,6 +5349,7 @@ export default {
     merchant: '商户管理',
     merchant_manage: '商户管理',
     merchant_info_manage: '商户信息管理',
+    merchant_payment_methods_v1: paymentMethodMessages.title,
     merchant_dashboard: '商户首页',
     merchant_info: '商户信息',
     merchant_store: '店铺管理',

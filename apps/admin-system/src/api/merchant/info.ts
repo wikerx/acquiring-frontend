@@ -3,6 +3,8 @@ import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import { downloadBlob } from '@/utils/download';
 
+export type MerchantSelectOption = Pick<MerchantInfo, 'merchantId' | 'merchantName'>;
+
 export interface MerchantInfo {
     id: string;
     merchantId: string;

@@ -11,14 +11,14 @@
           }}</el-button>
         </div>
       </header>
-      <el-form v-if="isAdmin" inline @submit.prevent="searchMerchant">
+      <el-form v-if="isAdmin && canView" class="search-form" inline @submit.prevent="searchMerchant">
         <el-form-item :label="t('paymentMethod.merchantId')">
-          <el-input
+          <MerchantRemoteSelect
             v-model="merchantInput"
             :placeholder="t('paymentMethod.merchantHint')"
-            clearable
-            maxlength="32"
-            @keyup.enter="searchMerchant"
+            :search-options="paymentMethodApi.merchantOptions"
+            :disabled="busy"
+            @change="selectMerchant"
           />
         </el-form-item>
         <el-form-item
@@ -676,6 +676,7 @@
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import RightToolbar from '@/components/RightToolbar/index.vue';
   import StandardTable from '@/components/StandardTable/StandardTable.vue';
+  import MerchantRemoteSelect from '@/views/transaction/components/MerchantRemoteSelect.vue';
   import HistoricalPaymentBaseline from './HistoricalPaymentBaseline.vue';
   import PaymentApplicationBatchReview from './PaymentApplicationBatchReview.vue';
   import { useUserStore } from '@/store/modules/user';
@@ -877,6 +878,11 @@
       : tab.value === 'applications'
         ? loadApplications()
         : Promise.resolve();
+  }
+  function selectMerchant(value: string | string[]) {
+    if (typeof value === 'string' && value !== merchantId.value) {
+      searchMerchant();
+    }
   }
   function searchMerchant() {
     if (busy.value) return;

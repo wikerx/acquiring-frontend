@@ -3,7 +3,6 @@ import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
-    merchant_payment_methods_v1: paymentMethodMessages.title,
     paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: 'Pay by Link',
     paymentLink: paymentLinkMessagesEn,
@@ -5614,6 +5613,7 @@ export default {
     merchant: 'Merchant Management',
     merchant_manage: 'Merchant Management',
     merchant_info_manage: 'Merchant Info Management',
+    merchant_payment_methods_v1: paymentMethodMessages.title,
     merchant_dashboard: 'Merchant Dashboard',
     merchant_info: 'Merchant Info',
     merchant_store: 'Store Management',

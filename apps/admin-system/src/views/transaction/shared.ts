@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { formatExchangeRate, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
-import { searchMerchants, type MerchantInfo } from '@/api/merchant/info';
+import { searchMerchants, type MerchantSelectOption } from '@/api/merchant/info';
 import type { TransactionDetail } from '@/api/transaction';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
 import { formatDateTimeInTimeZone } from '@/utils/format';
@@ -165,7 +165,7 @@ export function resolveTransactionPresetRange(preset: string, timeZone = DEFAULT
     return [`${zonedNow.date}T00:00:00`, end];
 }
 
-export function merchantOptionLabel(item: MerchantInfo) {
+export function merchantOptionLabel(item: MerchantSelectOption) {
     return item.merchantName ? `${item.merchantId} / ${item.merchantName}` : item.merchantId;
 }
 

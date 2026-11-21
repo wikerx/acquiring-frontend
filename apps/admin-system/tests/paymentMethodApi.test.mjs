@@ -86,6 +86,24 @@ test('admin exact merchant scope is encoded in resource path and queue filter', 
   });
 });
 
+test('admin merchant dropdown uses the payment-method lookup without changing exact list filters', async () => {
+  const { api, calls } = loadApi('admin-system');
+  await api.merchantOptions('Example merchant');
+  await api.merchantOptions('');
+  assert.deepEqual(copy(calls), [
+    {
+      method: 'GET',
+      url: '/admin/merchant-payment-methods/merchant-options',
+      params: { keyword: 'Example merchant' },
+    },
+    {
+      method: 'GET',
+      url: '/admin/merchant-payment-methods/merchant-options',
+      params: {},
+    },
+  ]);
+});
+
 test('admin decisions preserve command identity and version without reviewer identity', async () => {
   const { api, calls } = loadApi('admin-system');
   const body = {

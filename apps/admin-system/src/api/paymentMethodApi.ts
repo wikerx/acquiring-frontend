@@ -1,5 +1,6 @@
 import { unwrapResult, type CommonResult, type PageResult } from '@acquiring/shared';
 import { http } from '@/api/http';
+import type { MerchantSelectOption } from '@/api/merchant/info';
 
 export interface PaymentMethodRow {
   itemKey: string;
@@ -13,7 +14,7 @@ export interface PaymentMethodRow {
   applicationStatus?: string | null;
   applicationItemId?: string | null;
   applicationVersion?: string | null;
-  businessReadiness?: 'CONDITIONAL' | 'BLOCKED' | 'UNKNOWN';
+  businessReadiness?: 'READY' | 'CONDITIONAL' | 'BLOCKED' | 'UNKNOWN';
   reasonCodes?: string[];
   feeReference?: { versionId: string; versionNo: string; effectiveTime: string } | null;
 }
@@ -117,6 +118,11 @@ async function get<T>(url: string, params?: unknown): Promise<T> {
   return unwrapResult(response.data);
 }
 export const paymentMethodApi = {
+  merchantOptions(keyword: string) {
+    return get<MerchantSelectOption[]>('/admin/merchant-payment-methods/merchant-options', {
+      keyword: keyword || undefined,
+    });
+  },
   decideBatch(items: PaymentBatchDecisionItem[]) {
     return post<PaymentBatchDecisionReceipt>(
       '/admin/merchant-payment-application-items/decisions/batch',

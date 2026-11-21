@@ -59,7 +59,7 @@ export default {
   title: '支付方式管理',
   intro: '申请、平台授权与实际支付能力分别展示；批准不代表当前已经可以收款。',
   merchantId: '商户号',
-  merchantHint: '输入完整商户号，或从商户详情进入',
+  merchantHint: '搜索商户号或商户名称',
   chooseMerchant: '请先选择商户',
   methods: '支付方式',
   applications: '申请记录',
