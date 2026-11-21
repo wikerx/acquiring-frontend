@@ -46,7 +46,7 @@ export interface PaymentLinkView {
   currencyExponent: number;
   locale: string;
   cardBrands?: string[];
-  paymentMethodKeys?: string[];
+  paymentMethodKeys?: string[] | null;
   status: PaymentLinkStatus;
   paymentStatus: string;
   paymentAvailable?: boolean;
@@ -222,6 +222,11 @@ export function paymentLinkCurrentMethodKeys(
       }),
     ),
   ];
+}
+
+/** 旧链接的空值沿用已保存的银行卡范围，新链接的显式空集合保持为空。 */
+export function paymentLinkViewMethodKeys(link: Pick<PaymentLinkView, 'paymentMethodKeys' | 'cardBrands'>): string[] {
+  return link.paymentMethodKeys ?? (link.cardBrands ?? []).map((brand) => `CARD_BRAND:${brand}`);
 }
 
 /** 创建协议只发送一种范围表达，保留请求键与金额/截止时间原始事实。 */

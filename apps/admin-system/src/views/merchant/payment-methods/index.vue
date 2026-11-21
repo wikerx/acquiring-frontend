@@ -58,6 +58,7 @@
               show-icon
             />
             <StandardTable
+              :key="locale"
               v-loading="loading"
               table-key="admin-merchant-payment-method-methods"
               :data="methods"
@@ -689,7 +690,7 @@
   const auth = useUserStore();
   const route = useRoute();
   const router = useRouter();
-  const { t, te } = useI18n();
+  const { t, te, locale } = useI18n();
   const can = (action: string) => auth.hasPermission(`merchant:payment-method:${action}`);
   const canView = computed(() => can('view'));
   const canViewApplications = computed(() => can(isAdmin ? 'view' : 'application:view'));

@@ -20,7 +20,20 @@ const {
   paymentLinkUsesMethodKeys,
   paymentLinkCurrentMethodKeys,
   paymentLinkCreateWithScope,
+  paymentLinkViewMethodKeys,
 } = apiModule;
+
+test('legacy null scopes retain recorded card brands without expanding an explicit scope', () => {
+  assert.deepEqual(paymentLinkViewMethodKeys({ paymentMethodKeys: null, cardBrands: ['VISA'] }), [
+    'CARD_BRAND:VISA',
+  ]);
+  assert.deepEqual(paymentLinkViewMethodKeys({ cardBrands: ['MASTERCARD'] }), ['CARD_BRAND:MASTERCARD']);
+  assert.deepEqual(paymentLinkViewMethodKeys({ paymentMethodKeys: [], cardBrands: ['VISA'] }), []);
+  assert.deepEqual(
+    paymentLinkViewMethodKeys({ paymentMethodKeys: ['METHOD:APPLE_PAY'], cardBrands: ['VISA'] }),
+    ['METHOD:APPLE_PAY'],
+  );
+});
 function deferred() {
   let resolve, reject;
   const promise = new Promise((a, b) => {

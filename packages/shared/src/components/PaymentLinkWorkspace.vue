@@ -926,6 +926,7 @@
     paymentLinkCurrentMethodKeys,
     paymentLinkCreateWithScope,
     type PaymentLinkApi,
+    paymentLinkViewMethodKeys,
     type PaymentLinkAttempt,
     type PaymentLinkCollection,
     type PaymentLinkCreate,
@@ -1095,13 +1096,7 @@
     return kind === 'CARD_BRAND' ? brandName(value) : kind === 'METHOD' ? methodName(value) : key;
   }
   function linkScopeLogos(link: PaymentLinkView) {
-    return [
-      ...new Set(
-        link.paymentMethodKeys !== undefined
-          ? link.paymentMethodKeys.flatMap(methodKeyLogos)
-          : (link.cardBrands || []).flatMap((brand) => resolvePaymentLogoKeys('BANK_CARD', brand)),
-      ),
-    ];
+    return [...new Set(paymentLinkViewMethodKeys(link).flatMap(methodKeyLogos))];
   }
   const currentBrands = computed(() => options.value?.cardBrandsByCurrency[form.currency] || []);
   const amountExponent = computed(() => options.value?.currencyExponents?.[form.currency] ?? 2);
