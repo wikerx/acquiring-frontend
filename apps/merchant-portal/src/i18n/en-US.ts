@@ -1925,7 +1925,6 @@ export default {
       detailTitle: 'Transaction Details',
       fundsOverview: 'Funds Overview',
       transactionInformation: 'Transaction Information',
-      processingStatus: 'Processing Status',
       financeTitle: 'Clearing, Reconciliation, Transaction Settlement and Reserve Settlement',
       clearingDetails: 'Clearing Details',
       clearingStatus: 'Clearing Status',

@@ -561,7 +561,7 @@
                   >
                 </dd>
               </div>
-              <div class="transaction-detail-grid__wide">
+              <div>
                 <dt>{{ t('transaction.order.response') }}</dt>
                 <dd>
                   {{
@@ -572,12 +572,6 @@
                   }}
                 </dd>
               </div>
-            </dl>
-          </section>
-
-          <section class="transaction-detail-section">
-            <h3 class="transaction-drawer-title">{{ t('transaction.order.processingStatus') }}</h3>
-            <dl class="transaction-detail-statuses">
               <div>
                 <dt>{{ t('transaction.order.settlementStatus') }}</dt>
                 <dd>
@@ -2294,7 +2288,6 @@
   .transaction-detail-eyebrow,
   .transaction-detail-grid dt,
   .transaction-detail-metrics dt,
-  .transaction-detail-statuses dt,
   .transaction-action-detail-grid dt {
     color: #64748b;
     font-size: 12px;
@@ -2390,10 +2383,6 @@
     border-bottom: 1px solid #e8edf3;
   }
 
-  .transaction-detail-grid > .transaction-detail-grid__wide {
-    grid-column: 1 / -1;
-  }
-
   .transaction-detail-grid dd {
     min-width: 0;
     margin: 0;
@@ -2418,35 +2407,6 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-  }
-
-  .transaction-detail-statuses {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    margin: 0;
-    overflow: hidden;
-    border: 1px solid #e5eaf1;
-    border-radius: 6px;
-  }
-
-  .transaction-detail-statuses > div {
-    display: grid;
-    grid-template-columns: 118px minmax(0, 1fr);
-    align-items: center;
-    min-width: 0;
-    gap: 12px;
-    padding: 11px 14px;
-    border-right: 1px solid #e5eaf1;
-  }
-
-  .transaction-detail-statuses > div:last-child {
-    border-right: 0;
-  }
-
-  .transaction-detail-statuses dd {
-    min-width: 0;
-    margin: 0;
-    text-align: left;
   }
 
   .transaction-timeline-panel {
@@ -2698,7 +2658,6 @@
     .transaction-detail-hero,
     .transaction-detail-grid,
     .transaction-detail-metrics,
-    .transaction-detail-statuses,
     .transaction-action-detail-grid,
     .transaction-action-form {
       grid-template-columns: 1fr;
@@ -2731,23 +2690,17 @@
       justify-items: start;
     }
 
-    .transaction-detail-metrics > div,
-    .transaction-detail-statuses > div {
+    .transaction-detail-metrics > div {
       border-right: 0;
       border-bottom: 1px solid #e5eaf1;
     }
 
-    .transaction-detail-metrics > div:last-child,
-    .transaction-detail-statuses > div:last-child {
+    .transaction-detail-metrics > div:last-child {
       border-bottom: 0;
     }
 
     .transaction-detail-grid > div {
       border-right: 0;
-    }
-
-    .transaction-detail-grid > .transaction-detail-grid__wide {
-      grid-column: auto;
     }
 
     .transaction-timeline-item__head {

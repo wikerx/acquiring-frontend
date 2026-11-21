@@ -1851,7 +1851,6 @@ export default {
       detailTitle: '交易详情',
       fundsOverview: '资金概览',
       transactionInformation: '交易信息',
-      processingStatus: '处理状态',
       financeTitle: '清分、对账、交易结算与保证金结算',
       clearingDetails: '清分明细',
       clearingStatus: '清分状态',
