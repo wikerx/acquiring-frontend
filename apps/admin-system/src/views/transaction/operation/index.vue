@@ -235,17 +235,17 @@
         />
         <TransactionMerchantDrawer v-model:visible="merchantVisible" :merchant-id="selectedMerchantId" />
 
-        <el-dialog v-model="refundVisible" :close-on-click-modal="!actionSubmitting" :close-on-press-escape="!actionSubmitting" :show-close="!actionSubmitting" :title="t('transaction.actions.refundTitle')" width="min(760px, calc(100vw - 32px))" append-to-body class="transaction-action-dialog refund-action-dialog" destroy-on-close>
-            <el-alert class="refund-dialog-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
-            <section v-if="selectedOperation" class="refund-dialog-section">
+        <el-dialog v-model="refundVisible" :close-on-click-modal="!actionSubmitting" :close-on-press-escape="!actionSubmitting" :show-close="!actionSubmitting" :title="t('transaction.actions.refundTitle')" width="min(760px, calc(100vw - 32px))" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
+            <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('refundForm.sourceInfo') }}</h3>
-                <RefundSourceSummary :type="selectedOperation.transactionType" :type-label="tagText(typeOptions, selectedOperation.transactionType)" :status="selectedOperation.transactionStatus" :status-label="optionText(statusOptions, selectedOperation.transactionStatus)" :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" :t="t">
+                <TransactionActionSourceSummary :type="selectedOperation.transactionType" :type-label="tagText(typeOptions, selectedOperation.transactionType)" :status="selectedOperation.transactionStatus" :status-label="optionText(statusOptions, selectedOperation.transactionStatus)" :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" :amount-label="t('refundForm.sourceAmount')" :hint="t('refundForm.sourceHint')" :t="t">
                     <template #merchant-order><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" wrap /></template>
                     <template #transaction-id><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" wrap /></template>
                     <template #transaction-time><BaseDateTime :value="selectedOperation.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
-                </RefundSourceSummary>
+                </TransactionActionSourceSummary>
             </section>
-            <section v-if="selectedOperation" class="refund-dialog-section">
+            <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('transaction.actions.refundInfo') }}</h3>
                 <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="actionSubmitting" :t="t" :locale="locale" @update:model="Object.assign(refundForm, $event)" />
             </section>
@@ -257,38 +257,34 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="captureVisible" :title="captureDialogTitle" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="captureDialogTip" />
+        <el-dialog v-model="captureVisible" :title="captureDialogTitle" width="min(760px, calc(100vw - 32px))" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-intro" type="info" show-icon :closable="false" :title="captureDialogTip" />
             <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('transaction.actions.originalInfo') }}</h3>
-                <dl class="transaction-action-detail-grid">
-                    <div>
-                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
-                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
-                    </div>
-                </dl>
+                <TransactionActionSourceSummary
+                  :type="selectedOperation.transactionType"
+                  :type-label="tagText(typeOptions, selectedOperation.transactionType)"
+                  :status="selectedOperation.transactionStatus"
+                  :status-label="optionText(statusOptions, selectedOperation.transactionStatus)"
+                  :amount="fullLabelAmount(selectedOperation)"
+                  :amount-label="t('transaction.fields.authorizedAmount')"
+                  :currency="labelCurrency(selectedOperation)"
+                  :exponent="selectedOperation.labelCurrencyExponent"
+                  :locale="String(locale)"
+                  :t="t"
+                >
+                  <template #merchant-order><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" wrap /></template>
+                  <template #transaction-id><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" wrap /></template>
+                  <template #transaction-time><BaseDateTime :value="selectedOperation.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+                </TransactionActionSourceSummary>
             </section>
             <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ captureDialogInfo }}</h3>
                 <div class="transaction-action-amount-card">
-                    <span>{{ t('transaction.fields.availableCaptureAmount') }}</span>
+                    <span class="transaction-action-amount-card__label">{{ t('transaction.fields.availableCaptureAmount') }}</span>
                     <CurrencyAmountDisplay :amount="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
-                    <em>{{ captureFullAmountText }}</em>
                 </div>
                 <ConsoleActionFields ref="captureFieldsRef" :model="captureForm" scope="capture" :maximum="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :submitting="actionSubmitting" :t="t" @update:model="Object.assign(captureForm, $event)" />
-                <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="captureSuccessHint" />
             </section>
             <template #footer>
                 <div class="dialog-footer">
@@ -298,35 +294,35 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="voidVisible" :title="t('transaction.actions.voidTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.voidTip')" />
+        <el-dialog v-model="voidVisible" :title="t('transaction.actions.voidTitle')" width="min(760px, calc(100vw - 32px))" append-to-body class="transaction-action-dialog" destroy-on-close>
+            <el-alert class="transaction-action-intro" type="info" show-icon :closable="false" :title="t('transaction.actions.voidTip')" />
             <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('transaction.actions.originalInfo') }}</h3>
-                <dl class="transaction-action-detail-grid">
-                    <div>
-                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.authorizedAmount') }}</dt>
-                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
-                    </div>
-                </dl>
+                <TransactionActionSourceSummary
+                  :type="selectedOperation.transactionType"
+                  :type-label="tagText(typeOptions, selectedOperation.transactionType)"
+                  :status="selectedOperation.transactionStatus"
+                  :status-label="optionText(statusOptions, selectedOperation.transactionStatus)"
+                  :amount="fullLabelAmount(selectedOperation)"
+                  :amount-label="t('transaction.fields.authorizedAmount')"
+                  :currency="labelCurrency(selectedOperation)"
+                  :exponent="selectedOperation.labelCurrencyExponent"
+                  :locale="String(locale)"
+                  :t="t"
+                >
+                  <template #merchant-order><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" wrap /></template>
+                  <template #transaction-id><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" wrap /></template>
+                  <template #transaction-time><BaseDateTime :value="selectedOperation.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+                </TransactionActionSourceSummary>
             </section>
             <section v-if="selectedOperation" class="transaction-action-section">
                 <h3>{{ t('transaction.actions.voidInfo') }}</h3>
                 <div class="transaction-action-amount-card transaction-action-amount-card--warning">
+                  <div class="transaction-action-amount-card__label">
                     <span>{{ t('transaction.actions.voidAmount') }}</span>
-                    <CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
-                    <em>{{ t('transaction.actions.fullVoidOnly') }}</em>
+                    <small>{{ t('transaction.actions.fullVoidOnly') }}</small>
+                  </div>
+                  <CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
                 </div>
                 <ConsoleActionFields ref="voidFieldsRef" :model="voidForm" scope="void" :maximum="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :submitting="actionSubmitting" :t="t" @update:model="Object.assign(voidForm, $event)" />
                 <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.voidWarning')" />
@@ -347,7 +343,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, RefundSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -566,8 +562,6 @@ const captureDialogTitle = computed(() => t(`transaction.actions.${isPreAuthComp
 const captureDialogTip = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
 const captureDialogInfo = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`));
 
-const captureFullAmountText = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
-const captureSuccessHint = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
 const captureFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
 const voidFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
 const voidForm = reactive({
@@ -1353,190 +1347,6 @@ async function refreshAfterAction(row: TransactionOperation) {
     font-size: 11px;
 }
 
-.transaction-action-dialog :deep(.el-dialog) {
-    border-radius: 8px;
-}
-
-.transaction-action-dialog :deep(.el-dialog__header) {
-    padding: 20px 24px 12px;
-    margin-right: 0;
-    border-bottom: 1px solid #edf2f7;
-}
-
-.transaction-action-dialog :deep(.el-dialog__title) {
-    color: #1f2937;
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.transaction-action-dialog :deep(.el-dialog__body) {
-    padding: 18px 24px 8px;
-}
-
-.transaction-action-alert,
-.transaction-action-bottom-alert {
-    border-radius: 6px;
-}
-
-.transaction-action-alert {
-    margin-bottom: 14px;
-}
-
-.transaction-action-bottom-alert {
-    margin-top: 14px;
-}
-
-.transaction-action-alert :deep(.el-alert__title),
-.transaction-action-bottom-alert :deep(.el-alert__title) {
-    font-size: 13px;
-    line-height: 1.55;
-}
-
-.transaction-action-section {
-    display: grid;
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.transaction-action-section h3 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.transaction-action-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    padding: 1px;
-    margin: 0;
-    border: 1px solid #e4ebf3;
-    border-radius: 8px;
-    background: #e4ebf3;
-    overflow: hidden;
-}
-
-.transaction-action-detail-grid div {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 11px 13px;
-    background: #ffffff;
-}
-
-.transaction-action-detail-grid dt {
-    color: #667085;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.transaction-action-detail-grid dd {
-    min-width: 0;
-    margin: 0;
-    color: #1f2937;
-    font-size: 13px;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-}
-
-.transaction-action-money {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-.transaction-action-amount-card {
-    display: grid;
-    gap: 5px;
-    padding: 12px 14px;
-    border: 1px solid #f6d9b3;
-    border-radius: 6px;
-    background: #fff7ed;
-}
-
-.transaction-action-amount-card--warning {
-    border-color: #f1c087;
-}
-
-.transaction-action-amount-card span,
-.transaction-action-amount-card em {
-    color: #667085;
-    font-size: 12px;
-    font-style: normal;
-}
-
-.transaction-action-amount-card strong {
-    color: #1f2937;
-    font-size: 20px;
-    line-height: 1.2;
-}
-
-.transaction-action-form {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 14px;
-}
-
-.transaction-action-form :deep(.el-form-item) {
-    margin-bottom: 0;
-}
-
-.transaction-action-form :deep(.el-form-item__label) {
-    padding-bottom: 5px;
-    color: #344054;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 16px;
-}
-
-.transaction-action-form :deep(.el-input),
-.transaction-action-form :deep(.el-input-number),
-.transaction-action-form :deep(.el-select),
-.transaction-action-form :deep(.el-textarea) {
-    width: 100%;
-}
-
-.transaction-action-amount-control {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    width: 100%;
-}
-
-.transaction-action-amount-control > span {
-    display: inline-flex;
-    align-items: center;
-    min-width: 58px;
-    padding: 0 14px;
-    border: 1px solid var(--el-border-color);
-    border-left: 0;
-    border-radius: 0 6px 6px 0;
-    background: var(--el-fill-color-light);
-    color: var(--el-text-color-regular);
-    font-size: 13px;
-}
-
-.transaction-action-amount-control :deep(.el-input__wrapper) {
-    border-radius: 6px 0 0 6px;
-}
-
-.transaction-action-form :deep(.el-input__wrapper),
-.transaction-action-form :deep(.el-select__wrapper),
-.transaction-action-form :deep(.el-textarea__inner) {
-    border-radius: 6px;
-}
-
-.transaction-action-form__wide {
-    grid-column: 1 / -1;
-}
-
-.transaction-action-error {
-    width: 100%;
-    margin-top: 6px;
-    color: var(--el-color-danger);
-    font-size: 12px;
-    line-height: 18px;
-}
-
 /* 支付方式汇总的信息密度更高，桌面端为左侧保留更多横向空间。 */
 .transaction-operation-summary :deep(.transaction-result-bar__summary) {
     grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
@@ -1554,10 +1364,4 @@ async function refreshAfterAction(row: TransactionOperation) {
     }
 }
 
-@media (max-width: 640px) {
-    .transaction-action-detail-grid,
-    .transaction-action-form {
-        grid-template-columns: 1fr;
-    }
-}
 </style>

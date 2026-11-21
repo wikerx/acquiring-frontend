@@ -1,22 +1,23 @@
 <template>
-    <el-form ref="formRef" :model="model" :rules="rules" :disabled="submitting" label-position="top" class="console-action-fields">
-        <el-form-item v-if="scope === 'capture'" :label="t('transactionAction.mode')" class="console-action-fields__wide">
-            <el-radio-group :model-value="model.mode" @update:model-value="setMode(String($event))">
-                <el-radio value="PARTIAL">{{ t('transactionAction.partial') }}</el-radio>
-                <el-radio value="FULL">{{ t('transactionAction.full') }}</el-radio>
+    <el-form ref="formRef" :model="model" :rules="rules" :disabled="submitting" label-position="top" class="transaction-action-fields">
+        <el-form-item v-if="scope === 'capture'" :label="t('transactionAction.mode')" class="transaction-action-fields__wide">
+            <el-radio-group class="transaction-action-fields__modes" :model-value="model.mode" @update:model-value="setMode(String($event))">
+                <el-radio value="PARTIAL" border>{{ t('transactionAction.partial') }}</el-radio>
+                <el-radio value="FULL" border>{{ t('transactionAction.full') }}</el-radio>
             </el-radio-group>
         </el-form-item>
         <el-form-item v-if="scope === 'capture'" :label="t('transactionAction.amount')" prop="amount">
-            <el-input :model-value="model.amount" inputmode="decimal" :disabled="model.mode === 'FULL'" @update:model-value="update({ amount: $event })">
-                <template #append>{{ currency }}</template>
-            </el-input>
+            <div class="transaction-action-fields__amount">
+                <el-input :model-value="model.amount" inputmode="decimal" :disabled="model.mode === 'FULL'" @update:model-value="update({ amount: $event })" />
+                <span>{{ currency }}</span>
+            </div>
         </el-form-item>
-        <el-form-item :label="t('transactionAction.reason')" prop="reason" :class="{ 'console-action-fields__wide': scope === 'void' }">
+        <el-form-item :label="t('transactionAction.reason')" prop="reason" :class="{ 'transaction-action-fields__wide': scope === 'void' }">
             <el-select :model-value="model.reason" :placeholder="t('transactionAction.reasonRequired')" filterable @update:model-value="update({ reason: $event })">
                 <el-option v-for="code in reasons" :key="code" :value="code" :label="t(`transactionAction.reasons.${code}`)" />
             </el-select>
         </el-form-item>
-        <el-form-item :label="t('transactionAction.description')" prop="description" class="console-action-fields__wide">
+        <el-form-item :label="t('transactionAction.description')" prop="description" class="transaction-action-fields__wide">
             <el-input :model-value="model.description" type="textarea" :rows="3" maxlength="200" show-word-limit
                 :placeholder="t(model.reason === 'OTHER' ? 'transactionAction.otherRequired' : 'transactionAction.optionalDescription')"
                 @update:model-value="update({ description: $event })" />
@@ -54,9 +55,3 @@ function update(value: Partial<ConsoleActionDraft>) {
 function setMode(mode: string) { update({ mode, amount: mode === 'FULL' ? normalizeDecimalAmount(props.maximum ?? '0') : props.model.amount }); }
 defineExpose({ validate: async () => { try { return await formRef.value?.validate() ?? false; } catch { return false; } } });
 </script>
-<style scoped>
-.console-action-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 16px; }
-.console-action-fields__wide { grid-column: 1 / -1; }
-.console-action-fields :deep(.el-select) { width: 100%; }
-@media (max-width: 560px) { .console-action-fields { grid-template-columns: minmax(0, 1fr); } }
-</style>

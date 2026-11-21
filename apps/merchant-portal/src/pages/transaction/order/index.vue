@@ -646,13 +646,13 @@
       :show-close="!refundSaving"
       :title="t('transaction.order.refundTitle')"
       width="min(760px, calc(100vw - 32px))"
-      class="transaction-action-dialog refund-action-dialog"
+      class="transaction-action-dialog"
       destroy-on-close
     >
-      <el-alert class="refund-dialog-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
-      <section v-if="activeActionRow" class="refund-dialog-section">
+      <el-alert class="transaction-action-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
+      <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ t('refundForm.sourceInfo') }}</h3>
-        <RefundSourceSummary
+        <TransactionActionSourceSummary
           :type="activeActionRow.transactionType"
           :type-label="tagText(transactionTypeOptions, activeActionRow.transactionType)"
           :status="activeActionRow.transactionStatus"
@@ -661,14 +661,14 @@
           :currency="labelCurrency(activeActionRow)"
           :exponent="activeActionRow.currencyExponent"
           :locale="String(locale)"
-          :t="t"
+          :amount-label="t('refundForm.sourceAmount')" :hint="t('refundForm.sourceHint')" :t="t"
         >
-          <template #merchant-order><button type="button" class="refund-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.merchantOrderNo') })" :disabled="!activeActionRow.merchantOrderNo" @click="copyOrderNo(activeActionRow.merchantOrderNo)"><span>{{ activeActionRow.merchantOrderNo || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
-          <template #transaction-id><button type="button" class="refund-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.transactionId') })" :disabled="!activeActionRow.transactionId" @click="copyOrderNo(activeActionRow.transactionId)"><span>{{ activeActionRow.transactionId || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
+          <template #merchant-order><button type="button" class="transaction-action-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.merchantOrderNo') })" :disabled="!activeActionRow.merchantOrderNo" @click="copyOrderNo(activeActionRow.merchantOrderNo)"><span>{{ activeActionRow.merchantOrderNo || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
+          <template #transaction-id><button type="button" class="transaction-action-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.transactionId') })" :disabled="!activeActionRow.transactionId" @click="copyOrderNo(activeActionRow.transactionId)"><span>{{ activeActionRow.transactionId || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
           <template #transaction-time><BaseDateTime :value="activeActionRow.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
-        </RefundSourceSummary>
+        </TransactionActionSourceSummary>
       </section>
-      <section v-if="activeActionRow" class="refund-dialog-section">
+      <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ t('transaction.order.refundInfo') }}</h3>
         <RefundFields
           ref="refundFieldsRef"
@@ -705,12 +705,12 @@
     <el-dialog
       v-model="captureVisible"
       :title="captureDialogTitle"
-      width="min(600px, 92vw)"
+      width="min(760px, calc(100vw - 32px))"
       class="transaction-action-dialog"
       destroy-on-close
     >
       <el-alert
-        class="transaction-action-alert"
+        class="transaction-action-intro"
         type="info"
         show-icon
         :closable="false"
@@ -718,48 +718,30 @@
       />
       <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ t('transaction.order.originalInfo') }}</h3>
-        <dl class="transaction-action-detail-grid">
-          <div>
-            <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
-            <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.transactionId') }}</dt>
-            <dd>{{ activeActionRow.transactionId || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.status') }}</dt>
-            <dd>
-              <TransactionStatusDisplay
-                :value="activeActionRow.transactionStatus"
-                :label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
-                align="start"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.authorizedAmount') }}</dt>
-            <dd class="transaction-action-money">
-              <CurrencyAmountDisplay :amount="fullLabelAmount(activeActionRow)" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" emphasized />
-            </dd>
-          </div>
-        </dl>
+        <TransactionActionSourceSummary
+          :type="activeActionRow.transactionType"
+          :type-label="tagText(transactionTypeOptions, activeActionRow.transactionType)"
+          :status="activeActionRow.transactionStatus"
+          :status-label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
+          :amount="fullLabelAmount(activeActionRow)"
+          :amount-label="t('transaction.order.authorizedAmount')"
+          :currency="labelCurrency(activeActionRow)"
+          :exponent="activeActionRow.currencyExponent"
+          :locale="String(locale)"
+          :t="t"
+        >
+          <template #merchant-order>{{ activeActionRow.merchantOrderNo || '-' }}</template>
+          <template #transaction-id>{{ activeActionRow.transactionId || '-' }}</template>
+          <template #transaction-time><BaseDateTime :value="activeActionRow.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+        </TransactionActionSourceSummary>
       </section>
       <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ captureDialogInfo }}</h3>
         <div class="transaction-action-amount-card">
-          <span>{{ t('transaction.order.availableCapture') }}</span>
+          <span class="transaction-action-amount-card__label">{{ t('transaction.order.availableCapture') }}</span>
           <CurrencyAmountDisplay :amount="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" size="md" emphasized />
-          <em>{{ captureFullAmountText }}</em>
         </div>
         <ConsoleActionFields ref="captureFieldsRef" :model="captureForm" scope="capture" :maximum="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :submitting="actionSaving" :t="t" @update:model="Object.assign(captureForm, $event)" />
-        <el-alert
-          class="transaction-action-bottom-alert"
-          type="info"
-          show-icon
-          :closable="false"
-          :title="captureSuccessHint"
-        />
       </section>
       <template #footer>
         <div class="dialog-footer">
@@ -776,12 +758,12 @@
     <el-dialog
       v-model="voidVisible"
       :title="t('transaction.order.voidTitle')"
-      width="min(600px, 92vw)"
+      width="min(760px, calc(100vw - 32px))"
       class="transaction-action-dialog"
       destroy-on-close
     >
       <el-alert
-        class="transaction-action-alert"
+        class="transaction-action-intro"
         type="info"
         show-icon
         :closable="false"
@@ -789,39 +771,31 @@
       />
       <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ t('transaction.order.originalInfo') }}</h3>
-        <dl class="transaction-action-detail-grid">
-          <div>
-            <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
-            <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.transactionId') }}</dt>
-            <dd>{{ activeActionRow.transactionId || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.status') }}</dt>
-            <dd>
-              <TransactionStatusDisplay
-                :value="activeActionRow.transactionStatus"
-                :label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
-                align="start"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.authorizedAmount') }}</dt>
-            <dd class="transaction-action-money">
-              <CurrencyAmountDisplay :amount="fullLabelAmount(activeActionRow)" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" emphasized />
-            </dd>
-          </div>
-        </dl>
+        <TransactionActionSourceSummary
+          :type="activeActionRow.transactionType"
+          :type-label="tagText(transactionTypeOptions, activeActionRow.transactionType)"
+          :status="activeActionRow.transactionStatus"
+          :status-label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
+          :amount="fullLabelAmount(activeActionRow)"
+          :amount-label="t('transaction.order.authorizedAmount')"
+          :currency="labelCurrency(activeActionRow)"
+          :exponent="activeActionRow.currencyExponent"
+          :locale="String(locale)"
+          :t="t"
+        >
+          <template #merchant-order>{{ activeActionRow.merchantOrderNo || '-' }}</template>
+          <template #transaction-id>{{ activeActionRow.transactionId || '-' }}</template>
+          <template #transaction-time><BaseDateTime :value="activeActionRow.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+        </TransactionActionSourceSummary>
       </section>
       <section v-if="activeActionRow" class="transaction-action-section">
         <h3>{{ t('transaction.order.voidInfo') }}</h3>
         <div class="transaction-action-amount-card transaction-action-amount-card--warning">
-          <span>{{ t('transaction.order.voidAmount') }}</span>
+          <div class="transaction-action-amount-card__label">
+            <span>{{ t('transaction.order.voidAmount') }}</span>
+            <small>{{ t('transaction.order.fullVoidOnly') }}</small>
+          </div>
           <CurrencyAmountDisplay :amount="fullLabelAmount(activeActionRow)" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" size="md" emphasized />
-          <em>{{ t('transaction.order.fullVoidOnly') }}</em>
         </div>
         <ConsoleActionFields ref="voidFieldsRef" :model="voidForm" scope="void" :maximum="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :submitting="actionSaving" :t="t" @update:model="Object.assign(voidForm, $event)" />
         <el-alert
@@ -861,7 +835,7 @@
   import { TransactionStageStatusDisplay, TransactionStageStatusSelect,
     CurrencyAmountDisplay,
     formatTransactionCardDisplay,
-    RefundFields, RefundSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh,
+    RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh,
     type RefundContext,
     getPaymentLogos,
     PaymentLogoGroup,
@@ -1126,8 +1100,6 @@
     t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`),
   );
 
-  const captureFullAmountText = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
-  const captureSuccessHint = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
 
   interface PaymentQueryOption {
     value: string;
@@ -2287,8 +2259,7 @@
 
   .transaction-detail-eyebrow,
   .transaction-detail-grid dt,
-  .transaction-detail-metrics dt,
-  .transaction-action-detail-grid dt {
+  .transaction-detail-metrics dt {
     color: #64748b;
     font-size: 12px;
     font-weight: 500;
@@ -2455,180 +2426,6 @@
     overflow-wrap: anywhere;
   }
 
-  .transaction-action-dialog :deep(.el-dialog) {
-    border-radius: 8px;
-  }
-
-  .transaction-action-dialog :deep(.el-dialog__header) {
-    padding: 20px 24px 12px;
-    margin-right: 0;
-    border-bottom: 1px solid #edf2f7;
-  }
-
-  .transaction-action-dialog :deep(.el-dialog__title) {
-    color: var(--merchant-ink);
-    font-size: 18px;
-    font-weight: 800;
-  }
-
-  .transaction-action-dialog :deep(.el-dialog__body) {
-    padding: 18px 24px 8px;
-  }
-
-  .transaction-action-alert,
-  .transaction-action-bottom-alert {
-    border-radius: 6px;
-  }
-
-  .transaction-action-alert {
-    margin-bottom: 14px;
-  }
-
-  .transaction-action-bottom-alert {
-    margin-top: 14px;
-  }
-
-  .transaction-action-alert :deep(.el-alert__title),
-  .transaction-action-bottom-alert :deep(.el-alert__title) {
-    font-size: 13px;
-    line-height: 1.55;
-  }
-
-  .transaction-action-section {
-    display: grid;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .transaction-action-section h3 {
-    margin: 0;
-    color: var(--merchant-ink);
-    font-size: 14px;
-    font-weight: 800;
-  }
-
-  .transaction-action-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    padding: 1px;
-    margin: 0;
-    border: 1px solid #e4ebf3;
-    border-radius: 8px;
-    background: #e4ebf3;
-    overflow: hidden;
-  }
-
-  .transaction-action-detail-grid div {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 11px 13px;
-    background: #ffffff;
-  }
-
-  .transaction-action-detail-grid dt {
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .transaction-action-detail-grid dd {
-    min-width: 0;
-    margin: 0;
-    color: #1f2937;
-    font-size: 13px;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-  }
-
-  .transaction-action-money {
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .transaction-action-amount-card {
-    display: grid;
-    gap: 5px;
-    padding: 12px 14px;
-    border: 1px solid #f6d9b3;
-    border-radius: 6px;
-    background: #fff7ed;
-  }
-
-  .transaction-action-amount-card--warning {
-    border-color: #f1c087;
-  }
-
-  .transaction-action-amount-card span,
-  .transaction-action-amount-card em {
-    color: #64748b;
-    font-size: 12px;
-    font-style: normal;
-  }
-
-  .transaction-action-amount-card strong {
-    color: var(--merchant-ink);
-    font-size: 20px;
-    line-height: 1.2;
-  }
-
-  .transaction-action-form {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 14px;
-  }
-
-  .transaction-action-form :deep(.el-form-item) {
-    margin-bottom: 0;
-  }
-
-  .transaction-action-form :deep(.el-form-item__label) {
-    padding-bottom: 5px;
-    color: #344054;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 16px;
-  }
-
-  .transaction-action-form :deep(.el-input-number),
-  .transaction-action-form :deep(.el-input),
-  .transaction-action-form :deep(.el-select),
-  .transaction-action-form :deep(.el-textarea) {
-    width: 100%;
-  }
-
-  .transaction-action-form :deep(.el-input__wrapper),
-  .transaction-action-form :deep(.el-select__wrapper),
-  .transaction-action-form :deep(.el-textarea__inner) {
-    border-radius: 6px;
-  }
-
-  .transaction-action-form__reason {
-    grid-column: 1 / -1;
-  }
-
-  .transaction-action-amount-line {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 64px;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .transaction-action-currency {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 64px;
-    height: 32px;
-    border: 1px solid #dcdfe6;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #344054;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
   @media (min-width: 1680px) {
     .transaction-search-form__fields {
       gap: 10px 18px;
@@ -2657,9 +2454,7 @@
 
     .transaction-detail-hero,
     .transaction-detail-grid,
-    .transaction-detail-metrics,
-    .transaction-action-detail-grid,
-    .transaction-action-form {
+    .transaction-detail-metrics {
       grid-template-columns: 1fr;
     }
 

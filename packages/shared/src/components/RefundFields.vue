@@ -8,15 +8,15 @@
         </dl>
         <div v-else-if="loading" class="refund-fields__loading" aria-busy="true"><span /><span /><span /></div>
         <el-alert v-if="!loading && !context" type="error" :closable="false" show-icon :title="t('refundForm.contextFailed')" />
-        <el-form ref="formRef" :model="model" :rules="rules" :validate-on-rule-change="false" :disabled="formDisabled" label-position="top" class="refund-fields__form">
-            <el-form-item :label="t('refundForm.mode')" class="refund-fields__wide">
-                <el-radio-group v-model="mode" class="refund-fields__modes">
+        <el-form ref="formRef" :model="model" :rules="rules" :validate-on-rule-change="false" :disabled="formDisabled" label-position="top" class="transaction-action-fields">
+            <el-form-item :label="t('refundForm.mode')" class="transaction-action-fields__wide">
+                <el-radio-group v-model="mode" class="transaction-action-fields__modes">
                     <el-radio value="PARTIAL" border>{{ t('refundForm.partial') }}</el-radio>
                     <el-radio value="FULL" border>{{ t('refundForm.full') }}</el-radio>
                 </el-radio-group>
             </el-form-item>
             <el-form-item :label="t('refundForm.amount')" prop="amount">
-                <div class="refund-fields__amount">
+                <div class="transaction-action-fields__amount">
                     <el-input v-model="amount" :disabled="formDisabled || mode === 'FULL'" inputmode="decimal" autocomplete="off" :placeholder="t('refundForm.amountPlaceholder')" />
                     <span>{{ context?.currency || model.currency }}</span>
                 </div>
@@ -26,7 +26,7 @@
                     <el-option v-for="code in REFUND_REASON_CODES" :key="code" :value="code" :label="t(`refundForm.reasons.${code}`)" />
                 </el-select>
             </el-form-item>
-            <el-form-item :label="t('refundForm.description')" prop="description" class="refund-fields__wide">
+            <el-form-item :label="t('refundForm.description')" prop="description" class="transaction-action-fields__wide">
                 <el-input v-model="description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t(reason === 'OTHER' ? 'refundForm.descriptionRequired' : 'refundForm.descriptionPlaceholder')" />
             </el-form-item>
         </el-form>
@@ -135,25 +135,10 @@ defineExpose({ validate });
 .refund-fields__balances .is-available dd { color: var(--el-color-primary); }
 .refund-fields__loading { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; height: 92px; margin-bottom: 22px; }
 .refund-fields__loading span { background: var(--el-fill-color-light); border-radius: 10px; }
-.refund-fields__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
-.refund-fields__wide { grid-column: 1 / -1; }
-.refund-fields__form :deep(.el-form-item) { margin-bottom: 20px; }
-.refund-fields__form :deep(.el-form-item__label) { color: var(--el-text-color-primary); font-size: 13px; font-weight: 600; line-height: 1.6; }
-.refund-fields__form :deep(.el-input__wrapper), .refund-fields__form :deep(.el-select__wrapper) { min-height: 38px; border-radius: 7px; }
-.refund-fields__form :deep(.el-textarea__inner) { min-height: 84px; padding: 10px 12px 24px; border-radius: 7px; line-height: 1.6; }
-.refund-fields__modes { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
-.refund-fields__modes :deep(.el-radio) { flex: 1 1 auto; height: auto; min-height: 42px; margin: 0; padding: 10px 12px; border-radius: 8px; white-space: normal; }
-.refund-fields__modes :deep(.el-radio.is-checked) { background: var(--el-color-primary-light-9); }
-.refund-fields__form :deep(.el-radio__label) { white-space: normal; }
-.refund-fields__form :deep(.el-form-item__label) { height: auto; }
-.refund-fields__amount { display: flex; width: 100%; align-items: center; gap: 8px; }
-.refund-fields__amount :deep(.el-input) { flex: 1; width: 0; }
-.refund-fields__amount > span { color: var(--el-text-color-secondary); font-size: 12px; font-weight: 600; }
 .refund-fields__preview { margin: -2px 0 14px; color: var(--el-color-primary); font-size: 13px; font-weight: 600; }
 .refund-fields__limit { padding: 10px 12px; border-radius: 8px; }
 .refund-fields__limit :deep(.el-alert__title) { font-size: 12px; line-height: 1.6; }
 @media (max-width: 580px) {
-    .refund-fields__form { grid-template-columns: minmax(0, 1fr); }
     .refund-fields__balances { grid-template-columns: minmax(0, 1fr); padding: 4px 14px; }
     .refund-fields__balances > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--el-border-color-extra-light); }
     .refund-fields__balances > div:last-child { border-bottom: 0; }
