@@ -162,7 +162,20 @@ export interface MerchantProfileWorkspace {
     completenessPercent: number;
 }
 
+export interface MerchantCountryOption {
+    alpha3Code: string;
+    alpha2Code?: string | null;
+    chineseName?: string | null;
+    englishName?: string | null;
+    shortEnglishName?: string | null;
+    flagEmoji?: string | null;
+}
+
 export const merchantInfoApi = {
+    async getCountryOptions() {
+        const result = await http.get<CommonResult<MerchantCountryOption[]>>('/merchant/info/country-options');
+        return unwrapResult(result.data);
+    },
     async getProfile() {
         const result = await http.get<CommonResult<MerchantProfile>>('/merchant/info');
         return unwrapResult(result.data);

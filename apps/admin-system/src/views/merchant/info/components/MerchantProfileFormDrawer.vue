@@ -967,7 +967,7 @@
     Wallet,
   } from '@element-plus/icons-vue';
   import { useI18n } from 'vue-i18n';
-  import { CurrencyDisplay } from '@acquiring/shared';
+  import { CurrencyDisplay, merchantProfileOptions } from '@acquiring/shared';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
   import type { SysDictData } from '@/api/system/dict';
   import type {
@@ -1027,31 +1027,10 @@
     'merchant.info.stepPreviewDescription',
   ];
   const merchantTypeOptions = ['COMPANY', 'SOLE_TRADER'];
-  const businessTypeOptions = [
-    'ECOMMERCE',
-    'DIGITAL_CONTENT',
-    'PROFESSIONAL_SERVICES',
-    'RETAIL',
-    'TRAVEL',
-    'OTHER',
-  ];
-  const industryOptions = [
-    'GENERAL_RETAIL',
-    'DIGITAL_GOODS',
-    'SOFTWARE_SERVICES',
-    'TRAVEL_HOSPITALITY',
-    'PROFESSIONAL_SERVICES',
-    'OTHER',
-  ];
-  const legalEntityOptions = [
-    'LTD',
-    'LLC',
-    'CORPORATION',
-    'PARTNERSHIP',
-    'SOLE_PROPRIETORSHIP',
-    'OTHER',
-  ];
-  const companySizeOptions = ['1_10', '11_50', '51_200', '201_500', '501_PLUS'];
+  const businessTypeOptions = merchantProfileOptions.businessType;
+  const industryOptions = merchantProfileOptions.industry;
+  const legalEntityOptions = merchantProfileOptions.legalEntityType;
+  const companySizeOptions = merchantProfileOptions.companySize;
   const personRoleOptions = [
     'LEGAL_REPRESENTATIVE',
     'DIRECTOR',
@@ -1059,10 +1038,10 @@
     'AUTHORIZED_SIGNER',
     'PRIMARY_CONTACT',
   ];
-  const idTypeOptions = ['PASSPORT', 'NATIONAL_ID', 'DRIVER_LICENSE', 'OTHER'];
-  const businessModelOptions = ['B2C', 'B2B', 'B2B2C'];
-  const customerTypeOptions = ['CONSUMER', 'BUSINESS', 'BOTH'];
-  const salesChannelOptions = ['WEBSITE', 'APP', 'MARKETPLACE', 'OFFLINE', 'OTHER'];
+  const idTypeOptions = [...merchantProfileOptions.idType, 'OTHER'];
+  const businessModelOptions = merchantProfileOptions.businessModel;
+  const customerTypeOptions = merchantProfileOptions.customerType;
+  const salesChannelOptions = merchantProfileOptions.salesChannel;
   const documentTypeOptions = [
     'BUSINESS_LICENSE',
     'INCORPORATION',

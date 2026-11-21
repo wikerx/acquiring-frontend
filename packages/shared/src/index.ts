@@ -12,6 +12,7 @@ export * from './paymentBrand';
 export * from './transactionPresentation';
 export * from './transactionStagePresentation';
 export * from './currencyPresentation';
+export * from './merchantProfileOptions';
 export { default as PaymentLogoGroup } from './components/PaymentLogoGroup.vue';
 export { default as PaymentLogoMark } from './components/PaymentLogoMark.vue';
 export { default as PaymentMethodDisplay } from './components/PaymentMethodDisplay.vue';
