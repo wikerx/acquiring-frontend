@@ -4,12 +4,6 @@
     <section class="method-panel">
       <header class="method-header">
         <h2>{{ t('paymentMethod.title') }}</h2>
-        <div class="toolbar-actions">
-          <el-button v-if="canViewFee" @click="openFee">{{ t('paymentMethod.viewFee') }}</el-button>
-          <el-button v-if="canConfigureMid" @click="openMid">{{
-            t('paymentMethod.configureMid')
-          }}</el-button>
-        </div>
       </header>
       <el-form v-if="isAdmin && canView" class="search-form" inline @submit.prevent="searchMerchant">
         <el-form-item :label="t('paymentMethod.merchantId')">
@@ -21,11 +15,15 @@
             @change="selectMerchant"
           />
         </el-form-item>
-        <el-form-item
-          ><el-button type="primary" :disabled="busy" @click="searchMerchant">{{
+        <div class="toolbar-actions search-actions">
+          <el-button v-if="canViewFee" @click="openFee">{{ t('paymentMethod.viewFee') }}</el-button>
+          <el-button v-if="canConfigureMid" @click="openMid">{{
+            t('paymentMethod.configureMid')
+          }}</el-button>
+          <el-button type="primary" :disabled="busy" native-type="submit">{{
             t('paymentMethod.search')
-          }}</el-button></el-form-item
-        >
+          }}</el-button>
+        </div>
       </el-form>
       <el-empty v-if="!canView" :description="t('paymentMethod.noPermission')" />
       <el-tabs v-else v-model="tab" @tab-change="loadActive">
@@ -64,6 +62,7 @@
               table-key="admin-merchant-payment-method-methods"
               :data="methods"
               row-key="itemKey"
+              stripe
               size="small"
             >
               <el-table-column v-if="can('apply')" width="48" fixed="left" align="center">
@@ -87,19 +86,21 @@
                 :label="t('paymentMethod.method')"
                 min-width="210"
                 fixed="left"
-                align="center"
+                align="left"
               >
-                <template #default="{ row }"
-                  ><div class="method-identity">
-                    <PaymentMethodDisplay
-                      :payment-types="logoTypes(row)"
-                      :payment-methods="logoMethods(row)"
-                      :show-payment-type-label="false"
-                      align="center"
-                    /><strong>{{ row.name }}</strong
-                    ><small class="muted">{{ row.itemKey }}</small>
-                  </div></template
-                >
+                <template #default="{ row }">
+                  <div class="method-identity">
+                    <div class="method-logo">
+                      <PaymentMethodDisplay
+                        :payment-types="logoTypes(row)"
+                        :payment-methods="logoMethods(row)"
+                        :show-payment-type-label="false"
+                        align="center"
+                      />
+                    </div>
+                    <strong :title="row.name">{{ row.name }}</strong>
+                  </div>
+                </template>
               </el-table-column>
               <el-table-column
                 prop="authorizationStatus"
@@ -117,9 +118,12 @@
                 :label="t('paymentMethod.applicationStatus')"
                 min-width="130"
                 align="center"
-                ><template #default="{ row }">{{
-                  statusText(row.applicationStatus, '-')
-                }}</template></el-table-column
+                ><template #default="{ row }">
+                  <el-tag v-if="row.applicationStatus" :type="statusTone(row.applicationStatus)" effect="plain">{{
+                    statusText(row.applicationStatus)
+                  }}</el-tag>
+                  <span v-else>—</span>
+                </template></el-table-column
               >
               <el-table-column
                 prop="effectiveTime"
@@ -131,7 +135,7 @@
               <el-table-column
                 prop="expireTime"
                 :label="t('paymentMethod.expireTime')"
-                min-width="170"
+                min-width="122"
                 align="center"
                 ><template #default="{ row }"
                   ><BaseDateTime v-if="row.expireTime" :value="row.expireTime" /><span v-else>{{
@@ -178,9 +182,9 @@
               </el-table-column>
               <el-table-column
                 :label="t('paymentMethod.action')"
-                min-width="230"
+                min-width="255"
                 fixed="right"
-                align="center"
+                align="left"
               >
                 <template #default="{ row }"
                   ><div class="row-actions">
@@ -1216,9 +1220,29 @@
     margin-bottom: 16px;
   }
   .method-header h2 {
-    font-size: 18px;
+    font-size: 20px;
     margin: 0;
     color: var(--el-text-color-primary);
+  }
+  .search-form {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 8px;
+  }
+  .search-form :deep(.el-form-item) {
+    margin: 0;
+  }
+  .search-form :deep(.el-select) {
+    width: clamp(180px, 24vw, 300px);
+  }
+  .search-actions {
+    margin-left: auto;
+  }
+  .search-actions :deep(.el-button + .el-button) {
+    margin-left: 0;
   }
   .table-toolbar {
     display: flex;
@@ -1236,19 +1260,29 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  .row-actions,
   .result-tags {
     justify-content: center;
+  }
+  .row-actions {
+    column-gap: 8px;
+    row-gap: 2px;
   }
   .row-actions :deep(.el-button + .el-button) {
     margin-left: 0;
   }
   .method-identity {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    gap: 10px;
     align-items: center;
-    padding: 6px 0;
+    min-height: 38px;
+  }
+  .method-logo {
+    flex: 0 0 52px;
+  }
+  .method-logo :deep(.payment-method-display__label),
+  .method-logo :deep(.payment-method-display__fallback),
+  .method-logo :deep(.payment-method-display__empty) {
+    display: none;
   }
   .configuration-facts {
     display: flex;
@@ -1258,7 +1292,11 @@
     padding: 6px 0;
   }
   .method-identity strong {
-    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
   }
   .muted {
     color: var(--el-text-color-secondary);
@@ -1279,6 +1317,11 @@
   .el-alert {
     margin-bottom: 12px;
   }
+  .payment-method-page > .el-alert {
+    --el-alert-bg-color: var(--el-color-primary-light-9);
+    --el-alert-text-color: var(--el-text-color-primary);
+    margin-bottom: 0;
+  }
   @media (max-width: 640px) {
     .method-panel {
       padding: 12px;
@@ -1286,6 +1329,9 @@
     .method-header,
     .table-toolbar {
       flex-wrap: wrap;
+    }
+    .search-actions {
+      margin-left: 0;
     }
   }
 </style>
