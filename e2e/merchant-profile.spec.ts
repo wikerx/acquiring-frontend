@@ -28,6 +28,7 @@ const currentProfile: MerchantProfileSnapshot = {
 
 const countryOptions = [
     { alpha3Code: 'CAN', alpha2Code: 'CA', chineseName: '加拿大', englishName: 'Canada', flagEmoji: '🇨🇦' },
+    { alpha3Code: 'GBR', alpha2Code: 'GB', chineseName: '英国', englishName: 'United Kingdom', flagEmoji: '🇬🇧' },
     { alpha3Code: 'USA', alpha2Code: 'US', chineseName: '美国', shortEnglishName: 'United States',
         englishName: 'United States of America', flagEmoji: '🇺🇸' },
 ];
@@ -47,6 +48,7 @@ interface MockOptions {
     english?: boolean;
     failCountry?: boolean;
     alreadySameAddress?: boolean;
+    operatingCountry?: string;
     failedUpload?: boolean;
     extraIssues?: string[];
     legacyCompanySize?: boolean;
@@ -54,7 +56,11 @@ interface MockOptions {
 
 async function mockProfile(page: Page, options: MockOptions = {}) {
     const state = {
-        proposed: { ...structuredClone(currentProfile), operatingSameAsRegistered: Boolean(options.alreadySameAddress) },
+        proposed: {
+            ...structuredClone(currentProfile),
+            operatingSameAsRegistered: Boolean(options.alreadySameAddress),
+            operatingCountry: options.operatingCountry,
+        },
         documents: [] as MerchantProfileDocument[],
         failCountry: Boolean(options.failCountry),
         failUpload: Boolean(options.failedUpload),
@@ -251,7 +257,7 @@ test('locates an existing same-address issue and fills the country before submis
 });
 
 test('syncs on explicit same-address changes and leaves the manual country visible again on close', async ({ page }) => {
-    const state = await mockProfile(page);
+    const state = await mockProfile(page, { operatingCountry: 'CAN' });
     await openTab(page, '企业与 KYB');
     const sameAddress = page.locator('.switch-row').filter({ hasText: '经营地址与注册地址一致' }).locator('.el-switch');
     await sameAddress.click();
@@ -264,6 +270,19 @@ test('syncs on explicit same-address changes and leaves the manual country visib
     await sameAddress.click();
     await expect(page.getByRole('combobox', { name: '经营国家', exact: true })).toBeVisible();
     await expect(page.locator('#profile-field-operatingCountry')).toContainText('CAN');
+});
+
+test('retains an old inconsistent country until the registered country is explicitly changed', async ({ page }) => {
+    const state = await mockProfile(page, { alreadySameAddress: true, operatingCountry: 'CAN' });
+    await openTab(page, '企业与 KYB');
+    const summary = page.locator('#profile-operating-summary');
+    await expect(summary).toContainText('CAN');
+    await expect(saveDraft(page)).toBeDisabled();
+    await choose(page, '*国家/地区', '英国', /GBR — 英国/);
+    await expect(summary).toContainText('GBR');
+    await saveDraft(page).click();
+    await expect.poll(() => state.proposed.operatingCountry).toBe('GBR');
+    expect(state.proposed.countryCode).toBe('GBR');
 });
 
 test('retains unsaved edits after attachment upload, failure, deletion and cancelled refresh', async ({ page }) => {
@@ -298,7 +317,9 @@ test('retains unsaved edits after attachment upload, failure, deletion and cance
     await page.getByRole('dialog').getByRole('button', { name: '确定', exact: true }).click();
     await failedRefresh;
     await expect(products).toHaveValue('Unsaved Products');
+    await expect(saveDraft(page)).toBeDisabled();
     state.failWorkspace = false;
+    await page.getByRole('button', { name: /资料申请状态刷新失败.*重试/ }).click();
     await saveDraft(page).click();
     await expect.poll(() => state.proposed.productsServices).toBe('Unsaved Products');
     await openTab(page, '概览与联系人');
@@ -306,6 +327,38 @@ test('retains unsaved edits after attachment upload, failure, deletion and cance
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await expect.poll(() => state.committedContact).toBe('Unsaved Contact');
 });
+
+for (const changedRemotely of [false, true]) {
+    test(`blocks draft saves after attachment refresh fails and checks the draft on retry (remote edit: ${changedRemotely})`, async ({ page }) => {
+        const state = await mockProfile(page);
+        await openTab(page, '业务与网站');
+        const products = page.getByLabel('产品或服务', { exact: true });
+        await products.fill('Locally edited products');
+        if (changedRemotely) state.proposed.registrationNumber = 'REMOTE-UPDATED';
+        state.failWorkspace = true;
+        await openTab(page, '合规资料');
+        await selectFixtureFile(page);
+        await expect(page.getByText('fixture.pdf', { exact: true })).toBeVisible();
+        const retry = page.getByRole('button', { name: /资料申请状态刷新失败.*重试/ });
+        await expect(retry).toBeEnabled();
+        await expect(saveDraft(page)).toBeDisabled();
+        expect(state.draftCount).toBe(0);
+        state.failWorkspace = false;
+        await retry.click();
+        await expect(retry).toHaveCount(0);
+        await openTab(page, '业务与网站');
+        await expect(products).toHaveValue('Locally edited products');
+        if (changedRemotely) {
+            await expect(saveDraft(page)).toBeDisabled();
+            expect(state.draftCount).toBe(0);
+            expect(state.proposed.registrationNumber).toBe('REMOTE-UPDATED');
+        } else {
+            await expect(saveDraft(page)).toBeEnabled();
+            await saveDraft(page).click();
+            await expect.poll(() => state.proposed.productsServices).toBe('Locally edited products');
+        }
+    });
+}
 
 test('aligns every profile form in three, two and one columns and keeps secondary views readable', async ({ page }, testInfo) => {
     const mobile = testInfo.project.name.includes('mobile');

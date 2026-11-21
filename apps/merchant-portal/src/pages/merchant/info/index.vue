@@ -68,7 +68,7 @@
                         v-if="canSaveRisk"
                         :icon="DocumentChecked"
                         :loading="savingDraft"
-                        :disabled="!riskDirty || workspaceBusy || riskConflict"
+                        :disabled="!canSaveDraft"
                         @click="saveDraft"
                     >{{ t('merchantInfo.saveDraft') }}</el-button>
                     <el-button
@@ -456,6 +456,8 @@ const canSubmit = computed(() => canSaveRisk.value && !!activeRequest.value && !
 const canWithdraw = computed(() => canEdit && !!activeRequest.value && ['DRAFT', 'PENDING_REVIEW', 'SUPPLEMENT_REQUIRED'].includes(activeRequest.value.status));
 const quickDirty = computed(() => JSON.stringify(normalizedQuickForm()) !== quickBaseline.value);
 const riskDirty = computed(() => !sameSnapshot(riskForm.value, riskBaseline.value));
+const canSaveDraft = computed(() => canSaveRisk.value && riskDirty.value && !workspaceBusy.value
+    && !loading.value && !workspaceStale.value && !riskConflict.value);
 const completenessText = computed(() => workspace.value?.completenessIssues.length ? t('merchantInfo.completenessIssues', { count: workspace.value.completenessIssues.length }) : t('merchantInfo.completenessReady'));
 
 const english = computed(() => locale.value.toLowerCase().startsWith('en'));
@@ -516,6 +518,7 @@ async function loadAll() {
         workspaceStale.value = false;
         riskConflict.value = false;
     } catch (error: any) {
+        if (workspace.value) workspaceStale.value = true;
         ElMessage.error(error?.friendlyMessage || error?.message || t('merchantInfo.loadFailed'));
     } finally {
         loading.value = false;
@@ -636,15 +639,14 @@ function syncOperatingCountry() {
 }
 
 function onSameAddressChange(value: string | number | boolean) {
-    if (value === true && !riskForm.value.operatingCountry) syncOperatingCountry();
+    if (value === true && riskForm.value.countryCode) syncOperatingCountry();
 }
 
 function onCountryChange(value: string) {
-    const { countryCode, operatingCountry, operatingSameAsRegistered } = riskForm.value;
+    const { countryCode, operatingSameAsRegistered } = riskForm.value;
+    if (countryCode === value) return;
     riskForm.value.countryCode = value;
-    if (operatingSameAsRegistered && (!operatingCountry || operatingCountry === countryCode)) {
-        syncOperatingCountry();
-    }
+    if (operatingSameAsRegistered) syncOperatingCountry();
 }
 
 function personKey(person: MerchantRelatedPerson) {
@@ -684,7 +686,7 @@ async function saveQuickProfile() {
 }
 
 async function saveDraft() {
-    if (!canSaveRisk.value || workspaceBusy.value || loading.value || riskConflict.value || !riskDirty.value) return;
+    if (!canSaveDraft.value) return;
     savingDraft.value = true;
     try {
         const valid = await riskFormRef.value?.validate().catch(() => false);
