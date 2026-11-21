@@ -541,11 +541,11 @@
               </div>
               <div>
                 <dt>{{ t('transaction.order.cardNumber') }}</dt>
-                <dd class="transaction-detail-code">{{ detailSummaryRecord?.cardNumberMasked || '-' }}</dd>
+                <dd class="transaction-detail-code">{{ formatTransactionCardDisplay(detailSummaryRecord?.cardNumberMasked, detailSummaryRecord?.cardBin) }}</dd>
               </div>
               <div>
                 <dt>{{ t('transaction.order.cardBin') }}</dt>
-                <dd class="transaction-detail-code">{{ detailSummaryRecord?.cardBin || '-' }}</dd>
+                <dd class="transaction-detail-code">{{ formatTransactionCardBin(detailSummaryRecord?.cardBin) }}</dd>
               </div>
               <div>
                 <dt>{{ t('transaction.order.authCode') }}</dt>
@@ -871,6 +871,7 @@
   import { TransactionStageStatusDisplay, TransactionStageStatusSelect,
     CurrencyAmountDisplay,
     formatTransactionCardDisplay,
+    formatTransactionCardBin,
     RefundFields, RefundSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh,
     type RefundContext,
     getPaymentLogos,

@@ -1,4 +1,4 @@
-/** 交易列表只展示前六后四；真实 BIN 只用于缺失卡号掩码时的受控回退。 */
+/** 交易展示只保留前六后四；真实 BIN 只用于缺失卡号掩码时的受控回退。 */
 export function formatTransactionCardDisplay(cardNumberMasked?: string | null, cardBin?: string | null): string {
     const masked = String(cardNumberMasked ?? '').replace(/[\s-]+/g, '');
     const bin = String(cardBin ?? '').trim();
@@ -21,4 +21,10 @@ export function formatTransactionCardDisplay(cardNumberMasked?: string | null, c
     }
     // 只有 BIN 时不知道卡号尾四位，不能用 BIN 的末四位编造。
     return prefix ? `${prefix}****` : '-';
+}
+
+/** 交易详情的 BIN 只显示前六位，完整 BIN 继续用于后端识别和路由。 */
+export function formatTransactionCardBin(cardBin?: string | null): string {
+    const bin = String(cardBin ?? '').trim();
+    return /^\d{6,8}$/.test(bin) ? bin.slice(0, 6) : '-';
 }

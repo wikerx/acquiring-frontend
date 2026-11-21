@@ -8,7 +8,7 @@ const source = readFileSync(new URL('../src/transactionCardDisplay.ts', import.m
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const exports = {};
 runInNewContext(compiled, { exports });
-const { formatTransactionCardDisplay } = exports;
+const { formatTransactionCardDisplay, formatTransactionCardBin } = exports;
 
 test('both six- and eight-digit masked prefixes use six digits and the real last four', () => {
     assert.equal(formatTransactionCardDisplay('393236****7722', '39323612'), '393236****7722');
@@ -31,4 +31,17 @@ test('unexpected unmasked input is still redacted', () => {
 test('missing or malformed data does not render an untrusted original value', () => {
     assert.equal(formatTransactionCardDisplay(), '-');
     assert.equal(formatTransactionCardDisplay('invalid', '123'), '-');
+});
+
+test('detail BIN uses six visible digits without modifying the supplied eight-digit BIN', () => {
+    const bin = '35801068';
+    assert.equal(formatTransactionCardBin(bin), '358010');
+    assert.equal(formatTransactionCardBin('358010'), '358010');
+    assert.equal(formatTransactionCardDisplay('35801068****3365', bin), '358010****3365');
+    assert.equal(bin, '35801068');
+});
+test('detail BIN rejects absent, incomplete and non-BIN values', () => {
+    for (const bin of [undefined, null, '', '35801', '358010**', '9'.repeat(16)]) {
+        assert.equal(formatTransactionCardBin(bin), '-');
+    }
 });

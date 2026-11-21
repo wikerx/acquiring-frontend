@@ -647,4 +647,4 @@ export * from './paymentLinkPresentation';
 export * from './transactionAction';
 export { default as ConsoleActionFields } from './components/ConsoleActionFields.vue';
 export { default as RefundSourceSummary } from './components/RefundSourceSummary.vue';
-export { formatTransactionCardDisplay } from './transactionCardDisplay';
+export { formatTransactionCardDisplay, formatTransactionCardBin } from './transactionCardDisplay';
