@@ -327,11 +327,11 @@
         <el-table-column
           :label="t('transaction.order.cardBin')"
           prop="cardBin"
-          min-width="108"
+          min-width="132"
           align="center"
         >
           <template #default="{ row }">
-            <span class="transaction-card-bin">{{ row.cardBin || '-' }}</span>
+            <span class="transaction-card-bin">{{ formatTransactionCardDisplay(row.cardNumberMasked, row.cardBin) }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -394,6 +394,7 @@
             <TableRowActions
               :actions="transactionRowActions(row)"
               :more-label="t('common.more')"
+              :max-direct-actions="canDetail ? 1 : 0"
               @select="handleTransactionRowAction($event, row)"
             />
           </template>
@@ -654,47 +655,30 @@
       :close-on-press-escape="!refundSaving"
       :show-close="!refundSaving"
       :title="t('transaction.order.refundTitle')"
-      width="min(620px, 92vw)"
-      class="transaction-action-dialog"
+      width="min(760px, calc(100vw - 32px))"
+      class="transaction-action-dialog refund-action-dialog"
       destroy-on-close
     >
-      <el-alert
-        class="transaction-action-alert"
-        type="info"
-        show-icon
-        :closable="false"
-        :title="t('refundForm.tip')"
-      />
-      <section v-if="activeActionRow" class="transaction-action-section">
-        <h3>{{ t('transaction.order.originalInfo') }}</h3>
-        <dl class="transaction-action-detail-grid">
-          <div>
-            <dt>{{ t('transaction.order.merchantOrderNo') }}</dt>
-            <dd>{{ activeActionRow.merchantOrderNo || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.transactionId') }}</dt>
-            <dd>{{ activeActionRow.transactionId || '-' }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.status') }}</dt>
-            <dd>
-              <TransactionStatusDisplay
-                :value="activeActionRow.transactionStatus"
-                :label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
-                align="start"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt>{{ t('transaction.order.transactionAmount') }}</dt>
-            <dd class="transaction-action-money">
-              <CurrencyAmountDisplay :amount="fullLabelAmount(activeActionRow)" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" emphasized />
-            </dd>
-          </div>
-        </dl>
+      <el-alert class="refund-dialog-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
+      <section v-if="activeActionRow" class="refund-dialog-section">
+        <h3>{{ t('refundForm.sourceInfo') }}</h3>
+        <RefundSourceSummary
+          :type="activeActionRow.transactionType"
+          :type-label="tagText(transactionTypeOptions, activeActionRow.transactionType)"
+          :status="activeActionRow.transactionStatus"
+          :status-label="tagText(transactionStatusOptions, activeActionRow.transactionStatus)"
+          :amount="fullLabelAmount(activeActionRow)"
+          :currency="labelCurrency(activeActionRow)"
+          :exponent="activeActionRow.currencyExponent"
+          :locale="String(locale)"
+          :t="t"
+        >
+          <template #merchant-order><button type="button" class="refund-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.merchantOrderNo') })" :disabled="!activeActionRow.merchantOrderNo" @click="copyOrderNo(activeActionRow.merchantOrderNo)"><span>{{ activeActionRow.merchantOrderNo || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
+          <template #transaction-id><button type="button" class="refund-source-copy" :aria-label="t('refundForm.copyReference', { label: t('refundForm.transactionId') })" :disabled="!activeActionRow.transactionId" @click="copyOrderNo(activeActionRow.transactionId)"><span>{{ activeActionRow.transactionId || '-' }}</span><el-icon><CopyDocument /></el-icon></button></template>
+          <template #transaction-time><BaseDateTime :value="activeActionRow.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+        </RefundSourceSummary>
       </section>
-      <section v-if="activeActionRow" class="transaction-action-section">
+      <section v-if="activeActionRow" class="refund-dialog-section">
         <h3>{{ t('transaction.order.refundInfo') }}</h3>
         <RefundFields
           ref="refundFieldsRef"
@@ -778,40 +762,7 @@
           <CurrencyAmountDisplay :amount="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" size="md" emphasized />
           <em>{{ captureFullAmountText }}</em>
         </div>
-        <el-form :model="captureForm" label-position="top" class="transaction-action-form">
-          <el-form-item :label="captureAmountText">
-            <el-input :model-value="amountInputText(activeActionRow, captureAmount)" disabled>
-              <template #append>{{ labelCurrency(activeActionRow) || '-' }}</template>
-            </el-input>
-          </el-form-item>
-          <el-form-item :label="t('transaction.order.captureReason')">
-            <el-select
-              v-model="captureForm.reason"
-              :placeholder="t('common.pleaseSelect')"
-              filterable
-            >
-              <el-option
-                v-for="item in captureReasonOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item
-            :label="t('transaction.order.description')"
-            class="transaction-action-form__reason"
-          >
-            <el-input
-              v-model.trim="captureForm.description"
-              type="textarea"
-              maxlength="200"
-              show-word-limit
-              :autosize="{ minRows: 3, maxRows: 4 }"
-              :placeholder="t('transaction.order.descriptionPlaceholder')"
-            />
-          </el-form-item>
-        </el-form>
+        <ConsoleActionFields ref="captureFieldsRef" :model="captureForm" scope="capture" :maximum="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :submitting="actionSaving" :t="t" @update:model="Object.assign(captureForm, $event)" />
         <el-alert
           class="transaction-action-bottom-alert"
           type="info"
@@ -879,39 +830,10 @@
         <h3>{{ t('transaction.order.voidInfo') }}</h3>
         <div class="transaction-action-amount-card transaction-action-amount-card--warning">
           <span>{{ t('transaction.order.voidAmount') }}</span>
-          <CurrencyAmountDisplay :amount="voidAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" size="md" emphasized />
+          <CurrencyAmountDisplay :amount="fullLabelAmount(activeActionRow)" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :locale="String(locale)" size="md" emphasized />
           <em>{{ t('transaction.order.fullVoidOnly') }}</em>
         </div>
-        <el-form :model="voidForm" label-position="top" class="transaction-action-form">
-          <el-form-item :label="t('transaction.order.voidAmount')">
-            <el-input :model-value="amountInputText(activeActionRow, voidAmount)" disabled>
-              <template #append>{{ labelCurrency(activeActionRow) || '-' }}</template>
-            </el-input>
-          </el-form-item>
-          <el-form-item :label="t('transaction.order.voidReason')">
-            <el-select v-model="voidForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
-              <el-option
-                v-for="item in voidReasonOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item
-            :label="t('transaction.order.description')"
-            class="transaction-action-form__reason"
-          >
-            <el-input
-              v-model.trim="voidForm.description"
-              type="textarea"
-              maxlength="200"
-              show-word-limit
-              :autosize="{ minRows: 3, maxRows: 4 }"
-              :placeholder="t('transaction.order.descriptionPlaceholder')"
-            />
-          </el-form-item>
-        </el-form>
+        <ConsoleActionFields ref="voidFieldsRef" :model="voidForm" scope="void" :maximum="captureAmount" :currency="labelCurrency(activeActionRow)" :exponent="activeActionRow.currencyExponent" :submitting="actionSaving" :t="t" @update:model="Object.assign(voidForm, $event)" />
         <el-alert
           class="transaction-action-bottom-alert"
           type="info"
@@ -937,6 +859,7 @@
   import { ElMessage } from 'element-plus';
   import {
     CircleClose,
+    CopyDocument,
     Download,
     Promotion,
     RefreshLeft,
@@ -947,7 +870,8 @@
   import { useRoute } from 'vue-router';
   import { TransactionStageStatusDisplay, TransactionStageStatusSelect,
     CurrencyAmountDisplay,
-    RefundFields,
+    formatTransactionCardDisplay,
+    RefundFields, RefundSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh,
     type RefundContext,
     getPaymentLogos,
     PaymentLogoGroup,
@@ -1050,7 +974,9 @@
     reason: '',
     description: '',
   });
-  const captureForm = reactive({ reason: '', description: '' });
+  const captureForm = reactive({ amount: null as string | null, mode: 'PARTIAL', reason: '', description: '' });
+  const captureFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
+  const voidFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
   const voidForm = reactive({ reason: '', description: '' });
   const initialQueryTimeZone = merchantDefaultTimeZone();
   const query = reactive<MerchantTransactionOrderQuery>({ queryTimeZone: initialQueryTimeZone });
@@ -1099,8 +1025,7 @@
         key: 'refund',
         label: t('transaction.order.refund'),
         icon: RefreshLeft,
-        visible: canRefund.value,
-        disabled: !refundEnabled,
+        visible: canRefund.value && refundEnabled,
         disabledReason: refundEnabled
           ? t('transaction.order.refundEnabledTip')
           : t('transaction.order.refundDisabled'),
@@ -1109,16 +1034,14 @@
         key: 'capture',
         label: captureActionText(row),
         icon: Promotion,
-        visible: canCapture.value,
-        disabled: !captureEnabled,
-        disabledReason: captureActionTip(row, captureEnabled),
+        visible: canCapture.value && captureEnabled,
+
       },
       {
         key: 'void',
         label: t('transaction.order.void'),
         icon: CircleClose,
-        visible: canVoid.value,
-        disabled: !voidEnabled,
+        visible: canVoid.value && voidEnabled,
         disabledReason: voidEnabled
           ? t('transaction.order.voidEnabledTip')
           : t('transaction.order.voidDisabled'),
@@ -1208,30 +1131,14 @@
   const captureDialogTitle = computed(() =>
     t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionTitle' : 'captureTitle'}`),
   );
-  const captureDialogTip = computed(() =>
-    t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionTip' : 'captureTip'}`),
-  );
+  const captureDialogTip = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
   const captureDialogInfo = computed(() =>
     t(`transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`),
   );
-  const captureAmountText = computed(() =>
-    t(
-      `transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionAmount' : 'captureAmount'}`,
-    ),
-  );
-  const captureFullAmountText = computed(() =>
-    t(
-      `transaction.order.${isPreAuthCompletion.value ? 'fullPreAuthCompletionOnly' : 'fullCaptureOnly'}`,
-    ),
-  );
-  const captureSuccessHint = computed(() =>
-    t(
-      `transaction.order.${isPreAuthCompletion.value ? 'preAuthCompletionSuccessHint' : 'captureSuccessHint'}`,
-    ),
-  );
-  const voidAmount = computed(() =>
-    labelAmountFor(activeActionRow.value, activeActionRow.value?.labelAmount),
-  );
+
+  const captureFullAmountText = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
+  const captureSuccessHint = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
+
   interface PaymentQueryOption {
     value: string;
     label: string;
@@ -1279,8 +1186,6 @@
   const selectedPaymentQueryOption = computed(() =>
     paymentQueryOptions.value.find((item) => item.value === paymentQueryValue.value),
   );
-  const captureReasonOptions = computed(() => transactionActionReasonOptions('capture'));
-  const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
   onMounted(async () => {
     const linkedTransactionId =
@@ -1313,6 +1218,15 @@
       if (linkedRow) await openDetail(linkedRow);
     }
   });
+
+  useTransactionRefresh(async () => {
+    await loadData();
+    const current = detailOperation.value;
+    if (detailVisible.value && current?.transactionId && current.transactionDateTime && current.rootTransactionDateTime) {
+        const latest = await transactionApi.detail(current.transactionId, current.transactionDateTime, current.rootTransactionDateTime);
+        if (detailVisible.value && detailOperation.value?.transactionId === current.transactionId) detail.value = latest;
+    }
+}, () => !loading.value && !captureVisible.value && !voidVisible.value && !refundVisible.value);
 
   watch(locale, () => void loadDictionaries());
 
@@ -1377,21 +1291,25 @@
     }
   }
 
+  let dataVersion = 0;
   async function loadData() {
+    const version = ++dataVersion;
     loading.value = true;
     try {
       const payload = buildQueryPayload();
       const operationSearch = await transactionApi.searchOperations(payload);
+      if (version !== dataVersion) return;
       rows.value = operationSearch.page?.records || [];
       total.value = operationSearch.page?.total || 0;
       summary.value = operationSearch.summary;
     } catch (error: unknown) {
+      if (version !== dataVersion) return;
       rows.value = [];
       total.value = 0;
       summary.value = undefined;
       ElMessage.error(userFacingErrorMessage(error, t('transaction.order.loadFailed')));
     } finally {
-      loading.value = false;
+      if (version === dataVersion) loading.value = false;
     }
   }
 
@@ -1470,6 +1388,8 @@
 
   function openCapture(row: TransactionOperation) {
     activeActionRow.value = row;
+    captureForm.amount = normalizeDecimalAmount(row.availableCaptureAmount ?? 0);
+    captureForm.mode = 'PARTIAL';
     captureForm.reason = '';
     captureForm.description = '';
     captureVisible.value = true;
@@ -1490,7 +1410,7 @@
     if (!transactionId) return;
     refundSaving.value = true;
     try {
-      await transactionApi.refund(transactionId, {
+      const result = await transactionApi.refund(transactionId, {
         amount: refundForm.amount,
         currency: refundForm.currency || labelCurrency(activeActionRow.value),
         reason: [t(`refundForm.reasons.${refundForm.reason}`), refundForm.description.trim()]
@@ -1501,7 +1421,7 @@
         transactionDateTime: activeActionRow.value.transactionDateTime!,
         rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
       });
-      ElMessage.success(t('refundForm.submitted'));
+      ElMessage({ type: result.status === 'SUCCESS' ? 'success' : result.status === 'FAILED' ? 'error' : 'info', message: t(`transactionAction.stages.${refundProgressKey(result)}`) });
       refundVisible.value = false;
       await loadData();
     } catch (error: unknown) {
@@ -1513,18 +1433,23 @@
 
   async function submitCapture() {
     if (!activeActionRow.value?.transactionId) return;
+    if (actionSaving.value || !(await captureFieldsRef.value?.validate()) || actionSaving.value) return;
     actionSaving.value = true;
     try {
       const action =
         activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
           ? transactionApi.preAuthCompletion
           : transactionApi.capture;
-      await action(activeActionRow.value.transactionId, {
-        reason: actionReasonText(captureForm.reason, captureForm.description),
+      const result = await action(activeActionRow.value.transactionId, {
+        reasonCode: captureForm.reason,
+              operationDescription: captureForm.description.trim(),
+              amount: captureForm.amount!,
+              currency: labelCurrency(activeActionRow.value),
         transactionDateTime: activeActionRow.value.transactionDateTime!,
         rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
       });
-      ElMessage.success(
+      if (result.status !== 'SUCCESS') ElMessage({ type: result.status === 'FAILED' ? 'error' : 'info', message: t(result.status === 'FAILED' ? 'transactionAction.requestFailed' : 'transactionAction.stages.unknown') });
+      else ElMessage.success(
         t(
           `transaction.order.${
             activeActionRow.value.transactionType === 'PRE_AUTHORIZATION'
@@ -1555,14 +1480,17 @@
 
   async function submitVoid() {
     if (!activeActionRow.value?.transactionId) return;
+    if (actionSaving.value || !(await voidFieldsRef.value?.validate()) || actionSaving.value) return;
     actionSaving.value = true;
     try {
-      await transactionApi.voidPayment(activeActionRow.value.transactionId, {
-        reason: actionReasonText(voidForm.reason, voidForm.description),
+      const result = await transactionApi.voidPayment(activeActionRow.value.transactionId, {
+        reasonCode: voidForm.reason,
+              operationDescription: voidForm.description.trim(),
         transactionDateTime: activeActionRow.value.transactionDateTime!,
         rootTransactionDateTime: activeActionRow.value.rootTransactionDateTime!,
       });
-      ElMessage.success(t('transaction.order.voidSuccess'));
+      if (result.status === 'SUCCESS') ElMessage.success(t('transaction.order.voidSuccess'));
+      else ElMessage({ type: result.status === 'FAILED' ? 'error' : 'info', message: t(result.status === 'FAILED' ? 'transactionAction.requestFailed' : 'transactionAction.stages.unknown') });
       voidVisible.value = false;
       await loadData();
     } catch (error: unknown) {
@@ -1600,25 +1528,14 @@
     return row?.labelCurrency || '';
   }
 
-  function money(
-    value?: number | string | null,
-    currency?: string,
-    currencyExponent?: number | null,
-  ) {
-    return moneyText(value, currency, currencyExponent);
-  }
-
   function orderDisplayAmount(row?: TransactionOrder | TransactionOperation | null) {
     const currentAmount = row && !isTransactionOperation(row) ? row.currentAmount : undefined;
     return currentAmount ?? row?.labelAmount;
   }
 
   function fullLabelAmount(row: TransactionOperation) {
-    return row.labelAmount ?? '0';
-  }
-
-  function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
-    return money(amount, undefined, row?.currencyExponent);
+    return ['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')
+      ? row.authorizedAmount ?? row.labelAmount ?? '0' : row.labelAmount ?? '0';
   }
 
   function labelCurrency(row?: TransactionOrder | TransactionOperation | null) {
@@ -1635,27 +1552,11 @@
   }
 
   function canRefundRow(row: TransactionOperation) {
-    if (
-      row.transactionStatus !== 'SUCCESS' ||
-      !['PAYMENT', 'CAPTURE'].includes(row.transactionType || '')
-    ) {
-      return false;
-    }
-    return row.availableRefundAmount == null || row.availableRefundAmount === ''
-      ? true
-      : isPositiveDecimalAmount(row.availableRefundAmount);
+    return row.availableActions?.includes('REFUND') === true;
   }
 
   function canCaptureRow(row: TransactionOperation) {
-    if (
-      row.transactionStatus !== 'SUCCESS' ||
-      !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')
-    ) {
-      return false;
-    }
-    return row.availableCaptureAmount == null || row.availableCaptureAmount === ''
-      ? true
-      : isPositiveDecimalAmount(row.availableCaptureAmount);
+    return row.availableActions?.includes(row.transactionType === 'PRE_AUTHORIZATION' ? 'PRE_AUTH_COMPLETION' : 'CAPTURE') === true;
   }
 
   function captureActionText(row: TransactionOperation) {
@@ -1664,26 +1565,8 @@
     );
   }
 
-  function captureActionTip(row: TransactionOperation, enabled: boolean) {
-    const prefix = row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture';
-    return t(`transaction.order.${prefix}${enabled ? 'EnabledTip' : 'Disabled'}`);
-  }
-
   function canVoidRow(row: TransactionOperation) {
-    if (
-      row.transactionStatus !== 'SUCCESS' ||
-      !['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType || '')
-    ) {
-      return false;
-    }
-    return isZeroOrMissing(row.capturedAmount) && isZeroOrMissing(row.refundedAmount);
-  }
-
-  function isZeroOrMissing(value?: number | string | null) {
-    if (value === undefined || value === null || value === '') {
-      return true;
-    }
-    return normalizeDecimalAmount(value) === '0';
+    return row.availableActions?.includes('VOID') === true;
   }
 
   function labelAmountFor(
@@ -1694,23 +1577,6 @@
       return '0';
     }
     return labelAmount ?? row.labelAmount ?? '0';
-  }
-
-  function transactionActionReasonOptions(scope: 'capture' | 'void') {
-    const keys =
-      scope === 'capture'
-        ? ['GOODS_SHIPPED', 'SERVICE_COMPLETED', 'MERCHANT_CONFIRMED']
-        : ['CUSTOMER_CANCELLED', 'AUTHORIZATION_EXPIRED', 'MERCHANT_CONFIRMED'];
-    return keys.map((key) => ({
-      label: t(`transaction.order.actionReason.${key}`, key),
-      value: key,
-    }));
-  }
-
-  function actionReasonText(reason?: string, description?: string) {
-    const selectedReason = reason ? t(`transaction.order.actionReason.${reason}`, reason) : '';
-    const text = [selectedReason, description?.trim()].filter(Boolean).join(' - ');
-    return text || undefined;
   }
 
   function operationTimestamp(item: TransactionOperation) {

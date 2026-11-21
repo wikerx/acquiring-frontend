@@ -144,7 +144,7 @@
             <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
                 <el-row :gutter="12">
                     <el-col :span="12"><el-form-item :label="t('system.role.name')" prop="roleName"><el-input v-model="form.roleName" maxlength="100" /></el-form-item></el-col>
-                    <el-col :span="12"><el-form-item :label="t('system.role.code')" prop="roleCode"><el-input v-model="form.roleCode" :disabled="Boolean(form.roleId) && isSystemForm" maxlength="80" /></el-form-item></el-col>
+                    <el-col v-if="form.roleId" :span="12"><el-form-item :label="t('system.role.code')" prop="roleCode"><el-input v-model="form.roleCode" :disabled="isSystemForm" maxlength="80" /></el-form-item></el-col>
                     <el-col :span="12">
                         <el-form-item :label="t('system.role.dataScope')" prop="dataScope">
                             <el-select v-model="form.dataScope" style="width:100%">
@@ -472,7 +472,7 @@ async function submitEdit() {
     saving.value = true;
     try {
         const payload = {
-            roleCode: form.roleCode.trim(),
+            roleCode: form.roleId ? form.roleCode.trim() : undefined,
             roleName: form.roleName.trim(),
             dataScope: form.dataScope,
             description: form.description?.trim(),

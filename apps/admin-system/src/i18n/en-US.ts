@@ -1,8 +1,10 @@
+import { transactionActionMessagesEn } from '@acquiring/shared';
 import paymentMethodMessages from './payment-methods.en-US';
 import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
 export default {
+    transactionAction: transactionActionMessagesEn,
     paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: 'Pay by Link',
     paymentLink: paymentLinkMessagesEn,

@@ -26,7 +26,6 @@ export interface SysRoleQuery extends PageQuery {
 }
 
 export interface SysRoleCreateRequest {
-    roleCode: string;
     roleName: string;
     dataScope?: string;
     description?: string;

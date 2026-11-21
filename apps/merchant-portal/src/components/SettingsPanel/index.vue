@@ -146,8 +146,8 @@
 </template>
 
 <script setup lang="ts">
+import { MerchantMessageBox } from '@/utils/feedback';
 import { ref } from 'vue';
-import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { APPEARANCE_PRESET_OPTIONS, NAVIGATION_THEME_OPTIONS, PRESET_COLORS } from '@/constants/app';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -170,7 +170,7 @@ function handleThemeChange(color: string) {
 
 async function handleReset() {
     try {
-        await ElMessageBox.confirm(t('settings.resetConfirm'), t('settings.reset'), { type: 'warning' });
+        await MerchantMessageBox.confirm(t('settings.resetConfirm'), t('settings.reset'), { type: 'warning' });
         settings.resetSettings();
     } catch {
         // User cancelled.

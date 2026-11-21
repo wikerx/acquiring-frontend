@@ -1,8 +1,10 @@
+import { transactionActionMessagesZh } from '@acquiring/shared';
 import paymentMethodMessages from './payment-methods.zh-CN';
 import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
 export default {
+    transactionAction: transactionActionMessagesZh,
     merchant_payment_methods_v1: paymentMethodMessages.title,
     paymentMethod: paymentMethodMessages,
     paymentLink: paymentLinkMessagesZh,

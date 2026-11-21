@@ -36,7 +36,7 @@
         </section>
         <el-dialog v-model="visible" :title="form.postId ? t('system.post.edit') : t('system.post.add')" width="480px">
             <el-form :model="form" label-width="88px">
-                <el-form-item :label="t('system.post.code')"><el-input v-model="form.postCode" /></el-form-item>
+                <el-form-item v-if="form.postId" :label="t('system.post.code')"><el-input v-model="form.postCode" /></el-form-item>
                 <el-form-item :label="t('system.post.name')"><el-input v-model="form.postName" /></el-form-item>
                 <el-form-item :label="t('common.sortNo')"><el-input-number v-model="form.sortNo" :min="0" /></el-form-item>
                 <el-form-item :label="t('common.status')"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" /></el-form-item>
@@ -96,7 +96,7 @@ function openForm(row?: PostItem) {
     visible.value = true;
 }
 async function submit() {
-    await systemApi.savePost(form, form.postId);
+    await systemApi.savePost({ ...form, postCode: form.postId ? form.postCode : undefined }, form.postId);
     ElMessage.success(t('common.saveSuccess'));
     visible.value = false;
     await loadData();

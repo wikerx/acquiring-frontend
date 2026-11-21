@@ -106,8 +106,8 @@ body {
 .el-message-box__container { align-items: center; gap: 16px; }
 .el-message-box__status { width: 24px; height: 24px; flex: 0 0 24px; background: transparent; font-size: 24px; }
 .el-message-box__message { font-size: 15px; font-weight: 500; line-height: 24px; }
-.el-message-box__btns { display: flex; justify-content: flex-end; gap: 12px; padding: 0 24px 22px; }
-.el-message-box__btns .el-button { min-width: 88px; height: 36px; margin-left: 0; padding: 0 20px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.el-message-box__btns { display: flex; justify-content: center; gap: 12px; padding: 0 24px 22px; }
+.el-message-box__btns .el-button { min-width: 88px; height: 32px; margin-left: 0; padding: 0 16px; border-radius: var(--merchant-control-radius); font-size: 14px; font-weight: 600; }
 .el-message-box__btns .feedback-danger-button.el-button {
     --el-button-bg-color: var(--el-color-danger);
     --el-button-border-color: var(--el-color-danger);
@@ -121,8 +121,8 @@ body {
 .el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__headerbtn { top: 12px; right: 12px; width: 36px; height: 36px; }
 .el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__body { padding: 10px 24px 22px !important; }
 .el-overlay-dialog .base-feedback-dialog.el-dialog .el-dialog__footer { padding: 0 24px 22px; border-top: 0; }
-.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer { justify-content: flex-end; gap: 12px; padding: 0; }
-.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer .el-button { min-width: 88px; height: 36px; padding: 0 20px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer { justify-content: center; gap: 12px; padding: 0; }
+.el-overlay-dialog .base-feedback-dialog.el-dialog .dialog-footer .el-button { min-width: 88px; height: 32px; padding: 0 16px; border-radius: var(--merchant-control-radius); font-size: 14px; font-weight: 600; }
 .el-message { max-width: calc(100vw - 32px); border-radius: 8px; box-shadow: 0 8px 24px rgb(15 23 42 / 10%); }
 
 @media (max-width: 480px) {
@@ -1119,7 +1119,7 @@ body {
     margin-left: auto;
 }
 
-.merchant-main .el-button:not(.is-link):not(.is-text):not(.is-circle) {
+.merchant-main .el-button:not(.is-link):not(.is-text):not(.is-circle):not(.dialog-footer .el-button) {
     min-width: 68px;
     height: var(--merchant-control-height);
     padding: 0 12px;
@@ -1128,25 +1128,25 @@ body {
     font-weight: 600;
 }
 
-.merchant-main .el-button--primary:not(.is-link):not(.is-text):not(.is-plain) {
+.merchant-main .el-button--primary:not(.dialog-footer .el-button):not(.is-link):not(.is-text):not(.is-plain) {
     border-color: var(--merchant-action-primary);
     background: var(--merchant-action-primary);
 }
 
-.merchant-main .el-button--primary:not(.is-link):not(.is-text):not(.is-plain):hover,
-.merchant-main .el-button--primary:not(.is-link):not(.is-text):not(.is-plain):focus-visible {
+.merchant-main .el-button--primary:not(.dialog-footer .el-button):not(.is-link):not(.is-text):not(.is-plain):hover,
+.merchant-main .el-button--primary:not(.dialog-footer .el-button):not(.is-link):not(.is-text):not(.is-plain):focus-visible {
     border-color: var(--merchant-action-primary-hover);
     background: var(--merchant-action-primary-hover);
 }
 
-.merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text) {
+.merchant-main .el-button--primary:not(.dialog-footer .el-button).is-plain:not(.is-link):not(.is-text) {
     border-color: #bcd5ff;
     color: #2563eb;
     background: #eff6ff;
 }
 
-.merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text):hover,
-.merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text):focus-visible {
+.merchant-main .el-button--primary:not(.dialog-footer .el-button).is-plain:not(.is-link):not(.is-text):hover,
+.merchant-main .el-button--primary:not(.dialog-footer .el-button).is-plain:not(.is-link):not(.is-text):focus-visible {
     border-color: #93c5fd;
     color: #1d4ed8;
     background: #dbeafe;
@@ -5024,13 +5024,13 @@ body {
     background: var(--merchant-theme-panel-tint);
 }
 
-:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary:not(.is-link):not(.is-text):not(.is-plain) {
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary:not(.dialog-footer .el-button):not(.is-link):not(.is-text):not(.is-plain) {
     color: #ffffff;
     border-color: var(--merchant-action-primary);
     background: var(--merchant-action-primary);
 }
 
-:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text),
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary:not(.dialog-footer .el-button).is-plain:not(.is-link):not(.is-text),
 :root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--success.is-plain:not(.is-link):not(.is-text) {
     color: var(--merchant-primary-deep);
     border-color: var(--merchant-primary-border-strong);
@@ -5044,7 +5044,7 @@ body {
     background: var(--merchant-primary);
 }
 
-:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary.is-plain:not(.is-link):not(.is-text):hover,
+:root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--primary:not(.dialog-footer .el-button).is-plain:not(.is-link):not(.is-text):hover,
 :root[data-appearance-preset]:not([data-appearance-preset='classic']):not([data-appearance-preset='custom']) .merchant-main .el-button--success.is-plain:not(.is-link):not(.is-text):hover {
     color: #ffffff;
     border-color: var(--merchant-primary);
@@ -5117,3 +5117,28 @@ body {
 .settlement-tab-label .el-icon {
     font-size: 15px;
 }
+
+/* 仅商户应用加载：弹窗底部统一规格，不作用于表格、工具栏或管理端。 */
+.el-dialog .dialog-footer,
+.el-drawer .dialog-footer,
+.el-dialog__footer > div.dialog-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.dialog-footer > .el-button,
+.el-dialog__footer > .el-button {
+    min-width: 88px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 16px;
+    border-radius: var(--merchant-control-radius);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    flex: 0 0 auto;
+}
+.dialog-footer.merchant-dialog-footer--stacked { flex-direction: column; width: 100%; }
+.dialog-footer.merchant-dialog-footer--stacked > .el-button { width: 100%; max-width: 100%; }

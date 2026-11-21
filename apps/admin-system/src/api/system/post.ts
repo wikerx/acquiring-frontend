@@ -36,7 +36,7 @@ export async function getPost(id: number): Promise<SysPost> {
     return unwrapResult(result.data);
 }
 
-export async function createPost(data: SysPost): Promise<SysPost> {
+export async function createPost(data: Omit<SysPost, 'postCode'>): Promise<SysPost> {
     const result = await http.post<CommonResult<SysPost>>('/admin/system/post', data);
     return unwrapResult(result.data);
 }

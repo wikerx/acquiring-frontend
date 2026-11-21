@@ -154,6 +154,9 @@ export interface TransactionOrderSearchResult {
 }
 
 export interface TransactionOperation {
+    availableActions?: string[];
+    refundContext?: import('@acquiring/shared').RefundContext;
+
     operationId: string;
     transactionId: string;
     sourceTransactionId?: string;
@@ -343,6 +346,7 @@ export interface TransactionActionRequest {
     reason?: string;
     reasonCode?: string;
     refundDescription?: string;
+    operationDescription?: string;
     transactionDateTime: string;
     rootTransactionDateTime: string;
 }
@@ -417,6 +421,7 @@ export interface RefundManagementRecord {
     executionMode?: string;
     transactionStatus?: string;
     processStage?: string;
+    pendingReasonCode?: string;
     failReasonCode?: string;
     failReasonMessage?: string;
     labelCurrency?: string;

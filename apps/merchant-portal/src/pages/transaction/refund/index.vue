@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { refundProgressKey, useTransactionRefresh } from '@acquiring/shared';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, RefreshLeft, Search, View } from '@element-plus/icons-vue';
 import { CurrencyAmountDisplay, isPositiveDecimalAmount, PaymentLogoGroup, TransactionStatusDisplay, TransactionTypeDisplay } from '@acquiring/shared';
@@ -206,6 +207,15 @@ const summaryItems = computed(() => [
     { key: 'success', label: t('transaction.refund.summary.success'), value: summary.value.successCount, tone: 'success', amounts: currencyAmounts('successfulAmount') },
 ]);
 
+useTransactionRefresh(async () => {
+    await loadData();
+    if (detailVisible.value && detail.value?.refund) {
+        const current = detail.value.refund;
+        const latest = await transactionApi.refundDetail(current.refundTransactionId, current.transactionDateTime);
+        if (detailVisible.value && detail.value?.refund.refundTransactionId === current.refundTransactionId) detail.value = latest;
+    }
+}, () => !loading.value && !detailLoading.value);
+
 onMounted(loadData);
 
 function options(values: string[], key: string): TransactionDictOption[] {
@@ -234,20 +244,24 @@ function paymentLogoKeys(row: MerchantRefundRecord) {
     return transactionPaymentLogoKeys(row.paymentMethod, row.paymentBrand);
 }
 
+let dataVersion = 0;
 async function loadData() {
+  const version = ++dataVersion;
     loading.value = true;
     try {
         const result = await transactionApi.searchRefunds(buildQuery(page.value, pageSize.value));
+    if (version !== dataVersion) return;
         rows.value = result.page?.records || [];
         total.value = result.page?.total || 0;
         summary.value = result.summary || emptySummary();
     } catch (error: any) {
+    if (version !== dataVersion) return;
         rows.value = [];
         total.value = 0;
         summary.value = emptySummary();
         ElMessage.error(error?.friendlyMessage || error?.message || t('transaction.refund.loadFailed'));
     } finally {
-        loading.value = false;
+        if (version === dataVersion) loading.value = false;
     }
 }
 
@@ -308,11 +322,9 @@ async function openDetail(row: MerchantRefundRecord) {
 }
 
 function visibleMessage(row: MerchantRefundRecord) {
-    if (row.approvalStatus === 'PENDING') return t('transaction.refund.message.pendingApproval');
-    if (row.approvalStatus === 'REJECTED' || row.approvalStatus === 'EXPIRED') return t('transaction.refund.message.notApproved');
-    if (row.transactionStatus === 'PENDING' || row.transactionStatus === 'PROCESSING') return t('transaction.refund.message.processing');
-    if (row.transactionStatus === 'SUCCESS') return t('transaction.refund.message.success');
-    return t('transaction.refund.message.failed');
+    const stage = refundProgressKey(row);
+    const message = t(`transactionAction.stages.${stage}`);
+    return stage === 'failed' && row.merchantVisibleMessage ? `${message} ${row.merchantVisibleMessage}` : message;
 }
 
 function approvalTagType(status?: string) {

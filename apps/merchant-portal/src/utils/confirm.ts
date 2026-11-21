@@ -1,4 +1,5 @@
-import { ElMessageBox, type ElMessageBoxOptions } from 'element-plus';
+import { MerchantMessageBox } from '@/utils/feedback';
+import { type ElMessageBoxOptions } from 'element-plus';
 
 export async function confirmAction(
     message: ElMessageBoxOptions['message'],
@@ -6,7 +7,7 @@ export async function confirmAction(
     options?: ElMessageBoxOptions,
 ) {
     try {
-        await ElMessageBox.confirm(message, title, options);
+        await MerchantMessageBox.confirm(message, title, options);
         return true;
     } catch (error) {
         if (error === 'cancel' || error === 'close') {

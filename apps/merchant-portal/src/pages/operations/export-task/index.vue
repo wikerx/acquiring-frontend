@@ -172,10 +172,11 @@
 </template>
 
 <script setup lang="ts">
+import { MerchantMessageBox } from '@/utils/feedback';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { CopyDocument, Download, RefreshLeft, RefreshRight, Search, View } from '@element-plus/icons-vue';
 import { TableRowActions, type TableRowAction } from '@acquiring/shared';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import {
   downloadMerchantExportTask,
@@ -362,7 +363,7 @@ async function handleDownload(row: MerchantExportTaskSummary) {
 async function handleRetry(row: MerchantExportTaskSummary) {
   if (!canRetry.value || row.status !== 'FAILED' || retryingTaskNo.value) return;
   try {
-    await ElMessageBox.confirm(
+    await MerchantMessageBox.confirm(
       t('exportTask.retryConfirm', { taskNo: row.taskNo }),
       t('exportTask.retryTitle'),
       { type: 'warning', confirmButtonText: t('common.confirm'), cancelButtonText: t('common.cancel') },

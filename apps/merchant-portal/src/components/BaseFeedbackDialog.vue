@@ -6,9 +6,9 @@
         :width="width"
         append-to-body
         align-center
-        :close-on-click-modal="false"
-        :close-on-press-escape="!loading"
-        :show-close="!loading"
+        :close-on-click-modal="closeOnClickModal && !loading"
+        :close-on-press-escape="closeOnPressEscape && !loading"
+        :show-close="showClose && !loading"
         @update:model-value="emit('update:modelValue', $event)"
     >
         <div class="base-feedback-dialog__content" :class="[`is-${tone}`, `is-align-${contentAlign}`]">
@@ -22,8 +22,8 @@
         <template #footer>
             <slot name="footer">
                 <div class="dialog-footer">
-                    <el-button v-if="showCancel" :disabled="loading" @click="emit('update:modelValue', false)">{{ cancelText }}</el-button>
                     <el-button :type="tone === 'danger' ? 'danger' : 'primary'" :loading="loading" @click="emit('confirm')">{{ confirmText }}</el-button>
+                    <el-button v-if="showCancel" :disabled="loading" @click="emit('update:modelValue', false)">{{ cancelText }}</el-button>
                 </div>
             </slot>
         </template>
@@ -48,7 +48,10 @@ const props = withDefaults(defineProps<{
     loading?: boolean;
     width?: string | number;
     contentAlign?: 'center' | 'start';
-}>(), { tone: 'info', showCancel: true, loading: false, width: '492px', contentAlign: 'center' });
+    closeOnClickModal?: boolean;
+    closeOnPressEscape?: boolean;
+    showClose?: boolean;
+}>(), { tone: 'info', showCancel: true, loading: false, width: '492px', contentAlign: 'center', closeOnClickModal: false, closeOnPressEscape: true, showClose: true });
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; confirm: [] }>();
 const { t } = useI18n();
 const confirmText = computed(() => props.confirmText || t('common.confirm'));

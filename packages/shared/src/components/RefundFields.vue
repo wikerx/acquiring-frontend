@@ -1,17 +1,18 @@
 <template>
     <div v-loading="loading" class="refund-fields">
         <dl v-if="context" class="refund-fields__balances">
-            <div v-for="item in balances" :key="item.key">
-                <dt>{{ t(`refundForm.${item.key}`) }}</dt>
-                <dd>{{ money(item.amount) }}</dd>
+            <div v-for="item in balances" :key="item.key" :class="{ 'is-available': item.key === 'available' }">
+                <dt><el-icon aria-hidden="true"><CircleCheck v-if="item.key === 'refunded'" /><Clock v-else-if="item.key === 'pending'" /><Wallet v-else /></el-icon>{{ t(`refundForm.${item.key}`) }}</dt>
+                <dd><span>{{ context.currency }}</span><strong>{{ formatMoneyAmount(item.amount, locale, digits) }}</strong></dd>
             </div>
         </dl>
+        <div v-else-if="loading" class="refund-fields__loading" aria-busy="true"><span /><span /><span /></div>
         <el-alert v-if="!loading && !context" type="error" :closable="false" show-icon :title="t('refundForm.contextFailed')" />
         <el-form ref="formRef" :model="model" :rules="rules" :validate-on-rule-change="false" :disabled="formDisabled" label-position="top" class="refund-fields__form">
             <el-form-item :label="t('refundForm.mode')" class="refund-fields__wide">
-                <el-radio-group v-model="mode">
-                    <el-radio value="PARTIAL">{{ t('refundForm.partial') }}</el-radio>
-                    <el-radio value="FULL">{{ t('refundForm.full') }}</el-radio>
+                <el-radio-group v-model="mode" class="refund-fields__modes">
+                    <el-radio value="PARTIAL" border>{{ t('refundForm.partial') }}</el-radio>
+                    <el-radio value="FULL" border>{{ t('refundForm.full') }}</el-radio>
                 </el-radio-group>
             </el-form-item>
             <el-form-item :label="t('refundForm.amount')" prop="amount">
@@ -30,13 +31,14 @@
             </el-form-item>
         </el-form>
         <p v-if="isPositiveDecimalAmount(amount)" class="refund-fields__preview">{{ t('refundForm.currentRefund', { amount: money(amount!) }) }}</p>
-        <el-alert v-if="context" type="warning" show-icon :closable="false" :title="t(hasAvailableAmount ? 'refundForm.limit' : 'refundForm.noAvailable')" />
+        <el-alert v-if="context" class="refund-fields__limit" type="warning" show-icon :closable="false" :title="t(hasAvailableAmount ? 'refundForm.limit' : 'refundForm.noAvailable')" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { CircleCheck, Clock, Wallet } from '@element-plus/icons-vue';
 import { compareDecimalAmounts, formatMoneyAmount, isPositiveDecimalAmount, normalizeDecimalAmount } from '../amount';
 import { REFUND_REASON_CODES, type RefundContext, type RefundDraft } from '../refund';
 
@@ -122,17 +124,40 @@ defineExpose({ validate });
 </script>
 
 <style scoped>
-.refund-fields__balances { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; padding: 12px; background: var(--el-fill-color-light); border-radius: 6px; }
-.refund-fields__balances dt { color: var(--el-text-color-secondary); font-size: 12px; margin-bottom: 6px; }
-.refund-fields__balances dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
-.refund-fields__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }
+.refund-fields__balances { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 0 22px; padding: 15px 0; background: var(--el-fill-color-light); border: 1px solid var(--el-border-color-extra-light); border-radius: 10px; }
+.refund-fields__balances > div { min-width: 0; padding: 0 18px; border-right: 1px solid var(--el-border-color-light); }
+.refund-fields__balances > div:last-child { border-right: 0; }
+.refund-fields__balances dt { display: flex; align-items: center; gap: 6px; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.5; margin-bottom: 8px; }
+.refund-fields__balances dt .el-icon { flex: none; font-size: 15px; }
+.refund-fields__balances dd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; min-width: 0; margin: 0; color: var(--el-text-color-primary); font-variant-numeric: tabular-nums; line-height: 1.3; overflow-wrap: anywhere; }
+.refund-fields__balances dd span { font-size: 12px; font-weight: 600; }
+.refund-fields__balances dd strong { min-width: 0; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.refund-fields__balances .is-available dd { color: var(--el-color-primary); }
+.refund-fields__loading { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; height: 92px; margin-bottom: 22px; }
+.refund-fields__loading span { background: var(--el-fill-color-light); border-radius: 10px; }
+.refund-fields__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
 .refund-fields__wide { grid-column: 1 / -1; }
-.refund-fields__form :deep(.el-radio-group) { display: flex; flex-wrap: wrap; }
-.refund-fields__form :deep(.el-radio) { height: auto; min-height: 32px; white-space: normal; }
+.refund-fields__form :deep(.el-form-item) { margin-bottom: 20px; }
+.refund-fields__form :deep(.el-form-item__label) { color: var(--el-text-color-primary); font-size: 13px; font-weight: 600; line-height: 1.6; }
+.refund-fields__form :deep(.el-input__wrapper), .refund-fields__form :deep(.el-select__wrapper) { min-height: 38px; border-radius: 7px; }
+.refund-fields__form :deep(.el-textarea__inner) { min-height: 84px; padding: 10px 12px 24px; border-radius: 7px; line-height: 1.6; }
+.refund-fields__modes { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
+.refund-fields__modes :deep(.el-radio) { flex: 1 1 auto; height: auto; min-height: 42px; margin: 0; padding: 10px 12px; border-radius: 8px; white-space: normal; }
+.refund-fields__modes :deep(.el-radio.is-checked) { background: var(--el-color-primary-light-9); }
 .refund-fields__form :deep(.el-radio__label) { white-space: normal; }
 .refund-fields__form :deep(.el-form-item__label) { height: auto; }
 .refund-fields__amount { display: flex; width: 100%; align-items: center; gap: 8px; }
 .refund-fields__amount :deep(.el-input) { flex: 1; width: 0; }
-.refund-fields__preview { margin: 0 0 12px; font-weight: 600; }
-@media (max-width: 560px) { .refund-fields__form { grid-template-columns: 1fr; } .refund-fields__balances { grid-template-columns: 1fr; gap: 10px; } }
+.refund-fields__amount > span { color: var(--el-text-color-secondary); font-size: 12px; font-weight: 600; }
+.refund-fields__preview { margin: -2px 0 14px; color: var(--el-color-primary); font-size: 13px; font-weight: 600; }
+.refund-fields__limit { padding: 10px 12px; border-radius: 8px; }
+.refund-fields__limit :deep(.el-alert__title) { font-size: 12px; line-height: 1.6; }
+@media (max-width: 580px) {
+    .refund-fields__form { grid-template-columns: minmax(0, 1fr); }
+    .refund-fields__balances { grid-template-columns: minmax(0, 1fr); padding: 4px 14px; }
+    .refund-fields__balances > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--el-border-color-extra-light); }
+    .refund-fields__balances > div:last-child { border-bottom: 0; }
+    .refund-fields__balances dt { margin: 0; }
+    .refund-fields__balances dd strong { font-size: 18px; }
+}
 </style>

@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { formatExchangeRate, formatMoneyAmount, type PaymentLogoKey } from '@acquiring/shared';
+import { formatExchangeRate, formatMoneyAmount, formatTransactionCardDisplay, type PaymentLogoKey } from '@acquiring/shared';
 import { searchMerchants, type MerchantSelectOption } from '@/api/merchant/info';
 import type { TransactionDetail } from '@/api/transaction';
 import { searchDictData, type SysDictData } from '@/api/system/dict';
@@ -312,16 +312,7 @@ export function accessTypeText(t: (key: string, fallback?: string) => string, va
 }
 
 export function cardDisplayText(cardNumberMasked?: string, cardBin?: string) {
-    if (cardNumberMasked) {
-        return normalizeMaskedCard(cardNumberMasked);
-    }
-    if (!cardBin) {
-        return '-';
-    }
-    if (cardBin.length >= 10) {
-        return `${cardBin.slice(0, 6)}****${cardBin.slice(-4)}`;
-    }
-    return cardBin.length >= 6 ? `${cardBin.slice(0, 6)}****` : cardBin;
+    return formatTransactionCardDisplay(cardNumberMasked, cardBin);
 }
 
 export function statusOptionTagType(value?: string) {
@@ -368,14 +359,6 @@ export async function openTransactionDetail(
     } finally {
         loading.value = false;
     }
-}
-
-function normalizeMaskedCard(value: string) {
-    const digits = value.replace(/\D/g, '');
-    if (digits.length >= 10) {
-        return `${digits.slice(0, 6)}****${digits.slice(-4)}`;
-    }
-    return value.replace(/\*{5,}/g, '****');
 }
 
 function resolveZonedNow(timeZone: string) {

@@ -64,6 +64,8 @@ export interface TransactionOrder {
 }
 
 export interface TransactionOperation {
+  availableActions?: string[];
+  refundContext?: import("@acquiring/shared").RefundContext;
   operationId?: string;
   transactionId?: string;
   sourceTransactionId?: string;
@@ -145,6 +147,7 @@ export interface TransactionActionRequest {
   reason?: string;
   reasonCode?: string;
   refundDescription?: string;
+  operationDescription?: string;
   transactionDateTime: string;
   rootTransactionDateTime: string;
 }
@@ -198,6 +201,7 @@ export interface MerchantRefundRecord {
   requestReason?: string;
   transactionStatus?: string;
   processStage?: string;
+    pendingReasonCode?: string;
   labelCurrency?: string;
   labelAmount?: number | string;
   currencyExponent?: number;

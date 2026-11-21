@@ -235,30 +235,17 @@
         />
         <TransactionMerchantDrawer v-model:visible="merchantVisible" :merchant-id="selectedMerchantId" />
 
-        <el-dialog v-model="refundVisible" :close-on-click-modal="!actionSubmitting" :close-on-press-escape="!actionSubmitting" :show-close="!actionSubmitting" :title="t('transaction.actions.refundTitle')" width="min(620px, 92vw)" append-to-body class="transaction-action-dialog" destroy-on-close>
-            <el-alert class="transaction-action-alert" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
-            <section v-if="selectedOperation" class="transaction-action-section">
-                <h3>{{ t('transaction.actions.originalInfo') }}</h3>
-                <dl class="transaction-action-detail-grid">
-                    <div>
-                        <dt>{{ t('transaction.fields.merchantOrderNo') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionId') }}</dt>
-                        <dd><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionStatus') }}</dt>
-                        <dd><TransactionStatusDisplay :value="selectedOperation.transactionStatus" :label="optionText(statusOptions, selectedOperation.transactionStatus)" align="start" /></dd>
-                    </div>
-                    <div>
-                        <dt>{{ t('transaction.fields.transactionAmount') }}</dt>
-                        <dd class="transaction-action-money"><CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" emphasized /></dd>
-                    </div>
-                </dl>
+        <el-dialog v-model="refundVisible" :close-on-click-modal="!actionSubmitting" :close-on-press-escape="!actionSubmitting" :show-close="!actionSubmitting" :title="t('transaction.actions.refundTitle')" width="min(760px, calc(100vw - 32px))" append-to-body class="transaction-action-dialog refund-action-dialog" destroy-on-close>
+            <el-alert class="refund-dialog-intro" type="info" show-icon :closable="false" :title="t('refundForm.tip')" />
+            <section v-if="selectedOperation" class="refund-dialog-section">
+                <h3>{{ t('refundForm.sourceInfo') }}</h3>
+                <RefundSourceSummary :type="selectedOperation.transactionType" :type-label="tagText(typeOptions, selectedOperation.transactionType)" :status="selectedOperation.transactionStatus" :status-label="optionText(statusOptions, selectedOperation.transactionStatus)" :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" :t="t">
+                    <template #merchant-order><CopyableText :value="selectedOperation.merchantOrderNo" :label="t('transaction.fields.merchantOrderNo')" wrap /></template>
+                    <template #transaction-id><CopyableText :value="selectedOperation.transactionId" :label="t('transaction.fields.transactionId')" wrap /></template>
+                    <template #transaction-time><BaseDateTime :value="selectedOperation.transactionDateTime" source-time-zone="Asia/Shanghai" :display-time-zone="query.queryTimeZone" /></template>
+                </RefundSourceSummary>
             </section>
-            <section v-if="selectedOperation" class="transaction-action-section">
+            <section v-if="selectedOperation" class="refund-dialog-section">
                 <h3>{{ t('transaction.actions.refundInfo') }}</h3>
                 <RefundFields ref="refundFieldsRef" :model="refundForm" :context="refundContext" :loading="refundLoading" :submitting="actionSubmitting" :t="t" :locale="locale" @update:model="Object.assign(refundForm, $event)" />
             </section>
@@ -300,21 +287,7 @@
                     <CurrencyAmountDisplay :amount="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
                     <em>{{ captureFullAmountText }}</em>
                 </div>
-                <el-form :model="captureForm" label-position="top" class="transaction-action-form">
-                    <el-form-item :label="captureAmountText">
-                        <el-input :model-value="amountInputText(selectedOperation, availableCaptureLabelAmount(selectedOperation))" disabled>
-                            <template #append>{{ labelCurrency(selectedOperation) || '-' }}</template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.actions.reason')">
-                        <el-select v-model="captureForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
-                            <el-option v-for="item in captureReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.actions.description')" class="transaction-action-form__wide">
-                        <el-input v-model.trim="captureForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
-                    </el-form-item>
-                </el-form>
+                <ConsoleActionFields ref="captureFieldsRef" :model="captureForm" scope="capture" :maximum="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :submitting="actionSubmitting" :t="t" @update:model="Object.assign(captureForm, $event)" />
                 <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="captureSuccessHint" />
             </section>
             <template #footer>
@@ -355,21 +328,7 @@
                     <CurrencyAmountDisplay :amount="fullLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :locale="String(locale)" size="md" emphasized />
                     <em>{{ t('transaction.actions.fullVoidOnly') }}</em>
                 </div>
-                <el-form :model="voidForm" label-position="top" class="transaction-action-form">
-                    <el-form-item :label="t('transaction.actions.voidAmount')">
-                        <el-input :model-value="amountInputText(selectedOperation, fullLabelAmount(selectedOperation))" disabled>
-                            <template #append>{{ labelCurrency(selectedOperation) || '-' }}</template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.actions.reason')">
-                        <el-select v-model="voidForm.reason" :placeholder="t('common.pleaseSelect')" filterable>
-                            <el-option v-for="item in voidReasonOptions" :key="item.value" :label="item.label" :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item :label="t('transaction.actions.description')" class="transaction-action-form__wide">
-                        <el-input v-model.trim="voidForm.description" type="textarea" :rows="3" maxlength="200" show-word-limit :placeholder="t('transaction.actions.descriptionPlaceholder')" />
-                    </el-form-item>
-                </el-form>
+                <ConsoleActionFields ref="voidFieldsRef" :model="voidForm" scope="void" :maximum="availableCaptureLabelAmount(selectedOperation)" :currency="labelCurrency(selectedOperation)" :exponent="selectedOperation.labelCurrencyExponent" :submitting="actionSubmitting" :t="t" @update:model="Object.assign(voidForm, $event)" />
                 <el-alert class="transaction-action-bottom-alert" type="info" show-icon :closable="false" :title="t('transaction.actions.voidWarning')" />
             </section>
             <template #footer>
@@ -388,7 +347,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, proportionalDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, RefundSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -465,13 +424,12 @@ function transactionRowActions(row: TransactionOperation): TableRowAction[] {
             disabled: !canRequeryChannelMatch(row), loading: matchingTransactionId.value === row.transactionId,
             disabledReason: t(`transaction.actions.${canRequeryChannelMatch(row) ? 'channelMatchTip' : 'channelMatchDisabled'}`) },
         { key: 'refund', label: t('transaction.actions.refund'), icon: RefreshLeft,
-            visible: userStore.hasPermission('transaction:operation:refund') && supportsRefund(row), disabled: !canRefund(row),
+            visible: userStore.hasPermission('transaction:operation:refund') && canRefund(row),
             disabledReason: t(`transaction.actions.${canRefund(row) ? 'refundTip' : 'refundDisabled'}`) },
         { key: 'capture', label: captureActionText(row), icon: Promotion,
-            visible: userStore.hasPermission('transaction:operation:capture') && isAuthorizationOperation(row), disabled: !canCapture(row),
-            disabledReason: captureActionTip(row, canCapture(row)) },
+            visible: userStore.hasPermission('transaction:operation:capture') && canCapture(row), },
         { key: 'void', label: t('transaction.actions.void'), icon: CircleClose,
-            visible: userStore.hasPermission('transaction:operation:void') && isAuthorizationOperation(row), disabled: !canVoid(row),
+            visible: userStore.hasPermission('transaction:operation:void') && canVoid(row),
             disabledReason: t(`transaction.actions.${canVoid(row) ? 'voidTip' : 'voidDisabled'}`) },
     ];
 }
@@ -597,6 +555,7 @@ const refundForm = reactive({
     description: '',
 });
 const captureForm = reactive({
+    amount: null as string | null, mode: 'PARTIAL',
     reason: '',
     description: '',
 });
@@ -604,17 +563,17 @@ const captureForm = reactive({
 const isPreAuthCompletion = computed(() => selectedOperation.value?.transactionType === 'PRE_AUTHORIZATION');
 const captureDialogAction = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletion' : 'capture'}`));
 const captureDialogTitle = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionTitle' : 'captureTitle'}`));
-const captureDialogTip = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionTip' : 'captureTip'}`));
+const captureDialogTip = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
 const captureDialogInfo = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionInfo' : 'captureInfo'}`));
-const captureAmountText = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionAmount' : 'captureAmount'}`));
-const captureFullAmountText = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'fullPreAuthCompletionOnly' : 'fullCaptureOnly'}`));
-const captureSuccessHint = computed(() => t(`transaction.actions.${isPreAuthCompletion.value ? 'preAuthCompletionSuccessHint' : 'captureSuccessHint'}`));
+
+const captureFullAmountText = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
+const captureSuccessHint = computed(() => t(`transactionAction.${isPreAuthCompletion.value ? 'completionHint' : 'captureHint'}`));
+const captureFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
+const voidFieldsRef = ref<InstanceType<typeof ConsoleActionFields>>();
 const voidForm = reactive({
     reason: '',
     description: '',
 });
-const captureReasonOptions = computed(() => transactionActionReasonOptions('capture'));
-const voidReasonOptions = computed(() => transactionActionReasonOptions('void'));
 
 const emptySummary = (): TransactionOperationSummary => ({
     totalCount: 0,
@@ -711,7 +670,6 @@ const summaryItems = computed(() => [
     },
 ]);
 
-
 onMounted(async () => {
     const linkedTransactionId = typeof route.query.transactionId === 'string'
         ? route.query.transactionId.trim() : '';
@@ -737,6 +695,15 @@ onMounted(async () => {
         if (linkedRow) openDetail(linkedRow);
     }
 });
+
+useTransactionRefresh(async () => {
+    await loadData();
+    const current = detail.value?.operations.find(item => item.transactionId === selectedDetailTransactionId.value);
+    if (detailVisible.value && current?.transactionDateTime && current.rootTransactionDateTime) {
+        const latest = await getTransactionOperationDetail(current.transactionId, current.transactionDateTime, current.rootTransactionDateTime);
+        if (detailVisible.value && selectedDetailTransactionId.value === current.transactionId) detail.value = latest;
+    }
+}, () => !loading.value && !captureVisible.value && !voidVisible.value && !refundVisible.value);
 
 watch(locale, () => void loadDictionaries());
 
@@ -813,15 +780,18 @@ async function loadFilterOptions<T extends SelectOption>(
     }
 }
 
+let dataVersion = 0;
 async function loadData() {
+  const version = ++dataVersion;
     loading.value = true;
     try {
         const result = await searchTransactionOperationsWithSummary(buildQuery(page.value, pageSize.value));
+    if (version !== dataVersion) return;
         rows.value = result.page.records;
         total.value = result.page.total;
         operationSummary.value = result.summary || emptySummary();
     } finally {
-        loading.value = false;
+        if (version === dataVersion) loading.value = false;
     }
 }
 
@@ -936,22 +906,9 @@ function paymentLogos(row: TransactionOperation): PaymentLogoKey[] {
 }
 
 /** 类型决定操作是否适用，状态和可用金额再决定适用操作是否可执行。 */
-function supportsRefund(row: TransactionOperation) {
-    return ['PAYMENT', 'CAPTURE'].includes(row.transactionType);
-}
-
-function isAuthorizationOperation(row: TransactionOperation) {
-    return ['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType);
-}
 
 function canRefund(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !supportsRefund(row)) {
-        return false;
-    }
-    if (row.availableRefundAmount != null && row.availableRefundAmount !== '') {
-        return isPositiveDecimalAmount(row.availableRefundAmount);
-    }
-    return true;
+    return row.availableActions?.includes('REFUND') === true;
 }
 
 function amountSummaryDetails(amountSummaries: TransactionAmountSummary[]) {
@@ -1023,10 +980,7 @@ function paymentSummaryLabel(item: TransactionPaymentMethodSummary) {
 }
 
 function canVoid(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !isAuthorizationOperation(row)) {
-        return false;
-    }
-    return isZeroOrMissing(row.capturedAmount) && isZeroOrMissing(row.refundedAmount);
+    return row.availableActions?.includes('VOID') === true;
 }
 
 function canRetryCallback(row: TransactionOperation) {
@@ -1104,29 +1058,11 @@ async function handleRetryCallback(row: TransactionOperation) {
 }
 
 function canCapture(row: TransactionOperation) {
-    if (row.transactionStatus !== 'SUCCESS' || !isAuthorizationOperation(row)) {
-        return false;
-    }
-    if (row.availableCaptureAmount != null && row.availableCaptureAmount !== '') {
-        return isPositiveDecimalAmount(row.availableCaptureAmount);
-    }
-    return true;
+    return row.availableActions?.includes(row.transactionType === 'PRE_AUTHORIZATION' ? 'PRE_AUTH_COMPLETION' : 'CAPTURE') === true;
 }
 
 function captureActionText(row: TransactionOperation) {
     return t(`transaction.actions.${row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture'}`);
-}
-
-function captureActionTip(row: TransactionOperation, enabled: boolean) {
-    const prefix = row.transactionType === 'PRE_AUTHORIZATION' ? 'preAuthCompletion' : 'capture';
-    return t(`transaction.actions.${prefix}${enabled ? 'Tip' : 'Disabled'}`);
-}
-
-function isZeroOrMissing(value?: number | string | null) {
-    if (value === undefined || value === null || value === '') {
-        return true;
-    }
-    return normalizeDecimalAmount(value) === '0';
 }
 
 async function openRefundDialog(row: TransactionOperation) {
@@ -1155,6 +1091,8 @@ async function openRefundDialog(row: TransactionOperation) {
 
 function openCaptureDialog(row: TransactionOperation) {
     selectedOperation.value = row;
+    captureForm.amount = normalizeDecimalAmount(availableCaptureLabelAmount(row));
+    captureForm.mode = 'PARTIAL';
     captureForm.reason = '';
     captureForm.description = '';
     captureVisible.value = true;
@@ -1174,7 +1112,7 @@ async function submitRefund() {
     if (refundAmount == null) return;
     actionSubmitting.value = true;
     try {
-        await refundTransactionOperation(selectedOperation.value.transactionId, {
+        const result = await refundTransactionOperation(selectedOperation.value.transactionId, {
             amount: refundAmount,
             currency: refundForm.currency || labelCurrency(selectedOperation.value),
             reason: [t(`refundForm.reasons.${refundForm.reason}`), refundForm.description.trim()].filter(Boolean).join(' - '),
@@ -1183,7 +1121,7 @@ async function submitRefund() {
             transactionDateTime: selectedOperation.value.transactionDateTime!,
             rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
-        ElMessage.success(t('refundForm.submitted'));
+        ElMessage({ type: result.status === 'SUCCESS' ? 'success' : result.status === 'FAILED' ? 'error' : 'info', message: t(`transactionAction.stages.${refundProgressKey(result)}`) });
         refundVisible.value = false;
         await refreshAfterAction(selectedOperation.value);
     } catch (error: unknown) {
@@ -1197,20 +1135,25 @@ async function submitCapture() {
     if (!selectedOperation.value) {
         return;
     }
+    if (actionSubmitting.value || !(await captureFieldsRef.value?.validate()) || actionSubmitting.value) return;
     actionSubmitting.value = true;
     try {
         const action = selectedOperation.value.transactionType === 'PRE_AUTHORIZATION'
             ? preAuthCompletionTransactionOperation
             : captureTransactionOperation;
         const result = await action(selectedOperation.value.transactionId, {
-            reason: actionReasonText(captureForm.reason, captureForm.description),
+            reasonCode: captureForm.reason,
+            operationDescription: captureForm.description.trim(),
+            amount: captureForm.amount!,
+            currency: labelCurrency(selectedOperation.value),
             transactionDateTime: selectedOperation.value.transactionDateTime!,
             rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
         const successKey = selectedOperation.value.transactionType === 'PRE_AUTHORIZATION'
             ? 'preAuthCompletionSuccess'
             : 'captureSuccess';
-        ElMessage.success(t(`transaction.actions.${successKey}`, { transactionId: result.transactionId }));
+        if (result.status === 'SUCCESS') ElMessage.success(t(`transaction.actions.${successKey}`, { transactionId: result.transactionId }));
+        else ElMessage({ type: result.status === 'FAILED' ? 'error' : 'info', message: t(result.status === 'FAILED' ? 'transactionAction.requestFailed' : 'transactionAction.stages.unknown') });
         captureVisible.value = false;
         await refreshAfterAction(selectedOperation.value);
     } finally {
@@ -1222,14 +1165,17 @@ async function submitVoid() {
     if (!selectedOperation.value) {
         return;
     }
+    if (actionSubmitting.value || !(await voidFieldsRef.value?.validate()) || actionSubmitting.value) return;
     actionSubmitting.value = true;
     try {
         const result = await voidTransactionOperation(selectedOperation.value.transactionId, {
-            reason: actionReasonText(voidForm.reason, voidForm.description),
+            reasonCode: voidForm.reason,
+            operationDescription: voidForm.description.trim(),
             transactionDateTime: selectedOperation.value.transactionDateTime!,
             rootTransactionDateTime: selectedOperation.value.rootTransactionDateTime!,
         });
-        ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
+        if (result.status === 'SUCCESS') ElMessage.success(t('transaction.actions.voidSuccess', { transactionId: result.transactionId }));
+        else ElMessage({ type: result.status === 'FAILED' ? 'error' : 'info', message: t(result.status === 'FAILED' ? 'transactionAction.requestFailed' : 'transactionAction.stages.unknown') });
         voidVisible.value = false;
         await refreshAfterAction(selectedOperation.value);
     } finally {
@@ -1241,41 +1187,14 @@ function labelCurrency(row?: TransactionOperation | null) {
     return row?.labelCurrency || row?.transactionCurrency || '';
 }
 
-function amountInputText(row?: TransactionOperation | null, amount?: number | string | null) {
-    return moneyText(amount, undefined, row?.labelCurrencyExponent);
-}
-
 function fullLabelAmount(row: TransactionOperation) {
-    return row.labelAmount ?? row.transactionAmount ?? '0';
+    return ['AUTHORIZATION', 'PRE_AUTHORIZATION'].includes(row.transactionType)
+        ? row.labelAuthorizedAmount ?? row.labelAmount ?? row.transactionAmount ?? '0'
+        : row.labelAmount ?? row.transactionAmount ?? '0';
 }
 
 function availableCaptureLabelAmount(row: TransactionOperation) {
-    return proportionalLabelAmount(row, row.availableCaptureAmount ?? row.transactionAmount);
-}
-
-function proportionalLabelAmount(row: TransactionOperation, transactionAmount?: number | string | null) {
-    if (row.labelAmount == null || row.transactionAmount == null || transactionAmount == null) {
-        return transactionAmount ?? row.labelAmount ?? '0';
-    }
-    return proportionalDecimalAmount(
-        row.labelAmount,
-        transactionAmount,
-        row.transactionAmount,
-        row.labelCurrencyExponent ?? 2,
-    ) ?? String(transactionAmount);
-}
-
-function transactionActionReasonOptions(scope: 'capture' | 'void') {
-    const keys = scope === 'capture'
-            ? ['GOODS_SHIPPED', 'SERVICE_COMPLETED', 'MERCHANT_CONFIRMED']
-            : ['CUSTOMER_CANCELLED', 'AUTHORIZATION_EXPIRED', 'MERCHANT_CONFIRMED'];
-    return keys.map((key) => ({ label: t(`transaction.actionReason.${key}`, key), value: key }));
-}
-
-function actionReasonText(reason?: string, description?: string) {
-    const selectedReason = reason ? t(`transaction.actionReason.${reason}`, reason) : '';
-    const text = [selectedReason, description?.trim()].filter(Boolean).join(' - ');
-    return text || undefined;
+    return row.labelAvailableCaptureAmount ?? (row.labelCurrency === row.transactionCurrency ? row.availableCaptureAmount : null) ?? '0';
 }
 
 async function refreshAfterAction(row: TransactionOperation) {

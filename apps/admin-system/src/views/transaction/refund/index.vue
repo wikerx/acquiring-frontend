@@ -108,6 +108,9 @@
             <el-table-column :label="t('transaction.fields.transactionStatus')" width="136" align="center">
                 <template #default="{ row }"><TransactionStatusDisplay :value="row.transactionStatus" :label="optionText(transactionStatusOptions, row.transactionStatus)" /></template>
             </el-table-column>
+            <el-table-column :label="t('transaction.refund.processingInfo')" min-width="240" align="center" show-overflow-tooltip>
+                <template #default="{ row }">{{ t(`transactionAction.stages.${refundProgressKey(row)}`) }}</template>
+            </el-table-column>
             <el-table-column :label="t('transaction.refund.approvalStatus')" width="126" align="center">
                 <template #default="{ row }"><el-tag class="refund-page__status-tag" size="small" :type="approvalTagType(row.approvalStatus)" effect="light">{{ optionText(approvalStatusOptions, row.approvalStatus) }}</el-tag></template>
             </el-table-column>
@@ -153,6 +156,7 @@
                     <el-descriptions-item :label="t('transaction.fields.channelTransactionAmount')"><CurrencyAmountDisplay :amount="detail.refund.transactionAmount" :currency="detail.refund.transactionCurrency" :exponent="detail.refund.currencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.fields.transactionStatus')"><TransactionStatusDisplay :value="detail.refund.transactionStatus" :label="optionText(transactionStatusOptions, detail.refund.transactionStatus)" align="start" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.refund.requestReason')" :span="2">{{ detail.refund.requestReason || '-' }}</el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.refund.processingInfo')" :span="2">{{ t(`transactionAction.stages.${refundProgressKey(detail.refund)}`) }}</el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.refund.failReason')" :span="2">{{ failureText(detail.refund) }}</el-descriptions-item>
                 </el-descriptions>
                 <h3 class="refund-page__section-title">{{ t('transaction.refund.processingInfo') }}</h3>
@@ -195,6 +199,7 @@
 </template>
 
 <script setup lang="ts">
+import { refundProgressKey, useTransactionRefresh } from '@acquiring/shared';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
 import { CurrencyAmountDisplay, isPositiveDecimalAmount, TransactionStatusDisplay, TransactionTypeDisplay } from '@acquiring/shared';
@@ -283,6 +288,15 @@ const summaryItems = computed(() => [
     summaryItem('success', 'successCount', 'success', 'successfulAmount'),
 ]);
 
+useTransactionRefresh(async () => {
+    await loadData();
+    if (detailVisible.value && detail.value?.refund) {
+        const current = detail.value.refund;
+        const latest = await getRefundManagementDetail(current.refundTransactionId, current.transactionDateTime);
+        if (detailVisible.value && detail.value?.refund.refundTransactionId === current.refundTransactionId) detail.value = latest;
+    }
+}, () => !loading.value && !detailLoading.value && !decisionVisible.value);
+
 onMounted(() => {
     const linkedRefundTransactionId = routeText('refundTransactionId');
     if (linkedRefundTransactionId) query.refundTransactionId = linkedRefundTransactionId;
@@ -331,15 +345,18 @@ function currencyAmountDetails(field: 'totalAmount' | 'pendingApprovalAmount' | 
     }).slice(0, 4);
 }
 
+let dataVersion = 0;
 async function loadData() {
+  const version = ++dataVersion;
     loading.value = true;
     try {
         const result = await searchRefundManagement(buildQuery(page.value, pageSize.value));
+    if (version !== dataVersion) return;
         rows.value = result.page?.records || [];
         total.value = result.page?.total || 0;
         summary.value = result.summary || emptySummary();
     } finally {
-        loading.value = false;
+        if (version === dataVersion) loading.value = false;
     }
 }
 

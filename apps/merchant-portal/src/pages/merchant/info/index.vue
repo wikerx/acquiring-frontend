@@ -367,6 +367,7 @@
 </template>
 
 <script setup lang="ts">
+import { MerchantMessageBox } from '@/utils/feedback';
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from 'element-plus';
 import {
@@ -716,7 +717,7 @@ async function submitRequest() {
     }
     submitting.value = true;
     try {
-        const { value } = await ElMessageBox.prompt(t('merchantInfo.submitPrompt'), t('merchantInfo.submitReview'), { inputType: 'textarea', inputPlaceholder: t('merchantInfo.submitCommentPlaceholder'), confirmButtonText: t('merchantInfo.submitReview'), cancelButtonText: t('common.cancel') });
+        const { value } = await MerchantMessageBox.prompt(t('merchantInfo.submitPrompt'), t('merchantInfo.submitReview'), { inputType: 'textarea', inputPlaceholder: t('merchantInfo.submitCommentPlaceholder'), confirmButtonText: t('merchantInfo.submitReview'), cancelButtonText: t('common.cancel') });
         const submitted = await merchantInfoApi.submitChangeRequest(activeRequest.value.requestNo, value?.trim() || undefined);
         if (workspace.value) workspace.value.activeRequest = submitted;
         await refreshWorkspace();
@@ -733,7 +734,7 @@ async function withdrawRequest() {
     if (!canWithdraw.value || workspaceBusy.value || loading.value || !activeRequest.value) return;
     withdrawing.value = true;
     try {
-        await ElMessageBox.confirm(t('merchantInfo.withdrawConfirm'), t('merchantInfo.withdraw'), { type: 'warning' });
+        await MerchantMessageBox.confirm(t('merchantInfo.withdrawConfirm'), t('merchantInfo.withdraw'), { type: 'warning' });
         await merchantInfoApi.withdrawChangeRequest(activeRequest.value.requestNo);
         await refreshWorkspace();
         ElMessage.success(t('merchantInfo.withdrawSuccess'));
@@ -775,7 +776,7 @@ async function downloadDocument(document: MerchantProfileDocument) {
 async function deleteDocument(document: MerchantProfileDocument) {
     if (!canDeleteDocument(document) || workspaceBusy.value || loading.value || !activeRequest.value) return;
     try {
-        await ElMessageBox.confirm(t('merchantInfo.deleteDocumentConfirm'), t('common.delete'), { type: 'warning' });
+        await MerchantMessageBox.confirm(t('merchantInfo.deleteDocumentConfirm'), t('common.delete'), { type: 'warning' });
         if (!activeRequest.value || workspaceBusy.value || !canDeleteDocument(document)) return;
         deletingDocument.value = true;
         await merchantInfoApi.deleteDocument(activeRequest.value.requestNo, document.id);

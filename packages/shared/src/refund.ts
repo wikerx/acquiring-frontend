@@ -21,6 +21,9 @@ export interface RefundDraft {
 }
 
 export const refundMessagesZh = {
+    sourceInfo: '原交易信息', sourceHint: '退款将关联到这笔成功交易', sourceAmount: '本笔成功金额',
+    merchantOrderNo: '商户订单号', transactionId: '系统订单号', transactionTime: '交易时间',
+    copyReference: '复制{label}',
     reason: '退款原因', description: '补充退款说明',
     reasonRequired: '请选择退款原因',
     descriptionRequired: '选择其他时，请填写具体退款原因',
@@ -49,6 +52,9 @@ export const refundMessagesZh = {
 };
 
 export const refundMessagesEn = {
+    sourceInfo: 'Original transaction', sourceHint: 'This refund is linked to this successful transaction', sourceAmount: 'Successful amount',
+    merchantOrderNo: 'Merchant order number', transactionId: 'System order number', transactionTime: 'Transaction time',
+    copyReference: 'Copy {label}',
     reason: 'Refund reason', description: 'Additional refund details',
     reasonRequired: 'Select a refund reason',
     descriptionRequired: 'Provide refund details when selecting Other',

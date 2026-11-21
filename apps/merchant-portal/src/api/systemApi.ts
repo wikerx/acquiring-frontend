@@ -91,7 +91,7 @@ export interface RoleItem {
 }
 
 export interface RoleSavePayload {
-    roleCode: string;
+    roleCode?: string;
     roleName: string;
     dataScope?: string;
     description?: string;

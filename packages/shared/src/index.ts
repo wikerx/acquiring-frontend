@@ -643,3 +643,8 @@ export { default as PaymentLinkWorkspace } from './components/PaymentLinkWorkspa
 export { default as CheckoutOrderSummary } from './components/CheckoutOrderSummary.vue';
 export { default as CheckoutMerchantLogo } from './components/CheckoutMerchantLogo.vue';
 export * from './paymentLinkPresentation';
+
+export * from './transactionAction';
+export { default as ConsoleActionFields } from './components/ConsoleActionFields.vue';
+export { default as RefundSourceSummary } from './components/RefundSourceSummary.vue';
+export { formatTransactionCardDisplay } from './transactionCardDisplay';

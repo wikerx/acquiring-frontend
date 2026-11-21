@@ -451,10 +451,11 @@
 </template>
 
 <script setup lang="ts">
+import { MerchantMessageBox } from '@/utils/feedback';
 import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue';
 import { CopyDocument, RefreshLeft, RefreshRight, Search, View } from '@element-plus/icons-vue';
 import { TableRowActions, type TableRowAction } from '@acquiring/shared';
-import { ElButton, ElMessage, ElMessageBox, ElTooltip } from 'element-plus';
+import { ElButton, ElMessage, ElTooltip } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -685,7 +686,7 @@ function manualRetryEligible(row: MerchantNotificationRecord) {
 async function retryNotification(row: MerchantNotificationRecord) {
     if (!canRetry.value || retryingNotifyId.value || !manualRetryEligible(row)) return;
     try {
-        await ElMessageBox.confirm(
+        await MerchantMessageBox.confirm(
             t('transaction.notification.resendConfirm', { notifyId: row.notifyId }),
             t('transaction.notification.resendTitle'),
             {
