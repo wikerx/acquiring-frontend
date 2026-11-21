@@ -94,6 +94,7 @@ export default {
     editColumns: 'Edit Columns',
     resetColumns: 'Reset',
     fixedColumns: 'Fixed Columns',
+    selectionColumn: 'Selection',
     visibleColumns: 'Visible Columns',
     moveUp: 'Move up',
     moveDown: 'Move down',

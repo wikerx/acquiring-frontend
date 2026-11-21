@@ -65,7 +65,7 @@
               stripe
               size="small"
             >
-              <el-table-column v-if="can('apply')" width="48" fixed="left" align="center">
+              <el-table-column v-if="can('apply')" column-key="selection" width="48" fixed="left" align="center">
                 <template #header
                   ><el-checkbox
                     :model-value="allSelected"

@@ -7,6 +7,7 @@ type ElementTableColumn = {
     id: string;
     label?: string;
     property?: string;
+    columnKey?: string;
     type?: string;
     width?: number | string;
     minWidth?: number | string;
@@ -85,7 +86,7 @@ function isVisibleColumn(column: ElementTableColumn) {
 }
 
 function isBusinessColumn(column: ElementTableColumn) {
-    return !column.type || column.type === 'default';
+    return column.columnKey !== 'selection' && (!column.type || column.type === 'default');
 }
 
 function columnBaseWidth(column: ElementTableColumn) {
@@ -97,6 +98,9 @@ function columnPreferredWidth(item: ColumnLayoutItem) {
 }
 
 function columnKey(column: ElementTableColumn, index = 0) {
+    if (column.columnKey === 'selection') {
+        return '__selection_column__';
+    }
     if (!column.property && column.type) {
         return `__${column.type}_column__-${index}`;
     }
@@ -110,7 +114,7 @@ function columnLabel(column: ElementTableColumn) {
     if (column.property) {
         return column.property;
     }
-    if (column.type === 'selection') {
+    if (column.type === 'selection' || column.columnKey === 'selection') {
         return translateTableLabel('selectionColumn', 'Selection');
     }
     if (column.type === 'index') {

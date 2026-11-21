@@ -3,7 +3,7 @@
         <el-empty v-if="!loading && !fee" :description="$t('finance.noActiveFee')" />
         <template v-else>
             <el-alert :title="$t('paymentMethod.fee.hint')" type="info" :closable="false" show-icon />
-            <el-alert v-if="fee?.authorizationAssessmentStatus !== 'EVALUATED'" :title="$t(fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'paymentMethod.overview.historyPending' : 'paymentMethod.overview.unassessed')" :type="fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'warning' : 'info'" :closable="false" show-icon />
+            <el-alert v-if="fee?.authorizationAssessmentStatus !== 'EVALUATED'" :title="$t(fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'paymentMethod.fee.historyHint' : 'paymentMethod.overview.unassessed')" :type="fee?.authorizationAssessmentStatus === 'HISTORY_PENDING' ? 'warning' : 'info'" :closable="false" show-icon />
             <section v-loading="loading" class="fee-version-band">
                 <div class="fee-version-primary">
                     <span>{{ $t('finance.configurationName') }}</span>

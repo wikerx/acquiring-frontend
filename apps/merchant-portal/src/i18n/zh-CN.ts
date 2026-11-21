@@ -93,6 +93,7 @@ export default {
     editColumns: '编辑列',
     resetColumns: '重置',
     fixedColumns: '固定列',
+    selectionColumn: '多选框',
     visibleColumns: '可显示列',
     moveUp: '上移',
     moveDown: '下移',

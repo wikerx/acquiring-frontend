@@ -17,6 +17,7 @@ export default {
   },
   fee: {
     historyPending: 'Authorization association pending verification',
+    historyHint: 'Historical eligibility is pending verification. Recorded authorizations reflect their current status.',
     hint: 'Fee configuration and payment authorization are managed separately. Each fee rule shows its associated methods and their current authorization states. A configured fee does not establish authorization or execution readiness.',
     coverage: 'Associated methods / authorization',
     noCoverage: 'No associated methods',

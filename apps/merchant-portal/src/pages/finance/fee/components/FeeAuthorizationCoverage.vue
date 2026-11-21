@@ -1,7 +1,7 @@
 <template>
-  <div v-if="assessmentStatus === 'EVALUATED' && coverage" class="fee-authorization-coverage">
-    <template v-if="coverage.length">
-      <div v-for="item in coverage.slice(0, 2)" :key="item.itemKey" class="coverage-item">
+  <div v-if="coverageVisible" class="fee-authorization-coverage">
+    <template v-if="orderedCoverage.length">
+      <div v-for="item in orderedCoverage.slice(0, 2)" :key="item.itemKey" class="coverage-item">
         <span>{{ item.name }}</span
         ><el-tag
           :type="item.authorizationStatus === 'ACTIVE' ? 'success' : 'info'"
@@ -11,18 +11,18 @@
         >
       </div>
       <el-popover
-        v-if="coverage.length > 2"
+        v-if="orderedCoverage.length > 2"
         trigger="click"
         width="420"
         placement="bottom"
         :title="t('paymentMethod.fee.coverage')"
         ><template #reference
           ><el-button link type="primary">{{
-            t('paymentMethod.fee.more', { count: coverage.length })
+            t('paymentMethod.fee.more', { count: orderedCoverage.length })
           }}</el-button></template
         >
         <div class="coverage-popover">
-          <div v-for="item in coverage" :key="item.itemKey" class="coverage-item">
+          <div v-for="item in orderedCoverage" :key="item.itemKey" class="coverage-item">
             <span>{{ item.name }}</span
             ><el-tag
               :type="item.authorizationStatus === 'ACTIVE' ? 'success' : 'info'"
@@ -45,13 +45,25 @@
   }}</span>
 </template>
 <script setup lang="ts">
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import type { FeePaymentMethodCoverage } from '@/api/financeApi';
-  defineProps<{
+  const props = defineProps<{
     assessmentStatus?: 'EVALUATED' | 'HISTORY_PENDING' | 'UNAVAILABLE';
     coverage?: FeePaymentMethodCoverage[] | null;
   }>();
   const { t, te } = useI18n();
+  const coverageVisible = computed(
+    () =>
+      Array.isArray(props.coverage) &&
+      (props.assessmentStatus === 'EVALUATED' || props.assessmentStatus === 'HISTORY_PENDING'),
+  );
+  const orderedCoverage = computed(() =>
+    [...(props.coverage ?? [])].sort(
+      (left, right) =>
+        Number(right.authorizationStatus === 'ACTIVE') - Number(left.authorizationStatus === 'ACTIVE'),
+    ),
+  );
   function statusText(status: string) {
     const key = `paymentMethod.status.${status}`;
     return te(key) ? t(key) : t('paymentMethod.unassessed');
