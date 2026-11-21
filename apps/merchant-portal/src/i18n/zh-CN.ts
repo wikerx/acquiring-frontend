@@ -1828,7 +1828,7 @@ export default {
       labelAmount: '标签金额',
       transactionAmount: '交易金额',
       transactionRate: '交易汇率',
-      cardBin: '卡 BIN',
+      cardBin: '卡BIN',
       payment: '支付方式',
       threeDs: '3DS 交易',
       dcc: 'DCC',
