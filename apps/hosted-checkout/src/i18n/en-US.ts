@@ -128,7 +128,7 @@ export default {
       cardBrandUnsupported:
         '{brand} cards are not supported for this order. Use another payment method.',
       cardBrandUnavailable: 'Card support could not be verified. Please try again.',
-      unknownCardBrand: 'This card brand',
+      cardBrandUnrecognized: 'We could not identify this card brand. Check the card number or use another payment method.',
       expiry: 'Enter a valid future expiry date.',
       cvc: 'Enter a valid security code.',
     },

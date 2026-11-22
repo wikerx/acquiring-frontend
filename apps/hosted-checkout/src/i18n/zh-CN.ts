@@ -116,7 +116,7 @@ export default {
       cardNumber: '请输入有效卡号。',
       cardBrandUnsupported: '当前卡品牌（{brand}）/支付方式不支持，请更换支付方式。',
       cardBrandUnavailable: '暂时无法验证当前卡品牌，请稍后重试。',
-      unknownCardBrand: '未知卡品牌',
+      cardBrandUnrecognized: '无法识别这张卡的品牌，请检查卡号或更换支付方式。',
       expiry: '请输入有效且未过期的有效期。',
       cvc: '请输入有效安全码。',
     },

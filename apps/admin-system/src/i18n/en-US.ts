@@ -2640,6 +2640,11 @@ export default {
       SUCCESS: 'Success',
       CLOSED: 'Closed',
     },
+    merchantNotifyType: {
+      PRE_AUTHORIZATION_RESULT: 'Pre-authorization Result',
+      PRE_AUTH_COMPLETION_RESULT: 'Pre-authorization Completion Result',
+      INCREMENTAL_AUTHORIZATION_RESULT: 'Incremental Authorization Result',
+    },
     type: {
       PAYMENT: 'Payment',
       AUTHORIZATION: 'Authorization',

@@ -2523,6 +2523,11 @@ export default {
       SUCCESS: '成功',
       CLOSED: '已关闭',
     },
+    merchantNotifyType: {
+      PRE_AUTHORIZATION_RESULT: '预授权结果通知',
+      PRE_AUTH_COMPLETION_RESULT: '预授权完成结果通知',
+      INCREMENTAL_AUTHORIZATION_RESULT: '增量授权结果通知',
+    },
     type: {
       PAYMENT: '支付',
       AUTHORIZATION: '授权',

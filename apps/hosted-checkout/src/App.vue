@@ -465,7 +465,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { CheckoutMerchantLogo, CheckoutOrderSummary, PaymentLogoGroup, formatMoneyAmount, getSystemBrand, resolveTransactionStatusIcon, resolvePaymentLogoKeys, type PaymentLogoKey } from '@acquiring/shared';
+import { CheckoutMerchantLogo, CheckoutOrderSummary, PaymentLogoGroup, formatMoneyAmount, getPaymentLogo, getSystemBrand, resolveTransactionStatusIcon, resolvePaymentLogoKeys, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { setLocale } from './i18n';
 import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkoutConfig';
@@ -1300,7 +1300,8 @@ async function refreshPaymentStatus() {
 }
 
 async function handleThreeDsReturnMessage(event: MessageEvent) {
-    if (!threeDsFrame.value || event.source !== threeDsFrame.value.contentWindow) {
+    const frame = threeDsFrame.value?.contentWindow;
+    if (!frame || !isWithinThreeDsFrame(event.source, frame)) {
         return;
     }
     const payload = normalizeThreeDsReturnMessage(event.data);
@@ -1333,6 +1334,18 @@ async function handleThreeDsReturnMessage(event: MessageEvent) {
     } finally {
         threeDsReturnHandling.value = false;
     }
+}
+
+function isWithinThreeDsFrame(source: MessageEventSource | null, frame: Window): boolean {
+    // 发卡行可能在收银台 3DS iframe 内再创建一层挑战窗口。
+    let current = source as Window | null;
+    while (current && current !== window) {
+        if (current === frame) return true;
+        const parent = current.parent;
+        if (parent === current) return false;
+        current = parent;
+    }
+    return false;
 }
 
 async function continueThreeDs(payload: ThreeDsReturnMessage) {
@@ -1437,11 +1450,12 @@ function normalizeThreeDsReturnMessage(data: unknown): ThreeDsReturnMessage | nu
 }
 
 function matchesActiveThreeDsAttempt(payload: ThreeDsReturnMessage): boolean {
-    // 3DS bridge may run in a sandboxed iframe with an opaque origin, so the final trust check stays on the backend return token.
+    const expectedToken = extractThreeDsReturnToken(paymentResult.value?.threeDsAction?.returnUrl);
     return runtimeState.value === 'threeDs'
         && Boolean(payload.checkoutSessionId)
         && Boolean(payload.checkoutAttemptId)
         && Boolean(payload.threeDsReturnToken)
+        && (isDevToken(routeToken.value) || (Boolean(expectedToken) && payload.threeDsReturnToken === expectedToken))
         && payload.checkoutSessionId === session.value?.checkoutSessionId
         && payload.checkoutAttemptId === paymentResult.value?.checkoutAttemptId;
 }
@@ -1831,7 +1845,7 @@ async function ensureCardBrandSupported(): Promise<boolean> {
             const cardBrand = resolveDevCardBrand(cardNumber);
             resolvedCardBin.value = cardBin;
             resolvedCardBrand.value = cardBrand;
-            resolvedCardSupported.value = selectedMethod.value.brands.includes(cardBrand);
+            resolvedCardSupported.value = cardBrand !== 'UNKNOWN' && selectedMethod.value.brands.includes(cardBrand);
         } else {
             const result = await resolveCheckoutCardBin({
                 opaqueToken: routeToken.value,
@@ -1842,16 +1856,14 @@ async function ensureCardBrandSupported(): Promise<boolean> {
                 return false;
             }
             resolvedCardBin.value = cardBin;
-            resolvedCardBrand.value = normalizeCode(result.cardBrand) || 'UNKNOWN';
-            resolvedCardSupported.value = result.recognized && result.supported;
+            const cardBrand = normalizeCode(result.cardBrand);
+            resolvedCardBrand.value = result.recognized && cardBrand ? cardBrand : 'UNKNOWN';
+            resolvedCardSupported.value = resolvedCardBrand.value !== 'UNKNOWN' && result.supported;
         }
         applyCardBrandValidation();
         return resolvedCardSupported.value === true;
     } catch {
         if (requestSequence === cardBinRequestSequence) {
-            resolvedCardBin.value = cardBin;
-            resolvedCardBrand.value = '';
-            resolvedCardSupported.value = false;
             fieldErrors.cardNumber = validationError('cardBrandUnavailable');
         }
         return false;
@@ -1863,8 +1875,14 @@ function applyCardBrandValidation() {
         delete fieldErrors.cardNumber;
         return;
     }
+    const brand = resolvedCardBrand.value;
+    if (brand === 'UNKNOWN') {
+        fieldErrors.cardNumber = validationError('cardBrandUnrecognized');
+        return;
+    }
+    const logoKey = CARD_BRAND_LOGOS[brand];
     fieldErrors.cardNumber = validationError('cardBrandUnsupported', {
-        brand: resolvedCardBrand.value || t('checkout.validation.unknownCardBrand'),
+        brand: logoKey ? getPaymentLogo(logoKey).textFallback : brand,
     });
 }
 
@@ -1888,10 +1906,13 @@ function resolveDevCardBrand(value: string): string {
     const digits = digitsOnly(value);
     if (digits.startsWith('4')) return 'VISA';
     if (digits.startsWith('34') || digits.startsWith('37')) return 'AMEX';
-    if (digits.startsWith('35')) return 'JCB';
-    if (digits.startsWith('5') || digits.startsWith('22')) return 'MASTERCARD';
+    if (digits.startsWith('35') || digits.startsWith('1800') || digits.startsWith('2131')) return 'JCB';
+    if (digits.startsWith('1')) return 'UATP';
+    if (/^5[1-5]/.test(digits) || digits.startsWith('22')) return 'MASTERCARD';
+    const prefix = Number(digits.slice(0, 6));
+    if (/^(6011|65|64[4-9])/.test(digits) || (prefix >= 622126 && prefix <= 622925)) return 'DISCOVER';
     if (digits.startsWith('62')) return 'UNIONPAY';
-    if (digits.startsWith('6011') || digits.startsWith('65')) return 'DISCOVER';
+    if (/^(50|5[6-9]|6)/.test(digits)) return 'MAESTRO';
     return 'UNKNOWN';
 }
 
