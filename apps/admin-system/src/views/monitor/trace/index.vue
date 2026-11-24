@@ -132,6 +132,7 @@ import { MonitorChartGrid, MonitorChartPanel, MonitorTimeRangeSelector, type Mon
 import { MonitorCapabilityAlert, MonitorMetricGrid, MonitorPageHeader } from '@/components/MonitorWorkbench';
 import { searchMonitorTrace, type TraceEvent, type TraceResponse } from '@/api/monitor/workbench';
 import { createMonitorTimeRange, createTraceWaterfallDataset, formatDuration, monitorLoadState, monitorTagType, toMonitorTimeRangeQuery } from '@/api/monitor/workbenchAdapters';
+import { toSourceTimeZoneInstant } from '@/utils/format';
 import {
     fallbackTransactionTypeOptions,
     loadTransactionDictOptions,
@@ -149,6 +150,7 @@ const response = ref<TraceResponse>();
 const query = reactive({ transactionId: '', merchantOrderNo: '', channelOrderNo: '', traceId: '' });
 const detailVisible = ref(false);
 const activeEvent = ref<TraceEvent>();
+let requestSequence = 0;
 
 const waterfallDataset = computed(() => createTraceWaterfallDataset(response.value?.waterfall || []));
 const waterfallState = computed(() => monitorLoadState({
@@ -182,12 +184,14 @@ const tracePaymentLogoKeys = computed(() =>
     resolvePaymentLogoKeys(response.value?.summary?.paymentMethod),
 );
 
-onMounted(async () => {
-    await loadTransactionTypeOptions();
-    assignRouteQuery();
-    if (hasIdentifier()) await handleSearch();
+onMounted(() => {
+    void loadTransactionTypeOptions();
+    loadLinkedTrace();
 });
 watch(() => locale.value, () => { void loadTransactionTypeOptions(); });
+watch(() => route.fullPath, () => {
+    if (route.path === '/monitor/trace') loadLinkedTrace();
+});
 
 async function loadTransactionTypeOptions() {
     const fallback = fallbackTransactionTypeOptions(t);
@@ -201,25 +205,30 @@ async function handleSearch() {
         ElMessage.warning(t('monitor.workbench.trace.identifierRequired'));
         return;
     }
+    const version = ++requestSequence;
     loading.value = true;
     errorMessage.value = '';
     try {
-        response.value = await searchMonitorTrace({
+        const result = await searchMonitorTrace({
             ...toMonitorTimeRangeQuery(timeRange.value),
             transactionId: query.transactionId || undefined,
             merchantOrderNo: query.merchantOrderNo || undefined,
             channelOrderNo: query.channelOrderNo || undefined,
             traceId: query.traceId || undefined,
         });
+        if (version === requestSequence) response.value = result;
     } catch (error) {
+        if (version !== requestSequence) return;
         response.value = undefined;
         errorMessage.value = error instanceof Error ? error.message : t('common.loadFailed');
     } finally {
-        loading.value = false;
+        if (version === requestSequence) loading.value = false;
     }
 }
 
 function resetQuery() {
+    requestSequence += 1;
+    loading.value = false;
     Object.assign(query, { transactionId: '', merchantOrderNo: '', channelOrderNo: '', traceId: '' });
     response.value = undefined;
     errorMessage.value = '';
@@ -239,6 +248,26 @@ function assignRouteQuery() {
         const value = route.query[key];
         query[key] = Array.isArray(value) ? String(value[0] || '') : String(value || '');
     }
+}
+
+function loadLinkedTrace() {
+    if (!Object.keys(query).some((key) => route.query[key])) return;
+    assignRouteQuery();
+    const dateTime = route.query.transactionDateTime;
+    const timezone = route.query.transactionTimeZone;
+    if (query.transactionId && typeof dateTime === 'string' && typeof timezone === 'string') {
+        const instant = toSourceTimeZoneInstant(dateTime, timezone);
+        const time = instant instanceof Date ? instant.getTime() : Date.parse(String(instant));
+        if (Number.isFinite(time)) {
+            timeRange.value = {
+                preset: 'custom',
+                timezone,
+                start: new Date(time - 60_000).toISOString(),
+                end: new Date(time + 3_600_000).toISOString(),
+            };
+        }
+    }
+    if (hasIdentifier()) void handleSearch();
 }
 
 function statusText(value?: string) {

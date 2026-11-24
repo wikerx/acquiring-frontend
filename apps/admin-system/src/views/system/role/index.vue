@@ -60,7 +60,7 @@
                                 <el-tag v-if="data.type === 'DIR'" size="small" class="auth-tree-tag auth-tree-tag--dir">{{ $t('system.menu.typeCatalog') }}</el-tag>
                                 <el-tag v-else-if="data.type === 'MENU'" size="small" type="success" class="auth-tree-tag">{{ $t('system.menu.typeMenu') }}</el-tag>
                                 <el-tag v-else-if="data.type === 'BTN'" size="small" type="warning" class="auth-tree-tag">{{ $t('system.menu.typeButton') }}</el-tag>
-                                <span class="auth-tree-label">{{ data.label }}</span>
+                                <span class="auth-tree-label">{{ data.labelKey ? t(data.labelKey) : data.label }}</span>
                                 <span v-if="data.code" class="auth-tree-code">{{ data.code }}</span>
                             </span>
                         </template>
@@ -90,7 +90,7 @@
                             <el-tag v-if="data.type === 'DIR'" size="small" class="auth-tree-tag auth-tree-tag--dir">{{ $t('system.menu.typeCatalog') }}</el-tag>
                             <el-tag v-else-if="data.type === 'MENU'" size="small" type="success" class="auth-tree-tag">{{ $t('system.menu.typeMenu') }}</el-tag>
                             <el-tag v-else-if="data.type === 'BTN'" size="small" type="warning" class="auth-tree-tag">{{ $t('system.menu.typeButton') }}</el-tag>
-                            <span class="auth-tree-label">{{ data.label }}</span>
+                            <span class="auth-tree-label">{{ data.labelKey ? t(data.labelKey) : data.label }}</span>
                             <span v-if="data.code" class="auth-tree-code">{{ data.code }}</span>
                         </span>
                     </template>
@@ -132,7 +132,7 @@
                             <el-tag v-if="data.type === 'DIR'" size="small" class="auth-tree-tag auth-tree-tag--dir">{{ $t('system.menu.typeCatalog') }}</el-tag>
                             <el-tag v-else-if="data.type === 'MENU'" size="small" type="success" class="auth-tree-tag">{{ $t('system.menu.typeMenu') }}</el-tag>
                             <el-tag v-else-if="data.type === 'BTN'" size="small" type="warning" class="auth-tree-tag">{{ $t('system.menu.typeButton') }}</el-tag>
-                            <span class="auth-tree-label">{{ data.label }}</span>
+                            <span class="auth-tree-label">{{ data.labelKey ? t(data.labelKey) : data.label }}</span>
                             <span v-if="data.code" class="auth-tree-code">{{ data.code }}</span>
                         </span>
                     </template>
@@ -157,10 +157,10 @@ import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
 import { useUserStore } from '@/store/modules/user';
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 interface RoleRow extends SysRole { statusTag: CommonStatus; }
 interface RoleForm { roleId?: number; roleCode: string; roleName: string; dataScope: string; description: string; status: number; sortNo: number; }
-interface AuthTreeNode { id: string; label: string; code?: string; type?: 'DIR' | 'MENU' | 'BTN'; menuId?: number; permissionId?: number; children?: AuthTreeNode[]; disabled?: boolean }
+interface AuthTreeNode { id: string; label: string; labelKey?: string; code?: string; type?: 'DIR' | 'MENU' | 'BTN'; menuId?: number; permissionId?: number; children?: AuthTreeNode[]; disabled?: boolean }
 
 const statusOptions = [{ label: t('common.enable'), value: 1 }, { label: t('common.disable'), value: 0 }];
 const userStore = useUserStore();
@@ -217,6 +217,15 @@ async function openRoleAuth(row: RoleRow) {
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); roleAuthVisible.value = false; }
     finally { authLoading.value = false; }
 }
+const analyticsPermissionLabels: Record<string, string> = {
+    'transaction:analytics:view': 'channelAnalytics.analyticsPagePermission',
+    'transaction:analytics:overview': 'route.admin_transaction_analytics_overview_v1',
+    'transaction:analytics:merchants': 'route.admin_transaction_analytics_merchants_v1',
+    'transaction:analytics:failures': 'route.admin_transaction_analytics_failures_v1',
+    'transaction:analytics:channels': 'route.admin_transaction_analytics_channels_v1',
+    'transaction:analytics:three-ds': 'route.admin_transaction_analytics_three_ds_v1',
+};
+
 function buildAuthTree(menus: SysMenu[], permissions: SysPermission[] = []): AuthTreeNode[] {
     const hiddenGrantMenuCodes = new Set(['admin_settlement_batch_v1']);
     const menuMap = new Map<number, SysMenu>();
@@ -238,13 +247,16 @@ function buildAuthTree(menus: SysMenu[], permissions: SysPermission[] = []): Aut
             const permissionChildren = (permissionMap.get(menu.menuId) || []).map((permission) => ({
                 id: 'p_' + permission.permissionId,
                 label: permission.permissionName || permission.permissionCode,
+                labelKey: analyticsPermissionLabels[permission.permissionCode],
                 code: '(' + permission.permissionCode + ')',
                 type: 'BTN' as const,
                 permissionId: permission.permissionId,
             }));
             const allChildren = [...children, ...permissionChildren];
+            const labelKey = `route.${menu.menuCode}`;
             return {
                 id: 'm_' + menu.menuId,
+                labelKey: te(labelKey) ? labelKey : undefined,
                 label: menu.menuName || '',
                 code: menu.permissionCode ? '(' + menu.permissionCode + ')' : undefined,
                 type: (menu.menuType === 'CATALOG' ? 'DIR' : 'MENU') as 'DIR' | 'MENU',

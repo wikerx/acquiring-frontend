@@ -647,6 +647,7 @@ export * from './paymentLinkPresentation';
 
 export * from './transactionAction';
 export * from './transactionListQuery';
+export * from './transactionAnalyticsQuery';
 export { default as ConsoleActionFields } from './components/ConsoleActionFields.vue';
 export { default as TransactionActionSourceSummary } from './components/TransactionActionSourceSummary.vue';
 export { formatTransactionCardDisplay, formatTransactionCardBin } from './transactionCardDisplay';

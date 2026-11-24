@@ -75,6 +75,12 @@
                     <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item"><CurrencyDisplay :currency="item" :locale="String(locale)" size="sm" /></el-option>
                 </el-select>
             </el-form-item>
+            <el-form-item v-if="activeTab === 'channels'" :label="t('transactionAnalytics.channelCode')">
+                <el-select v-model="filters.channelCode" clearable filterable allow-create default-first-option
+                    :placeholder="t('transactionAnalytics.all')">
+                    <el-option v-for="code in channelOptions" :key="code" :label="code" :value="code" />
+                </el-select>
+            </el-form-item>
             <template #time>
                 <el-form-item :label="t('transactionAnalytics.dateRange')" class="transaction-time-form-item analytics-time-filter">
                     <TransactionTimeRangeFilter
@@ -329,6 +335,15 @@
             </section>
         </template>
 
+        <el-alert
+            v-else-if="activeTabAuthorized && activeTab === 'channels' && channelFilterMismatch"
+            :title="t('channelAnalytics.filterMismatch', { channel: appliedChannelQuery?.channelCode })"
+            type="error"
+            :closable="false"
+            show-icon
+            class="analytics-alert"
+        />
+
         <template v-else-if="activeTabAuthorized && activeTab === 'channels'">
             <section class="analytics-metric-band analytics-metric-band--diagnostic">
                 <article v-for="item in channelMetrics" :key="item.key" class="analytics-metric" :class="`is-${item.tone}`">
@@ -337,6 +352,11 @@
                     <small>{{ item.hint }}</small>
                 </article>
             </section>
+            <ChannelPerformanceWorkbench
+                :query="appliedChannelQuery"
+                :channels="channelPerformance?.channels ?? []"
+                :loading="loading"
+            />
             <section class="analytics-panel analytics-panel--trend">
                 <header class="analytics-panel__header">
                     <div>
@@ -382,45 +402,7 @@
                     />
                 </section>
             </div>
-            <section class="analytics-panel analytics-panel--table">
-                <StandardTable
-                    table-key="transaction-analytics-channels"
-                    v-loading="loading"
-                    :data="channelPerformance?.channels ?? []"
-                    row-key="channelCode"
-                    size="small"
-                >
-                    <el-table-column prop="channelCode" :label="t('transactionAnalytics.channelCode')" min-width="150" fixed="left" />
-                    <el-table-column prop="totalRequestCount" :label="t('transactionAnalytics.channelRequests')" min-width="115" align="right">
-                        <template #default="{ row }">{{ formatCount(row.totalRequestCount) }}</template>
-                    </el-table-column>
-                    <el-table-column prop="successfulRequestCount" :label="t('transactionAnalytics.channelRequestSuccess')" min-width="120" align="right">
-                        <template #default="{ row }"><span class="metric-success">{{ formatCount(row.successfulRequestCount) }}</span></template>
-                    </el-table-column>
-                    <el-table-column prop="failedRequestCount" :label="t('transactionAnalytics.channelRequestFailed')" min-width="115" align="right">
-                        <template #default="{ row }"><span class="metric-failed">{{ formatCount(row.failedRequestCount) }}</span></template>
-                    </el-table-column>
-                    <el-table-column prop="timeoutRequestCount" :label="t('transactionAnalytics.channelTimeout')" min-width="105" align="right">
-                        <template #default="{ row }">{{ formatCount(row.timeoutRequestCount) }}</template>
-                    </el-table-column>
-                    <el-table-column prop="inFlightRequestCount" :label="t('transactionAnalytics.tableInFlight')" min-width="105" align="right">
-                        <template #default="{ row }">{{ formatCount(row.inFlightRequestCount) }}</template>
-                    </el-table-column>
-                    <el-table-column prop="requestSuccessRate" :label="t('transactionAnalytics.channelRequestRate')" min-width="130" align="right">
-                        <template #default="{ row }"><strong>{{ formatRate(row.requestSuccessRate) }}</strong></template>
-                    </el-table-column>
-                    <el-table-column prop="transactionSuccessRate" :label="t('transactionAnalytics.channelTransactionRate')" min-width="140" align="right">
-                        <template #default="{ row }"><strong>{{ formatRate(row.transactionSuccessRate) }}</strong></template>
-                    </el-table-column>
-                    <el-table-column prop="averageDurationMillis" :label="t('transactionAnalytics.channelAverageDuration')" min-width="130" align="right">
-                        <template #default="{ row }">{{ formatMillis(row.averageDurationMillis) }}</template>
-                    </el-table-column>
-                    <el-table-column prop="maximumDurationMillis" :label="t('transactionAnalytics.channelMaximumDuration')" min-width="130" align="right">
-                        <template #default="{ row }">{{ formatMillis(row.maximumDurationMillis) }}</template>
-                    </el-table-column>
-                </StandardTable>
-                <el-empty v-if="!loading && !channelPerformance?.channels.length" :description="t('transactionAnalytics.noData')" />
-            </section>
+
         </template>
 
         <template v-else-if="activeTabAuthorized && activeTab === 'threeDs'">
@@ -495,6 +477,7 @@ import {
     formatAnalyticsAmountValue,
     resolvePaymentLogoKeys,
     safeErrorType,
+    useTransactionAnalyticsQuery,
     type AnalyticsChartClick,
     type PaymentLogoKey,
     type TransactionAnalyticsChannelPerformance,
@@ -502,11 +485,12 @@ import {
     type TransactionAnalyticsFailureAnalysis,
     type TransactionAnalyticsMerchantPerformance,
     type TransactionAnalyticsOverview,
-    type TransactionAnalyticsQuery,
     type TransactionAnalyticsThreeDs,
 } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import type { ChannelAnalyticsQuery } from '@/api/transaction/channelAnalytics';
+import ChannelPerformanceWorkbench from './ChannelPerformanceWorkbench.vue';
 import {
     getTransactionAnalyticsChannels,
     getTransactionAnalyticsFailures,
@@ -554,13 +538,16 @@ const activeTab = ref<AnalyticsTab>(
 );
 const quickPreset = ref('last7');
 const dateRange = ref<string[]>(createTransactionAnalyticsRange(7, DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
-const loading = ref(false);
-const errorMessage = ref('');
+const { loading, failed, run, invalidate } = useTransactionAnalyticsQuery();
+const errorMessage = computed(() => failed.value ? t('transactionAnalytics.loadFailed') : '');
 const overview = ref<TransactionAnalyticsOverview>();
 const overviewCardBrand = ref<string>();
 const merchantPerformance = ref<TransactionAnalyticsMerchantPerformance>();
 const failureAnalysis = ref<TransactionAnalyticsFailureAnalysis>();
 const channelPerformance = ref<TransactionAnalyticsChannelPerformance>();
+const appliedChannelQuery = ref<ChannelAnalyticsQuery>();
+const channelFilterMismatch = ref(false);
+const channelOptions = ref<string[]>([]);
 const threeDsAnalysis = ref<TransactionAnalyticsThreeDs>();
 const transactionTypeOptions = ref<TransactionDictOption[]>([]);
 const paymentMethodOptions = ref<TransactionDictOption[]>([]);
@@ -568,13 +555,12 @@ const paymentBrandOptions = ref<TransactionDictOption[]>([]);
 const timezoneOptions = ref(ensureTransactionTimezoneOptions([]));
 const filters = reactive({
     merchantIds: [] as string[],
+    channelCode: '',
     paymentTool: '',
     transactionType: '',
     currency: '',
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
-let requestSequence = 0;
-
 const availableTabs = computed(() => ANALYTICS_TABS.filter((tab) => userStore.hasPermission(tab.permission)));
 const activeTabAuthorized = computed(() => availableTabs.value.some((tab) => tab.name === activeTab.value));
 
@@ -799,7 +785,7 @@ function paymentToolValue(paymentMethod: string, paymentBrand?: string) {
     return `${paymentMethod}|${paymentBrand || ''}`;
 }
 
-function buildQuery(): TransactionAnalyticsQuery | undefined {
+function buildQuery(): ChannelAnalyticsQuery | undefined {
     const [beginTime, endTime] = dateRange.value ?? [];
     const duration = new Date(endTime).getTime() - new Date(beginTime).getTime();
     if (!beginTime || !endTime || !Number.isFinite(duration) || duration <= 0 || duration > 31 * 24 * 60 * 60 * 1000) {
@@ -810,7 +796,8 @@ function buildQuery(): TransactionAnalyticsQuery | undefined {
     return {
         beginTime,
         endTime,
-        merchantIds: filters.merchantIds.length ? filters.merchantIds : undefined,
+        merchantIds: filters.merchantIds.length ? [...filters.merchantIds] : undefined,
+        channelCode: activeTab.value === 'channels' ? filters.channelCode?.trim() || undefined : undefined,
         transactionType: filters.transactionType || undefined,
         currency: filters.currency?.toUpperCase() || undefined,
         paymentMethod: paymentTool?.paymentMethod,
@@ -819,46 +806,59 @@ function buildQuery(): TransactionAnalyticsQuery | undefined {
     };
 }
 
-async function loadActiveTab() {
-    if (!availableTabs.value.some((tab) => tab.name === activeTab.value)) return;
-    const query = buildQuery();
-    if (!query) return;
-    const currentRequest = ++requestSequence;
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        switch (activeTab.value) {
+function loadActiveTab() {
+    const tab = activeTab.value;
+    const query = activeTabAuthorized.value ? buildQuery() : undefined;
+    if (!query) {
+        invalidate();
+        return;
+    }
+    if (tab === 'channels') {
+        appliedChannelQuery.value = query;
+        channelPerformance.value = undefined;
+        channelFilterMismatch.value = false;
+    }
+    return run(JSON.stringify([tab, query]), async () => {
+        switch (tab) {
             case 'overview': {
                 const result = await getTransactionAnalyticsOverview(query);
-                if (currentRequest === requestSequence) {
+                return () => {
                     overview.value = result;
                     overviewCardBrand.value = query.paymentBrand;
-                }
-                break;
+                };
             }
-            case 'merchants':
-                merchantPerformance.value = await getTransactionAnalyticsMerchants(query);
-                break;
-            case 'failures':
-                failureAnalysis.value = await getTransactionAnalyticsFailures(query);
-                break;
-            case 'channels':
-                channelPerformance.value = await getTransactionAnalyticsChannels(query);
-                break;
-            case 'threeDs':
-                threeDsAnalysis.value = await getTransactionAnalyticsThreeDs(query);
-                break;
+            case 'merchants': {
+                const result = await getTransactionAnalyticsMerchants(query);
+                return () => { merchantPerformance.value = result; };
+            }
+            case 'failures': {
+                const result = await getTransactionAnalyticsFailures(query);
+                return () => { failureAnalysis.value = result; };
+            }
+            case 'channels': {
+                const result = await getTransactionAnalyticsChannels(query);
+                return () => {
+                    const selectedChannel = query.channelCode?.toUpperCase();
+                    if (selectedChannel && result.channels.some(({ channelCode }) => channelCode.toUpperCase() !== selectedChannel)) {
+                        channelFilterMismatch.value = true;
+                        return;
+                    }
+                    channelPerformance.value = result;
+                    channelOptions.value = [...new Set([...channelOptions.value, ...result.channels.map((row) => row.channelCode)])].sort();
+                };
+            }
+            case 'threeDs': {
+                const result = await getTransactionAnalyticsThreeDs(query);
+                return () => { threeDsAnalysis.value = result; };
+            }
         }
-    } catch {
-        if (currentRequest === requestSequence) errorMessage.value = t('transactionAnalytics.loadFailed');
-    } finally {
-        if (currentRequest === requestSequence) loading.value = false;
-    }
+    });
 }
 
 function resetFilters() {
     Object.assign(filters, {
         merchantIds: [],
+        channelCode: '',
         paymentTool: '',
         transactionType: '',
         currency: '',
@@ -911,12 +911,12 @@ async function loadFilterOptions() {
     }
 }
 
-onMounted(async () => {
+onMounted(() => {
     const firstAuthorizedTab = availableTabs.value[0];
     if (!firstAuthorizedTab) return;
     activeTab.value = firstAuthorizedTab.name;
-    await loadFilterOptions();
-    loadActiveTab();
+    void loadFilterOptions();
+    void loadActiveTab();
 });
 
 watch(locale, () => void loadFilterOptions());
