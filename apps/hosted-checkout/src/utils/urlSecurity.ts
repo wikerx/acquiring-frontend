@@ -43,13 +43,15 @@ function isDevelopmentHostname(hostname: string): boolean {
         || (octets[0] === 192 && octets[1] === 168);
 }
 
-/** dev 联调只允许打开已登记渠道挡板签发的钱包授权页。 */
+/** 后端已校验渠道来源，浏览器确认授权页的协议和路径后再导航。 */
 export function resolveWalletAuthorizationUrl(value?: string): string | null {
-    if (!value) return null;
+    if (!value || value !== value.trim() || value.includes('\\')) return null;
     try {
         const url = new URL(value);
-        return url.origin === 'http://127.0.0.1:58090' && !url.username && !url.password
-            && !url.search && !url.hash && /^\/simulate\/hosted-payins\/[a-f0-9-]{32,36}$/.test(url.pathname)
+        const supportedProtocol = url.protocol === 'https:'
+            || (url.protocol === 'http:' && (import.meta.env.DEV || isDevelopmentHostname(url.hostname)));
+        return supportedProtocol && !url.username && !url.password && !url.search && !url.hash
+            && /^(?:\/[A-Za-z0-9_-]+)*\/simulate\/hosted-payins\/[a-f0-9-]{32,36}$/.test(url.pathname)
             ? url.href : null;
     } catch {
         return null;

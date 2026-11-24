@@ -3,6 +3,7 @@ import { constants, createDecipheriv, generateKeyPairSync, privateDecrypt } from
 
 const origin = process.env.REQ001_CHECKOUT_DEV_ORIGIN ?? 'http://127.0.0.1:5196';
 const authorizationUrl = 'http://127.0.0.1:58090/simulate/hosted-payins/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+const remoteAuthorizationUrl = 'https://wallet-simulator.example.test:8443/channel/simulate/hosted-payins/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
 function walletSession(pageState = 'PAYABLE', includeCard = true) {
   return {
@@ -58,22 +59,25 @@ function reply(route: Route, state: string, redirectUrl = authorizationUrl) {
   return route.fulfill({ json: { code: 'A0000', data: state === 'READY' ? { state, redirectUrl } : { state } } });
 }
 
-for (const [wallet, code, width] of [
-  ['Apple Pay', 'APPLE_PAY', 1440],
-  ['Google Pay', 'GOOGLE_PAY', 390],
+for (const [wallet, code, width, channelUrl] of [
+  ['Apple Pay', 'APPLE_PAY', 1440, authorizationUrl],
+  ['Google Pay', 'GOOGLE_PAY', 390, authorizationUrl],
+  ['Apple Pay', 'APPLE_PAY', 1440, remoteAuthorizationUrl],
+  ['Google Pay', 'GOOGLE_PAY', 390, remoteAuthorizationUrl],
 ] as const) {
-  test(`${wallet} opens the channel from one centered branded-button click at ${width}px`, async ({ page }) => {
+  const channelLocation = channelUrl === authorizationUrl ? 'local' : 'remote';
+  test(`${wallet} opens the ${channelLocation} channel from one centered branded-button click at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const actions: string[] = [];
     let approvalRequested = false;
     page.on('request', request => {
-      if (request.url() === authorizationUrl) approvalRequested = true;
+      if (request.url() === channelUrl) approvalRequested = true;
     });
     await openCheckout(page, async (route) => {
       const body = route.request().postDataJSON();
       expect(body.paymentMethod).toBe(code);
       actions.push(body.action);
-      await reply(route, 'READY');
+      await reply(route, 'READY', channelUrl);
     });
 
     const walletRow = page.locator('.checkout-payment-item').filter({

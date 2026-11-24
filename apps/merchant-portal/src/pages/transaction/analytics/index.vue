@@ -252,6 +252,7 @@ import {
     createTransactionAnalyticsRange,
     formatAnalyticsAmountValue,
     resolvePaymentLogoKeys,
+    useTransactionAnalyticsQuery,
     type PaymentLogoKey,
     type TransactionAnalyticsDimensionMetric,
     type TransactionAnalyticsFailure,
@@ -286,8 +287,8 @@ const currencyOptions = ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'HKD', 'SGD', 'AUD']
 const activeTab = ref<AnalyticsTab>('overview');
 const quickPreset = ref('last7');
 const dateRange = ref<string[]>(createTransactionAnalyticsRange(7, DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
-const loading = ref(false);
-const errorMessage = ref('');
+const { loading, failed, run, invalidate } = useTransactionAnalyticsQuery();
+const errorMessage = computed(() => failed.value ? t('transactionAnalytics.loadFailed') : '');
 const overview = ref<TransactionAnalyticsOverview>();
 const overviewCardBrand = ref<string>();
 const failureAnalysis = ref<TransactionAnalyticsFailure>();
@@ -301,8 +302,6 @@ const filters = reactive({
     currency: '',
     queryTimeZone: DEFAULT_TRANSACTION_QUERY_TIME_ZONE,
 });
-let requestSequence = 0;
-
 const quickTimeOptions = computed(() => [
     { value: 'last7', label: t('transactionAnalytics.last7Days'), days: 7 },
     { value: 'last14', label: t('transactionAnalytics.last14Days'), days: 14 },
@@ -423,27 +422,24 @@ function buildQuery(): TransactionAnalyticsQuery | undefined {
     };
 }
 
-async function loadActiveTab() {
+function loadActiveTab() {
+    const tab = activeTab.value;
     const query = buildQuery();
-    if (!query) return;
-    const currentRequest = ++requestSequence;
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        if (activeTab.value === 'overview') {
+    if (!query) {
+        invalidate();
+        return;
+    }
+    return run(JSON.stringify([tab, query]), async () => {
+        if (tab === 'overview') {
             const result = await transactionApi.analyticsOverview(query);
-            if (currentRequest === requestSequence) {
+            return () => {
                 overview.value = result;
                 overviewCardBrand.value = query.paymentBrand;
-            }
-        } else {
-            failureAnalysis.value = await transactionApi.analyticsFailures(query);
+            };
         }
-    } catch {
-        if (currentRequest === requestSequence) errorMessage.value = t('transactionAnalytics.loadFailed');
-    } finally {
-        if (currentRequest === requestSequence) loading.value = false;
-    }
+        const result = await transactionApi.analyticsFailures(query);
+        return () => { failureAnalysis.value = result; };
+    });
 }
 
 function resetFilters() {
@@ -487,9 +483,9 @@ async function loadFilterOptions() {
     timezoneOptions.value = ensureTransactionTimezoneOptions(timezones);
 }
 
-onMounted(async () => {
-    await loadFilterOptions();
-    loadActiveTab();
+onMounted(() => {
+    void loadFilterOptions();
+    void loadActiveTab();
 });
 
 watch(locale, () => void loadFilterOptions());
