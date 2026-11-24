@@ -36,7 +36,8 @@
             </template>
         </TransactionSearchPanel>
 
-        <TransactionResultBar :items="summaryItems" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
+        <TransactionResultBar :items="loadedSummary ? summaryItems : []" :summary-loading="summaryLoading" :summary-failed="summaryFailed"
+            @retry-summary="loadSummary" @toggle-search="showSearch = !showSearch" @refresh="loadData" />
 
         <el-row class="mb8 transaction-table-toolbar">
             <el-col :span="1.5">
@@ -151,7 +152,7 @@
         </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background />
         </div>
 
         <TransactionDetailDrawer
@@ -171,15 +172,16 @@
 import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Download, View } from '@element-plus/icons-vue';
-import { ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { TransactionStageStatusDisplay, CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay, safeErrorType } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, CurrencyAmountDisplay, TransactionStatusDisplay, TransactionTypeDisplay, safeErrorType, useTransactionListQuery, userFacingErrorMessage } from '@acquiring/shared';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import {
     getTransactionOrderDetail,
-    searchTransactionOrdersWithSummary,
+    searchTransactionOrders,
+    getTransactionOrderSummary,
     submitTransactionOrderExportTask,
     type TransactionDetail,
     type TransactionAmountSummary,
@@ -217,18 +219,28 @@ import {
 const { t, locale } = useI18n();
 const router = useRouter();
 const showSearch = ref(true);
-const loading = ref(false);
 const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
 const merchantVisible = ref(false);
-const rows = ref<TransactionOrder[]>([]);
 let hasRequestedData = false;
 const detail = ref<TransactionDetail | null>(null);
 const selectedDetailTransactionId = ref('');
 const selectedMerchantId = ref('');
-const total = ref(0);
-const summary = ref<TransactionOrderSummary>({
+
+const page = ref(1);
+const pageSize = ref(10);
+const {
+    rows, total, loading, summary: loadedSummary, summaryLoading, summaryFailed, search, loadSummary,
+} = useTransactionListQuery({
+    page,
+    pageSize,
+    fetchPage: searchTransactionOrders,
+    fetchSummary: getTransactionOrderSummary,
+    summaryAfterPage: true,
+    onPageError: (error) => ElMessage.error(userFacingErrorMessage(error, t('transaction.summary.pageFailed'))),
+});
+const summary = computed<TransactionOrderSummary>(() => loadedSummary.value ?? {
     totalCount: 0,
     successCount: 0,
     failedCount: 0,
@@ -239,8 +251,6 @@ const summary = ref<TransactionOrderSummary>({
     capturedAmountSummaries: [],
     failedAmountSummaries: [],
 });
-const page = ref(1);
-const pageSize = ref(10);
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 const quickPreset = ref('today');
 const query = reactive({
@@ -262,7 +272,7 @@ const summaryItems = computed(() => [
     {
         key: 'total',
         label: t('transaction.summary.total'),
-        value: total.value.toLocaleString(),
+        value: summary.value.totalCount.toLocaleString(),
         description: t('transaction.summary.processingMatched', { count: summary.value.processingCount.toLocaleString() }),
         details: amountSummaryDetails(summary.value.amountSummaries),
     },
@@ -346,17 +356,9 @@ async function loadDictionaries() {
     }
 }
 
-async function loadData() {
+function loadData() {
     hasRequestedData = true;
-    loading.value = true;
-    try {
-        const result = await searchTransactionOrdersWithSummary(buildQuery(page.value, pageSize.value));
-        rows.value = result.page.records;
-        summary.value = result.summary;
-        total.value = result.summary.totalCount;
-    } finally {
-        loading.value = false;
-    }
+    return search(buildQuery());
 }
 
 async function handleExport() {
@@ -387,11 +389,9 @@ function createExportRequestId(prefix: string) {
     return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
+function buildQuery(): TransactionPageQuery {
     const range = splitDateRange(currentDateRange());
     return {
-        pageNo,
-        pageSize: currentPageSize,
         merchantId: query.merchantId || undefined,
         merchantOrderNo: query.merchantOrderNo || undefined,
         transactionId: query.transactionId || undefined,

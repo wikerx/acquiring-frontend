@@ -2898,6 +2898,10 @@ export default {
       description: '按商户号、系统订单号、通知状态和时间定位商户回调任务',
     },
     summary: {
+      loading: '正在加载统计…',
+      loadFailed: '统计加载失败',
+      retry: '重试',
+      pageFailed: '交易数据加载失败',
       total: '查询结果',
       loaded: '已加载 {count} 笔',
       matched: '匹配交易 {count} 笔',

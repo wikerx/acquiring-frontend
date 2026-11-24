@@ -646,6 +646,7 @@ export { default as CheckoutMerchantLogo } from './components/CheckoutMerchantLo
 export * from './paymentLinkPresentation';
 
 export * from './transactionAction';
+export * from './transactionListQuery';
 export { default as ConsoleActionFields } from './components/ConsoleActionFields.vue';
 export { default as TransactionActionSourceSummary } from './components/TransactionActionSourceSummary.vue';
 export { formatTransactionCardDisplay, formatTransactionCardBin } from './transactionCardDisplay';

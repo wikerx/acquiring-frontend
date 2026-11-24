@@ -965,6 +965,13 @@ export async function searchTransactionOrders(data: TransactionPageQuery) {
     return unwrapResult(result.data);
 }
 
+export async function getTransactionOrderSummary(data: TransactionPageQuery) {
+    const result = await http.post<CommonResult<TransactionOrderSummary>>(
+        '/admin/transactions/orders/summary', data,
+    );
+    return unwrapResult(result.data);
+}
+
 export async function searchTransactionOrdersWithSummary(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<TransactionOrderSearchResult>>('/admin/transactions/orders/search-with-summary', data);
     return unwrapResult(result.data);
@@ -1001,6 +1008,13 @@ export async function submitTransactionOperationExportTask(data: {
     const result = await http.post<CommonResult<ExportTaskSummary>>(
         '/admin/transactions/operations/export-task',
         data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getTransactionOperationSummary(data: TransactionPageQuery) {
+    const result = await http.post<CommonResult<TransactionOperationSummary>>(
+        '/admin/transactions/operations/summary', data,
     );
     return unwrapResult(result.data);
 }

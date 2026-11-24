@@ -89,7 +89,10 @@
 
         <TransactionResultBar
             class="transaction-operation-summary"
-            :items="summaryItems"
+            :items="loadedSummary ? summaryItems : []"
+            :summary-loading="summaryLoading"
+            :summary-failed="summaryFailed"
+            @retry-summary="loadSummary"
             @toggle-search="showSearch = !showSearch"
             @refresh="loadData"
         />
@@ -221,7 +224,7 @@
         </StandardTable>
 
         <div class="pagination-container" v-show="total > 0">
-            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background />
         </div>
 
         <TransactionDetailDrawer
@@ -343,7 +346,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, useTransactionListQuery, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -357,7 +360,8 @@ import {
     refundTransactionOperation,
     requeryTransactionChannelMatch,
     retryMerchantNotification,
-    searchTransactionOperationsWithSummary,
+    searchTransactionOperations,
+    getTransactionOperationSummary,
     voidTransactionOperation,
     type TransactionAmountSummary,
     type TransactionDetail,
@@ -441,7 +445,6 @@ function handleTransactionRowAction(key: string, row: TransactionOperation) {
     else if (key === 'void') void openVoidDialog(row);
 }
 const showSearch = ref(true);
-const loading = ref(false);
 const exporting = ref(false);
 const detailLoading = ref(false);
 const detailVisible = ref(false);
@@ -455,15 +458,21 @@ const merchantVisible = ref(false);
 const actionSubmitting = ref(false);
 const retryingTransactionId = ref('');
 const matchingTransactionId = ref('');
-const rows = ref<TransactionOperation[]>([]);
-const operationSummary = ref<TransactionOperationSummary | null>(null);
 const detail = ref<TransactionDetail | null>(null);
 const selectedOperation = ref<TransactionOperation | null>(null);
 const selectedDetailTransactionId = ref('');
 const selectedMerchantId = ref('');
-const total = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
+const {
+    rows, total, loading, summary: loadedSummary, summaryLoading, summaryFailed, search, loadSummary,
+} = useTransactionListQuery({
+    page,
+    pageSize,
+    fetchPage: searchTransactionOperations,
+    fetchSummary: getTransactionOperationSummary,
+    onPageError: (error) => ElMessage.error(userFacingErrorMessage(error, t('transaction.summary.pageFailed'))),
+});
 const dateRange = ref<string[]>(defaultTransactionTodayRange(DEFAULT_TRANSACTION_QUERY_TIME_ZONE));
 const quickPreset = ref('today');
 const query = reactive({
@@ -579,7 +588,7 @@ const emptySummary = (): TransactionOperationSummary => ({
     paymentMethodSummaries: [],
 });
 
-const summary = computed(() => operationSummary.value || emptySummary());
+const summary = computed(() => loadedSummary.value || emptySummary());
 
 const successRateText = computed(() => {
     if (!summary.value.totalCount) {
@@ -626,7 +635,7 @@ const summaryItems = computed(() => [
     {
         key: 'total',
         label: t('transaction.summary.total'),
-        value: t('transaction.summary.countUnit', { count: total.value.toLocaleString() }),
+        value: t('transaction.summary.countUnit', { count: summary.value.totalCount.toLocaleString() }),
         description: '',
         details: amountSummaryDetails(summary.value.amountSummaries),
     },
@@ -765,19 +774,8 @@ async function loadFilterOptions<T extends SelectOption>(
     }
 }
 
-let dataVersion = 0;
-async function loadData() {
-  const version = ++dataVersion;
-    loading.value = true;
-    try {
-        const result = await searchTransactionOperationsWithSummary(buildQuery(page.value, pageSize.value));
-    if (version !== dataVersion) return;
-        rows.value = result.page.records;
-        total.value = result.page.total;
-        operationSummary.value = result.summary || emptySummary();
-    } finally {
-        if (version === dataVersion) loading.value = false;
-    }
+function loadData() {
+    return search(buildQuery());
 }
 
 async function handleExport() {
@@ -810,11 +808,9 @@ function createExportRequestId(prefix: string) {
     return `${prefix}-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function buildQuery(pageNo?: number, currentPageSize?: number): TransactionPageQuery {
+function buildQuery(): TransactionPageQuery {
     const range = splitDateRange(currentDateRange());
     return {
-        pageNo,
-        pageSize: currentPageSize,
         merchantId: query.merchantId || undefined,
         merchantOrderNo: query.merchantOrderNo || undefined,
         transactionId: query.transactionId || undefined,

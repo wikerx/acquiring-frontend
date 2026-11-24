@@ -1,6 +1,12 @@
 <template>
     <section class="transaction-result-bar" :class="{ 'is-compact': !items.length }">
-        <div v-if="items.length" class="transaction-result-bar__summary">
+        <div v-if="summaryLoading || summaryFailed" class="transaction-result-bar__title" role="status">
+            <span>{{ t(summaryLoading ? 'transaction.summary.loading' : 'transaction.summary.loadFailed') }}</span>
+            <el-button v-if="summaryFailed" link type="primary" @click="$emit('retrySummary')">
+                {{ t('transaction.summary.retry') }}
+            </el-button>
+        </div>
+        <div v-else-if="items.length" class="transaction-result-bar__summary">
             <article
                 v-for="item in items"
                 :key="item.key"
@@ -74,6 +80,7 @@
 
 <script setup lang="ts">
 import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { useI18n } from 'vue-i18n';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 
 interface TransactionSummaryDetail {
@@ -108,6 +115,8 @@ withDefaults(defineProps<{
         };
         details?: TransactionSummaryDetail[];
     }>;
+    summaryLoading?: boolean;
+    summaryFailed?: boolean;
     title?: string;
     description?: string;
 }>(), {
@@ -116,7 +125,10 @@ withDefaults(defineProps<{
     description: '',
 });
 
+const { t } = useI18n();
+
 defineEmits<{
+    retrySummary: [];
     toggleSearch: [];
     refresh: [];
 }>();

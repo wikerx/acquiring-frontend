@@ -342,6 +342,20 @@ export const transactionApi = {
     );
     return unwrapResult(result.data);
   },
+  async pageOperations(data: TransactionPageQuery) {
+    const result = await http.post<CommonResult<PageResult<TransactionOperation>>>(
+      '/merchant/transactions/orders/operations/page',
+      data,
+    );
+    return unwrapResult(result.data);
+  },
+  async summarizeOperations(data: TransactionPageQuery) {
+    const result = await http.post<CommonResult<TransactionOperationSummary>>(
+      '/merchant/transactions/orders/operations/summary',
+      data,
+    );
+    return unwrapResult(result.data);
+  },
   async searchOperations(data: TransactionPageQuery) {
     const result = await http.post<CommonResult<TransactionOperationSearchResponse>>(
       '/merchant/transactions/orders/operations/search',

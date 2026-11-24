@@ -3020,6 +3020,10 @@ export default {
       description: 'Locate merchant callback tasks by merchant, system order, status and time',
     },
     summary: {
+      loading: 'Loading statistics…',
+      loadFailed: 'Statistics could not be loaded',
+      retry: 'Retry',
+      pageFailed: 'Failed to load transactions',
       total: 'Query Results',
       loaded: '{count} loaded',
       matched: '{count} matched',

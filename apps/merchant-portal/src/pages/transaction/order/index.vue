@@ -134,7 +134,15 @@
     </section>
 
     <section class="transaction-result-strip">
-      <div class="transaction-result-strip__summary">
+      <div v-if="summaryLoading || summaryFailed" class="transaction-result-strip__summary" role="status">
+        <div class="transaction-result-row__content transaction-result-strip__status">
+          <span>{{ t(summaryLoading ? 'transaction.order.summaryLoading' : 'transaction.order.summaryFailed') }}</span>
+          <el-button v-if="summaryFailed" link type="primary" @click="loadSummary">
+            {{ t('transaction.order.retrySummary') }}
+          </el-button>
+        </div>
+      </div>
+      <div v-else-if="summary" class="transaction-result-strip__summary">
         <article
           v-for="item in resultRows"
           :key="item.key"
@@ -408,8 +416,6 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           background
-          @size-change="loadData"
-          @current-change="loadData"
         />
       </div>
     </section>
@@ -835,7 +841,7 @@
   import { TransactionStageStatusDisplay, TransactionStageStatusSelect,
     CurrencyAmountDisplay,
     formatTransactionCardDisplay,
-    RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh,
+    RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh, useTransactionListQuery,
     type RefundContext,
     getPaymentLogos,
     PaymentLogoGroup,
@@ -899,7 +905,6 @@
   const { t, locale } = useI18n();
   const route = useRoute();
   const auth = useAuthStore();
-  const loading = ref(false);
   const exporting = ref(false);
   const detailLoading = ref(false);
   const detailVisible = ref(false);
@@ -912,10 +917,17 @@
   const refundSaving = ref(false);
   const actionSaving = ref(false);
   const showSearch = ref(true);
-  const rows = ref<TransactionOperation[]>([]);
-  const total = ref(0);
   const page = ref(1);
   const pageSize = ref(10);
+  const { rows, total, loading, summary, summaryLoading, summaryFailed, search, loadSummary } =
+    useTransactionListQuery({
+      page,
+      pageSize,
+      fetchPage: transactionApi.pageOperations,
+      fetchSummary: transactionApi.summarizeOperations,
+      onPageError: (error) =>
+        ElMessage.error(userFacingErrorMessage(error, t('transaction.order.loadFailed'))),
+    });
   const detail = ref<TransactionDetail>();
   const detailOperation = ref<TransactionOperation | null>(null);
   const focusedDetailOperation = computed<TransactionOperation | null>(() => {
@@ -929,7 +941,6 @@
   const detailSummaryRecord = computed<TransactionOrder | TransactionOperation | null>(() =>
     focusedDetailOperation.value || detail.value?.order || null,
   );
-  const summary = ref<Awaited<ReturnType<typeof transactionApi.searchOperations>>['summary']>();
   const activeActionRow = ref<TransactionOperation | null>(null);
   const refundForm = reactive({
     amount: null as string | null | undefined,
@@ -1021,7 +1032,7 @@
   }
 
   const resultRows = computed(() => {
-    const totalCount = Number(summary.value?.totalCount || total.value || 0);
+    const totalCount = Number(summary.value?.totalCount ?? 0);
     const successCount = Number(summary.value?.successCount || 0);
     const failedCount = Number(summary.value?.failedCount || 0);
     return [
@@ -1188,7 +1199,7 @@
         const latest = await transactionApi.detail(current.transactionId, current.transactionDateTime, current.rootTransactionDateTime);
         if (detailVisible.value && detailOperation.value?.transactionId === current.transactionId) detail.value = latest;
     }
-}, () => !loading.value && !captureVisible.value && !voidVisible.value && !refundVisible.value);
+}, () => !loading.value && !summaryLoading.value && !captureVisible.value && !voidVisible.value && !refundVisible.value);
 
   watch(locale, () => void loadDictionaries());
 
@@ -1253,26 +1264,8 @@
     }
   }
 
-  let dataVersion = 0;
-  async function loadData() {
-    const version = ++dataVersion;
-    loading.value = true;
-    try {
-      const payload = buildQueryPayload();
-      const operationSearch = await transactionApi.searchOperations(payload);
-      if (version !== dataVersion) return;
-      rows.value = operationSearch.page?.records || [];
-      total.value = operationSearch.page?.total || 0;
-      summary.value = operationSearch.summary;
-    } catch (error: unknown) {
-      if (version !== dataVersion) return;
-      rows.value = [];
-      total.value = 0;
-      summary.value = undefined;
-      ElMessage.error(userFacingErrorMessage(error, t('transaction.order.loadFailed')));
-    } finally {
-      if (version === dataVersion) loading.value = false;
-    }
+  function loadData() {
+    return search(buildQueryPayload());
   }
 
   function applyQuery() {
@@ -1691,6 +1684,11 @@
     background: #ffffff;
     box-shadow: var(--merchant-card-shadow-soft);
     overflow: hidden;
+  }
+
+  .transaction-result-strip__status {
+    grid-column: 1 / -1;
+    min-height: 34px;
   }
 
   .transaction-result-row,
