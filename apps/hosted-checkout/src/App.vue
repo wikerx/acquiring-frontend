@@ -6,7 +6,7 @@
             @change="handleLocaleChange"
         />
 
-        <div class="checkout-trustbar">
+        <div v-if="session" class="checkout-trustbar">
             <div class="checkout-trustbar__item checkout-trustbar__item--secure">
                 <img class="checkout-trustbar__logo" :src="checkoutBrand.logos.icon" :alt="checkoutBrand.name" />
                 <strong>{{ t('trustbar.ssl') }}</strong>
@@ -174,31 +174,34 @@
                     </div>
                 </article>
 
-                <article class="checkout-section-card">
-                    <div class="checkout-section-card__header">
-                        <div>
-                            <p>{{ t('checkout.paymentMethod') }}</p>
-                            <h2>{{ t('checkout.chooseMethod') }}</h2>
-                        </div>
-                    </div>
+                <article class="checkout-section-card checkout-payment-section" aria-labelledby="checkout-payment-heading">
+                    <h2 id="checkout-payment-heading">{{ t('checkout.paymentMethod') }}</h2>
 
-                    <div v-if="supportedPaymentMethods.length === 0" class="checkout-inline-note checkout-inline-note--error">
+                    <div v-if="supportedPaymentMethods.length === 0" class="checkout-inline-note" role="status">
                         {{ t('checkout.noPaymentMethods') }}
                     </div>
 
-                    <div class="checkout-payment-list">
-                        <div
-                            v-for="method in visiblePaymentMethods"
-                            :key="method.id"
-                            class="checkout-payment-item"
-                        >
+                    <div v-else ref="paymentList" class="checkout-payment-list">
+                        <div v-for="method in visiblePaymentMethods" :key="method.id" class="checkout-payment-item">
                             <div :class="['checkout-payment-option', { 'is-active': selectedPaymentMethod === method.id }]">
                                 <button class="checkout-payment-option__select" type="button" :aria-pressed="selectedPaymentMethod === method.id"
                                     :disabled="submitting" @click="selectPaymentMethod(method.id)">
                                     <span class="checkout-payment-option__radio" aria-hidden="true"></span>
+                                    <span class="checkout-payment-option__logo" aria-hidden="true">
+                                        <PaymentLogoMark v-if="method.paymentMethod === 'BANK_CARD' || method.logoKeys[0]"
+                                            :logo-key="method.paymentMethod === 'BANK_CARD' ? 'bankCard' : method.logoKeys[0]"
+                                            size="sm" compact />
+                                    </span>
                                     <span class="checkout-payment-option__body"><strong>{{ method.label }}</strong></span>
+                                    <span v-if="method.paymentMethod === 'BANK_CARD' && selectedPaymentMethod !== method.id && method.logoKeys.length"
+                                        class="checkout-payment-option__summary" aria-hidden="true">
+                                        <PaymentLogoMark v-for="logo in method.logoKeys.slice(0, 3)" :key="logo"
+                                            :logo-key="logo" size="sm" compact />
+                                        <small v-if="method.logoKeys.length > 3">+{{ method.logoKeys.length - 3 }}</small>
+                                    </span>
+                                    <span v-if="method.componentState === 'NOT_INTEGRATED' || method.componentState === 'BACKEND_UNAVAILABLE'"
+                                        class="checkout-payment-option__status">{{ t('checkout.temporarilyUnavailable') }}</span>
                                 </button>
-                                <PaymentMethodCarousel v-if="method.logoKeys.length" class="checkout-payment-option__logos" :keys="method.logoKeys" overflow-only :label="method.label" :previous-label="t('trustbar.previous')" :next-label="t('trustbar.next')" />
                             </div>
 
                             <div
@@ -217,63 +220,109 @@
                                         {{ fieldErrorText(fieldErrors.cardholderName) }}
                                     </small>
                                 </label>
-                                <label class="checkout-field checkout-field--full">
-                                    <span>{{ t('checkout.cardNumber') }}</span>
-                                    <input
-                                        v-model="cardForm.cardNumber"
-                                        inputmode="numeric"
-                                        autocomplete="cc-number"
-                                        placeholder="4111 1111 1111 1111"
-                                        :aria-invalid="Boolean(fieldErrors.cardNumber)"
-                                        @input="formatCardNumber"
-                                        @blur="handleCardNumberBlur"
-                                    />
-                                    <small v-if="fieldErrors.cardNumber" class="checkout-field__hint checkout-field__hint--error">
-                                        {{ fieldErrorText(fieldErrors.cardNumber) }}
-                                    </small>
-                                </label>
-                                <div class="checkout-field-grid">
-                                    <label class="checkout-field">
-                                        <span>{{ t('checkout.expiry') }}</span>
-                                        <input
-                                            v-model="cardForm.expiry"
-                                            autocomplete="cc-exp"
-                                            placeholder="09/29"
-                                            :aria-invalid="Boolean(fieldErrors.expiry)"
-                                            @input="formatExpiry"
-                                        />
-                                        <small v-if="fieldErrors.expiry" class="checkout-field__hint checkout-field__hint--error">
-                                            {{ fieldErrorText(fieldErrors.expiry) }}
+                                <div class="checkout-card-entry">
+                                    <div class="checkout-field checkout-card-number">
+                                        <label for="checkout-card-number"><span>{{ t('checkout.cardNumber') }}</span></label>
+                                        <div class="checkout-card-number__line">
+                                            <input
+                                                id="checkout-card-number"
+                                                v-model="cardForm.cardNumber"
+                                                inputmode="numeric"
+                                                autocomplete="cc-number"
+                                                placeholder="4111 1111 1111 1111"
+                                                :aria-invalid="Boolean(fieldErrors.cardNumber)"
+                                                @input="formatCardNumber"
+                                                @blur="handleCardNumberBlur"
+                                            />
+                                            <PaymentLogoGroup v-if="method.logoKeys.length" :keys="method.logoKeys" size="sm"
+                                                class="checkout-card-number__brands" role="group" :aria-label="t('checkout.acceptedCardBrands')" />
+                                        </div>
+                                        <small v-if="fieldErrors.cardNumber" class="checkout-field__hint checkout-field__hint--error">
+                                            {{ fieldErrorText(fieldErrors.cardNumber) }}
                                         </small>
-                                    </label>
-                                    <label class="checkout-field">
-                                        <span>{{ t('checkout.cvc') }}</span>
-                                        <input
-                                            v-model="cardForm.cvc"
-                                            type="password"
-                                            inputmode="numeric"
-                                            autocomplete="cc-csc"
-                                            placeholder="123"
-                                            :aria-invalid="Boolean(fieldErrors.cvc)"
-                                            @input="formatCvc"
-                                        />
-                                        <small v-if="fieldErrors.cvc" class="checkout-field__hint checkout-field__hint--error">
-                                            {{ fieldErrorText(fieldErrors.cvc) }}
-                                        </small>
-                                    </label>
+                                    </div>
+                                    <div class="checkout-card-entry__pair">
+                                        <label class="checkout-field">
+                                            <span>{{ t('checkout.expiry') }}</span>
+                                            <input
+                                                v-model="cardForm.expiry"
+                                                autocomplete="cc-exp"
+                                                placeholder="09/29"
+                                                :aria-invalid="Boolean(fieldErrors.expiry)"
+                                                @input="formatExpiry"
+                                            />
+                                            <small v-if="fieldErrors.expiry" class="checkout-field__hint checkout-field__hint--error">
+                                                {{ fieldErrorText(fieldErrors.expiry) }}
+                                            </small>
+                                        </label>
+                                        <label class="checkout-field">
+                                            <span>{{ t('checkout.cvc') }}</span>
+                                            <input
+                                                v-model="cardForm.cvc"
+                                                type="password"
+                                                inputmode="numeric"
+                                                autocomplete="cc-csc"
+                                                placeholder="123"
+                                                :aria-invalid="Boolean(fieldErrors.cvc)"
+                                                @input="formatCvc"
+                                            />
+                                            <small v-if="fieldErrors.cvc" class="checkout-field__hint checkout-field__hint--error">
+                                                {{ fieldErrorText(fieldErrors.cvc) }}
+                                            </small>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                            <div v-else-if="selectedPaymentMethod === method.id" class="checkout-payment-detail">
+                            <div v-else-if="selectedPaymentMethod === method.id && method.componentState === 'REDIRECT_AVAILABLE'"
+                                class="checkout-payment-detail checkout-payment-detail--status checkout-wallet-authorization">
+                                <p role="status">{{ walletAuthorizationError
+                                    ? t(walletAuthorizationError)
+                                    : t(walletAuthorizationState ? `checkout.walletAuthorization.state.${walletAuthorizationState}` : 'checkout.walletAuthorization.instructions') }}</p>
+                                <button v-if="!walletAuthorizationState || walletAuthorizationState === 'READY'"
+                                    ref="walletActionButton" type="button"
+                                    class="checkout-wallet-authorization__button"
+                                    :class="{
+                                        'checkout-wallet-authorization__button--apple-pay': method.paymentMethod === 'APPLE_PAY',
+                                        'checkout-wallet-authorization__button--google-pay': method.paymentMethod === 'GOOGLE_PAY',
+                                    }"
+                                    :disabled="walletAuthorizationLoading || submitting || paymentDeadlineExpired"
+                                    :aria-busy="walletAuthorizationLoading || submitting"
+                                    @click="runWalletAuthorization(walletAuthorizationState === 'READY' ? 'OPEN' : 'PREPARE')">
+                                    <PaymentLogoMark v-if="method.logoKeys[0]" :logo-key="method.logoKeys[0]" size="sm" compact aria-hidden="true" />
+                                    {{ walletAuthorizationLoading || submitting
+                                        ? t('checkout.walletAuthorization.loading')
+                                        : t('checkout.walletAuthorization.open', { method: method.label }) }}
+                                </button>
+                                <button v-if="walletAuthorizationState === 'PROCESSING' || walletAuthorizationState === 'UNKNOWN'"
+                                    ref="walletActionButton" type="button" class="checkout-wallet-authorization__button"
+                                    :disabled="submitting || paymentDeadlineExpired" @click="runWalletAuthorization('STATUS')">
+                                    {{ t('checkout.walletAuthorization.checkStatus') }}
+                                </button>
+                            </div>
+                            <div v-else-if="selectedPaymentMethod === method.id" class="checkout-payment-detail checkout-payment-detail--status">
                                 <p role="status">{{ t(paymentMethodStatusKey(method.componentState)) }}</p>
                                 <button v-if="method.componentState === 'LOAD_FAILED'" type="button"
-                                    class="checkout-payment-option__select" @click="refreshSessionEncryption">
+                                    class="checkout-payment-detail__retry" @click="refreshSessionEncryption">
                                     {{ t('checkout.retryCardSetup') }}
                                 </button>
                             </div>
                         </div>
-                        <button v-if="supportedPaymentMethods.length > 4" class="checkout-payment-option__select" type="button"
-                            :aria-expanded="showAllPaymentMethods" @click="showAllPaymentMethods = !showAllPaymentMethods">
-                            {{ t(showAllPaymentMethods ? 'checkout.showFewerMethods' : 'checkout.showMoreMethods') }}
+                        <button v-if="additionalPaymentMethods.length" class="checkout-payment-disclosure" type="button"
+                            :aria-expanded="showAllPaymentMethods" :disabled="submitting"
+                            @click="toggleMorePaymentMethods">
+                            <span class="checkout-payment-disclosure__content">
+                                <span>{{ t(showAllPaymentMethods ? 'checkout.showFewerMethods' : 'checkout.showMoreMethods') }}</span>
+                                <span v-if="!showAllPaymentMethods"
+                                    class="checkout-payment-disclosure__preview" aria-hidden="true">
+                                    <PaymentLogoMark v-for="logo in additionalPaymentLogos" :key="logo"
+                                        :logo-key="logo" size="sm" compact />
+                                    <span v-if="additionalPaymentMethods.length > additionalPaymentLogos.length"
+                                        class="checkout-payment-disclosure__count">
+                                        +{{ additionalPaymentMethods.length - additionalPaymentLogos.length }}
+                                    </span>
+                                </span>
+                            </span>
+                            <span class="checkout-payment-disclosure__chevron" aria-hidden="true"></span>
                         </button>
                     </div>
                 </article>
@@ -292,7 +341,7 @@
                     </span>
                     <strong>{{ paymentDeadlineText }}</strong>
                 </div>
-                <button
+                <button v-if="!walletAuthorizationSelected"
                     class="checkout-submit"
                     type="button"
                     :disabled="submitting || paymentDeadlineExpired || !selectedMethod?.canSubmit"
@@ -464,8 +513,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { CheckoutMerchantLogo, CheckoutOrderSummary, PaymentLogoGroup, formatMoneyAmount, getPaymentLogo, getSystemBrand, resolveTransactionStatusIcon, resolvePaymentLogoKeys, type PaymentLogoKey } from '@acquiring/shared';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { CheckoutMerchantLogo, CheckoutOrderSummary, PaymentLogoGroup, PaymentLogoMark, formatMoneyAmount, getPaymentLogo, getSystemBrand, resolveTransactionStatusIcon, resolvePaymentLogoKeys, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { setLocale } from './i18n';
 import { listCheckoutCountries, type CheckoutCountryConfig } from './api/checkoutConfig';
@@ -474,28 +523,30 @@ import {
     queryCheckoutSession,
     resolveCheckoutCardBin,
     returnCheckoutThreeDs,
+    authorizeCheckoutWallet,
     submitCheckoutPayment,
     type CheckoutPageState,
     type HostedCheckoutClientContext,
-    type HostedCheckoutCardDataEnvelope,
-    type HostedCheckoutCardEncryption,
     type HostedCheckoutPaymentMethod,
     type HostedCheckoutPaymentResult,
     type HostedCheckoutMerchantReturnFormFields,
     type HostedCheckoutSession,
+    type WalletAuthorizationAction,
+    type WalletAuthorizationState,
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
 import CheckoutTopbar from './components/CheckoutTopbar.vue';
 import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
-import { resolveMerchantPostUrl } from './utils/urlSecurity';
+import { resolveMerchantPostUrl, resolveWalletAuthorizationUrl } from './utils/urlSecurity';
 import PaymentMethodCarousel from './components/PaymentMethodCarousel.vue';
 import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutReceiptIdentity, checkoutResultLogoKeys } from './utils/checkoutPresentation';
+import { cardEncryptionSupported, encryptCheckoutCardData } from './utils/cardEncryption';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutStatusViewState = 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
 type CheckoutLocale = 'en-US' | 'zh-CN';
 type PaymentComponentState = 'READY' | 'NOT_INTEGRATED' | 'BACKEND_UNAVAILABLE'
-    | 'UNSUPPORTED_ENVIRONMENT' | 'LOADING' | 'LOAD_FAILED';
+    | 'UNSUPPORTED_ENVIRONMENT' | 'LOADING' | 'LOAD_FAILED' | 'REDIRECT_AVAILABLE';
 
 interface PaymentOption {
     id: string;
@@ -744,29 +795,29 @@ const paymentDeadlineText = computed(() => {
     const hours = Math.floor((remaining % 86400) / 3600);
     const minutes = Math.floor((remaining % 3600) / 60);
     const seconds = remaining % 60;
-    return t('checkout.paymentDeadlineDuration', {
-        days,
-        hours: String(hours).padStart(2, '0'),
-        minutes: String(minutes).padStart(2, '0'),
-        seconds: String(seconds).padStart(2, '0'),
-    });
+    const units = [
+        { value: days, label: 'checkout.paymentDeadlineDays' },
+        { value: hours, label: 'checkout.paymentDeadlineHours' },
+        { value: minutes, label: 'checkout.paymentDeadlineMinutes' },
+        { value: seconds, label: 'checkout.paymentDeadlineSeconds' },
+    ];
+    const firstUnit = units.findIndex(({ value }) => value > 0);
+    return units.slice(firstUnit).map(({ value, label }, index) => t(label, {
+        value: index === 0 ? value : String(value).padStart(2, '0'),
+    })).join(' ');
 });
 const failureReasonText = computed(() => localizedFailureReason(paymentResult.value?.failure?.reasonCode));
 const failureHelpText = computed(() => failureReasonText.value);
 const systemFailure = computed(() => normalizeCode(paymentResult.value?.failure?.reasonCode) === 'F2000');
-const hasMerchantRedirect = computed(() => resolveMerchantRedirectUrl() !== null);
+const hasMerchantRedirect = computed(() => (
+    statusViewState.value === 'success' && resolveMerchantRedirectUrl() !== null
+));
 const threeDsHtml = computed(() => paymentResult.value?.threeDsAction?.actionType === 'HTML'
     ? paymentResult.value?.threeDsAction?.html || ''
     : '');
 const threeDsPhase = computed(() => normalizeCode(paymentResult.value?.threeDsAction?.phase));
 const threeDsFrameKey = computed(() => (
     `${paymentResult.value?.checkoutAttemptId || 'pending'}:${threeDsPhase.value || 'unknown'}`
-));
-
-const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => checkoutMerchantLogoKeys(
-    session.value?.merchant,
-    session.value?.paymentMethods || [],
-    resolvePaymentLogoKeys,
 ));
 
 const selectedCountry = computed(() => (
@@ -799,19 +850,39 @@ const supportedPaymentMethods = computed<PaymentOption[]>(() => {
             threeDsMode: prior?.threeDsMode === 'AUTO' ? 'AUTO' : method.threeDsMode,
         });
     }
-    return Array.from(grouped.values(), toPaymentOption);
+    const options = Array.from(grouped.values(), toPaymentOption);
+    return [
+        ...options.filter((method) => method.paymentMethod === 'BANK_CARD'),
+        ...options.filter((method) => method.paymentMethod !== 'BANK_CARD'),
+    ];
 });
+const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => checkoutMerchantLogoKeys(
+    session.value?.merchant,
+    session.value?.paymentMethods || [],
+    resolvePaymentLogoKeys,
+));
+
 const refreshingCardSetup = ref(false);
 const cardSetupFailed = ref(false);
+const paymentList = ref<HTMLDivElement | null>(null);
 const showAllPaymentMethods = ref(false);
-const visiblePaymentMethods = computed(() => {
+const pinnedPaymentMethod = ref('');
+const primaryPaymentMethods = computed(() => {
     const methods = supportedPaymentMethods.value;
-    if (showAllPaymentMethods.value || methods.length <= 4) return methods;
     const visible = methods.slice(0, 4);
-    const selected = methods.find((method) => method.id === selectedPaymentMethod.value);
-    if (selected && !visible.includes(selected)) visible[3] = selected;
+    const pinned = methods.find((method) => method.id === pinnedPaymentMethod.value);
+    if (pinned && !visible.includes(pinned)) visible[3] = pinned;
     return visible;
 });
+const additionalPaymentMethods = computed(() => supportedPaymentMethods.value.filter(
+    (method) => !primaryPaymentMethods.value.includes(method),
+));
+const additionalPaymentLogos = computed(() => uniqueLogos(additionalPaymentMethods.value
+    .map((method) => method.logoKeys[0])
+    .filter((logo): logo is PaymentLogoKey => Boolean(logo))).slice(0, 4));
+const visiblePaymentMethods = computed(() => showAllPaymentMethods.value
+    ? [...primaryPaymentMethods.value, ...additionalPaymentMethods.value]
+    : primaryPaymentMethods.value);
 
 const orderItems = computed(() => {
     const parsedItems = parseOrderItems(order.value?.itemsJson);
@@ -942,6 +1013,20 @@ const selectedMethod = computed(() => (
     supportedPaymentMethods.value.find((method) => method.id === selectedPaymentMethod.value)
 ));
 const selectedMethodLabel = computed(() => selectedMethod.value?.label || '');
+const walletAuthorizationSelected = computed(() => selectedMethod.value?.componentState === 'REDIRECT_AVAILABLE');
+const walletAuthorizationState = ref<WalletAuthorizationState | null>(null);
+const walletAuthorizationLoading = ref(false);
+const walletAuthorizationError = ref('');
+// 此引用位于选中支付方式的循环行中，Vue 将其收集为数组。
+const walletActionButton = ref<HTMLButtonElement[]>([]);
+let walletAuthorizationSequence = 0;
+
+watch(selectedPaymentMethod, () => {
+    walletAuthorizationSequence++;
+    walletAuthorizationState.value = null;
+    walletAuthorizationLoading.value = false;
+    walletAuthorizationError.value = '';
+}, { flush: 'sync' });
 const statusPaymentLogoKeys = computed<PaymentLogoKey[]>(() => checkoutResultLogoKeys(
     paymentResult.value?.result?.paymentMethod,
     paymentResult.value?.result?.cardBrand,
@@ -958,11 +1043,13 @@ let initialPaymentChoiceMade = false;
 watch(supportedPaymentMethods, (methods) => {
     if (!initialPaymentChoiceMade && methods.length > 0) {
         initialPaymentChoiceMade = true;
-        selectedPaymentMethod.value = methods.find((method) => method.canSubmit)?.id
+        selectedPaymentMethod.value = methods.find((method) => method.paymentMethod === 'BANK_CARD'
+            && ['READY', 'LOAD_FAILED', 'LOADING'].includes(method.componentState))?.id
+            || methods.find((method) => method.componentState === 'REDIRECT_AVAILABLE')?.id
             || methods[0]?.id || '';
     } else if (selectedPaymentMethod.value && !methods.some((method) => method.id === selectedPaymentMethod.value)) {
         selectedPaymentMethod.value = '';
-        formMessageKey.value = 'checkout.paymentMethodChanged';
+        formMessageKey.value = methods.length ? 'checkout.paymentMethodChanged' : '';
     }
 }, { immediate: true });
 
@@ -1130,7 +1217,82 @@ function hydratePrefill(response: HostedCheckoutSession) {
 }
 
 function selectPaymentMethod(methodId: string) {
-    if (!submitting.value) selectedPaymentMethod.value = methodId;
+    if (submitting.value) return;
+    selectedPaymentMethod.value = methodId;
+    if (formMessageKey.value === 'checkout.paymentMethodChanged') formMessageKey.value = '';
+    if (!showAllPaymentMethods.value) pinnedPaymentMethod.value = methodId;
+}
+
+async function runWalletAuthorization(action: WalletAuthorizationAction) {
+    const selected = selectedMethod.value;
+    const checkout = session.value;
+    if (selected?.componentState !== 'REDIRECT_AVAILABLE' || !checkout || submitting.value
+        || walletAuthorizationLoading.value || paymentSubmissionExpired(checkout.checkout)) return;
+    if (action === 'PREPARE' && walletAuthorizationState.value) return;
+    if (action === 'OPEN' && walletAuthorizationState.value !== 'READY') return;
+    const sequence = ++walletAuthorizationSequence;
+    walletAuthorizationError.value = '';
+    const failureMessage = 'checkout.walletAuthorization.openFailed';
+    walletAuthorizationLoading.value = action === 'PREPARE';
+    submitting.value = action !== 'PREPARE';
+    try {
+        let { state, redirectUrl } = await authorizeCheckoutWallet({
+            opaqueToken: routeToken.value, checkoutSessionId: checkout.checkoutSessionId,
+            paymentMethod: selected.paymentMethod, action,
+        });
+        if (sequence !== walletAuthorizationSequence || session.value !== checkout
+            || paymentSubmissionExpired(checkout.checkout)) return;
+        if (action === 'PREPARE' && state === 'READY') {
+            walletAuthorizationLoading.value = false;
+            submitting.value = true;
+            ({ state, redirectUrl } = await authorizeCheckoutWallet({
+                opaqueToken: routeToken.value,
+                checkoutSessionId: checkout.checkoutSessionId,
+                paymentMethod: selected.paymentMethod,
+                action: 'OPEN',
+            }));
+            if (sequence !== walletAuthorizationSequence || session.value !== checkout
+                || paymentSubmissionExpired(checkout.checkout)) return;
+        }
+        if (state === 'READY') {
+            const approvalUrl = resolveWalletAuthorizationUrl(redirectUrl);
+            if (!approvalUrl) {
+                walletAuthorizationError.value = failureMessage;
+                return;
+            }
+            if (action === 'OPEN' || action === 'PREPARE') {
+                clearSensitiveCardData();
+                window.location.assign(approvalUrl);
+                return;
+            }
+        }
+        if (action === 'PREPARE' && state === 'UNKNOWN') {
+            walletAuthorizationError.value = failureMessage;
+            return;
+        }
+        walletAuthorizationState.value = state;
+    } catch {
+        if (sequence === walletAuthorizationSequence) {
+            if (action === 'STATUS') {
+                walletAuthorizationState.value = 'UNKNOWN';
+            } else {
+                walletAuthorizationError.value = failureMessage;
+            }
+        }
+    } finally {
+        if (sequence === walletAuthorizationSequence) walletAuthorizationLoading.value = false;
+        submitting.value = false;
+    }
+}
+
+async function toggleMorePaymentMethods(event: MouseEvent) {
+    if (showAllPaymentMethods.value) pinnedPaymentMethod.value = selectedPaymentMethod.value;
+    showAllPaymentMethods.value = !showAllPaymentMethods.value;
+    if (showAllPaymentMethods.value && event.detail === 0) {
+        await nextTick();
+        const optionButtons = paymentList.value?.querySelectorAll<HTMLButtonElement>('.checkout-payment-option__select');
+        optionButtons?.[primaryPaymentMethods.value.length]?.focus();
+    }
 }
 
 function paymentSubmissionExpired(checkout: HostedCheckoutSession['checkout']): boolean {
@@ -1198,7 +1360,7 @@ async function handleSubmitPayment() {
             return;
         }
         encrypting = true;
-        const cardDataEnvelope = await encryptCardData(
+        const cardDataEnvelope = await encryptCheckoutCardData(
             sourceSession.cardEncryption,
             sourceSession.checkoutSessionId,
             requestId,
@@ -1357,7 +1519,7 @@ async function continueThreeDs(payload: ThreeDsReturnMessage) {
     if (!continuation || !action?.cardEncryption || !checkoutSessionId || !checkoutAttemptId || !threeDsReturnToken) {
         throw new Error('3DS continuation context is unavailable');
     }
-    const cardDataEnvelope = await encryptCardData(
+    const cardDataEnvelope = await encryptCheckoutCardData(
         action.cardEncryption,
         checkoutSessionId,
         attemptRequestId.value,
@@ -1492,10 +1654,10 @@ function applyPageState(pageState?: string) {
     }
     if (state === 'FAILED_RETRYABLE' || state === 'FAILED_FINAL' || state === 'EXPIRED' || state === 'CANCELLED') {
         clearPolling();
+        clearMerchantRedirect();
         clearThreeDsContinuation();
         clearSensitiveCardData();
         runtimeState.value = 'failed';
-        startMerchantRedirectCountdown();
         return;
     }
     if (state === 'THREE_DS_REQUIRED') {
@@ -1662,9 +1824,12 @@ async function retryPayment() {
         });
         hydrateSession(response);
         const pageState = normalizeCode(response.pageState);
+        const hasRetryablePaymentMethod = supportedPaymentMethods.value.some((method) => (
+            method.canSubmit || method.componentState === 'REDIRECT_AVAILABLE'
+        ));
         if (isRetryablePageState(pageState)
             && response.checkout?.retryAllowed
-            && response.cardEncryption) {
+            && hasRetryablePaymentMethod) {
             session.value = { ...response, pageState: 'PAYABLE', paymentResult: undefined };
             paymentResult.value = null;
             runtimeState.value = 'checkout';
@@ -1967,79 +2132,6 @@ function digitsOnly(value: string): string {
     return value.replace(/\D/g, '');
 }
 
-/** 卡数据只以 Web Crypto 信封离开浏览器；AAD 与 payment 服务协议保持逐字节一致。 */
-async function encryptCardData(
-    metadata: HostedCheckoutCardEncryption | undefined,
-    checkoutSessionId: string,
-    currentAttemptRequestId: string,
-    cardData: {
-        cardNo: string;
-        expirationMonth: string;
-        expirationYear: string;
-        securityCode: string;
-        cardholderName: string;
-    },
-): Promise<HostedCheckoutCardDataEnvelope> {
-    if (!metadata
-        || metadata.algorithm !== 'RSA-OAEP-256+A256GCM'
-        || !metadata.keyId
-        || !metadata.publicKey
-        || !metadata.nonce
-        || !window.crypto?.subtle) {
-        throw new Error('Checkout card encryption is unavailable');
-    }
-    const publicKeyBytes = decodeBase64(metadata.publicKey);
-    const publicKey = await window.crypto.subtle.importKey(
-        'spki',
-        publicKeyBytes.buffer as ArrayBuffer,
-        { name: 'RSA-OAEP', hash: 'SHA-256' },
-        false,
-        ['encrypt'],
-    );
-    const contentKey = await window.crypto.subtle.generateKey(
-        { name: 'AES-GCM', length: 256 },
-        true,
-        ['encrypt'],
-    );
-    const rawContentKey = await window.crypto.subtle.exportKey('raw', contentKey);
-    const encryptedKey = await window.crypto.subtle.encrypt(
-        { name: 'RSA-OAEP' },
-        publicKey,
-        rawContentKey,
-    );
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const aad = new TextEncoder().encode(
-        `checkout-card-v1|${checkoutSessionId}|${currentAttemptRequestId}|${metadata.nonce}`,
-    );
-    const plaintext = new TextEncoder().encode(JSON.stringify(cardData));
-    const ciphertext = await window.crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
-        contentKey,
-        plaintext,
-    );
-    return {
-        algorithm: metadata.algorithm,
-        keyId: metadata.keyId,
-        encryptedKey: encodeBase64Url(new Uint8Array(encryptedKey)),
-        iv: encodeBase64Url(iv),
-        ciphertext: encodeBase64Url(new Uint8Array(ciphertext)),
-        nonce: metadata.nonce,
-    };
-}
-
-function decodeBase64(value: string): Uint8Array {
-    const binary = window.atob(value.replace(/\s/g, ''));
-    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-function encodeBase64Url(value: Uint8Array): string {
-    let binary = '';
-    value.forEach((byte) => {
-        binary += String.fromCharCode(byte);
-    });
-    return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
 function buildClientContext(): HostedCheckoutClientContext {
     return {
         timezoneOffset: String(new Date().getTimezoneOffset()),
@@ -2104,6 +2196,7 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
     const componentState = resolvePaymentComponentState(method, isCard);
     const names: Record<string, string> = {
         APPLE_PAY: 'Apple Pay', GOOGLE_PAY: 'Google Pay', PAYPAL: 'PayPal', CASH_APP_PAY: 'Cash App Pay',
+        BTC_ON_CHAIN: 'Bitcoin (BTC)', PYUSD: 'PayPal USD (PYUSD)', BANK_TRANSFER: t('checkout.bankTransfer'),
     };
     return {
         id: code,
@@ -2120,11 +2213,12 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
 }
 
 function resolvePaymentComponentState(method: HostedCheckoutPaymentMethod, isCard: boolean): PaymentComponentState {
+    if (!isCard && method.executionStatus === 'REDIRECT_AVAILABLE') return 'REDIRECT_AVAILABLE';
     if (!isCard) return 'NOT_INTEGRATED';
     if (method.serverSubmitAllowed !== true
         || (method.executionStatus != null && method.executionStatus !== 'READY')) return 'BACKEND_UNAVAILABLE';
     if (isDevToken(routeToken.value)) return 'READY';
-    if (!window.crypto?.subtle) return 'UNSUPPORTED_ENVIRONMENT';
+    if (!cardEncryptionSupported()) return 'UNSUPPORTED_ENVIRONMENT';
     if (refreshingCardSetup.value) return 'LOADING';
     if (cardSetupFailed.value || (session.value?.paymentOptions != null && !session.value.cardEncryption)) {
         return 'LOAD_FAILED';
@@ -2411,7 +2505,7 @@ function mockProcessingResult(): HostedCheckoutPaymentResult {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
             merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
-            paymentMethod: selectedMethod.value?.label || 'Bank Card',
+            paymentMethod: selectedMethod.value?.label || t('checkout.bankCardLabel'),
             cardBrand: 'VISA',
             cardNumberMasked: '**** 1111',
             transactionId: 'TXDEVPROCESSING202607270001',
@@ -2433,7 +2527,7 @@ function mockPendingResult(): HostedCheckoutPaymentResult {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
             merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
-            paymentMethod: selectedMethod.value?.label || 'Bank Card',
+            paymentMethod: selectedMethod.value?.label || t('checkout.bankCardLabel'),
             cardBrand: 'VISA',
             cardNumberMasked: '**** 1111',
             transactionId: 'TXDEVPENDING202607270001',
@@ -2459,7 +2553,7 @@ function mockSuccessResult(): HostedCheckoutPaymentResult {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
             merchantOrderNo,
-            paymentMethod: selectedMethod.value?.label || 'Bank Card',
+            paymentMethod: selectedMethod.value?.label || t('checkout.bankCardLabel'),
             cardBrand: 'VISA',
             cardNumberMasked: cardNumber ? `**** ${cardNumber.slice(-4)}` : '**** 1111',
             transactionId,
@@ -2494,7 +2588,7 @@ function mockFailedResult(): HostedCheckoutPaymentResult {
             amount: order.value?.amount || '49.97',
             currency: order.value?.currency || 'USD',
             merchantOrderNo: order.value?.orderNo || 'DEV202607270001',
-            paymentMethod: selectedMethod.value?.label || 'Bank Card',
+            paymentMethod: selectedMethod.value?.label || t('checkout.bankCardLabel'),
             cardBrand: 'VISA',
             cardNumberMasked: '**** 1111',
             transactionId: 'TXDEVFAILED202607270001',

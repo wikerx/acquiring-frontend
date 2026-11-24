@@ -36,7 +36,7 @@
                   v-if="can('apply')"
                   type="primary"
                   :disabled="!selectedKeys.length || loading || busy"
-                  @click="openApply"
+                  @click="openApply()"
                   >{{
                     t(isAdmin ? 'paymentMethod.applyForMerchant' : 'paymentMethod.apply')
                   }}</el-button
@@ -187,81 +187,47 @@
               </el-table-column>
               <el-table-column
                 :label="t('paymentMethod.action')"
-                min-width="165"
+                min-width="220"
                 fixed="right"
                 align="center"
               >
                 <template #default="{ row }"
                   ><div class="row-actions">
                     <el-button
-                      v-if="canReadHistory"
+                      v-if="canApplyTo(row)"
                       link
                       type="primary"
-                      @click="openHistory(row)"
-                      >{{ t('paymentMethod.history') }}</el-button
+                      @click="openApply(row)"
+                      >{{ t('paymentMethod.apply') }}</el-button
                     >
                     <el-button
-                      v-if="
-                        !isAdmin &&
-                        row.applicationItemId &&
-                        can('resubmit') &&
-                        row.applicationStatus === 'RETURNED'
-                      "
+                      v-if="canViewApplicationFor(row)"
+                      link
+                      type="primary"
+                      @click="showApplicationRecords(row)"
+                      >{{ t('paymentMethod.viewApplicationRecords') }}</el-button
+                    >
+                    <el-button
+                      v-if="canChangeApplication(row, 'resubmit')"
                       link
                       type="primary"
                       @click="openItemCommand('resubmit', row)"
                       >{{ t('paymentMethod.resubmit') }}</el-button
                     >
                     <el-button
-                      v-if="
-                        !isAdmin &&
-                        row.applicationItemId &&
-                        can('withdraw') &&
-                        ['PENDING_REVIEW', 'RETURNED'].includes(row.applicationStatus)
-                      "
+                      v-if="canChangeApplication(row, 'withdraw')"
                       link
                       type="warning"
                       @click="openItemCommand('withdraw', row)"
                       >{{ t('paymentMethod.withdraw') }}</el-button
                     >
-                    <el-button
-                      v-if="
-                        isAdmin &&
-                        can('suspend') &&
-                        ['ACTIVE', 'EXPIRED', 'NOT_YET_EFFECTIVE', 'LEGACY_OBSERVED'].includes(
-                          row.authorizationStatus,
-                        )
-                      "
-                      link
-                      type="warning"
-                      @click="openLifecycle('suspend', row)"
-                      >{{ t('paymentMethod.suspend') }}</el-button
-                    >
-                    <el-button
-                      v-if="isAdmin && can('restore') && row.authorizationStatus === 'SUSPENDED'"
-                      link
-                      type="primary"
-                      @click="openLifecycle('restore', row)"
-                      >{{ t('paymentMethod.restore') }}</el-button
-                    >
-                    <el-button
-                      v-if="isAdmin && can('validity') && editableAuthorization(row)"
-                      link
-                      type="primary"
-                      @click="openLifecycle('validity', row)"
-                      >{{ t('paymentMethod.validity') }}</el-button
-                    >
-                    <el-button
-                      v-if="
-                        isAdmin &&
-                        can('terminate') &&
-                        (editableAuthorization(row) ||
-                          row.authorizationStatus === 'LEGACY_OBSERVED')
-                      "
-                      link
-                      type="danger"
-                      @click="openLifecycle('terminate', row)"
-                      >{{ t('paymentMethod.terminate') }}</el-button
+                    <span
+                      v-if="!canApplyTo(row) && !canViewApplicationFor(row) &&
+                        !canChangeApplication(row, 'resubmit') && !canChangeApplication(row, 'withdraw')"
+                      class="muted"
+                      :title="t('paymentMethod.noRowAction')"
+                      :aria-label="t('paymentMethod.noRowAction')"
+                      >—</span
                     >
                   </div></template
                 >
@@ -286,18 +252,26 @@
           name="applications"
         >
           <div class="table-toolbar">
-            <el-select
-              v-model="applicationStatus"
-              clearable
-              :placeholder="t('paymentMethod.applicationStatus')"
-              style="width: 180px"
-              @change="applicationFilterChanged"
-              ><el-option
-                v-for="status in applicationStatuses"
-                :key="status"
-                :label="statusText(status)"
-                :value="status" /></el-select
-            ><RightToolbar :show-search="false" @refresh="loadApplications" />
+            <div class="toolbar-actions">
+              <el-select
+                v-model="applicationStatus"
+                clearable
+                :placeholder="t('paymentMethod.applicationStatus')"
+                style="width: 180px"
+                @change="applicationFilterChanged"
+              >
+                <el-option
+                  v-for="status in applicationStatuses"
+                  :key="status"
+                  :label="statusText(status)"
+                  :value="status"
+                />
+              </el-select>
+              <el-tag v-if="applicationMethod" closable effect="plain" @close="clearApplicationMethod">
+                {{ t('paymentMethod.method') }} · {{ applicationMethod.name }}
+              </el-tag>
+            </div>
+            <RightToolbar :show-search="false" @refresh="loadApplications" />
           </div>
           <el-alert
             v-if="applicationLoadError"
@@ -397,7 +371,7 @@
             :closable="false"
             show-icon
           />
-          <el-table :data="applicationDetail.items" border size="small" row-key="id">
+          <el-table :data="applicationItems" border size="small" row-key="id">
             <el-table-column type="expand" width="48">
               <template #default="{ row }">
                 <div class="round-history">
@@ -441,12 +415,21 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column
-              prop="itemKey"
-              :label="t('paymentMethod.itemKey')"
-              min-width="180"
-              align="center"
-            />
+            <el-table-column :label="t('paymentMethod.method')" min-width="180">
+              <template #default="{ row }">
+                <div class="method-identity">
+                  <div class="method-logo">
+                    <PaymentMethodDisplay
+                      :payment-types="logoTypes(row.method)"
+                      :payment-methods="logoMethods(row.method)"
+                      :show-payment-type-label="false"
+                      align="center"
+                    />
+                  </div>
+                  <strong :title="row.method.name">{{ row.method.name }}</strong>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="status"
               :label="t('paymentMethod.applicationStatus')"
@@ -560,7 +543,16 @@
         show-icon
       />
       <div class="selected-methods">
-        <el-tag v-for="key in commandKeys" :key="key" effect="plain">{{ key }}</el-tag>
+        <div v-for="method in commandMethods" :key="method.itemKey" class="method-identity command-method">
+          <div class="method-logo">
+            <PaymentMethodDisplay
+              :payment-types="logoTypes(method)"
+              :payment-methods="logoMethods(method)"
+              align="center"
+            />
+          </div>
+          <strong :title="method.name">{{ method.name }}</strong>
+        </div>
       </div>
       <el-form label-position="top" @submit.prevent="submitCommand">
         <template v-if="command === 'validity'">
@@ -608,66 +600,25 @@
         </div></template
       >
     </el-dialog>
-    <el-dialog
-      v-model="historyVisible"
-      :title="`${t('paymentMethod.history')} · ${historyItem?.name || ''}`"
-      width="min(980px, 96vw)"
-      append-to-body
-      @closed="historyRequest++"
-    >
-      <el-table v-loading="historyLoading" :data="historyRows" border size="small" row-key="id"
-        ><el-table-column prop="action" :label="t('paymentMethod.action')" min-width="120"
-          ><template #default="{ row }">{{
-            dictionaryText('actionName', row.action)
-          }}</template></el-table-column
-        ><el-table-column prop="fromStatus" :label="t('paymentMethod.before')" min-width="120"
-          ><template #default="{ row }">{{
-            statusText(row.fromStatus, '-')
-          }}</template></el-table-column
-        ><el-table-column prop="toStatus" :label="t('paymentMethod.after')" min-width="120"
-          ><template #default="{ row }">{{
-            statusText(row.toStatus, '-')
-          }}</template></el-table-column
-        ><el-table-column
-          prop="reason"
-          :label="t('paymentMethod.reason')"
-          min-width="200" /><el-table-column
-          prop="occurredAt"
-          :label="t('paymentMethod.occurredAt')"
-          min-width="170"
-          ><template #default="{ row }"
-            ><BaseDateTime :value="row.occurredAt" /></template></el-table-column
-      ></el-table>
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="historyPage"
-          :page-size="20"
-          :total="historyTotal"
-          layout="total, prev, pager, next"
-          @current-change="loadHistory"
-        />
-      </div>
-      <template #footer
-        ><div class="dialog-footer">
-          <el-button @click="historyVisible = false">{{ t('paymentMethod.close') }}</el-button>
-        </div></template
-      >
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+  import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { ElMessage } from 'element-plus';
-  import { PaymentMethodDisplay, userFacingErrorMessage } from '@acquiring/shared';
+  import {
+    getPaymentLogos,
+    PaymentMethodDisplay,
+    resolvePaymentLogoKeys,
+    userFacingErrorMessage,
+  } from '@acquiring/shared';
   import {
     paymentMethodApi,
     type PaymentMethodRow,
     type PaymentApplication,
     type PaymentApplicationItem,
-    type PaymentMethodHistory,
     type PaymentMethodCommand,
   } from '@/api/paymentMethodApi';
   import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -683,7 +634,6 @@
   const can = (action: string) => auth.hasPermission(`merchant:payment-method:${action}`);
   const canView = computed(() => can('view'));
   const canViewApplications = computed(() => can(isAdmin ? 'view' : 'application:view'));
-  const canReadHistory = computed(() => isAdmin && can('history'));
   const canViewFee = computed(
     () =>
       auth.hasPermission(isAdmin ? 'fee:merchant:list' : 'merchant:fee:view') &&
@@ -708,19 +658,23 @@
   const applicationPageSize = ref(20);
   const applicationTotal = ref(0);
   const applicationStatus = ref('');
+  const applicationMethod = ref<MethodIdentity | null>(null);
   const applicationStatuses = ['PENDING_REVIEW', 'RETURNED', 'APPROVED', 'REJECTED', 'WITHDRAWN'];
   const applicationVisible = ref(false);
   const applicationDetail = ref<PaymentApplication | null>(null);
   const detailLoading = ref(false);
-  const historyVisible = ref(false);
-  const historyItem = ref<PaymentMethodRow | null>(null);
-  const historyRows = ref<PaymentMethodHistory[]>([]);
-  const historyPage = ref(1);
-  const historyTotal = ref(0);
-  const historyLoading = ref(false);
   const commandVisible = ref(false);
   const command = ref('');
   const commandKeys = ref<string[]>([]);
+  type MethodIdentity = Pick<PaymentMethodRow, 'itemKey' | 'name'>;
+  const commandMethods = ref<MethodIdentity[]>([]);
+  const methodNames = reactive(new Map<string, string>());
+  const applicationItems = computed(() =>
+    (applicationDetail.value?.items ?? []).map((item) => ({
+      ...item,
+      method: methodIdentity(item.itemKey),
+    })),
+  );
   const commandItemId = ref('');
   const commandMerchant = ref('');
   const expectedVersion = ref('');
@@ -732,7 +686,6 @@
   let methodRequest = 0;
   let applicationRequest = 0;
   let detailRequest = 0;
-  let historyRequest = 0;
   let commandRequestId = '';
   let commandFingerprint = '';
   const isLifecycleCommand = computed(() =>
@@ -777,14 +730,18 @@
   function eligible(row: PaymentMethodRow) {
     return row.requestable === true && row.catalogEnabled !== false;
   }
-  function editableAuthorization(row: PaymentMethodRow) {
-    return (
-      ['ACTIVE', 'SUSPENDED', 'EXPIRED', 'NOT_YET_EFFECTIVE'].includes(
-        row.authorizationStatus || '',
-      ) && Boolean(row.authorizationVersion)
-    );
+  function canApplyTo(row: PaymentMethodRow) {
+    return can('apply') && eligible(row);
   }
-  function logoTypes(row: PaymentMethodRow) {
+  function canViewApplicationFor(row: PaymentMethodRow) {
+    return canViewApplications.value && Boolean(row.applicationItemId);
+  }
+  function canChangeApplication(row: PaymentMethodRow, action: 'resubmit' | 'withdraw') {
+    return can(action) && Boolean(row.applicationItemId && row.applicationVersion) &&
+      (row.applicationStatus === 'RETURNED' ||
+        (action === 'withdraw' && row.applicationStatus === 'PENDING_REVIEW'));
+  }
+  function logoTypes(row: MethodIdentity) {
     return [
       {
         value: row.itemKey.startsWith('CARD_BRAND:')
@@ -794,8 +751,18 @@
       },
     ];
   }
-  function logoMethods(row: PaymentMethodRow) {
+  function logoMethods(row: MethodIdentity) {
     return [{ value: row.itemKey.split(':')[1] || row.itemKey, label: row.name }];
+  }
+  function methodIdentity(itemKey: string): MethodIdentity {
+    const code = itemKey.split(':')[1] || itemKey;
+    const logoKeys = itemKey.startsWith('CARD_BRAND:')
+      ? resolvePaymentLogoKeys(undefined, code)
+      : resolvePaymentLogoKeys(code);
+    return {
+      itemKey,
+      name: methodNames.get(itemKey) || getPaymentLogos(logoKeys)[0]?.label || code.replace(/_/g, ' '),
+    };
   }
   function toggleMethod(key: string, checked: boolean) {
     selectedKeys.value = checked
@@ -827,6 +794,7 @@
       });
       if (request !== methodRequest) return;
       methods.value = result.records;
+      result.records.forEach((row) => methodNames.set(row.itemKey, row.name));
       methodTotal.value = result.total;
       selectedKeys.value = selectedKeys.value.filter(
         (key) => !result.records.some((row) => row.itemKey === key && !eligible(row)),
@@ -852,6 +820,7 @@
         pageSize: applicationPageSize.value,
         merchantId: isAdmin ? merchantId.value : undefined,
         status: applicationStatus.value || undefined,
+        itemKey: applicationMethod.value?.itemKey,
       });
       if (request !== applicationRequest) return;
       applications.value = result.records;
@@ -874,9 +843,9 @@
     methodRequest++;
     applicationRequest++;
     detailRequest++;
-    historyRequest++;
     merchantId.value = merchantInput.value.trim();
     methods.value = [];
+    methodNames.clear();
     applications.value = [];
     selectedKeys.value = [];
     methodTotal.value = 0;
@@ -886,7 +855,6 @@
     loading.value = false;
     applicationLoading.value = false;
     applicationVisible.value = false;
-    historyVisible.value = false;
     void loadActive();
   }
   function methodSizeChanged() {
@@ -900,6 +868,17 @@
   function applicationFilterChanged() {
     applicationPage.value = 1;
     void loadApplications();
+  }
+  function showApplicationRecords(row: PaymentMethodRow) {
+    if (!canViewApplicationFor(row)) return;
+    applicationMethod.value = { itemKey: row.itemKey, name: row.name };
+    applicationStatus.value = '';
+    tab.value = 'applications';
+    applicationFilterChanged();
+  }
+  function clearApplicationMethod() {
+    applicationMethod.value = null;
+    applicationFilterChanged();
   }
   async function openApplication(applicationNo: string) {
     applicationVisible.value = true;
@@ -919,10 +898,11 @@
     detailRequest++;
     applicationDetail.value = null;
   }
-  function openApply() {
-    if (busy.value) return;
-    if (!selectedKeys.value.length || !can('apply')) return;
-    beginCommand('apply', selectedKeys.value, '', '', merchantId.value);
+  function openApply(row?: PaymentMethodRow) {
+    if (busy.value || !can('apply') || (row && !eligible(row))) return;
+    const keys = row ? [row.itemKey] : selectedKeys.value;
+    if (!keys.length) return;
+    beginCommand('apply', keys, '', '', merchantId.value);
   }
   function openReview(action: string, item: PaymentApplicationItem) {
     if (busy.value) return;
@@ -946,13 +926,6 @@
       merchantId.value,
     );
   }
-  function openLifecycle(action: string, row: PaymentMethodRow) {
-    if (busy.value) return;
-    if (!row.authorizationVersion || !can(action)) return;
-    beginCommand(action, [row.itemKey], '', row.authorizationVersion, merchantId.value);
-    effectiveTime.value = row.effectiveTime || null;
-    expireTime.value = row.expireTime || null;
-  }
   function beginCommand(
     action: string,
     keys: string[],
@@ -962,6 +935,7 @@
   ) {
     command.value = action;
     commandKeys.value = [...keys];
+    commandMethods.value = keys.map(methodIdentity);
     commandItemId.value = itemId;
     expectedVersion.value = version;
     commandMerchant.value = merchant;
@@ -976,6 +950,7 @@
     if (!busy.value) {
       command.value = '';
       commandKeys.value = [];
+      commandMethods.value = [];
       commandRequestId = '';
       commandFingerprint = '';
     }
@@ -1058,38 +1033,6 @@
       busy.value = false;
     }
   }
-  async function openHistory(row: PaymentMethodRow) {
-    historyItem.value = row;
-    historyVisible.value = true;
-    historyRows.value = [];
-    historyPage.value = 1;
-    historyTotal.value = 0;
-    await loadHistory();
-  }
-  async function loadHistory() {
-    if (!historyItem.value || !canReadHistory.value) return;
-    const request = ++historyRequest;
-    historyLoading.value = true;
-    try {
-      const result = await paymentMethodApi.history(
-        merchantId.value,
-        historyItem.value.itemKey,
-        historyPage.value,
-        20,
-      );
-      if (request !== historyRequest || !historyVisible.value) return;
-      historyRows.value = result.records;
-      historyTotal.value = result.total;
-    } catch (error) {
-      if (request === historyRequest) {
-        historyRows.value = [];
-        historyTotal.value = 0;
-        fail(error);
-      }
-    } finally {
-      if (request === historyRequest) historyLoading.value = false;
-    }
-  }
   function openFee() {
     if (!canViewFee.value) return;
     void router.push(
@@ -1122,18 +1065,17 @@
       methodRequest++;
       applicationRequest++;
       detailRequest++;
-      historyRequest++;
       methods.value = [];
+      methodNames.clear();
       applications.value = [];
       selectedKeys.value = [];
+      applicationMethod.value = null;
       applicationDetail.value = null;
-      historyRows.value = [];
       methodTotal.value = 0;
       applicationTotal.value = 0;
       loading.value = false;
       applicationLoading.value = false;
       applicationVisible.value = false;
-      historyVisible.value = false;
       commandVisible.value = false;
       void loadActive();
     },
@@ -1151,7 +1093,6 @@
     methodRequest++;
     applicationRequest++;
     detailRequest++;
-    historyRequest++;
   });
 </script>
 
@@ -1239,6 +1180,19 @@
   }
   .selected-methods {
     margin: 16px 0;
+  }
+  .command-method {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 34px;
+    gap: 8px;
+    padding: 2px 10px 2px 6px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: var(--el-border-radius-base);
+    background: var(--el-fill-color-lighter);
+  }
+  .command-method .method-logo {
+    flex-basis: 42px;
   }
   .pagination-container {
     display: flex;

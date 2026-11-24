@@ -30,6 +30,7 @@ export { default as MerchantIdentityDisplay } from './components/MerchantIdentit
 export { default as VexraBrandLogo } from './components/VexraBrandLogo.vue';
 export { default as SettlementVoucher } from './components/SettlementVoucher.vue';
 export { default as AnalyticsChart } from './components/AnalyticsChart.vue';
+export { default as AnalyticsMonitoringAvailability } from './components/AnalyticsMonitoringAvailability.vue';
 export { default as AnalyticsPaymentPerformance } from './components/AnalyticsPaymentPerformance.vue';
 export { default as TableRowActions } from './components/TableRowActions.vue';
 export * from './tableRowActions';

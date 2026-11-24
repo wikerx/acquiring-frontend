@@ -2,7 +2,9 @@ import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
-const allowedHosts = (process.env.CHECKOUT_ALLOWED_HOSTS || 'localhost,127.0.0.1')
+const allowedHosts = (
+  process.env.CHECKOUT_ALLOWED_HOSTS || 'localhost,127.0.0.1,21872i5858.imdo.co,218258jc58.goho.co'
+)
   .split(',')
   .map((host) => host.trim())
   .filter(Boolean);

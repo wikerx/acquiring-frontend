@@ -59,16 +59,21 @@ for (const width of [1440, 390, 320]) {
 
 test('countdown boundaries: 天、时、分借位正确，到期仍停止付款并查询权威状态', async ({ page }) => {
   const observed = await openCountdown(page, 86400);
-  const timer = page.getByRole('timer');
-  await expect(timer).toContainText('1天 00时 00分 00秒');
+  const remaining = page.getByRole('timer').locator('strong');
+  await expect(remaining).toHaveText('1天 00时 00分 00秒');
   await page.clock.fastForward(1000);
-  await expect(timer).toContainText('0天 23时 59分 59秒');
+  await expect(remaining).toHaveText('23时 59分 59秒');
   await page.clock.fastForward((23 * 3600 - 1) * 1000);
-  await expect(timer).toContainText('0天 01时 00分 00秒');
+  await expect(remaining).toHaveText('1时 00分 00秒');
   await page.clock.fastForward(1000);
-  await expect(timer).toContainText('0天 00时 59分 59秒');
-  await page.clock.fastForward((59 * 60 + 58) * 1000);
-  await expect(timer).toContainText('0天 00时 00分 01秒');
+  await expect(remaining).toHaveText('59分 59秒');
+  await page.clock.fastForward(59 * 60 * 1000);
+  await expect(remaining).toHaveText('59秒');
+  await page.getByRole('combobox').selectOption('en-US');
+  await expect(remaining).toHaveText('59s');
+  await page.getByRole('combobox').selectOption('zh-CN');
+  await page.clock.fastForward(58 * 1000);
+  await expect(remaining).toHaveText('1秒');
   await page.clock.fastForward(1000);
   await expect(page.getByRole('heading', { name: '链接已过期', exact: true })).toBeVisible();
   await expect(page.locator('.checkout-submit')).toHaveCount(0);

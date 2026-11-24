@@ -43,6 +43,8 @@ export default {
   chooseMerchant: 'Select a merchant first',
   methods: 'Payment methods',
   applications: 'Applications',
+  viewApplicationRecords: 'View applications',
+  noRowAction: 'No actions available',
   method: 'Payment method',
   itemKey: 'Method code',
   authorization: 'Authorization',

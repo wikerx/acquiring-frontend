@@ -233,7 +233,6 @@ function state(hasData: boolean) {
 
 <style scoped>
 .monitor-workbench-page__charts { margin-bottom: 16px; }
-.search-form :deep(.el-input) { width: 190px; }
 .monitor-payment-option { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .monitor-payment-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

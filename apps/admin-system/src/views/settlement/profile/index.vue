@@ -490,7 +490,6 @@ function editableTime(value?: string) { return value ? value.slice(0, 8) : ''; }
 </script>
 
 <style scoped>
-.search-form :deep(.el-input), .search-form :deep(.el-select) { width: 220px; }
 .identity-link { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; width: 100%; padding: 0; border: 0; color: var(--el-color-primary); background: transparent; text-align: center; white-space: nowrap; cursor: pointer; }
 .identity-link strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .identity-link :deep(.el-tag) { flex: 0 0 auto; }

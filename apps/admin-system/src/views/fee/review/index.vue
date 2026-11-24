@@ -141,7 +141,3 @@ async function submitReview(action: 'APPROVE' | 'REJECT', reviewComment: string)
     } finally { saving.value = false; }
 }
 </script>
-
-<style scoped>
-.search-form :deep(.el-select) { width: 180px; }
-</style>

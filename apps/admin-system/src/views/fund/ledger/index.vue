@@ -238,12 +238,3 @@ function dictLabel(options: SelectOption[], value?: string) {
     return options.find((item) => item.value === value)?.label || value;
 }
 </script>
-
-<style scoped>
-.search-form :deep(.el-select),
-.search-form :deep(.el-input) { width: 220px; }
-.search-form :deep(.posted-range) { width: 372px; }
-@media (max-width: 720px) {
-    .search-form :deep(.posted-range) { width: min(372px, 82vw); }
-}
-</style>

@@ -147,7 +147,6 @@ function logRowKey(row: StructuredLogItem) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-input) { width: 205px; }
 .monitor-log-page__error { margin-bottom: 16px; }
 .monitor-log-page__advanced { margin-top: -8px; }
 .monitor-log-page__count { display: inline-flex; align-items: center; min-height: 28px; color: var(--el-text-color-secondary); font-size: 12px; }

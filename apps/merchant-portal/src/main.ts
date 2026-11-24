@@ -11,6 +11,7 @@ import { router } from './router';
 import { useAuthStore } from './stores/authStore';
 import { logout } from './api/authApi';
 import './styles/main.css';
+import '../../../packages/shared/src/styles/list-search.css';
 
 document.title = VEXRA_BRAND.systems.merchant.title;
 

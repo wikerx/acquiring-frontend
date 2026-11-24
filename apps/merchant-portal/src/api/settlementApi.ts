@@ -239,23 +239,27 @@ export interface MerchantClearingDetail {
     reserveDetails?: MerchantClearingReserveLine[];
 }
 
-export async function searchMerchantSettlementBatches(data: MerchantSettlementBatchQuery) {
+function batchPath(reserve: boolean) {
+    return reserve ? '/merchant/settlements/reserve-batches' : '/merchant/settlements';
+}
+
+export async function searchMerchantSettlementBatches(data: MerchantSettlementBatchQuery, reserve = false) {
     const result = await http.post<CommonResult<PageResult<MerchantSettlementBatch>>>(
-        '/merchant/settlements/search', data,
+        `${batchPath(reserve)}/search`, data,
     );
     return unwrapResult(result.data);
 }
 
-export async function getMerchantSettlementBatch(settlementBatchNo: string) {
+export async function getMerchantSettlementBatch(settlementBatchNo: string, reserve = false) {
     const result = await http.get<CommonResult<MerchantSettlementBatchDetail>>(
-        `/merchant/settlements/${encodeURIComponent(settlementBatchNo)}`,
+        `${batchPath(reserve)}/${encodeURIComponent(settlementBatchNo)}`,
     );
     return unwrapResult(result.data);
 }
 
-export async function getMerchantSettlementVoucher(settlementBatchNo: string) {
+export async function getMerchantSettlementVoucher(settlementBatchNo: string, reserve = false, preview = false) {
     const result = await http.get<CommonResult<MerchantSettlementBatchDetail>>(
-        `/merchant/settlements/${encodeURIComponent(settlementBatchNo)}/voucher`,
+        `${batchPath(reserve)}/${encodeURIComponent(settlementBatchNo)}/voucher${preview ? '/preview' : ''}`,
     );
     return unwrapResult(result.data);
 }
@@ -264,10 +268,11 @@ export async function searchMerchantSettlementSummaries(
     settlementBatchNo: string,
     pageNo = 1,
     pageSize = 20,
+    reserve = false,
 ) {
     const encodedBatchNo = encodeURIComponent(settlementBatchNo);
     const result = await http.get<CommonResult<PageResult<MerchantSettlementSummary>>>(
-        `/merchant/settlements/${encodedBatchNo}/summaries`,
+        `${batchPath(reserve)}/${encodedBatchNo}/summaries`,
         { params: { pageNo, pageSize } },
     );
     return unwrapResult(result.data);
@@ -394,6 +399,13 @@ export async function searchMerchantSettlementTransactionsByTransaction(
 export async function searchMerchantSettlementReserves(data: MerchantSettlementReserveQuery) {
     const result = await http.post<CommonResult<PageResult<MerchantSettlementReserveItem>>>(
         '/merchant/settlements/reserve-items/search', data,
+    );
+    return unwrapResult(result.data);
+}
+
+export async function getMerchantSettlementReserveItem(reserveActionNo: string) {
+    const result = await http.get<CommonResult<MerchantSettlementReserveItem>>(
+        `/merchant/settlements/reserve-items/${encodeURIComponent(reserveActionNo)}`,
     );
     return unwrapResult(result.data);
 }

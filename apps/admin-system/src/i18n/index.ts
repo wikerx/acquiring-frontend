@@ -24,6 +24,7 @@ function getSavedLocale(): string {
 
 export function setLocale(locale: string) {
     const normalizedLocale = normalizeLocale(locale);
+    document.documentElement.lang = normalizedLocale;
     try {
         localStorage.setItem(LOCALE_KEY, normalizedLocale);
     } catch { /* localStorage may be unavailable */ }
@@ -43,5 +44,7 @@ export const i18n = createI18n({
         'en-US': enUS,
     },
 });
+
+document.documentElement.lang = i18n.global.locale.value;
 
 export default i18n;

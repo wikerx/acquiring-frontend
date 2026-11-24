@@ -26,6 +26,8 @@ jobs:
         run: npm ci
       - name: Lint workspaces
         run: npm run lint
+      - name: Verify shared list search layout
+        run: npm run test:governance:list-search
       - name: Typecheck workspaces
         run: npm run typecheck
       - name: Verify exact amount formatting

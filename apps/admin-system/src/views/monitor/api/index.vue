@@ -196,5 +196,4 @@ function state(hasData: boolean) {
 
 <style scoped>
 .monitor-workbench-page__charts { margin-bottom: 16px; }
-.search-form :deep(.el-input) { width: 190px; }
 </style>

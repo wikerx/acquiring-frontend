@@ -9,6 +9,7 @@ const targets = [
     ['channel/merchant-mid-binding', 'MID_BINDING', 'channel:mid-binding'],
     ['channel/alert-rule', 'ALERT_RULE', 'channel:alert-rule'], ['channel/alert-event', 'ALERT_EVENT', 'channel:alert-event'],
     ['transaction/order', 'ORDER', 'transaction:order'], ['transaction/operation', 'OPERATION', 'transaction:operation'],
+    ['transaction/channel-callback', 'CHANNEL_CALLBACK', 'transaction:channel-callback'],
 ] as const;
 const pageErrors = new WeakMap<Page, string[]>();
 test.afterEach(async ({ page }) => expect(pageErrors.get(page) || []).toEqual([]));
@@ -82,6 +83,62 @@ test('route candidate details reuse the same authorized channel identity', async
     await expect(logo.locator('..')).toHaveCSS('width', '96px');
 });
 
+test('filters channel callbacks by stable codes and shows the verified payload and gateway response', async ({ page }) => {
+    await setup(page, 'transaction/channel-callback', 'transaction:channel-callback', 'missing');
+    await page.goto('/transaction/channel-callback');
+    await expect(page.locator('main .channel-display__fallback')).toHaveText(channel.channelCnName);
+    await page.getByRole('combobox', { name: '渠道', exact: true }).press('ArrowDown');
+    await page.getByRole('option', { name: `${channel.channelCode} / ${channel.channelCnName}` }).click();
+    await page.getByRole('combobox', { name: '回调状态', exact: true }).press('ArrowDown');
+    await page.getByRole('option', { name: '未更新交易' }).click();
+    const request = page.waitForRequest((candidate) => candidate.url().endsWith('/admin/transactions/channel-callbacks/search'));
+    await page.getByRole('button', { name: '搜索', exact: true }).click();
+    expect((await request).postDataJSON()).toMatchObject({ channelCode: channel.channelCode, callbackStatus: 'IGNORED' });
+    const event = page.getByRole('row').filter({ hasText: 'CCB-CHANNEL-QA' });
+    await expect(event).toHaveCount(1);
+    await expect(event.getByRole('cell', { name: '2', exact: true })).toBeVisible();
+    await expect(event).toContainText('2026-11-17 10:00:10');
+    await openDetail(page);
+    const detail = page.getByRole('dialog', { name: '渠道回调详情' });
+    await expect(detail).toHaveCSS('width', '1180px');
+    await expect(detail.locator('.el-tag--info').filter({ hasText: '保留已有终态' })).toBeVisible();
+    const deliveryRows = detail.locator('.callback-detail__deliveries .el-table__body tbody tr');
+    await expect(deliveryRows).toHaveCount(2);
+    await expect(deliveryRows.nth(0)).toContainText('首次受理');
+    await expect(deliveryRows.nth(0)).toContainText('84 毫秒');
+    await expect(deliveryRows.nth(1)).toContainText('重复投递');
+    await expect(deliveryRows.nth(1)).toContainText('37 毫秒');
+    for (const row of await deliveryRows.all()) {
+        await expect(row.getByText('已通过', { exact: true })).toBeVisible();
+        await expect(row.getByText('200', { exact: true })).toBeVisible();
+        await expect(row.getByText('SUCCESS', { exact: true })).toBeVisible();
+    }
+    await expect(detail.getByText('渠道回调业务摘要（已验签）', { exact: true })).toBeVisible();
+    await expect(detail.getByText('网关应答正文', { exact: true })).toBeVisible();
+    await expect(detail.locator('pre').filter({ hasText: /^SUCCESS$/ })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(detail.getByText('网关应答正文', { exact: true })).toBeVisible();
+    await expect.poll(async () => (await detail.boundingBox())?.width ?? Infinity).toBeLessThanOrEqual(390);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await deliveryRows.nth(1).locator('.el-table__expand-icon').click();
+    const evidence = detail.locator('.callback-detail__evidence');
+    await expect(evidence.getByText('渠道原始请求（已脱敏）', { exact: true })).toBeVisible();
+    await expect(evidence.locator('pre').filter({ hasText: 'scott-sent-event' })).toBeVisible();
+    await expect(evidence.locator('pre').filter({ hasText: /^SUCCESS$/ })).toBeVisible();
+    const deliveryPanels = evidence.locator('.transaction-payload-blocks__section');
+    const summaryPanels = detail.locator('.record-card .transaction-payload-blocks__section');
+    await expect(deliveryPanels).toHaveCount(2);
+    await expect(deliveryPanels.nth(0).locator('pre')).toHaveCSS('background-color', 'rgb(11, 17, 32)');
+    await expect(summaryPanels.nth(0).locator('pre')).toHaveCSS('background-color', 'rgb(11, 17, 32)');
+    await expect(evidence.getByRole('button', { name: '点击复制', exact: true })).toHaveCount(2);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const firstPanel = await deliveryPanels.nth(0).boundingBox();
+    const secondPanel = await deliveryPanels.nth(1).boundingBox();
+    expect(firstPanel).not.toBeNull();
+    expect(secondPanel).not.toBeNull();
+    expect(secondPanel!.y).toBeGreaterThan(firstPanel!.y);
+});
+
 test('manual search during dictionary initialization is not submitted again on mount', async ({ page }) => {
     await setup(page, 'transaction/order', 'transaction:order');
     let releaseDictionaries!: () => void;
@@ -135,6 +192,9 @@ async function setup(page: Page, component: string, permission: string, mode: 'n
         transactionType: 'PAYMENT', transactionStatus: 'SUCCESS', labelCurrency: 'USD', labelAmount: '12.34',
         transactionCurrency: 'USD', transactionAmount: '12.34', currencyExponent: 2, labelCurrencyExponent: 2,
         transactionDateTime: '2026-11-17T10:00:00', rootTransactionDateTime: '2026-11-17T10:00:00',
+        callbackId: 'CCB-CHANNEL-QA', callbackLogId: 'CCL-CHANNEL-QA', callbackStatus: 'IGNORED',
+        processResult: 'TERMINAL_IGNORED', signatureValid: true, deliveryCount: 2,
+        callbackReceivedTime: '2026-11-17T10:00:00', latestDeliveryTime: '2026-11-17T10:00:10',
         ruleName: 'QA route', ruleCode: 'QA_ROUTE', transactionTypes: ['PAYMENT'], currencyCodes: ['USD'], cardBrands: ['VISA'],
         ruleType: 'FIXED', ruleStatus: component === 'channel/route' ? 'DRAFT' : 1, scopeType: 'GLOBAL', rulePriority: 1, version: 1,
         status: 1, businessType: 'ACQUIRING', paymentMethod: 'BANK_CARD', paymentBrand: 'VISA',
@@ -169,6 +229,25 @@ async function setup(page: Page, component: string, permission: string, mode: 'n
             return route.fulfill({ contentType: 'image/png', body: mode === 'broken' ? Buffer.from('invalid image') : png });
         }
         if (path === '/admin/channel/info/options') return reply([channel]);
+        if (path === '/admin/transactions/channel-callbacks/channel-options') return reply([row]);
+        if (path === `/admin/transactions/channel-callbacks/${row.callbackId}`) return reply({
+            callback: row,
+            deliveries: {
+                total: 2, pages: 1, pageNo: 1, pageSize: 20,
+                records: [
+                    { deliveryId: '1', receivedTime: row.callbackReceivedTime, signatureValid: true, acceptResult: 'ACCEPTED',
+                        httpStatus: 200, responseBody: 'SUCCESS', durationMillis: 84 },
+                    { deliveryId: '2', receivedTime: row.latestDeliveryTime, signatureValid: true, acceptResult: 'DUPLICATE',
+                        httpStatus: 200, responseBody: 'SUCCESS', durationMillis: 37,
+                        requestBodyMasked: '{"eventId":"scott-sent-event","status":"SUCCESS"}' },
+                ],
+            },
+            log: {
+                callbackLogId: row.callbackLogId,
+                platformResponseCode: '200', platformResponseBody: 'SUCCESS',
+                requestBodyJsonMasked: JSON.stringify({ length: 123, sha256: 'a'.repeat(64), verifiedFields: { channelTradeStatus: 'SUCCESS' } }),
+            },
+        });
         if (path === '/admin/channel/alert-rules/options') return reply({ paymentMethods: [], cardBrands: [], userEmails: [], emailTemplates: [] });
         if (path.includes('/system/dicts/') || path.includes('/merchants/search') || path.includes('/base/') || path.endsWith('/change-logs/search')) {
             return reply(path.endsWith('/search') || path.endsWith('/list') ? { ...paged, records: [], total: 0 } : []);

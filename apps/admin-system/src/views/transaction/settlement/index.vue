@@ -284,7 +284,19 @@
                         </div>
                         <el-table v-if="batchSummaryRows.length || batchSummaryLoading" v-loading="batchSummaryLoading" :data="batchSummaryRows" size="small" border>
                             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="210" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="170" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
+                            <el-table-column :label="t('transaction.fields.transactionType')" min-width="170" align="center">
+                                <template #default="{ row }">
+                                    <div class="settlement-summary__transaction-types">
+                                        <TransactionTypeDisplay
+                                            v-for="type in summaryTransactionTypes(row, activeDetailBatch?.batchType)"
+                                            :key="type"
+                                            :value="type"
+                                            :label="enumText('transactionTypeValue', type)"
+                                        />
+                                        <span v-if="!summaryTransactionTypes(row, activeDetailBatch?.batchType).length">-</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
                             <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="130" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                             <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
@@ -1110,6 +1122,11 @@ function dimensionItems(group: string, value?: string) {
     return value ? [{ value, label: enumText(group, value) }] : [];
 }
 
+function summaryTransactionTypes(row: SettlementResultSummaryLine, batchType?: string) {
+    if (batchType === 'RESERVE_RELEASE') return row.originalTransactionTypes || [];
+    return row.transactionType ? [row.transactionType] : [];
+}
+
 function translateSettlementFormula(key: string) {
     return t(key);
 }
@@ -1183,7 +1200,8 @@ function canRequestReversal(row: SettlementBatchSummary) {
 function buildBatchVoucher(value: SettlementBatchDetail): SettlementVoucherDocument {
     const batch = value.batch;
     const voucherLocale = documentLocale.value;
-    const reserveBatch = batch.batchType === 'RESERVE_RELEASE' || batch.batchType === 'ADJUSTMENT';
+    const reserveRelease = batch.batchType === 'RESERVE_RELEASE';
+    const reserveBatch = reserveRelease || batch.batchType === 'ADJUSTMENT';
     return {
         system: 'admin',
         locale: voucherLocale,
@@ -1280,7 +1298,8 @@ function buildBatchVoucher(value: SettlementBatchDetail): SettlementVoucherDocum
                     paymentTypeLabel: enumText('paymentTypeValue', row.paymentType),
                     paymentMethodLabel: enumText('paymentMethodValue', row.paymentMethod),
                 },
-                transactionType: enumText('transactionTypeValue', row.transactionType),
+                transactionType: summaryTransactionTypes(row, batch.batchType)
+                    .map((type) => enumText('transactionTypeValue', type)).join(' / ') || '-',
                 resultItemType: summaryItemText(row.resultItemType, row.feeCategory),
                 direction: {
                     cellType: 'direction',
@@ -1451,6 +1470,18 @@ watch(locale, () => void loadDimensionDictionaries());
 .settlement-detail__tab-head strong {
     color: #1d2939;
     font-size: 14px;
+}
+
+.settlement-summary__transaction-types {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 10px;
+}
+
+.settlement-summary__transaction-types :deep(.transaction-type-display__text) {
+    white-space: normal;
+    word-break: normal;
 }
 
 .settlement-detail__tab-head span {

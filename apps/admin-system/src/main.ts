@@ -12,6 +12,7 @@ import { i18n } from './i18n';
 import { APP_TITLE } from './constants/app';
 import { useUserStore } from './store';
 import './styles/main.css';
+import '../../../packages/shared/src/styles/list-search.css';
 import { isPublicAuthPath } from './utils/auth-navigation';
 
 const app = createApp(App);

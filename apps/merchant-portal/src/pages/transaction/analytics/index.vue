@@ -21,7 +21,7 @@
 
         <section class="merchant-list-card merchant-search-card analytics-filter-card">
             <el-form :model="filters" inline size="small" class="search-form analytics-search-form" @submit.prevent="loadActiveTab">
-                <div class="analytics-search-form__fields">
+                <div class="search-form__fields">
                     <el-form-item :label="t('transactionAnalytics.paymentMethod')" class="analytics-payment-filter">
                         <el-select v-model="filters.paymentTool" clearable filterable :placeholder="t('transactionAnalytics.all')">
                             <template #prefix>
@@ -70,7 +70,7 @@
                             default-preset="last7"
                         />
                     </el-form-item>
-                    <el-form-item class="merchant-search-actions analytics-search-actions">
+                    <el-form-item class="merchant-search-actions">
                         <el-button type="primary" :icon="Search" :loading="loading" native-type="submit">{{ t('common.search') }}</el-button>
                         <el-button :icon="RefreshLeft" @click="resetFilters">{{ t('common.reset') }}</el-button>
                     </el-form-item>
@@ -105,6 +105,11 @@
                     <small>{{ t('transactionAnalytics.amountHint') }}</small>
                 </article>
             </section>
+
+            <AnalyticsMonitoringAvailability
+                v-if="overview && !loading && !errorMessage"
+                :card-brand="overviewCardBrand"
+            />
 
             <section class="analytics-panel analytics-panel--trend">
                 <header class="analytics-panel__header">
@@ -234,6 +239,7 @@ import { Clock, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import {
     AnalyticsChart,
+    AnalyticsMonitoringAvailability,
     AnalyticsPaymentPerformance,
     CurrencyDisplay,
     PaymentLogoGroup,
@@ -283,6 +289,7 @@ const dateRange = ref<string[]>(createTransactionAnalyticsRange(7, DEFAULT_TRANS
 const loading = ref(false);
 const errorMessage = ref('');
 const overview = ref<TransactionAnalyticsOverview>();
+const overviewCardBrand = ref<string>();
 const failureAnalysis = ref<TransactionAnalyticsFailure>();
 const transactionTypeOptions = ref<TransactionDictOption[]>([]);
 const paymentMethodOptions = ref<TransactionDictOption[]>([]);
@@ -423,8 +430,15 @@ async function loadActiveTab() {
     loading.value = true;
     errorMessage.value = '';
     try {
-        if (activeTab.value === 'overview') overview.value = await transactionApi.analyticsOverview(query);
-        else failureAnalysis.value = await transactionApi.analyticsFailures(query);
+        if (activeTab.value === 'overview') {
+            const result = await transactionApi.analyticsOverview(query);
+            if (currentRequest === requestSequence) {
+                overview.value = result;
+                overviewCardBrand.value = query.paymentBrand;
+            }
+        } else {
+            failureAnalysis.value = await transactionApi.analyticsFailures(query);
+        }
     } catch {
         if (currentRequest === requestSequence) errorMessage.value = t('transactionAnalytics.loadFailed');
     } finally {
@@ -510,26 +524,6 @@ watch(locale, () => void loadFilterOptions());
 .analytics-page__updated :deep(.base-date-time) { color: inherit; }
 
 .analytics-filter-card { padding: 12px 16px; }
-.analytics-search-form { display: grid; width: 100%; }
-.analytics-search-form__fields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 18px; width: 100%; }
-.analytics-search-form__fields :deep(.el-form-item) {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    flex: 0 1 320px;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    margin: 0;
-}
-.analytics-search-form__fields :deep(.el-form-item.analytics-time-filter) { flex: 1 1 780px; max-width: 100%; }
-.analytics-search-form :deep(.el-form-item__label) { justify-content: flex-end; width: 92px; padding-right: 0; color: #566173; }
-.analytics-search-form :deep(.el-form-item__content) { width: 100%; min-width: 0; margin-left: 0 !important; }
-.analytics-search-form :deep(.el-input),
-.analytics-search-form :deep(.el-select) { width: 100%; }
-.analytics-time-filter :deep(.transaction-time-range-filter) { max-width: none; }
-.analytics-time-filter :deep(.transaction-time-range-filter__timezone),
-.analytics-time-filter :deep(.transaction-time-range-filter__picker),
-.analytics-time-filter :deep(.el-date-editor) { width: 100%; }
 .analytics-payment-filter__prefix { max-width: 54px; overflow: hidden; }
 .analytics-payment-filter__prefix :deep(.payment-logo-group) { flex-wrap: nowrap; gap: 3px; }
 
@@ -543,8 +537,6 @@ watch(locale, () => void loadFilterOptions());
 .analytics-payment-option :deep(.payment-logo-group) { flex-wrap: nowrap; gap: 4px; overflow: hidden; }
 .analytics-payment-option span { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .analytics-payment-option small { color: #98a2b3; font-size: 10px; }
-.analytics-search-form__fields :deep(.el-form-item.analytics-search-actions) { display: block; flex: 1 1 160px; min-width: 160px; }
-.analytics-search-actions :deep(.el-form-item__content) { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 8px; }
 
 .analytics-tabs :deep(.el-tabs__header) { margin-bottom: 10px; }
 .analytics-tabs :deep(.el-tabs__item) { height: 34px; font-size: 13px; }
@@ -625,8 +617,6 @@ watch(locale, () => void loadFilterOptions());
 @media (max-width: 980px) {
     .analytics-page__header { flex-direction: column; gap: 8px; }
     .analytics-page__meta { align-items: flex-start; }
-    .analytics-search-form__fields :deep(.el-form-item.analytics-time-filter),
-    .analytics-search-form__fields :deep(.el-form-item.analytics-search-actions) { flex-basis: 100%; }
     .analytics-grid--overview,
     .analytics-grid--failure { grid-template-columns: 1fr; }
     .analytics-grid--overview > :last-child { grid-column: auto; }
@@ -634,11 +624,6 @@ watch(locale, () => void loadFilterOptions());
 
 @media (max-width: 760px) {
     .analytics-filter-card { padding: 12px; }
-    .analytics-search-form__fields :deep(.el-form-item) { grid-template-columns: 1fr; flex-basis: 100%; gap: 6px; width: 100%; }
-    .analytics-search-form :deep(.el-form-item__label) { justify-content: flex-start; width: 100%; min-height: auto; padding: 0; line-height: 18px; }
-    .analytics-search-form__fields :deep(.el-form-item.analytics-search-actions) { min-width: 0; }
-    .analytics-search-actions :deep(.el-form-item__content) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .analytics-search-actions :deep(.el-button) { width: 100%; }
     .analytics-metric-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .analytics-metric { min-height: 80px; padding: 10px 10px 9px 16px; }
     .analytics-metric > strong { font-size: 20px; }

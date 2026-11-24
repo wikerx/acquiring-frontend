@@ -8,7 +8,7 @@
         size="small"
         class="search-form transaction-search-form"
       >
-        <div class="transaction-search-form__fields">
+        <div class="search-form__fields">
           <el-form-item :label="t('transaction.order.merchantOrderNo')">
             <el-input
               v-model.trim="query.merchantOrderNo"
@@ -123,7 +123,7 @@
               default-preset="today"
             />
           </el-form-item>
-          <el-form-item class="merchant-search-actions transaction-search-actions">
+          <el-form-item class="merchant-search-actions">
             <el-button type="primary" :icon="Search" @click="applyQuery">{{
               t('common.search')
             }}</el-button>
@@ -1903,59 +1903,6 @@
     padding: 12px 16px;
   }
 
-  .transaction-search-form {
-    display: grid;
-    width: 100%;
-  }
-
-  .transaction-search-form__fields {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 10px 18px;
-    width: 100%;
-  }
-
-  .transaction-search-form__fields :deep(.el-form-item),
-  .transaction-time-form-item {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    flex: 0 1 320px;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    min-width: 0;
-  }
-
-  .transaction-search-form__fields :deep(.el-form-item.transaction-time-form-item) {
-    flex: 1 1 780px;
-    max-width: 100%;
-  }
-
-  .transaction-search-form :deep(.el-form-item__label) {
-    justify-content: flex-end;
-    width: 92px;
-    padding-right: 0;
-  }
-
-  .transaction-search-form :deep(.el-form-item__content) {
-    width: 100%;
-    min-width: 0;
-    margin-left: 0 !important;
-  }
-
-  .transaction-search-form :deep(.el-input),
-  .transaction-search-form :deep(.el-select) {
-    width: var(--merchant-search-control-width);
-    max-width: 100%;
-  }
-
-  .transaction-time-form-item :deep(.transaction-time-range-filter__timezone),
-  .transaction-time-form-item :deep(.transaction-time-range-filter__picker),
-  .transaction-time-form-item :deep(.el-date-editor) {
-    width: 100%;
-  }
-
   .transaction-brand-select__prefix :deep(.payment-logo-group),
   .transaction-brand-option__logo :deep(.payment-logo-group),
   .transaction-payment-cell__logos :deep(.payment-logo-group),
@@ -1993,29 +1940,6 @@
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     font-size: 11px;
-  }
-
-  .transaction-time-form-item :deep(.el-form-item__content) {
-    width: 100%;
-  }
-
-  .transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
-    display: block;
-    flex: 1 1 160px;
-    align-self: end;
-    margin-left: auto;
-    min-width: 160px;
-    width: auto;
-  }
-
-  .transaction-search-actions :deep(.el-form-item__content) {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
-    justify-content: flex-end;
-    align-items: center;
-    width: 100%;
-    margin-left: 0 !important;
   }
 
   .transaction-table-card {
@@ -2426,24 +2350,9 @@
     overflow-wrap: anywhere;
   }
 
-  @media (min-width: 1680px) {
-    .transaction-search-form__fields {
-      gap: 10px 18px;
-    }
-  }
-
   @media (max-width: 1180px) {
     .transaction-result-strip__summary {
       grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
-    }
-
-    .transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
-      flex-basis: 100%;
-    }
-
-    .transaction-time-form-item {
-      flex-basis: 100%;
-      min-width: 0;
     }
   }
 
@@ -2512,10 +2421,6 @@
       justify-self: start;
     }
 
-    .transaction-search-form {
-      padding-bottom: 0;
-    }
-
     .transaction-result-strip__summary,
     .transaction-result-row {
       grid-template-columns: 1fr;
@@ -2536,44 +2441,6 @@
 
     .transaction-result-row__label {
       border-right: 0;
-    }
-
-    .transaction-search-form__fields :deep(.el-form-item),
-    .transaction-time-form-item {
-      display: grid;
-      grid-template-columns: 1fr;
-      flex-basis: 100%;
-      gap: 6px;
-      width: 100%;
-    }
-
-    .transaction-search-form :deep(.el-form-item__label) {
-      justify-content: flex-start;
-      width: 100%;
-      min-height: auto;
-      padding: 0;
-      line-height: 18px;
-      text-align: left;
-    }
-
-    .transaction-search-form :deep(.el-form-item__content) {
-      width: 100%;
-      margin-left: 0 !important;
-    }
-
-    .transaction-search-actions :deep(.el-form-item__content) {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      justify-content: stretch;
-    }
-
-    .transaction-search-form__fields :deep(.el-form-item.transaction-search-actions) {
-      flex-basis: 100%;
-      min-width: 0;
-    }
-
-    .transaction-search-actions :deep(.el-button) {
-      width: 100%;
     }
 
     .pagination-container {

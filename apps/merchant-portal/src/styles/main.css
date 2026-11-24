@@ -42,7 +42,15 @@ body {
     --merchant-action-warning-border: #fed7aa;
     --merchant-action-warning-text: #c2410c;
     --merchant-search-control-width: 240px;
-    --merchant-search-range-width: 360px;
+    --merchant-search-date-width: 292px;
+    --merchant-search-datetime-width: 380px;
+    --list-search-control-width: var(--merchant-search-control-width);
+    --list-search-wide-width: 280px;
+    --list-search-date-width: var(--merchant-search-date-width);
+    --list-search-datetime-width: var(--merchant-search-datetime-width);
+    --list-search-control-height: var(--merchant-control-height);
+    --list-search-control-radius: var(--merchant-control-radius);
+    --list-search-action-width: 68px;
     --merchant-nav-bg: #ffffff;
     --merchant-nav-bg-elevated: #f8fafc;
     --merchant-nav-text: #334155;
@@ -998,18 +1006,6 @@ body {
 
 .merchant-main .search-form .el-form-item__content {
     min-width: 0;
-}
-
-.merchant-main .search-form .el-input,
-.merchant-main .search-form .el-select,
-.merchant-main .search-form .search-form__select--wide {
-    width: var(--merchant-search-control-width);
-    max-width: 100%;
-}
-
-.merchant-main .search-form .el-date-editor {
-    width: var(--merchant-search-range-width);
-    max-width: 100%;
 }
 
 .merchant-main .search-form .el-input__wrapper,
@@ -3961,14 +3957,6 @@ body {
 
     .merchant-redesigned-page .merchant-search-card {
         padding: 12px;
-    }
-
-    .merchant-main .search-form,
-    .merchant-query-form {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        width: 100%;
     }
 
     .merchant-main .search-form .el-form-item {

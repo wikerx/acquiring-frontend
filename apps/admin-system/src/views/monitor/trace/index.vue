@@ -264,7 +264,6 @@ function selectWaterfallEvent(event: MonitorChartClickEvent) {
 <style scoped>
 .monitor-trace-page__chart,
 .monitor-trace-page__summary { margin-bottom: 16px; }
-.search-form :deep(.el-input) { width: 210px; }
 .monitor-trace-page__summary,
 .monitor-trace-page__timeline { padding: 16px 20px; border: 1px solid var(--el-border-color-lighter); border-radius: 8px; background: var(--el-bg-color); }
 .monitor-trace-page__section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; color: var(--el-text-color-secondary); font-size: 12px; }
@@ -277,11 +276,6 @@ function selectWaterfallEvent(event: MonitorChartClickEvent) {
 .monitor-trace-page__event-name { margin-top: 5px; color: var(--el-text-color-regular); font-size: 13px; }
 .monitor-trace-page__event-error { margin-top: 5px; color: var(--el-color-danger); font-size: 12px; }
 @media (max-width: 900px) {
-    .search-form { display: flex; flex-direction: column; }
-    .search-form :deep(.el-form-item) { display: flex; width: 100%; margin-right: 0; }
-    .search-form :deep(.el-form-item__label) { flex: 0 0 96px; width: 96px !important; padding-right: 10px; }
-    .search-form :deep(.el-form-item__content) { flex: 1; min-width: 0; }
-    .search-form :deep(.el-input) { width: 100%; }
     .monitor-trace-page :deep(.el-descriptions__body .el-descriptions__table) { table-layout: auto; }
     .monitor-trace-page__event-heading { align-items: flex-start; flex-wrap: wrap; }
 }

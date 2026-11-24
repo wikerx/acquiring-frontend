@@ -33,6 +33,7 @@ export interface MerchantExportTaskQuery {
 export interface MerchantExportTaskSummary {
   taskNo: string;
   taskType: MerchantExportTaskType;
+  settlementBatchDomain?: 'RESERVE' | 'TRANSACTION';
   taskName: string;
   status: MerchantExportTaskStatus;
   progressPercent: number;
@@ -75,17 +76,19 @@ export async function submitRefundExport(query: MerchantRefundQuery) {
   return unwrapResult(result.data);
 }
 
-export async function submitSettlementBatchExport(query: MerchantSettlementBatchQuery) {
+export async function submitSettlementBatchExport(query: MerchantSettlementBatchQuery, reserve = false) {
   const result = await http.post<CommonResult<MerchantExportTaskSummary>>(
-    '/merchant/operations/export-tasks/settlement-batches',
+    reserve ? '/merchant/operations/export-tasks/reserve-settlement-batches'
+      : '/merchant/operations/export-tasks/settlement-batches',
     { requestId: createExportRequestId(), query },
   );
   return unwrapResult(result.data);
 }
 
-export async function submitSettlementSummaryExport(settlementBatchNo: string) {
+export async function submitSettlementSummaryExport(settlementBatchNo: string, reserve = false) {
   const result = await http.post<CommonResult<MerchantExportTaskSummary>>(
-    '/merchant/operations/export-tasks/settlement-summaries',
+    reserve ? '/merchant/operations/export-tasks/reserve-settlement-summaries'
+      : '/merchant/operations/export-tasks/settlement-summaries',
     { requestId: createExportRequestId(), settlementBatchNo },
   );
   return unwrapResult(result.data);

@@ -315,9 +315,6 @@ function accountStatusType(value?: string) {
 .balance-band .balance-pills { margin-top: 10px; }
 .balance-band small { margin-top: 7px; color: #98a2b3; }
 .finance-table-head { min-height: 52px; }
-.search-form :deep(.el-input),
-.search-form :deep(.el-select) { width: 240px; }
-.search-form :deep(.posted-range) { width: 372px; }
 .ledger-detail-drawer :deep(.el-drawer__header) { min-height: 60px; margin-bottom: 0; padding: 17px 24px; border-bottom: 1px solid #e8edf3; }
 .ledger-detail-drawer :deep(.el-drawer__title) { color: var(--account-ink); font-size: 17px; font-weight: 650; }
 .ledger-detail-drawer :deep(.el-drawer__body) { padding: 20px 24px 28px; }

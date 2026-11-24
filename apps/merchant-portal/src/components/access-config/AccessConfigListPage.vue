@@ -307,11 +307,6 @@ function updatedAt(item: AccessConfigItem) {
 </script>
 
 <style scoped>
-.access-config-search-form :deep(.el-input),
-.access-config-search-form :deep(.el-select) {
-    width: 210px;
-}
-
 .config-value {
     color: var(--el-text-color-primary);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -328,11 +323,6 @@ function updatedAt(item: AccessConfigItem) {
 }
 
 @media (max-width: 640px) {
-    .access-config-search-form :deep(.el-form-item),
-    .access-config-search-form :deep(.el-input),
-    .access-config-search-form :deep(.el-select) {
-        width: 100%;
-    }
 
     .pagination-container {
         justify-content: flex-start;

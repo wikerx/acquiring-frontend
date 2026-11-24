@@ -383,6 +383,73 @@ test('keeps supported financial actions disabled when status or available amount
     }
 });
 
+test('keeps channel records open without periodically querying the list or transaction detail', async ({ page }) => {
+    await page.clock.install();
+    await mockAdminApis(page, () => {});
+    const requestId = 'CR202611141800181810899';
+    const operationPath = '/admin/transactions/operations/';
+    const reads: string[] = [];
+    page.on('request', (request) => {
+        const path = new URL(request.url()).pathname;
+        if (path === `${operationPath}search-with-summary` || path === `${operationPath}${transactionId}`) {
+            reads.push(path);
+        }
+    });
+    await page.route(`**/admin/transactions/operations/${transactionId}/detail-records?**`, (route) => fulfill(route, {
+        total: 1, pageNo: 1, pageSize: 10, pages: 1,
+        records: [{ recordType: 'CHANNEL_REQUEST', recordId: requestId, record: { requestId, transactionId } }],
+    }));
+    await page.goto('/transaction/operation');
+    await page.getByRole('button', { name: '详情', exact: true }).first().click();
+    const drawer = page.getByRole('dialog', { name: '交易详情' });
+    await drawer.getByRole('tab', { name: '渠道记录', exact: true }).click();
+    const channelRecord = drawer.getByText(requestId, { exact: true }).first();
+    await expect(channelRecord).toBeVisible();
+    expect(reads).toEqual([`${operationPath}search-with-summary`, `${operationPath}${transactionId}`]);
+    await page.clock.runFor(30000);
+    expect(reads).toEqual([`${operationPath}search-with-summary`, `${operationPath}${transactionId}`]);
+    await expect(channelRecord).toBeVisible();
+});
+
+test('distinguishes the callback event from its linked audit log', async ({ page }) => {
+    await mockAdminApis(page, () => {});
+    const callbackId = 'CCB202611141800181810899';
+    const callbackLogId = 'CCL202611141800181810898';
+    const attempt = { deliveryId: 'a'.repeat(32), receivedTime: '2026-11-14T18:03:12', signatureValid: true,
+        acceptResult: 'DUPLICATE', httpStatus: 200, durationMillis: 35 };
+    await page.route(`**/admin/transactions/operations/${transactionId}/detail-records/CHANNEL_CALLBACK_DELIVERY/${attempt.deliveryId}?**`, (route) => fulfill(route, {
+        recordType: 'CHANNEL_CALLBACK_DELIVERY', recordId: attempt.deliveryId,
+        record: { ...attempt, requestBodyMasked: '{"eventId":"scott-sent-event"}', responseBody: 'SUCCESS' },
+    }));
+    await page.route(`**/admin/transactions/operations/${transactionId}/detail-records?**`, (route) => fulfill(route, {
+        total: 3, pageNo: 1, pageSize: 10, pages: 1,
+        records: [
+            { recordType: 'CHANNEL_CALLBACK_DELIVERY', recordId: attempt.deliveryId, payloadAvailable: true, record: attempt },
+            { recordType: 'CHANNEL_CALLBACK', recordId: callbackId, payloadAvailable: false,
+                record: { callbackId, callbackLogId, callbackStatus: 'IGNORED', transactionId } },
+            { recordType: 'CHANNEL_CALLBACK_LOG', recordId: callbackLogId, payloadAvailable: true,
+                record: { callbackLogId, transactionId } },
+        ],
+    }));
+    await page.goto('/transaction/operation');
+    await page.getByRole('button', { name: '详情', exact: true }).first().click();
+    const drawer = page.getByRole('dialog', { name: '交易详情' });
+    await drawer.getByRole('tab', { name: '回调记录', exact: true }).click();
+    const cards = drawer.getByRole('tabpanel', { name: '回调记录', exact: true }).locator('.record-card');
+    await expect(cards).toHaveCount(3);
+    await expect(drawer.getByText('IGNORED', { exact: true })).toHaveCount(0);
+    const delivery = cards.nth(0);
+    await expect(delivery.getByText('重复投递', { exact: true }).first()).toBeVisible();
+    await delivery.getByRole('button', { name: '查看完整脱敏报文' }).click();
+    await expect(delivery.getByText('渠道原始请求（已脱敏）', { exact: true })).toBeVisible();
+    await expect(delivery.locator('pre').filter({ hasText: 'scott-sent-event' })).toBeVisible();
+    await expect(delivery.locator('pre').filter({ hasText: /^SUCCESS$/ })).toBeVisible();
+    await expect(cards.nth(1).locator('.record-card__identity')).toHaveText(`渠道回调业务${callbackId}`);
+    await expect(cards.nth(1).locator('.record-list__empty-raw')).toHaveCount(0);
+    await expect(cards.nth(2).locator('.record-card__identity')).toHaveText(`渠道回调日志${callbackLogId}`);
+    await expect(cards.nth(2).getByRole('button', { name: '查看完整脱敏报文' })).toBeVisible();
+});
+
 test('shows unavailable review rejection as failed while preserving historical review and 3DS waiting', async ({ page }) => {
     await mockAdminApis(page, () => {});
     const flowEvents = [

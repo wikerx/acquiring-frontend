@@ -103,6 +103,10 @@ layout changed. Report failures and skipped checks accurately; do not use old ou
 ## Component And UX Rules
 
 - Reuse existing layout, form, table, dialog, feedback, loading, empty, and error-state patterns.
+- Admin and Merchant list filters use `.search-form` and the shared list-search stylesheet.
+  Follow the label, control, action, date-range, and responsive rules in
+  `docs/standards/frontend-development-standard.md`. Page-local size and alignment overrides
+  for ordinary filters and query/reset buttons are not permitted. Run `npm run test:governance:list-search`.
 - Main list pages use the application-local `StandardTable` with a stable `table-key`. Small modal,
   diagnostic, virtual, or preview tables may use a raw table when column preferences are not useful.
 - Column preferences affect presentation only. Fixed identity, selection, permission-sensitive, and

@@ -500,7 +500,6 @@ function createExportRequestId(prefix: string) {
 .legacy-status-tag { margin-top: 6px; }
 .record-detail-panel { padding: 12px 18px 18px; background: #f8fafc; }
 .record-detail-panel h4 { margin: 0 0 10px; color: var(--simulation-ink); font-size: 13px; font-weight: 600; }
-.search-form :deep(.el-select) { width: 210px; }
 @media (max-width: 1280px) {
     .simulation-form__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .simulation-form__amount { grid-column: span 2; }

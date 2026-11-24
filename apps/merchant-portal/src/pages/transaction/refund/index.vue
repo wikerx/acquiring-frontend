@@ -2,7 +2,7 @@
     <div class="page system-page merchant-redesigned-page merchant-refund-page">
         <section class="merchant-list-card merchant-search-card merchant-refund-filter">
             <el-form v-show="showSearch" :model="query" inline size="small" class="search-form merchant-refund-search">
-                <div class="merchant-refund-search__fields">
+                <div class="search-form__fields">
                     <el-form-item :label="t('transaction.refund.refundTransactionId')">
                         <el-input v-model.trim="query.refundTransactionId" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" />
                     </el-form-item>
@@ -25,7 +25,7 @@
                             <el-option v-for="item in refundScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                     </el-form-item>
-                    <div class="merchant-refund-search__tail">
+                    <div class="search-form__fields">
                         <el-form-item :label="t('transaction.refund.timeRange')" class="merchant-refund-time-item">
                             <TransactionTimeRangeFilter
                                 v-model="dateRange"
@@ -35,7 +35,7 @@
                                 default-preset="today"
                             />
                         </el-form-item>
-                        <el-form-item class="merchant-search-actions merchant-refund-search__actions">
+                        <el-form-item class="merchant-search-actions">
                             <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
                             <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
                         </el-form-item>
@@ -345,46 +345,6 @@ function emptySummary(): MerchantRefundSummary {
     gap: 10px;
 }
 
-.merchant-refund-search__fields {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 8px 12px;
-}
-
-.merchant-refund-search :deep(.el-form-item) {
-    margin: 0;
-}
-
-.merchant-refund-search :deep(.el-input),
-.merchant-refund-search :deep(.el-select) {
-    width: 200px;
-}
-
-.merchant-refund-search__tail {
-    display: flex;
-    flex: 1 1 900px;
-    align-items: flex-start;
-    gap: 12px;
-    min-width: 0;
-}
-
-.merchant-refund-time-item {
-    flex: 1 1 auto;
-    max-width: none;
-    min-width: 0;
-}
-
-.merchant-refund-time-item :deep(.el-form-item__content) {
-    min-width: 0;
-}
-
-.merchant-refund-search__actions {
-    flex: 0 0 auto;
-    align-self: flex-start;
-    min-width: 144px;
-}
-
 .merchant-refund-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -506,13 +466,6 @@ function emptySummary(): MerchantRefundSummary {
     }
 }
 
-@media (max-width: 720px) {
-    .merchant-refund-search__tail {
-        flex-basis: 100%;
-        flex-wrap: wrap;
-    }
-}
-
 @media (max-width: 640px) {
     .merchant-refund-summary {
         grid-template-columns: 1fr;
@@ -526,12 +479,6 @@ function emptySummary(): MerchantRefundSummary {
 
     .merchant-refund-summary__item:last-child {
         border-bottom: 0;
-    }
-
-    .merchant-refund-search__fields :deep(.el-form-item),
-    .merchant-refund-search__fields :deep(.el-input),
-    .merchant-refund-search__fields :deep(.el-select) {
-        width: 100%;
     }
 }
 </style>

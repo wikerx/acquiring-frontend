@@ -533,7 +533,6 @@ function yearStatusText(value: string) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-select) { width: 180px; }
 .calendar-panel { overflow: hidden; border: 1px solid #dfe6ee; border-radius: 6px; background: #fff; }
 .calendar-summary { display: grid; grid-template-columns: minmax(180px, 1fr) auto auto; align-items: center; gap: 24px; padding: 16px 18px; border-bottom: 1px solid #e6ebf1; background: #f8fafc; }
 .calendar-title strong { display: block; color: #17243a; font-size: 20px; letter-spacing: 0; }

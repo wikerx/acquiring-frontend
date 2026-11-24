@@ -4,7 +4,7 @@ import { http } from '@/api/http';
 import { createChannelPresentationSource, type ChannelPresentation } from './channelPresentationSource';
 
 export type ChannelPresentationScope = 'INFO' | 'CAPABILITY' | 'LIMIT' | 'MID' | 'MID_BINDING' | 'ROUTE'
-    | 'ALERT_RULE' | 'ALERT_EVENT' | 'ORDER' | 'OPERATION';
+    | 'ALERT_RULE' | 'ALERT_EVENT' | 'ORDER' | 'OPERATION' | 'CHANNEL_CALLBACK';
 
 // 登录主体或权限快照替换后使用新池，禁止跨账号复用私有图片读取结果。
 const sources = new WeakMap<AuthAccount, Map<ChannelPresentationScope, ReturnType<typeof createChannelPresentationSource>>>();

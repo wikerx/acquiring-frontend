@@ -531,9 +531,9 @@
               </el-table-column>
               <el-table-column :label="t('settlement.reserveNo')" min-width="190" align="left">
                 <template #default="{ row }">
-                  <el-button link type="primary" @click="openReserve(row)">{{
+                  <el-button v-if="canOpenReserveItem" link type="primary" @click="openReserve(row)">{{
                     row.reserveNo
-                  }}</el-button>
+                  }}</el-button><span v-else>{{ row.reserveNo }}</span>
                 </template>
               </el-table-column>
               <el-table-column :label="t('settlement.batchNo')" min-width="205" align="left">
@@ -588,6 +588,7 @@
 </template>
 
 <script setup lang="ts">
+  import { hasPermission } from '@/utils/permission';
   import { computed, ref, watch } from 'vue';
   import {
     CircleCheck,
@@ -1018,14 +1019,17 @@
     return 'primary';
   }
 
+  const canOpenReserveItem = hasPermission('merchant:settlement:reserve-item:detail');
+
   function openBatch(settlementBatchNo: string) {
     void router.push({ path: '/finance/settlements', query: { settlementBatchNo } });
   }
 
   function openReserve(row: MerchantSettlementReserveItem) {
+    if (!canOpenReserveItem) return;
     void router.push({
       path: '/finance/reserves',
-      query: { settlementBatchNo: row.settlementBatchNo, reserveNo: row.reserveNo },
+      query: { settlementBatchNo: row.settlementBatchNo, reserveNo: row.reserveNo, reserveActionNo: row.reserveActionNo },
     });
   }
 </script>

@@ -99,4 +99,4 @@ function auditText(role?:string,ip?:string,userAgent?:string){return [role,ip,us
 function openBatch(settlementBatchNo:string){router.push({path:'/settlement/batches',query:{settlementBatchNo}})}
 function openMerchant(merchantId:string){router.push({path:'/merchant/info',query:{merchantId}})}
 </script>
-<style scoped>.search-form :deep(.el-input),.search-form :deep(.el-select){width:220px}.dialog-form{margin-top:20px}</style>
+<style scoped>.dialog-form{margin-top:20px}</style>

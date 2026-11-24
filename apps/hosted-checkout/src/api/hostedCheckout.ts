@@ -198,6 +198,18 @@ export async function submitCheckoutPayment(payload: PaymentSubmitPayload): Prom
     return postCheckout<HostedCheckoutPaymentResult>('/checkout/api/v1/payment/submit', payload);
 }
 
+export type WalletAuthorizationAction = 'PREPARE' | 'OPEN' | 'STATUS';
+export type WalletAuthorizationState = 'READY' | 'PROCESSING' | 'UNKNOWN' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
+
+export async function authorizeCheckoutWallet(payload: {
+    opaqueToken: string;
+    checkoutSessionId: string;
+    paymentMethod: string;
+    action: WalletAuthorizationAction;
+}): Promise<{ state: WalletAuthorizationState; redirectUrl?: string }> {
+    return postCheckout('/checkout/api/v1/wallet/authorization', payload, 18000);
+}
+
 export async function resolveCheckoutCardBin(payload: {
     opaqueToken: string;
     checkoutSessionId: string;

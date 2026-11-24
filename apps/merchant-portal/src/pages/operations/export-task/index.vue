@@ -2,7 +2,7 @@
   <div class="page system-page merchant-redesigned-page merchant-export-task-page">
     <section class="merchant-list-card merchant-search-card merchant-export-task-filter">
       <el-form v-show="showSearch" :model="query" inline size="small" class="search-form export-task-search-form">
-        <div class="export-task-search-form__fields">
+        <div class="search-form__fields">
           <el-form-item :label="t('exportTask.taskType')">
             <el-select v-model="query.taskType" clearable :placeholder="t('common.pleaseSelect')">
               <el-option v-for="item in taskTypeOptions" :key="item" :label="taskTypeText(item)" :value="item" />
@@ -23,7 +23,7 @@
               default-preset="today"
             />
           </el-form-item>
-          <el-form-item class="merchant-search-actions export-task-search-actions">
+          <el-form-item class="merchant-search-actions">
             <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
             <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
           </el-form-item>
@@ -158,10 +158,10 @@
       </template>
       <template #footer>
         <div class="dialog-footer">
-          <el-button v-if="detail && canDownload && detail.status === 'SUCCESS'" type="primary" :icon="Download" :loading="downloadingTaskNo === detail.taskNo" @click="handleDownload(detail)">
+          <el-button v-if="detail && canDownload && hasTaskExportGrant(detail) && detail.status === 'SUCCESS'" type="primary" :icon="Download" :loading="downloadingTaskNo === detail.taskNo" @click="handleDownload(detail)">
             {{ t('exportTask.download') }}
           </el-button>
-          <el-button v-if="detail && canRetry && detail.status === 'FAILED'" type="warning" :icon="RefreshRight" :loading="retryingTaskNo === detail.taskNo" @click="handleRetry(detail)">
+          <el-button v-if="detail && canRetry && hasTaskExportGrant(detail) && detail.status === 'FAILED'" type="warning" :icon="RefreshRight" :loading="retryingTaskNo === detail.taskNo" @click="handleRetry(detail)">
             {{ t('exportTask.retry') }}
           </el-button>
           <el-button @click="detailVisible = false">{{ t('common.close') }}</el-button>
@@ -251,6 +251,15 @@ const query = reactive<MerchantExportTaskQuery>({ taskType: '', status: '' });
 const canDetail = computed(() => hasPermission('merchant:operations:export-task:detail'));
 const canDownload = computed(() => hasPermission('merchant:operations:export-task:download'));
 const canRetry = computed(() => hasPermission('merchant:operations:export-task:retry'));
+function hasTaskExportGrant(row: MerchantExportTaskSummary) {
+  if (row.taskType === 'MERCHANT_SETTLEMENT_TRANSACTION') return hasPermission('merchant:settlement:transaction-item:export');
+  if (row.taskType === 'MERCHANT_SETTLEMENT_RESERVE') return hasPermission('merchant:settlement:reserve-item:export');
+  if (row.taskType !== 'MERCHANT_SETTLEMENT_BATCH' && row.taskType !== 'MERCHANT_SETTLEMENT_SUMMARY') return true;
+  const action = row.taskType === 'MERCHANT_SETTLEMENT_BATCH' ? 'export' : 'summary:export';
+  return (row.settlementBatchDomain === 'RESERVE' || hasPermission(`merchant:settlement:batch:${action}`))
+    && (row.settlementBatchDomain === 'TRANSACTION' || hasPermission(`merchant:settlement:reserve-batch:${action}`));
+}
+
 const hasRowActions = computed(() => canDetail.value || canDownload.value || canRetry.value);
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -332,10 +341,10 @@ async function openDetail(row: MerchantExportTaskSummary) {
 function rowActions(row: MerchantExportTaskSummary): TableRowAction[] {
   const actions: TableRowAction[] = [];
   if (canDetail.value) actions.push({ key: 'detail', label: t('common.detail'), icon: View });
-  if (canDownload.value && row.status === 'SUCCESS') {
+  if (canDownload.value && hasTaskExportGrant(row) && row.status === 'SUCCESS') {
     actions.push({ key: 'download', label: t('exportTask.download'), icon: Download, type: 'success', loading: downloadingTaskNo.value === row.taskNo });
   }
-  if (canRetry.value && row.status === 'FAILED') {
+  if (canRetry.value && hasTaskExportGrant(row) && row.status === 'FAILED') {
     actions.push({ key: 'retry', label: t('exportTask.retry'), icon: RefreshRight, type: 'warning', loading: retryingTaskNo.value === row.taskNo });
   }
   return actions;
@@ -348,7 +357,7 @@ function handleRowAction(action: string, row: MerchantExportTaskSummary) {
 }
 
 async function handleDownload(row: MerchantExportTaskSummary) {
-  if (!canDownload.value || row.status !== 'SUCCESS' || downloadingTaskNo.value) return;
+  if (!canDownload.value || !hasTaskExportGrant(row) || row.status !== 'SUCCESS' || downloadingTaskNo.value) return;
   downloadingTaskNo.value = row.taskNo;
   try {
     await downloadMerchantExportTask(row.taskNo, row.fileName);
@@ -361,7 +370,7 @@ async function handleDownload(row: MerchantExportTaskSummary) {
 }
 
 async function handleRetry(row: MerchantExportTaskSummary) {
-  if (!canRetry.value || row.status !== 'FAILED' || retryingTaskNo.value) return;
+  if (!canRetry.value || !hasTaskExportGrant(row) || row.status !== 'FAILED' || retryingTaskNo.value) return;
   try {
     await MerchantMessageBox.confirm(
       t('exportTask.retryConfirm', { taskNo: row.taskNo }),
@@ -473,44 +482,6 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   gap: 10px;
 }
 
-.merchant-export-task-filter {
-  container-type: inline-size;
-}
-
-.export-task-search-form__fields {
-  display: grid;
-  grid-template-columns: max-content max-content minmax(0, 760px) minmax(max-content, 1fr);
-  align-items: center;
-  gap: 8px 12px;
-  width: 100%;
-}
-
-.export-task-search-form :deep(.el-form-item) {
-  margin: 0;
-}
-
-.export-task-search-form :deep(.el-select) {
-  width: 154px;
-}
-
-.export-task-time-item {
-  min-width: 0;
-}
-
-.export-task-time-item :deep(.el-form-item__content) {
-  width: 100%;
-  min-width: 0;
-}
-
-.export-task-time-item :deep(.transaction-time-range-filter) {
-  max-width: 760px;
-}
-
-.export-task-search-actions {
-  justify-self: end;
-  margin-left: 0;
-}
-
 .merchant-export-task-table-card {
   overflow: hidden;
 }
@@ -570,43 +541,5 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 
 .export-task-failure {
   margin-top: 18px;
-}
-
-@container (max-width: 1400px) {
-  .export-task-search-form__fields {
-    grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
-  }
-
-  .export-task-time-item {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .export-task-search-actions {
-    grid-column: 4;
-    grid-row: 1;
-  }
-}
-
-@media (max-width: 640px) {
-  .export-task-search-form__fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .export-task-time-item,
-  .export-task-search-actions {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .export-task-search-form :deep(.el-select),
-  .export-task-search-form :deep(.el-form-item),
-  .export-task-time-item {
-    width: 100%;
-  }
-
-  .export-task-search-actions {
-    width: 100%;
-  }
 }
 </style>

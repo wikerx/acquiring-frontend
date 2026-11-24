@@ -538,9 +538,6 @@ async function submitStatusAction() {
 </script>
 
 <style scoped>
-.search-form :deep(.el-select),
-.search-form :deep(.el-input) { width: 220px; }
-.search-form :deep(.posted-range) { width: 372px; }
 .account-detail { display: grid; gap: 16px; min-width: 0; }
 .account-capabilities { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 11px 14px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; }
 .account-capabilities > span { margin-right: 4px; color: #475467; font-size: 13px; font-weight: 600; }

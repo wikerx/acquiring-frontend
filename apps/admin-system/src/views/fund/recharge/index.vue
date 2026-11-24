@@ -436,8 +436,6 @@ function statusType(value: string) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-select),
-.search-form :deep(.el-input) { width: 220px; }
 .dialog-form { padding: 4px 20px 0; }
 .dialog-form :deep(.el-select),
 .dialog-form :deep(.merchant-remote-select) { width: 100%; }

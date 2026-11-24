@@ -2,7 +2,7 @@
     <div class="page system-page merchant-redesigned-page merchant-notification-page">
         <section class="merchant-list-card merchant-search-card merchant-notification-filter">
             <el-form v-show="showSearch" :model="query" inline size="small" class="search-form notification-search-form">
-                <div class="notification-search-form__fields">
+                <div class="search-form__fields">
                     <el-form-item :label="t('transaction.notification.merchantOrderNo')">
                         <el-input v-model.trim="query.merchantOrderNo" :placeholder="t('common.pleaseInput')" clearable @keyup.enter="applyQuery" />
                     </el-form-item>
@@ -23,7 +23,7 @@
                             default-preset="today"
                         />
                     </el-form-item>
-                    <el-form-item class="merchant-search-actions notification-search-actions">
+                    <el-form-item class="merchant-search-actions">
                         <el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button>
                         <el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button>
                     </el-form-item>
@@ -801,76 +801,6 @@ function formatJson(value?: string) {
     padding: 12px 16px;
 }
 
-.notification-search-form {
-    display: grid;
-    width: 100%;
-}
-
-.notification-search-form__fields {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 10px 18px;
-    width: 100%;
-}
-
-.notification-search-form__fields :deep(.el-form-item),
-.notification-time-form-item {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    flex: 0 1 320px;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    margin: 0;
-}
-
-.notification-search-form__fields :deep(.el-form-item.notification-time-form-item) {
-    flex: 1 1 780px;
-    max-width: 100%;
-}
-
-.notification-search-form :deep(.el-form-item__label) {
-    justify-content: flex-end;
-    width: 92px;
-    padding-right: 0;
-}
-
-.notification-search-form :deep(.el-form-item__content) {
-    width: 100%;
-    min-width: 0;
-    margin-left: 0 !important;
-}
-
-.notification-search-form :deep(.el-input),
-.notification-search-form :deep(.el-select) {
-    width: var(--merchant-search-control-width);
-    max-width: 100%;
-}
-
-.notification-time-form-item :deep(.transaction-time-range-filter__timezone),
-.notification-time-form-item :deep(.transaction-time-range-filter__picker),
-.notification-time-form-item :deep(.el-date-editor) {
-    width: 100%;
-}
-
-.notification-search-form__fields :deep(.el-form-item.notification-search-actions) {
-    display: block;
-    flex: 1 1 160px;
-    align-self: end;
-    min-width: 160px;
-    width: auto;
-    margin-left: auto;
-}
-
-.notification-search-actions :deep(.el-form-item__content) {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
 .merchant-notification-table-card {
     overflow: hidden;
 }
@@ -1204,54 +1134,9 @@ function formatJson(value?: string) {
     grid-column: 1 / -1;
 }
 
-@media (max-width: 1180px) {
-    .notification-search-form__fields :deep(.el-form-item.notification-search-actions),
-    .notification-time-form-item {
-        flex-basis: 100%;
-    }
-}
-
 @media (max-width: 760px) {
     .merchant-notification-page {
         gap: 12px;
-    }
-
-    .notification-search-form__fields :deep(.el-form-item),
-    .notification-time-form-item {
-        display: grid;
-        grid-template-columns: 1fr;
-        flex-basis: 100%;
-        gap: 6px;
-        width: 100%;
-    }
-
-    .notification-search-form :deep(.el-form-item__label) {
-        justify-content: flex-start;
-        width: 100%;
-        min-height: auto;
-        padding: 0;
-        line-height: 18px;
-        text-align: left;
-    }
-
-    .notification-search-form :deep(.el-input),
-    .notification-search-form :deep(.el-select) {
-        width: 100%;
-    }
-
-    .notification-search-form__fields :deep(.el-form-item.notification-search-actions) {
-        flex-basis: 100%;
-        min-width: 0;
-    }
-
-    .notification-search-actions :deep(.el-form-item__content) {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        justify-content: stretch;
-    }
-
-    .notification-search-actions :deep(.el-button) {
-        width: 100%;
     }
 
     .merchant-notification-table-card :deep(.el-table-fixed-column--left),

@@ -16,7 +16,7 @@
         <section class="merchant-list-card merchant-search-card">
             <el-form v-show="showSearch" :model="query" inline size="small" class="search-form">
                 <el-form-item :label="t('system.account.keyword')"><el-input v-model="query.keyword" :placeholder="t('system.account.keywordPlaceholder')" clearable @keyup.enter="applyQuery" /></el-form-item>
-                <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" class="search-form__select--wide" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
+                <el-form-item :label="t('system.account.role')"><el-select v-model="query.roleId" :placeholder="t('common.all')" clearable><el-option v-for="role in roles" :key="role.roleId" :label="role.roleName" :value="role.roleId" /></el-select></el-form-item>
                 <el-form-item :label="t('common.status')"><el-select v-model="query.status" :placeholder="t('common.all')" clearable><el-option :label="t('common.enabled')" :value="1" /><el-option :label="t('common.disabled')" :value="0" /></el-select></el-form-item>
                 <el-form-item class="merchant-search-actions"><el-button type="primary" :icon="Search" @click="applyQuery">{{ t('common.search') }}</el-button><el-button :icon="RefreshLeft" @click="resetQuery">{{ t('common.reset') }}</el-button></el-form-item>
             </el-form>

@@ -27,7 +27,7 @@
                 <template v-if="inlineTime && $slots.time && (!$slots.advanced || !advancedVisible)">
                     <slot name="time" />
                 </template>
-                <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="transaction-search__actions transaction-search__actions--inline">
+                <div v-if="inlineTime && (!$slots.advanced || !advancedVisible)" class="search-actions">
                     <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                     <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
                 </div>
@@ -38,7 +38,7 @@
                     <template v-if="inlineTime && $slots.time && advancedVisible">
                         <slot name="time" />
                     </template>
-                    <div v-if="inlineTime" class="transaction-search__actions transaction-search__actions--inline">
+                    <div v-if="inlineTime" class="search-actions">
                         <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                         <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
                     </div>
@@ -46,7 +46,7 @@
             </div>
             <div v-if="!inlineTime" class="transaction-search__time-row">
                 <slot name="time" />
-                <div class="transaction-search__actions">
+                <div class="search-actions">
                     <el-button type="primary" :icon="Search" size="small" @click="$emit('search')">{{ searchText }}</el-button>
                     <el-button :icon="Refresh" size="small" @click="$emit('reset')">{{ resetText }}</el-button>
                 </div>
@@ -153,64 +153,9 @@ const advancedVisible = ref(false);
     border-top: 1px dashed var(--el-border-color-lighter);
 }
 
-.transaction-search__actions {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    min-height: 28px;
-    flex: 0 0 auto;
-}
-
-.transaction-search__actions--inline {
-    flex: 1 1 160px;
-    align-self: flex-start;
-}
-
-.transaction-search :deep(.el-form-item) {
-    margin-right: 0;
-    margin-bottom: 0;
-}
-
-.transaction-search :deep(.el-form-item__label) {
-    padding-right: 8px;
-    color: #566173;
-}
-
-.transaction-search :deep(.el-input),
-.transaction-search :deep(.el-select) {
-    width: 200px;
-}
-
-.transaction-search :deep(.transaction-time-form-item .el-form-item__content) {
-    width: 100%;
-    min-width: 0;
-}
-
-.transaction-search :deep(.transaction-time-form-item) {
-    flex: 1 1 760px;
-    min-width: 0;
-    max-width: 100%;
-}
-
-.transaction-search :deep(.transaction-date-form-item) {
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 100%;
-}
-
 @media (max-width: 980px) {
     .transaction-search__time-row {
         flex-direction: column;
-    }
-}
-
-@media (max-width: 640px) {
-    .transaction-search :deep(.el-form-item),
-    .transaction-search :deep(.el-form-item__content),
-    .transaction-search :deep(.el-input),
-    .transaction-search :deep(.el-select) {
-        width: 100%;
     }
 }
 </style>

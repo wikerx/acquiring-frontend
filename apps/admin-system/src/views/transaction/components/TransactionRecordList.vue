@@ -29,20 +29,21 @@
                 <div class="record-list__meta">
                     <div v-for="item in metaItems(row)" :key="item.label">
                         <span>{{ metaLabel(item.label) }}</span>
-                        <CopyableText v-if="item.copyable" :value="item.value" :label="item.label" wrap />
+                        <slot v-if="item.label === 'channelCode' && $slots.channel" name="channel" :code="item.value" />
+                        <CopyableText v-else-if="item.copyable" :value="item.value" :label="item.label" wrap />
                         <strong v-else>{{ item.value }}</strong>
                     </div>
                 </div>
 
-                <div v-if="rawBlocks(row).length" class="record-list__raw-grid">
-                    <section v-for="block in rawBlocks(row)" :key="block.title" class="record-list__raw-block">
-                        <div class="record-list__json-title">
-                            <span>{{ block.title }}</span>
-                            <CopyableText :value="block.value" :label="block.title" icon-only />
-                        </div>
-                        <pre>{{ block.value }}</pre>
-                    </section>
-                </div>
+                <TransactionPayloadBlocks v-if="rawBlocks(row).length" :blocks="rawBlocks(row)" class="record-list__raw-grid" />
+
+                <el-alert
+                    v-if="recordType(row) === 'channelCallbackDelivery' && !canLoadPayload(row) && !row.requestBodyMasked"
+                    class="record-list__empty-raw"
+                    :title="$t('transaction.channelCallback.requestUnavailable')"
+                    type="info"
+                    :closable="false"
+                />
 
                 <div v-if="canLoadPayload(row)" class="record-list__payload-action">
                     <el-button
@@ -57,7 +58,7 @@
                 </div>
 
                 <el-alert
-                    v-if="!rawBlocks(row).length && !canLoadPayload(row)"
+                    v-if="recordType(row) !== 'channelCallback' && recordType(row) !== 'channelCallbackDelivery' && !rawBlocks(row).length && !canLoadPayload(row)"
                     class="record-list__empty-raw"
                     :title="$t('transaction.detail.noRawPayload')"
                     type="info"
@@ -65,13 +66,11 @@
                     show-icon
                 />
 
-                <section v-if="showInternalSnapshot" class="record-list__raw-block">
-                    <div class="record-list__json-title">
-                        <span>{{ $t('transaction.detail.internalRecordSnapshot') }}</span>
-                        <CopyableText :value="prettyJson(row)" :label="$t('transaction.detail.internalRecordSnapshot')" icon-only />
-                    </div>
-                    <pre>{{ prettyJson(row) }}</pre>
-                </section>
+                <TransactionPayloadBlocks
+                    v-if="showInternalSnapshot"
+                    :blocks="[{ title: t('transaction.detail.internalRecordSnapshot'), value: row }]"
+                    single-column
+                />
             </article>
         </div>
         <el-empty v-else :description="$t('transaction.detail.empty')" />
@@ -84,6 +83,7 @@ import { useI18n } from 'vue-i18n';
 import { formatDateTimeFromSourceTimeZone } from '@/utils/format';
 import { DEFAULT_TRANSACTION_QUERY_TIME_ZONE, optionText, type TransactionDictOption } from '../shared';
 import CopyableText from './CopyableText.vue';
+import TransactionPayloadBlocks from './TransactionPayloadBlocks.vue';
 
 const props = defineProps<{
     rows: Record<string, unknown>[];
@@ -103,7 +103,18 @@ function recordKey(row: Record<string, unknown>, index: number) {
     return `${String(row.channelRecordId || row.id || row.requestId || row.callbackId || row.notifyId || row.interactionLogId || index)}-${index}`;
 }
 
+const callbackStates = new Set(['RECEIVED', 'PROCESSED', 'IGNORED', 'FAILED']);
+
 function statusText(row: Record<string, unknown>) {
+    const callbackStatus = String(row.callbackStatus ?? '');
+    if (callbackStates.has(callbackStatus)) {
+        return t(`transaction.channelCallback.statuses.${callbackStatus}`);
+    }
+    if (row.detailRecordType === 'CHANNEL_CALLBACK_DELIVERY') {
+        if (row.acceptResult === 'ACCEPTED') return t('transaction.channelCallback.deliveryAccepted');
+        if (row.acceptResult === 'DUPLICATE') return t('transaction.channelCallback.deliveryDuplicate');
+        return '';
+    }
     const failureText = failureStatusText(row);
     if (failureText) {
         return failureText;
@@ -134,6 +145,15 @@ function statusText(row: Record<string, unknown>) {
 }
 
 function statusTone(row: Record<string, unknown>) {
+    switch (row.callbackStatus) {
+        case 'IGNORED': return 'info';
+        case 'FAILED': return 'danger';
+        case 'RECEIVED': return 'warning';
+        case 'PROCESSED': return 'success';
+    }
+    if (row.detailRecordType === 'CHANNEL_CALLBACK_DELIVERY') {
+        return row.acceptResult === 'ACCEPTED' ? 'success' : 'info';
+    }
     const text = statusText(row).toUpperCase();
     if (Number(row.success) === 0 || hasFailureSignal(row) || isFailureText(text)) {
         return 'danger';
@@ -158,11 +178,7 @@ function statusTagType(row: Record<string, unknown>) {
     if (tone === 'success') {
         return 'success';
     }
-    return 'primary';
-}
-
-function prettyJson(row: Record<string, unknown>) {
-    return JSON.stringify(row, null, 2);
+    return tone === 'info' ? 'info' : 'primary';
 }
 
 function canLoadPayload(row: Record<string, unknown>) {
@@ -171,12 +187,17 @@ function canLoadPayload(row: Record<string, unknown>) {
 
 function rawBlocks(row: Record<string, unknown>) {
     return rawBlockCandidates(row)
-        .filter((item) => item.value !== undefined && item.value !== null && item.value !== '')
-        .map((item) => ({ title: item.title, value: formatRawValue(item.value) }));
+        .filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
 }
 
 function rawBlockCandidates(row: Record<string, unknown>) {
     const type = recordType(row);
+    if (type === 'channelCallbackDelivery') {
+        return [
+            { title: t('transaction.channelCallback.originalMasked'), value: row.requestBodyMasked },
+            { title: t('transaction.channelCallback.gatewayResponse'), value: row.responseBody },
+        ];
+    }
     if (type === 'merchantApi') {
         return [
             { title: t('transaction.detail.merchantRequestCipherRaw'), value: requestCipherPayload(row) },
@@ -197,8 +218,8 @@ function rawBlockCandidates(row: Record<string, unknown>) {
     if (type === 'channelCallbackLog') {
         return [
             { title: t('transaction.detail.channelCallbackHeaderRaw'), value: row.requestHeaderJsonMasked },
-            { title: t('transaction.detail.channelCallbackBodyRaw'), value: row.requestBodyJsonMasked },
-            { title: t('transaction.detail.platformResponseRaw'), value: row.platformResponseBody },
+            { title: t(callbackBodyLabel(row.requestBodyJsonMasked)), value: row.requestBodyJsonMasked },
+            { title: t(callbackResponseLabel(row.platformResponseCode)), value: row.platformResponseBody },
         ];
     }
     if (type === 'merchantNotificationLog') {
@@ -217,6 +238,25 @@ function rawBlockCandidates(row: Record<string, unknown>) {
     return [];
 }
 
+function callbackBodyLabel(value: unknown) {
+    if (typeof value === 'string') {
+        try {
+            const body = JSON.parse(value);
+            if (body?.verifiedFields) return 'transaction.channelCallback.verifiedPayload';
+            if (body?.sha256 && typeof body.length === 'number') return 'transaction.channelCallback.payloadDigest';
+        } catch {
+            // 历史报文可能是已脱敏纯文本；沿用报文标题。
+        }
+    }
+    return 'transaction.detail.channelCallbackBodyRaw';
+}
+
+function callbackResponseLabel(code: unknown) {
+    if (code === 'ACCEPTED') return 'transaction.channelCallback.internalReceipt';
+    if (typeof code === 'string' && /^[1-5]\d{2}$/.test(code)) return 'transaction.channelCallback.gatewayResponse';
+    return 'transaction.detail.platformResponseRaw';
+}
+
 function metaItems(row: Record<string, unknown>) {
     return [
         { label: 'apiLogId', value: row.apiLogId },
@@ -226,6 +266,11 @@ function metaItems(row: Record<string, unknown>) {
         { label: 'interactionLogId', value: row.interactionLogId },
         { label: 'callbackId', value: row.callbackId },
         { label: 'callbackLogId', value: row.callbackLogId },
+        { label: 'deliveryId', value: row.deliveryId },
+        { label: 'requestBodySha256', value: row.requestBodySha256 },
+        { label: 'signature', value: typeof row.signatureValid === 'boolean' && row.detailRecordType === 'CHANNEL_CALLBACK_DELIVERY'
+            ? t(row.signatureValid ? 'transaction.channelCallback.signaturePassed' : 'transaction.channelCallback.signatureFailed')
+            : undefined },
         { label: 'notifyId', value: row.notifyId },
         { label: 'notifyLogId', value: row.notifyLogId },
         { label: 'eventId', value: callbackHeaderValue(row, 'X-Callback-Event-Id') },
@@ -253,7 +298,8 @@ function metaItems(row: Record<string, unknown>) {
         { label: 'platformResultCode', value: row.platformResultCode },
         { label: 'platformFailReason', value: row.platformFailReason },
         { label: 'httpMethod', value: row.httpMethod },
-        { label: 'httpStatus', value: row.httpStatus },
+        { label: 'httpStatus', value: row.httpStatus || (recordType(row) === 'channelCallbackLog'
+            && /^[1-5]\d{2}$/.test(String(row.platformResponseCode ?? '')) ? row.platformResponseCode : undefined) },
         { label: 'merchantResponseCode', value: row.merchantResponseCode },
         { label: 'merchantResponseMessage', value: row.merchantResponseMessage },
         ...(recordType(row) === 'merchantNotificationLog'
@@ -269,7 +315,7 @@ function metaItems(row: Record<string, unknown>) {
 }
 
 function requestTimeText(row: Record<string, unknown>) {
-    return String(formatDisplayTime(row.requestStartTime || row.requestTime || row.interactionTime || row.callbackReceivedTime || row.notifyTime || row.createTime) || '-');
+    return String(formatDisplayTime(row.requestStartTime || row.requestTime || row.interactionTime || row.receivedTime || row.callbackReceivedTime || row.notifyTime || row.createTime) || '-');
 }
 
 function responseTimeText(row: Record<string, unknown>) {
@@ -448,10 +494,14 @@ function exceptionSummary(row: Record<string, unknown>) {
 }
 
 function recordIdentity(row: Record<string, unknown>, index: number) {
+    if (recordType(row) === 'channelCallback' && row.callbackId) {
+        return String(row.callbackId);
+    }
     return String(row.channelRecordId
         || row.apiLogId
         || row.interactionLogId
         || row.requestId
+        || row.deliveryId
         || row.callbackLogId
         || row.callbackId
         || row.notifyLogId
@@ -461,6 +511,15 @@ function recordIdentity(row: Record<string, unknown>, index: number) {
 }
 
 function recordType(row: Record<string, unknown>) {
+    if (row.detailRecordType === 'CHANNEL_CALLBACK_DELIVERY') {
+        return 'channelCallbackDelivery';
+    }
+    if (row.detailRecordType === 'CHANNEL_CALLBACK') {
+        return 'channelCallback';
+    }
+    if (row.detailRecordType === 'CHANNEL_CALLBACK_LOG') {
+        return 'channelCallbackLog';
+    }
     if (props.variant === 'merchantApi' || row.apiOperation || row.apiLogId) {
         return 'merchantApi';
     }
@@ -498,20 +557,6 @@ function transactionTypeValue(row: Record<string, unknown>) {
     return String(row.transactionType || row.parsedTransactionType || row.apiOperation || row.channelEventType || '');
 }
 
-function formatRawValue(value: unknown) {
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-            try {
-                return JSON.stringify(JSON.parse(trimmed), null, 2);
-            } catch {
-                return value;
-            }
-        }
-        return value;
-    }
-    return JSON.stringify(value, null, 2);
-}
 </script>
 
 <style scoped>
@@ -657,25 +702,7 @@ function formatRawValue(value: unknown) {
     width: 100%;
 }
 
-.record-list__json-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border: 1px solid #1e293b;
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
-    padding: 8px 10px;
-    background: #111827;
-    color: #dbeafe;
-    font-size: 12px;
-    font-weight: 700;
-}
-
 .record-list__raw-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
     margin-bottom: 12px;
 }
 
@@ -691,26 +718,6 @@ function formatRawValue(value: unknown) {
     border-radius: 6px;
     padding: 18px;
     background: var(--el-fill-color-extra-light);
-}
-
-.record-list__raw-block {
-    min-width: 0;
-}
-
-pre {
-    overflow: auto;
-    max-height: 420px;
-    margin: 0;
-    border: 1px solid #1e293b;
-    border-radius: 0 0 8px 8px;
-    padding: 12px 14px;
-    background: #0b1120;
-    color: #e2e8f0;
-    font-size: 12px;
-    line-height: 1.55;
-    tab-size: 2;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {
@@ -729,8 +736,7 @@ pre {
         display: none;
     }
 
-    .record-list__meta,
-    .record-list__raw-grid {
+    .record-list__meta {
         grid-template-columns: 1fr;
     }
 }

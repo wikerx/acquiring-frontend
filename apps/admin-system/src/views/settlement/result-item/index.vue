@@ -22,7 +22,7 @@
             <el-table-column prop="merchantOrderNo" :label="t('transaction.settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column prop="sourceTransactionId" :label="t('transaction.fields.transactionId')" min-width="205" align="center" show-overflow-tooltip><template #default="{ row }"><el-button link type="primary" @click="openTransaction(row)">{{ row.sourceTransactionId }}</el-button></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.paymentTypeMethod')" min-width="190" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentTypeValue', row.paymentType)" :payment-methods="dimensionItems('paymentMethodValue', row.paymentMethod)" /></template></el-table-column>
-            <el-table-column :label="t('transaction.fields.transactionType')" min-width="150" align="center"><template #default="{ row }"><TransactionTypeDisplay :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
+            <el-table-column :label="t('transaction.fields.transactionType')" min-width="150" align="center"><template #default="{ row }"><TransactionTypeDisplay class="result-item__transaction-type" :value="row.transactionType" :label="enumText('transactionTypeValue', row.transactionType)" /></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
             <el-table-column :label="t('transaction.settlement.netAmount')" min-width="200" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.netTargetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.netDirection" :label="enumText('directionValue', row.netDirection)" /></template></el-table-column>
@@ -132,11 +132,11 @@ function showError(error: unknown, key: string) { ElMessage.error((error as { fr
 </script>
 
 <style scoped>
-.search-form :deep(.el-input), .search-form :deep(.el-select) { width: 220px; }
+.result-item__transaction-type :deep(.transaction-type-display__text) { white-space: normal; word-break: normal; }
 .component-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 14px; border-top: 1px solid var(--el-border-color); border-left: 1px solid var(--el-border-color); }
 .component-identity > div { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--el-border-color); border-bottom: 1px solid var(--el-border-color); text-align: center; }
-.component-identity span, .component-identity strong { display: block; }
-.component-identity span { margin-bottom: 5px; color: var(--el-text-color-secondary); font-size: 12px; }
-.component-identity strong { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.component-identity > div > span, .component-identity > div > strong { display: block; }
+.component-identity > div > span { margin-bottom: 5px; color: var(--el-text-color-secondary); font-size: 12px; }
+.component-identity > div > strong { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .component-identity { grid-template-columns: 1fr; } }
 </style>

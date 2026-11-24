@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const useExistingCheckout = process.env.CHECKOUT_E2E_EXISTING === 'true';
+
 // 独立端口与固定响应，避免占用人工验收登录页或触发真实收款。
 export default defineConfig({
   testDir: './e2e-payment-link',
@@ -11,7 +13,7 @@ export default defineConfig({
   workers: 2,
   reporter: 'list',
   use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
-  webServer: [
+  webServer: useExistingCheckout ? undefined : [
     {
       command: 'npm --workspace @acquiring/admin-system run dev -- --port 5194 --strictPort',
       env: { VITE_ADMIN_DEV_LOGIN_ASSIST: 'false' },

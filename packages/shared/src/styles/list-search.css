@@ -1,0 +1,178 @@
+/* Shared list filters. Each application supplies its existing control and theme sizes. */
+.el-form.search-form {
+    --list-search-label-width: 104px;
+    container-type: inline-size;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.el-form.search-form:lang(en) {
+    --list-search-label-width: 144px;
+}
+
+.el-form.search-form:not(.transaction-search) {
+    display: flex;
+}
+
+.el-form.search-form .search-form__fields {
+    display: contents;
+}
+
+.el-form.search-form .el-form-item {
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    margin-block-end: 0;
+    margin-inline-end: 0;
+}
+
+.el-form.search-form .el-form-item > .el-form-item__label {
+    box-sizing: border-box;
+    flex: 0 0 var(--list-search-label-width);
+    min-width: var(--list-search-label-width);
+    max-width: var(--list-search-label-width);
+    height: auto;
+    min-height: var(--list-search-control-height);
+    align-items: center;
+    justify-content: flex-end;
+    padding-inline-end: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    text-align: end;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.el-form.search-form .el-form-item > .el-form-item__content {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.el-form.search-form .el-form-item__content > :is(.el-input, .el-select, .el-cascader, .el-input-number, .el-date-editor):not(.el-range-editor) {
+    width: var(--list-search-field-width, var(--list-search-control-width));
+    max-width: 100%;
+}
+
+.el-form.search-form .el-form-item__content > .search-control--wide {
+    --list-search-field-width: var(--list-search-wide-width);
+}
+
+.el-form.search-form .el-form-item__content > .el-date-editor.el-date-editor--daterange {
+    flex: 0 1 auto;
+    width: var(--list-search-date-width);
+}
+
+.el-form.search-form .el-form-item__content > .el-date-editor.el-date-editor--datetimerange {
+    flex: 0 1 auto;
+    width: var(--list-search-datetime-width);
+}
+
+.el-form.search-form .el-form-item:has(> .el-form-item__content > .transaction-time-range-filter) {
+    flex: 0 1 calc(var(--list-search-label-width) + var(--list-search-datetime-width) + 420px);
+    max-width: 100%;
+}
+
+/* Range components keep the existing shortcuts and date behavior, with bounded widths. */
+.el-form.search-form .transaction-time-range-filter {
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+.el-form.search-form .transaction-time-range-filter > .transaction-time-range-filter__timezone {
+    flex: 0 1 220px;
+    width: 220px;
+    min-width: min(180px, 100%);
+    max-width: 100%;
+}
+
+.el-form.search-form .transaction-time-range-filter > .el-date-editor.transaction-time-range-filter__picker {
+    flex: 0 1 var(--list-search-datetime-width);
+    width: var(--list-search-datetime-width);
+    min-width: min(300px, 100%);
+    max-width: 100%;
+}
+
+.el-form.search-form .el-range-editor .el-range-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.el-form.search-form .el-range-editor .el-range-separator {
+    flex: 0 0 auto;
+    padding-inline: 4px;
+    font-size: 12px;
+}
+
+/* Plain Element Plus query forms may use an unlabeled item for the action buttons. */
+.el-form.search-form :is(.search-actions, .merchant-search-actions, .el-form-item:not(:has(> .el-form-item__label)):has(> .el-form-item__content > .el-button)) {
+    align-self: center;
+    margin-inline-start: auto;
+}
+
+.el-form.search-form :is(.search-actions:not(.el-form-item), .merchant-search-actions > .el-form-item__content, .el-form-item:not(:has(> .el-form-item__label)) > .el-form-item__content:has(> .el-button)) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.el-form.search-form :is(.search-actions, .merchant-search-actions, .el-form-item:not(:has(> .el-form-item__label))) .el-button:not(.is-link):not(.is-text) {
+    width: auto;
+    min-width: var(--list-search-action-width);
+    min-height: var(--list-search-control-height);
+    height: var(--list-search-control-height);
+    margin: 0;
+    padding-inline: 12px;
+    border-radius: var(--list-search-control-radius);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@container (max-width: 560px) {
+    .el-form.search-form .el-form-item,
+    .el-form.search-form .el-form-item:has(> .el-form-item__content > .transaction-time-range-filter) {
+        display: flex;
+        flex: 0 0 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        width: 100%;
+    }
+
+    .el-form.search-form .el-form-item > .el-form-item__label {
+        flex: 0 0 auto;
+        justify-content: flex-start;
+        min-width: 100%;
+        max-width: 100%;
+        min-height: 0;
+        padding-inline: 0;
+        text-align: start;
+    }
+
+    .el-form.search-form .el-form-item > .el-form-item__content,
+    .el-form.search-form .el-form-item__content > :is(.el-input, .el-select, .el-cascader, .el-input-number, .el-date-editor, .search-control--wide):not(.transaction-time-range-filter__timezone) {
+        width: 100%;
+    }
+
+    .el-form.search-form .transaction-time-range-filter > .transaction-time-range-filter__timezone,
+    .el-form.search-form .transaction-time-range-filter > .el-date-editor.transaction-time-range-filter__picker {
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    .el-form.search-form .transaction-time-range-filter__quick {
+        flex-wrap: wrap;
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .el-form.search-form .transaction-time-range-filter__quick .el-radio-button__inner {
+        padding-inline: 6px;
+        white-space: normal;
+    }
+}

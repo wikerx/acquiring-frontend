@@ -726,8 +726,17 @@ watch(activeTab, (tab) => {
 });
 
 watch(
-    () => [props.detail?.order?.operationId, props.focusTransactionId],
-    () => resetDetailSections(),
+    [
+        () => props.detailScope,
+        () => detailLocator()?.transactionId,
+        () => detailLocator()?.transactionDateTime,
+        () => detailLocator()?.rootTransactionDateTime,
+    ],
+    () => {
+        resetDetailSections();
+        const sectionKey = asDetailSectionKey(activeTab.value);
+        if (props.visible && sectionKey) void loadDetailSection(sectionKey);
+    },
 );
 
 watch(

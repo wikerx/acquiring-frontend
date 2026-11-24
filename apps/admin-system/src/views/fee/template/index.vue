@@ -422,7 +422,6 @@ async function confirmAction(message: string, title: string) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-select) { width: 180px; }
 .fee-dialog-basic { margin-bottom: 18px; padding: 14px 16px 0; border: 1px solid #dbe3ef; border-radius: 6px; background: #f8fafc; }
 .fee-dialog-basic__title { margin-bottom: 12px; color: #334155; font-size: 13px; font-weight: 600; }
 </style>

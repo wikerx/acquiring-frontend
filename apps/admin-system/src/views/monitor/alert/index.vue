@@ -341,7 +341,6 @@ function alertRowKey(row: AlertItem) {
 
 <style scoped>
 .monitor-alert-page__charts { margin-bottom: 16px; }
-.search-form :deep(.el-input) { width: 190px; }
 .monitor-alert-page__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .monitor-alert-page__history-status { margin-left: 10px; color: var(--el-text-color-secondary); font-size: 12px; }
 .monitor-alert-page :deep(.el-timeline-item__content p) { margin: 4px 0 0; color: var(--el-text-color-secondary); font-size: 12px; }

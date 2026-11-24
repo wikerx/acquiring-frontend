@@ -339,6 +339,40 @@ export interface TransactionDetailRecord {
 
 export type TransactionRecord = Record<string, unknown>;
 
+export interface ChannelCallbackRecord extends TransactionRecord {
+    callbackId: string;
+    transactionDateTime: string;
+    channelCode: string;
+    callbackStatus?: string;
+    processResult?: string;
+    signatureValid?: boolean;
+    deliveryCount?: number | null;
+    latestDeliveryTime?: string | null;
+}
+
+export interface ChannelCallbackDelivery {
+    deliveryId: string;
+    receivedTime: string;
+    signatureValid: boolean;
+    acceptResult: 'ACCEPTED' | 'DUPLICATE';
+    httpStatus?: number | null;
+    responseBody?: string | null;
+    durationMillis?: number | null;
+    requestBodyMasked?: string | null;
+    requestBodySha256?: string | null;
+}
+
+export interface ChannelCallbackDetail {
+    callback: ChannelCallbackRecord;
+    log?: TransactionRecord | null;
+    deliveries?: PageResult<ChannelCallbackDelivery>;
+}
+
+export interface ChannelCallbackChannelOption {
+    channelCode: string;
+    channelName: string;
+}
+
 export interface TransactionActionRequest {
     merchantOrderId?: string;
     amount?: number | string;
@@ -843,6 +877,7 @@ export interface SettlementResultSummaryLine {
     paymentType?: string;
     paymentMethod?: string;
     transactionType?: string;
+    originalTransactionTypes?: string[];
     resultItemType: string;
     feeCategory?: string;
     direction: string;
@@ -1146,7 +1181,20 @@ export async function searchTransactionChannelLogs(data: ChannelLogQuery) {
 }
 
 export async function searchTransactionChannelCallbacks(data: ChannelCallbackQuery) {
-    const result = await http.post<CommonResult<PageResult<TransactionRecord>>>('/admin/transactions/channel-callbacks/search', data);
+    const result = await http.post<CommonResult<PageResult<ChannelCallbackRecord>>>('/admin/transactions/channel-callbacks/search', data);
+    return unwrapResult(result.data);
+}
+
+export async function listTransactionCallbackChannels() {
+    const result = await http.get<CommonResult<ChannelCallbackChannelOption[]>>('/admin/transactions/channel-callbacks/channel-options');
+    return unwrapResult(result.data);
+}
+
+export async function getTransactionChannelCallbackDetail(callbackId: string, transactionDateTime: string, deliveryPage: number) {
+    const result = await http.get<CommonResult<ChannelCallbackDetail>>(
+        `/admin/transactions/channel-callbacks/${encodeURIComponent(callbackId)}`,
+        { params: { transactionDateTime: normalizeTransactionShardTime(transactionDateTime), deliveryPage } },
+    );
     return unwrapResult(result.data);
 }
 

@@ -290,5 +290,4 @@ async function retryWebhook(row: WebhookItem) {
 
 <style scoped>
 .monitor-webhook-page__charts { margin-bottom: 16px; }
-.search-form :deep(.el-input) { width: 190px; }
 </style>

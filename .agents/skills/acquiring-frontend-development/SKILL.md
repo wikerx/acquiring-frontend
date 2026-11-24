@@ -35,6 +35,8 @@ Wait for explicit approval and keep implementation inside that scope.
 
 - Preserve existing user changes and avoid broad style or dependency churn.
 - Reuse application-local shared capabilities before creating another abstraction.
+- For Admin and Merchant list filters, apply the common search-form rules and verification cases
+  in `docs/standards/frontend-development-standard.md`.
 - Keep UI state separate from server facts; do not convert display labels into business logic.
 - Implement loading, empty, error, disabled, permission, and long-content states where relevant.
 - Keep sensitive values out of logs, browser storage, URLs, analytics, and screenshots.

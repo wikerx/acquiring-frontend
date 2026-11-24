@@ -42,7 +42,7 @@
       /></el-form-item>
     </el-form>
     <p>{{ t('paymentMethod.batch.selected', { count: selectedIds.length }) }}</p>
-    <el-table :data="snapshot" border size="small" row-key="id">
+    <el-table :data="displayItems" border size="small" row-key="id">
       <el-table-column width="48" fixed="left" align="center"
         ><template #header
           ><el-checkbox
@@ -57,10 +57,14 @@
           ><el-checkbox
             :model-value="selectedIds.includes(row.id)"
             :disabled="busy || frozen"
-            :aria-label="row.itemKey"
+            :aria-label="row.method.name"
             @change="toggle(row.id, $event === true)" /></template
       ></el-table-column>
-      <el-table-column prop="itemKey" :label="t('paymentMethod.itemKey')" min-width="180" />
+      <el-table-column :label="t('paymentMethod.method')" min-width="180">
+        <template #default="{ row }">
+          <slot name="payment-method" :method="row.method" />
+        </template>
+      </el-table-column>
       <el-table-column
         prop="version"
         :label="t('paymentMethod.applicationVersion')"
@@ -123,7 +127,12 @@
     type PaymentDecision,
   } from '@/api/paymentMethodApi';
   import { preparePaymentReviewBatch, paymentReviewResults } from './batchReviewState';
-  const props = defineProps<{ application: PaymentApplication }>();
+  type MethodIdentity = { itemKey: string; name: string };
+  const props = defineProps<{
+    application: PaymentApplication;
+    resolveMethod: (itemKey: string) => MethodIdentity;
+  }>();
+  defineSlots<{ 'payment-method': (props: { method: MethodIdentity }) => unknown }>();
   const emit = defineEmits<{ updated: [] }>();
   const { t } = useI18n();
   const auth = useUserStore();
@@ -131,6 +140,9 @@
     props.application.items.filter((item) => item.status === 'PENDING_REVIEW'),
   );
   const snapshot = ref<PaymentApplicationItem[]>([]);
+  const displayItems = computed(() =>
+    snapshot.value.map((item) => ({ ...item, method: props.resolveMethod(item.itemKey) })),
+  );
   const visible = ref(false);
   const busy = ref(false);
   const frozen = ref(false);

@@ -20,6 +20,13 @@
     --admin-filter-wide-width: 280px;
     --admin-date-range-width: 280px;
     --admin-datetime-range-width: 380px;
+    --list-search-control-width: var(--admin-filter-control-width);
+    --list-search-wide-width: var(--admin-filter-wide-width);
+    --list-search-date-width: var(--admin-date-range-width);
+    --list-search-datetime-width: var(--admin-datetime-range-width);
+    --list-search-control-height: var(--admin-control-height);
+    --list-search-control-radius: 4px;
+    --list-search-action-width: 64px;
     --app-header-height: 56px;
     --app-tags-height: 34px;
     --app-sidebar-width: 216px;
@@ -1304,36 +1311,19 @@ textarea {
     margin-bottom: 10px;
     border: 1px solid var(--admin-panel-border);
     border-radius: var(--admin-panel-radius);
-    padding: 12px 12px 4px;
+    padding: 12px;
     background: var(--admin-panel-bg);
     box-shadow: var(--admin-panel-shadow);
 }
 
 .search-form .el-form-item {
     margin-right: 0;
-    margin-bottom: 8px;
     min-width: 0;
     max-width: 100%;
 }
 
 .search-form .el-form-item__content {
     min-width: 0;
-}
-
-.search-form .el-form-item .el-input,
-.search-form .el-form-item .el-select,
-.search-form .el-form-item .el-date-editor {
-    width: var(--admin-filter-control-width);
-}
-
-/* 普通筛选统一基准宽度；范围、网格和宽文本条件使用各自明确的布局。 */
-.search-form:not(.transaction-search) .el-form-item__content > :is(.el-input, .el-select, .el-cascader):not(.el-date-editor) {
-    width: var(--admin-filter-control-width);
-    max-width: 100%;
-}
-
-.search-form:not(.transaction-search) .el-form-item__content > .search-control--wide.el-input {
-    width: var(--admin-filter-wide-width);
 }
 
 .search-form .el-form-item__label {
@@ -1377,10 +1367,6 @@ textarea {
 .search-form .el-button {
     min-width: 60px;
     border-radius: 4px;
-}
-
-.search-form:not(.transaction-search) .el-form-item:last-child {
-    margin-left: auto;
 }
 
 /* 范围筛选按日期类型统一尺寸，禁止 Element Plus 的 flex: 1 拉满剩余空间。 */

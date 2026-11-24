@@ -403,9 +403,24 @@
           <PaymentApplicationBatchReview
             v-if="isAdmin && can('review')"
             :application="applicationDetail"
+            :resolve-method="methodIdentity"
             @updated="refreshApplicationAfterBatch"
-          />
-          <el-table :data="applicationDetail.items" border size="small" row-key="id">
+          >
+            <template #payment-method="{ method }">
+              <div class="method-identity">
+                <div class="method-logo">
+                  <PaymentMethodDisplay
+                    :payment-types="logoTypes(method)"
+                    :payment-methods="logoMethods(method)"
+                    :show-payment-type-label="false"
+                    align="center"
+                  />
+                </div>
+                <strong :title="method.name">{{ method.name }}</strong>
+              </div>
+            </template>
+          </PaymentApplicationBatchReview>
+          <el-table :data="applicationItems" border size="small" row-key="id">
             <el-table-column type="expand" width="48">
               <template #default="{ row }">
                 <div class="round-history">
@@ -449,12 +464,21 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column
-              prop="itemKey"
-              :label="t('paymentMethod.itemKey')"
-              min-width="180"
-              align="center"
-            />
+            <el-table-column :label="t('paymentMethod.method')" min-width="180">
+              <template #default="{ row }">
+                <div class="method-identity">
+                  <div class="method-logo">
+                    <PaymentMethodDisplay
+                      :payment-types="logoTypes(row.method)"
+                      :payment-methods="logoMethods(row.method)"
+                      :show-payment-type-label="false"
+                      align="center"
+                    />
+                  </div>
+                  <strong :title="row.method.name">{{ row.method.name }}</strong>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="status"
               :label="t('paymentMethod.applicationStatus')"
@@ -568,31 +592,43 @@
         show-icon
       />
       <div class="selected-methods">
-        <el-tag v-for="key in commandKeys" :key="key" effect="plain">{{ key }}</el-tag>
+        <div v-for="method in commandMethods" :key="method.itemKey" class="method-identity command-method">
+          <div class="method-logo">
+            <PaymentMethodDisplay
+              :payment-types="logoTypes(method)"
+              :payment-methods="logoMethods(method)"
+              align="center"
+            />
+          </div>
+          <strong :title="method.name">{{ method.name }}</strong>
+        </div>
       </div>
       <el-form label-position="top" @submit.prevent="submitCommand">
         <template v-if="command === 'validity'">
           <el-alert
-            v-if="command === 'validity'"
             :title="t('paymentMethod.validityHint')"
             type="info"
             :closable="false"
           />
-          <el-form-item :label="t('paymentMethod.effectiveTime')" :required="command === 'validity'"
-            ><el-date-picker
-              v-model="effectiveTime"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              :disabled="busy"
-          /></el-form-item>
-          <el-form-item :label="t('paymentMethod.expireTime')"
-            ><el-date-picker
-              v-model="expireTime"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              :placeholder="t('paymentMethod.longTerm')"
-              :disabled="busy"
-          /></el-form-item>
+          <div class="validity-fields">
+            <el-form-item :label="t('paymentMethod.effectiveTime')" required>
+              <el-date-picker
+                v-model="effectiveTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                :disabled="busy"
+              />
+            </el-form-item>
+            <el-form-item :label="t('paymentMethod.expireTime')">
+              <el-date-picker
+                v-model="expireTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                :placeholder="t('paymentMethod.longTerm')"
+                :disabled="busy"
+              />
+            </el-form-item>
+          </div>
         </template>
         <el-form-item :label="t('paymentMethod.reason')" :required="reasonRequired"
           ><el-input
@@ -665,11 +701,16 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+  import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { ElMessage } from 'element-plus';
-  import { PaymentMethodDisplay, userFacingErrorMessage } from '@acquiring/shared';
+  import {
+    getPaymentLogos,
+    PaymentMethodDisplay,
+    resolvePaymentLogoKeys,
+    userFacingErrorMessage,
+  } from '@acquiring/shared';
   import {
     paymentMethodApi,
     type PaymentMethodRow,
@@ -732,6 +773,15 @@
   const commandVisible = ref(false);
   const command = ref('');
   const commandKeys = ref<string[]>([]);
+  type MethodIdentity = Pick<PaymentMethodRow, 'itemKey' | 'name'>;
+  const commandMethods = ref<MethodIdentity[]>([]);
+  const methodNames = reactive(new Map<string, string>());
+  const applicationItems = computed(() =>
+    (applicationDetail.value?.items ?? []).map((item) => ({
+      ...item,
+      method: methodIdentity(item.itemKey),
+    })),
+  );
   const commandItemId = ref('');
   const commandMerchant = ref('');
   const expectedVersion = ref('');
@@ -795,7 +845,7 @@
       ) && Boolean(row.authorizationVersion)
     );
   }
-  function logoTypes(row: PaymentMethodRow) {
+  function logoTypes(row: MethodIdentity) {
     return [
       {
         value: row.itemKey.startsWith('CARD_BRAND:')
@@ -805,8 +855,18 @@
       },
     ];
   }
-  function logoMethods(row: PaymentMethodRow) {
+  function logoMethods(row: MethodIdentity) {
     return [{ value: row.itemKey.split(':')[1] || row.itemKey, label: row.name }];
+  }
+  function methodIdentity(itemKey: string): MethodIdentity {
+    const code = itemKey.split(':')[1] || itemKey;
+    const logoKeys = itemKey.startsWith('CARD_BRAND:')
+      ? resolvePaymentLogoKeys(undefined, code)
+      : resolvePaymentLogoKeys(code);
+    return {
+      itemKey,
+      name: methodNames.get(itemKey) || getPaymentLogos(logoKeys)[0]?.label || code.replace(/_/g, ' '),
+    };
   }
   function toggleMethod(key: string, checked: boolean) {
     selectedKeys.value = checked
@@ -838,6 +898,7 @@
       });
       if (request !== methodRequest) return;
       methods.value = result.records;
+      result.records.forEach((row) => methodNames.set(row.itemKey, row.name));
       methodTotal.value = result.total;
       selectedKeys.value = selectedKeys.value.filter(
         (key) => !result.records.some((row) => row.itemKey === key && !eligible(row)),
@@ -897,6 +958,7 @@
     historyRequest++;
     merchantId.value = merchantInput.value.trim();
     methods.value = [];
+    methodNames.clear();
     applications.value = [];
     selectedKeys.value = [];
     methodTotal.value = 0;
@@ -998,6 +1060,7 @@
   ) {
     command.value = action;
     commandKeys.value = [...keys];
+    commandMethods.value = keys.map(methodIdentity);
     commandItemId.value = itemId;
     expectedVersion.value = version;
     commandMerchant.value = merchant;
@@ -1012,6 +1075,7 @@
     if (!busy.value) {
       command.value = '';
       commandKeys.value = [];
+      commandMethods.value = [];
       commandRequestId = '';
       commandFingerprint = '';
     }
@@ -1170,6 +1234,7 @@
       detailRequest++;
       historyRequest++;
       methods.value = [];
+      methodNames.clear();
       applications.value = [];
       selectedKeys.value = [];
       applicationDetail.value = null;
@@ -1224,26 +1289,6 @@
     font-size: 20px;
     margin: 0;
     color: var(--el-text-color-primary);
-  }
-  .search-form {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px 16px;
-    margin-bottom: 8px;
-  }
-  .search-form :deep(.el-form-item) {
-    margin: 0;
-  }
-  .search-form :deep(.el-select) {
-    width: clamp(180px, 24vw, 300px);
-  }
-  .search-actions {
-    margin-left: auto;
-  }
-  .search-actions :deep(.el-button + .el-button) {
-    margin-left: 0;
   }
   .table-toolbar {
     display: flex;
@@ -1309,6 +1354,27 @@
   .selected-methods {
     margin: 16px 0;
   }
+  .command-method {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 34px;
+    gap: 8px;
+    padding: 2px 10px 2px 6px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: var(--el-border-radius-base);
+    background: var(--el-fill-color-lighter);
+  }
+  .command-method .method-logo {
+    flex-basis: 42px;
+  }
+  .validity-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+  .validity-fields :deep(.el-date-editor.el-input) {
+    width: 100%;
+  }
   .pagination-container {
     display: flex;
     justify-content: flex-end;
@@ -1323,6 +1389,11 @@
     --el-alert-text-color: var(--el-text-color-primary);
     margin-bottom: 0;
   }
+  @media (max-width: 520px) {
+    .validity-fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
   @media (max-width: 640px) {
     .method-panel {
       padding: 12px;
@@ -1330,9 +1401,6 @@
     .method-header,
     .table-toolbar {
       flex-wrap: wrap;
-    }
-    .search-actions {
-      margin-left: 0;
     }
   }
 </style>

@@ -40,6 +40,8 @@ export default {
   chooseMerchant: '请先选择商户',
   methods: '支付方式',
   applications: '申请记录',
+  viewApplicationRecords: '查看申请',
+  noRowAction: '当前无可执行操作',
   method: '支付方式',
   itemKey: '方式编码',
   authorization: '授权状态',

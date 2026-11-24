@@ -343,7 +343,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleClose, Download, Promotion, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, useTransactionRefresh, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
+import { TransactionStageStatusDisplay, TransactionStageStatusSelect, CurrencyAmountDisplay, RefundFields, TransactionActionSourceSummary, ConsoleActionFields, refundProgressKey, type RefundContext, PaymentLogoGroup, type PaymentLogoKey, TableRowActions, type TableRowAction, TransactionStatusDisplay, TransactionTypeDisplay, isPositiveDecimalAmount, normalizeDecimalAmount, safeErrorType, userFacingErrorMessage } from '@acquiring/shared';
 import { useRoute, useRouter } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
@@ -689,15 +689,6 @@ onMounted(async () => {
         if (linkedRow) openDetail(linkedRow);
     }
 });
-
-useTransactionRefresh(async () => {
-    await loadData();
-    const current = detail.value?.operations.find(item => item.transactionId === selectedDetailTransactionId.value);
-    if (detailVisible.value && current?.transactionDateTime && current.rootTransactionDateTime) {
-        const latest = await getTransactionOperationDetail(current.transactionId, current.transactionDateTime, current.rootTransactionDateTime);
-        if (detailVisible.value && selectedDetailTransactionId.value === current.transactionId) detail.value = latest;
-    }
-}, () => !loading.value && !captureVisible.value && !voidVisible.value && !refundVisible.value);
 
 watch(locale, () => void loadDictionaries());
 

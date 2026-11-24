@@ -168,7 +168,7 @@
             <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="230" align="center">
                 <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span></div></template>
             </el-table-column>
-            <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="198" align="right"><template #default="{ row }"><div class="candidate-action"><span>{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><CurrencyAmountDisplay :amount="row.reserveActionAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
+            <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="198" align="right"><template #default="{ row }"><div class="candidate-action"><span class="candidate-action__label">{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><CurrencyAmountDisplay :amount="row.reserveActionAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" prop="reserveNo" :label="t('transaction.settlement.reserveNo')" min-width="190" align="center" show-overflow-tooltip />
             <el-table-column v-if="props.kind === 'reserve'" :label="t('transaction.settlement.reserveStatus')" min-width="126" align="center"><template #default="{ row }">{{ reserveStatusText(row.reserveStatus) }}</template></el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" :label="t('transaction.settlement.remainingAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.remainingAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
@@ -644,10 +644,10 @@ function handleSelectionChange(value: SettlementCandidate[]) {
 .candidate-payment-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settlement-dialog-form { margin-top: 20px; }
 .settlement-dialog-form :deep(.el-date-editor) { width: 100%; }
-.candidate-action span, .candidate-composition span, small { color: var(--el-text-color-secondary); font-size: 12px; }
+.candidate-action__label, .candidate-composition > span, small { color: var(--el-text-color-secondary); font-size: 12px; }
 .candidate-composition { display: grid; gap: 2px; }
-.candidate-composition span { display: flex; justify-content: space-between; gap: 8px; }
-.candidate-composition b { color: var(--el-text-color-regular); font-weight: 600; font-variant-numeric: tabular-nums; }
+.candidate-composition > span { display: flex; justify-content: space-between; gap: 8px; }
+.candidate-composition > span > b { color: var(--el-text-color-regular); font-weight: 600; font-variant-numeric: tabular-nums; }
 .candidate-action { display: grid; gap: 2px; }
 .candidate-merchant { display: block; text-align: center; }
 @media (max-width: 1360px) {

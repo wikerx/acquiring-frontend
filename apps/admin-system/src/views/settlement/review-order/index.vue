@@ -1049,7 +1049,6 @@ function errorText(error: unknown, fallbackKey: string) {
 </script>
 
 <style scoped>
-.search-form :deep(.el-input), .search-form :deep(.el-select) { width: 220px; }
 .review-detail-shell { min-height: 260px; }
 .review-detail-identity { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 52px; margin-bottom: 14px; padding: 0 16px; border-left: 3px solid #2563eb; background: #f6f9fb; }
 .review-detail-identity span, .review-detail-identity strong { display: block; }

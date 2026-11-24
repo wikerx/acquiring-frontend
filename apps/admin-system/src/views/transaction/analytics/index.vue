@@ -122,6 +122,11 @@
                 </article>
             </section>
 
+            <AnalyticsMonitoringAvailability
+                v-if="overview && !loading && !errorMessage"
+                :card-brand="overviewCardBrand"
+            />
+
             <section class="analytics-panel analytics-panel--trend">
                 <header class="analytics-panel__header">
                     <div>
@@ -471,6 +476,7 @@ import { Clock } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import {
     AnalyticsChart,
+    AnalyticsMonitoringAvailability,
     AnalyticsPaymentPerformance,
     CurrencyDisplay,
     PaymentLogoGroup,
@@ -551,6 +557,7 @@ const dateRange = ref<string[]>(createTransactionAnalyticsRange(7, DEFAULT_TRANS
 const loading = ref(false);
 const errorMessage = ref('');
 const overview = ref<TransactionAnalyticsOverview>();
+const overviewCardBrand = ref<string>();
 const merchantPerformance = ref<TransactionAnalyticsMerchantPerformance>();
 const failureAnalysis = ref<TransactionAnalyticsFailureAnalysis>();
 const channelPerformance = ref<TransactionAnalyticsChannelPerformance>();
@@ -821,9 +828,14 @@ async function loadActiveTab() {
     errorMessage.value = '';
     try {
         switch (activeTab.value) {
-            case 'overview':
-                overview.value = await getTransactionAnalyticsOverview(query);
+            case 'overview': {
+                const result = await getTransactionAnalyticsOverview(query);
+                if (currentRequest === requestSequence) {
+                    overview.value = result;
+                    overviewCardBrand.value = query.paymentBrand;
+                }
                 break;
+            }
             case 'merchants':
                 merchantPerformance.value = await getTransactionAnalyticsMerchants(query);
                 break;
