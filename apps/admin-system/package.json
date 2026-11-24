@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5173",
+    "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "node ../../scripts/verify-file-template-governance.mjs && node ../../scripts/verify-transaction-stage-status-governance.mjs && node scripts/verify-monitor-chart-governance.mjs && node scripts/verify-monitor-formatters.mjs && vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
     "test:governance:monitor-charts": "node scripts/verify-monitor-chart-governance.mjs",

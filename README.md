@@ -25,9 +25,16 @@ npm run build
 
 ## 本地代理
 
-- `admin-system` 默认启动在 `http://localhost:5173`，代理 `/admin` 到 `http://127.0.0.1:8001`。
-- `merchant-portal` 默认启动在 `http://localhost:5174`，代理 `/merchant` 到 `http://127.0.0.1:8002`。
-- `hosted-checkout` 默认启动在 `http://localhost:5175`，预留 `/checkout` 到 `http://127.0.0.1:8000`。
+- `admin-system` 默认启动在 `http://127.0.0.1:5173`，代理 `/admin` 到 `http://127.0.0.1:8001`。
+- `merchant-portal` 默认启动在 `http://127.0.0.1:5174`，代理 `/merchant` 到 `http://127.0.0.1:8002`。
+- `hosted-checkout` 默认监听 `0.0.0.0:5175`。本机访问 `http://127.0.0.1:5175`，局域网设备使用开发机的局域网 IP 和 `5175` 端口。预留 `/checkout` 到 `http://127.0.0.1:8000`。
+
+Admin 和商户后台需要局域网联调时，按需开放对应应用。
+
+```bash
+npm --workspace @acquiring/admin-system run dev -- --host 0.0.0.0
+npm --workspace @acquiring/merchant-portal run dev -- --host 0.0.0.0
+```
 
 ## 接口边界
 
