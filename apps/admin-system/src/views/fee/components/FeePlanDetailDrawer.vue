@@ -153,7 +153,7 @@ import {
     CurrencyAmountDisplay,
     CurrencyDisplay,
     PercentageRateDisplay,
-    formatMoneyAmount,
+    formatFeeAmount,
     type PaymentLogoKey,
 } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
@@ -307,7 +307,7 @@ function billingRuleText(rule: FeeRule) {
     if (rule.feeCategory !== 'RISK_FEE') return feeFormula(rule);
     if (rule.chargeTrigger === 'NO_CHARGE') return t('feeAccount.chargeTriggerType.noCharge');
     return t('feeAccount.riskFixedFormula', {
-        amount: formatMoneyAmount(rule.fixedAmountUsd || 0, String(locale.value)),
+        amount: formatFeeAmount(rule.fixedAmountUsd || 0, String(locale.value)),
     });
 }
 

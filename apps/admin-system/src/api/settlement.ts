@@ -214,6 +214,8 @@ export interface SettlementReviewRate {
 }
 
 export interface SettlementSummaryLine {
+    sourceAmountExact?: string;
+    targetAmountExact?: string;
     paymentType?: string;
     paymentMethod?: string;
     transactionType?: string;
@@ -269,6 +271,7 @@ export interface ManualSettlementStartRequest {
 }
 
 export interface ManualSettlementPreviewLine {
+    knownPlatformFeeAmount?: string;
     sourceCurrency: string;
     sourceCurrencyExponent: number;
     transactionCount: number;
@@ -540,6 +543,10 @@ export interface SettlementReconciliationRecord {
 }
 
 export interface SettlementResultItem {
+    sourceAmountExact?: string;
+    directRateExact?: string;
+    unroundedTargetAmountExact?: string;
+    targetAmountExact?: string;
     id: number;
     settlementResultItemNo: string;
     settlementBatchNo: string;

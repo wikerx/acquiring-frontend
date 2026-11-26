@@ -37,6 +37,11 @@ export * from './tableRowActions';
 export * from './transactionAnalytics';
 export * from './settlementVoucher';
 export * from './settlementVoucherPdf';
+export * from './transactionFeeFacts';
+export * from './feeStatementWorkbook';
+export * from './transactionFeeMessages';
+export { default as TransactionFeeBreakdown } from './components/TransactionFeeBreakdown.vue';
+export * from './useTransactionFeeStatement';
 export * from './submissionGuard';
 
 declare module 'axios' {

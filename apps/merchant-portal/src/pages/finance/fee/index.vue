@@ -153,7 +153,7 @@ import {
     CurrencyAmountDisplay,
     DEFAULT_CARD_BRAND_LOGOS,
     PercentageRateDisplay,
-    formatMoneyAmount,
+    formatFeeAmount,
     formatPercentageValue,
     resolvePaymentLogoKeys,
     type PaymentLogoKey,
@@ -328,22 +328,22 @@ function billingRuleText(rule: FeeRule) {
     const displayLocale = String(locale.value || 'zh-CN');
     if (hasAmount(rule.percentageRate)) {
         formulas.push(t('finance.labelAmountFormula', {
-            rate: formatPercentageValue(rule.percentageRate, displayLocale),
+            rate: formatPercentageValue(rule.percentageRate, displayLocale, '-', 8),
         }));
     }
     if (hasAmount(rule.fixedAmountUsd)) {
         formulas.push(t('finance.fixedAmountFormula', {
-            amount: formatMoneyAmount(rule.fixedAmountUsd, displayLocale),
+            amount: formatFeeAmount(rule.fixedAmountUsd, displayLocale),
         }));
     }
     if (hasAmount(rule.minimumAmountUsd)) {
         formulas.push(t('finance.minimumFormula', {
-            amount: formatMoneyAmount(rule.minimumAmountUsd, displayLocale),
+            amount: formatFeeAmount(rule.minimumAmountUsd, displayLocale),
         }));
     }
     if (hasAmount(rule.maximumAmountUsd)) {
         formulas.push(t('finance.maximumFormula', {
-            amount: formatMoneyAmount(rule.maximumAmountUsd, displayLocale),
+            amount: formatFeeAmount(rule.maximumAmountUsd, displayLocale),
         }));
     }
     return formulas.length ? formulas.join(t('finance.formulaSeparator')) : t('finance.noCharge');

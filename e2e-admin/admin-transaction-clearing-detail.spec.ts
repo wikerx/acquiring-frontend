@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { transactionFeeFixtures } from '../e2e-support/transaction-fee-fixture';
 import { verifyDictionaryLoading } from '../e2e-support/dictionary-loading';
 
 const transactionId = '202611141800181810898';
@@ -204,7 +205,7 @@ test('loads transaction filters when the list and detail drawer request the same
         await expect(page.getByRole('option', { name: option, exact: true })).toBeVisible();
         await page.getByRole('option', { name: option, exact: true }).click();
     }
-    const query = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+    const query = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith('/admin/transactions/operations/search')
         && request.postDataJSON().transactionType === 'PAYMENT' && request.postDataJSON().transactionStatus === 'SUCCESS');
     await page.getByRole('button', { name: '搜索', exact: true }).click();
     await query;
@@ -284,7 +285,7 @@ test('searches stage status options and submits original backend values, includi
         await popup.getByRole('option', { name: text, exact: true }).click();
         await expect(select.locator(`[data-domain="${domain}"]`)).toHaveAttribute('data-semantic', domain === 'settlement' ? 'failed' : 'mismatch');
     }
-    const query = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+    const query = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith('/admin/transactions/operations/search')
         && request.postDataJSON().channelMatchStatus === 'MISMATCHED');
     await page.getByRole('button', { name: '搜索', exact: true }).click();
     expect((await query).postDataJSON()).toMatchObject({ channelMatchStatus: 'MISMATCHED', reconciliationStatus: 'MISMATCHED', settlementStatus: 'FAILED' });
@@ -294,7 +295,7 @@ test('searches stage status options and submits original backend values, includi
         await select.locator('.el-select__clear').click();
         await expect(select.locator('.transaction-stage-status-display')).toHaveCount(0);
     }
-    const cleared = page.waitForRequest((request) => request.url().includes('/admin/transactions/operations/search-with-summary')
+    const cleared = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith('/admin/transactions/operations/search')
         && !request.postDataJSON().channelMatchStatus);
     await page.getByRole('button', { name: '搜索', exact: true }).click();
     const values = (await cleared).postDataJSON();
@@ -471,6 +472,94 @@ test('shows unavailable review rejection as failed while preserving historical r
     await expect(events.filter({ hasText: 'QA 3DS waiting' })).toHaveClass(/is-warning/);
 });
 
+
+test('shows posted fees with exact downloads and keeps source actions separate', async ({ page }) => {
+    const { original, completion } = transactionFeeFixtures();
+    const completionId = String(completion.summary.transactionId);
+    const originalId = String(original.summary.transactionId);
+    const completionTime = String(completion.summary.transactionDateTime);
+    const originalTime = String(original.summary.transactionDateTime);
+    const row = { ...operation, transactionId: completionId, transactionDateTime: completionTime,
+        rootTransactionDateTime: originalTime, transactionType: 'PRE_AUTH_COMPLETION', labelCurrency: 'CAD' };
+    await mockAdminApis(page, () => {}, ['clearing:record:list', 'transaction:order:list', 'transaction:order:detail'], true, [row]);
+    const orderRow = { ...row, rootTransactionId: originalId, rootTransactionDateTime: originalTime,
+        transactionDateTime: originalTime, transactionType: 'PRE_AUTHORIZATION' };
+    await page.route('**/admin/transactions/orders/search', route => fulfill(route,
+        { pageNo: 1, pageSize: 10, total: 1, records: [orderRow] }));
+    await page.route('**/admin/transactions/orders/summary', route => fulfill(route, {
+        totalCount: 1, successCount: 1, failedCount: 0, processingCount: 0, capturedCount: 0,
+        amountSummaries: [], successAmountSummaries: [], capturedAmountSummaries: [], failedAmountSummaries: [],
+    }));
+    await page.route(`**/admin/transactions/orders/${originalId}**`, route => fulfill(route, {
+        order: orderRow, operations: [{ ...row, transactionId: originalId, transactionDateTime: originalTime }],
+    }));
+    await page.route('**/admin/clearing/records/search', route => fulfill(route,
+        { pageNo: 1, pageSize: 10, total: 1, records: [completion.summary] }));
+    await page.route(`**/admin/transactions/operations/${completionId}**`, (route) => fulfill(route, {
+        order: { ...row, rootTransactionId: originalId }, operations: [row],
+    }));
+    let includeProjection = !process.env.FEE_QA_DIR;
+    for (const item of [original, completion]) {
+        const id = String(item.summary.transactionId);
+        await page.route(`**/admin/clearing/records/${id}?*`, route =>
+            fulfill(route, includeProjection ? item : { summary: item.summary }));
+        await page.route(`**/admin/clearing/records/${id}/transaction-details**`, route =>
+            fulfill(route, { total: item.feeFacts.clearing.length, records: item.feeFacts.clearing.map((line, index) => ({
+                ...line, lineNo: index + 1, clearingDetailNo: line.detailNo, recordStatus: 'ACTIVE',
+            })) }));
+        await page.route(`**/admin/clearing/records/${id}/reserve-details**`, route =>
+            fulfill(route, { total: 0, records: [] }));
+    }
+    async function openCompletion() {
+        await page.goto('/transaction/operation');
+        await page.getByRole('button', { name: '详情', exact: true }).first().click();
+        await page.getByRole('tab', { name: '财务处理' }).click();
+        await page.getByRole('tab', { name: '清分', exact: true }).click();
+    }
+    await page.setViewportSize({ width: 1440, height: 1050 });
+    await openCompletion();
+    if (!includeProjection) {
+        await expect(page.getByRole('dialog').getByText('平台费用', { exact: true })).toBeVisible();
+        await page.getByRole('dialog').getByText('交易费用清分明细').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `${process.env.FEE_QA_DIR}/clearing-fee-before-admin.png` });
+        includeProjection = true;
+        await openCompletion();
+    }
+    const fees = page.getByTestId('transaction-fee-breakdown');
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 3.61');
+    await expect(page.getByText('交易费用清分明细', { exact: true })).toBeHidden();
+    await page.getByRole('button', { name: '查看原始清分记录' }).click();
+    await expect(page.getByText('交易费用清分明细', { exact: true })).toBeVisible();
+    const downloadEvent = page.waitForEvent('download');
+    await fees.getByRole('button', { name: '下载精确费用明细' }).click();
+    const download = await downloadEvent;
+    expect(readFileSync((await download.path())!, 'utf8')).toContain('3.60823332200000000000');
+    if (process.env.FEE_QA_DIR) {
+        await download.saveAs(`${process.env.FEE_QA_DIR}/clearing-fee-completion-exact.xml`);
+    }
+    await fees.getByRole('button', { name: '查看原交易动作' }).click();
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 5.08');
+    await fees.locator('summary').filter({ hasText: '交易手续费' }).click();
+    await expect(fees.getByText('封顶抵减', { exact: true })).toBeVisible();
+    if (process.env.FEE_QA_DIR) {
+        await fees.screenshot({ path: `${process.env.FEE_QA_DIR}/clearing-fee-admin-preauthorization.png` });
+    }
+    await fees.getByRole('combobox', { name: '显示精度' }).selectOption('4');
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 5.0800');
+    await fees.getByRole('button', { name: '返回当前交易动作' }).click();
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 3.61');
+
+    await page.goto('/transaction/clearing');
+    await page.getByRole('button', { name: '详情', exact: true }).first().click();
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 3.61');
+
+    await page.goto('/transaction/order');
+    await page.getByRole('button', { name: '详情', exact: true }).first().click();
+    await page.getByRole('tab', { name: '财务处理' }).click();
+    await page.getByRole('tab', { name: '清分', exact: true }).click();
+    await expect(fees.locator('.transaction-fee__total')).toContainText('USD 5.08');
+});
+
 async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => void,
     actionPermissions: string[] = [], includeDetailPermission = true, records = [operation]) {
     await page.addInitScript(() => localStorage.setItem('acquiring_admin_locale', 'zh-CN'));
@@ -515,7 +604,13 @@ async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => 
                 externalLink: 0,
                 sortNo: 31,
                 children: [],
-            }],
+            }, ...(actionPermissions.includes('clearing:record:list') ? [
+                { id: 32, menuCode: 'admin_transaction_clearing_v1', menuName: '交易清分', route: 'clearing', permissionCode: 'clearing:record:list' },
+                { id: 33, menuCode: 'admin_transaction_order_v1', menuName: '订单跟踪查询', route: 'order', permissionCode: 'transaction:order:list' },
+            ].map(menu => ({
+                ...menu, parentId: 30, menuType: 'MENU', routePath: `/transaction/${menu.route}`,
+                componentPath: `transaction/${menu.route}`, visible: 1, keepAlive: 1, children: [],
+            })) : [])],
         }],
     }));
     await page.route('**/admin/system/dicts/data/search', (route) => fulfill(route, {
@@ -524,6 +619,12 @@ async function mockAdminApis(page: Page, captureDetailRequest: (url: string) => 
     await page.route('**/admin/base/currencies/presentations', (route) => fulfill(route, []));
     await page.route('**/admin/merchants/search', (route) => fulfill(route, {
         total: 0, pageNo: 1, pageSize: 50, pages: 0, records: [],
+    }));
+    await page.route('**/admin/transactions/operations/search', (route) => fulfill(route,
+        { total: records.length, pageNo: 1, pageSize: 10, pages: 1, records }));
+    await page.route('**/admin/transactions/operations/summary', (route) => fulfill(route, {
+        totalCount: records.length, successCount: records.length, failedCount: 0,
+        amountSummaries: [], successAmountSummaries: [], failedAmountSummaries: [], paymentMethodSummaries: [],
     }));
     await page.route('**/admin/transactions/operations/search-with-summary', (route) => fulfill(route, {
         page: { total: records.length, pageNo: 1, pageSize: 10, pages: 1, records },

@@ -390,14 +390,21 @@
                 <div><span>{{ t('transaction.fields.transactionId') }}</span><strong>{{ selectedTransaction?.sourceTransactionId || '-' }}</strong></div>
                 <div><span>{{ t('transaction.settlement.merchantOrderNo') }}</span><strong>{{ selectedTransaction?.merchantOrderNo || '-' }}</strong></div>
             </div>
+            <TransactionFeeBreakdown
+                v-if="feeStatement"
+                :facts="feeStatement"
+                :transaction-id="selectedTransaction?.sourceTransactionId"
+                :transaction-type="selectedTransaction?.transactionType"
+                :locale="String(locale)"
+            />
             <el-table v-loading="componentLoading" :data="componentRows" border size="small">
                 <el-table-column prop="settlementResultItemNo" :label="t('transaction.settlement.resultItemNo')" min-width="210" fixed="left" align="center" show-overflow-tooltip />
                 <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.clearing.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
-                <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.sourceAmountExact ?? row.sourceAmount, row.sourceCurrency, row.sourceCurrencyExponent) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template></el-table-column>
-                <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
+                <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="150" align="right"><template #default="{ row }">{{ exactMoney(row.targetAmountExact ?? row.targetAmount, row.targetCurrency, row.targetCurrencyExponent) }}</template></el-table-column>
                 <el-table-column :label="t('transaction.settlement.appliedLimit')" width="120" align="center"><template #default="{ row }">{{ enumText('appliedLimitValue', row.appliedLimit) }}</template></el-table-column>
             </el-table>
             <el-empty v-if="!componentLoading && !componentRows.length" :description="t('transaction.settlement.componentEmpty')" />
@@ -433,15 +440,19 @@
 </template>
 
 <script setup lang="ts">
+import { getClearingRecordDetail } from '@/api/transaction';
 import AdminDateRangeFilter from '@/components/AdminDateRangeFilter.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { DataAnalysis, Document, Download, Lock, Memo, RefreshLeft, Search, Tickets } from '@element-plus/icons-vue';
 import {
+    TransactionFeeBreakdown,
+    useTransactionFeeStatement,
     CurrencyDisplay,
     DirectionTag,
     downloadSettlementVoucherPdf,
     formatSettlementVoucherAmount,
+    formatSettlementVoucherFeeAmount,
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
@@ -1309,12 +1320,12 @@ function buildBatchVoucher(value: SettlementBatchDetail): SettlementVoucherDocum
                 sourceAmount: {
                     cellType: 'money',
                     currency: row.sourceCurrency,
-                    amount: formatSettlementVoucherAmount(row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.sourceAmountExact ?? row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
                 },
                 targetAmount: {
                     cellType: 'money',
                     currency: row.targetCurrency,
-                    amount: formatSettlementVoucherAmount(row.targetAmount, voucherLocale, row.targetCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.targetAmountExact ?? row.targetAmount, voucherLocale, row.targetCurrencyExponent),
                 },
             })),
         },
@@ -1427,6 +1438,14 @@ onMounted(async () => {
 });
 
 watch(locale, () => void loadDimensionDictionaries());
+const feeStatement = useTransactionFeeStatement(() => {
+    if (!componentVisible.value || !selectedTransaction.value || !(userStore.hasPermission('clearing:record:detail'))) return null;
+    return {
+        transactionId: selectedTransaction.value.sourceTransactionId,
+        transactionDateTime: selectedTransaction.value.sourceTransactionDateTime,
+        settlementBatchNo: selectedTransaction.value.settlementBatchNo,
+    };
+}, getClearingRecordDetail);
 </script>
 
 <style scoped>

@@ -76,8 +76,8 @@
                                 <el-table-column :label="t('settlement.resultItemType')" min-width="160" align="center"><template #default="{ row }">{{ enumText('resultItemType', row.resultItemType) }}</template></el-table-column>
                                 <el-table-column :label="t('settlement.feeCategory')" min-width="150" align="center"><template #default="{ row }">{{ enumText('feeCategory', row.feeCategory) }}</template></el-table-column>
                                 <el-table-column :label="t('settlement.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('direction', row.direction)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.sourceAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.targetAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.sourceAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.targetAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                                 <el-table-column prop="transactionCount" :label="t('settlement.transactionCount')" width="100" align="center" />
                             </el-table>
                             <el-empty v-else-if="summaryLoaded" :description="t('settlement.summaryEmpty')" :image-size="72" />
@@ -102,7 +102,7 @@
                                 <el-table-column prop="merchantOrderNo" :label="t('settlement.merchantOrderNo')" min-width="190" align="center" show-overflow-tooltip />
                                 <el-table-column :label="t('settlement.paymentMethod')" min-width="220" align="center"><template #default="{ row }"><PaymentMethodDisplay :payment-types="dimensionItems('paymentType', row.paymentType)" :payment-methods="dimensionItems('paymentMethod', row.paymentMethod)" /></template></el-table-column>
                                 <el-table-column :label="t('settlement.transactionType')" min-width="160" align="center"><template #default="{ row }"><TransactionTypeDisplay class="settlement-type-label" :value="row.transactionType" :label="enumText('transactionType', row.transactionType)" /></template></el-table-column>
-                                <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                                <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                                 <el-table-column :label="t('settlement.netAmount')" min-width="210" align="right"><template #default="{ row }"><div class="settlement-net-amount"><DirectionTag :direction="row.netDirection" :label="enumText('direction', row.netDirection)" /><CurrencyAmountDisplay :amount="row.netTargetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
                                 <el-table-column :label="t('settlement.componentCount')" width="112" align="center"><template #default="{ row }"><el-button v-if="canViewTransactionComponent" link type="primary" @click="openComponents(row)">{{ row.componentCount }}</el-button><span v-else>{{ row.componentCount }}</span></template></el-table-column>
                                 <el-table-column :label="t('settlement.transactionTime')" min-width="174" align="center"><template #default="{ row }"><BaseDateTime :value="row.sourceTransactionDateTime" :source-time-zone="activeBatch.businessTimeZone" /></template></el-table-column>
@@ -167,6 +167,7 @@ import {
     downloadSettlementVoucherPdf,
     formatExchangeRate,
     formatSettlementVoucherAmount,
+    formatSettlementVoucherFeeAmount,
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
@@ -694,12 +695,12 @@ function buildSettlementVoucher(value: MerchantSettlementBatchDetail): Settlemen
                 sourceAmount: {
                     cellType: 'money',
                     currency: row.sourceCurrency,
-                    amount: formatSettlementVoucherAmount(row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.sourceAmountExact ?? row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
                 },
                 targetAmount: {
                     cellType: 'money',
                     currency: row.targetCurrency,
-                    amount: formatSettlementVoucherAmount(row.targetAmount, voucherLocale, row.targetCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.targetAmountExact ?? row.targetAmount, voucherLocale, row.targetCurrencyExponent),
                 },
             })),
         },

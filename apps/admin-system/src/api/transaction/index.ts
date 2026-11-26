@@ -1,3 +1,4 @@
+import type { TransactionFeeFacts } from '@acquiring/shared';
 import type {
     CommonResult,
     RefundContext,
@@ -729,6 +730,7 @@ export interface ClearingReserveLine {
 }
 
 export interface ClearingRecordDetail {
+    feeFacts?: TransactionFeeFacts;
     summary: ClearingRecordSummary;
     transactionDetails?: ClearingTransactionLine[];
     reserveDetails?: ClearingReserveLine[];
@@ -874,6 +876,8 @@ export interface SettlementRateLine {
 }
 
 export interface SettlementResultSummaryLine {
+    sourceAmountExact?: string;
+    targetAmountExact?: string;
     paymentType?: string;
     paymentMethod?: string;
     transactionType?: string;

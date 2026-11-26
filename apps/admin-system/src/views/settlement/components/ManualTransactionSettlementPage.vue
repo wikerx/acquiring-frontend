@@ -343,7 +343,12 @@
                             <template #default="{ row }"><CurrencyAmountDisplay :amount="row.grossAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.platformFeeAmount')" min-width="175" align="right">
-                            <template #default="{ row }"><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
+                            <template #default="{ row }"><CurrencyAmountDisplay
+                                    v-if="row.platformFeeAmount != null || row.knownPlatformFeeAmount != null"
+                                    fee-precision :amount="row.platformFeeAmount ?? row.knownPlatformFeeAmount"
+                                    :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end"
+                                />
+                                <div v-if="row.platformFeeAmount == null" class="manual-fee-partial">{{ transactionFeeText(documentLocale, row.knownPlatformFeeAmount != null ? 'knownPartial' : 'partial') }}</div></template>
                         </el-table-column>
                         <el-table-column v-if="!isReserve" :label="t('transaction.settlement.reserveAmount')" min-width="175" align="right">
                             <template #default="{ row }"><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="documentLocale" align="end" /></template>
@@ -441,6 +446,7 @@ import {
 import {
     BusinessResultError,
     CurrencyAmountDisplay,
+    transactionFeeText,
     CurrencyDisplay,
     getPaymentLogo,
     PaymentLogoGroup,
@@ -1031,6 +1037,7 @@ function errorText(error: unknown, fallbackKey: string) {
 </script>
 
 <style scoped>
+.manual-fee-partial { color: var(--el-text-color-secondary); font-size: 12px; }
 .manual-settlement-page {
     --settlement-blue: #2563eb;
     --settlement-blue-soft: #eff6ff;

@@ -28,7 +28,7 @@
             </el-table-column>
             <el-table-column :label="$t('feeAccount.feeAmount')" min-width="128" align="right">
                 <template #default="{ row }">
-                    <CurrencyAmountDisplay v-if="row.finalFeeUsd !== null && row.finalFeeUsd !== undefined" :amount="row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" />
+                    <CurrencyAmountDisplay fee-precision v-if="row.finalFeeUsd !== null && row.finalFeeUsd !== undefined" :amount="row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" />
                     <span v-else>-</span>
                 </template>
             </el-table-column>
@@ -36,7 +36,7 @@
         <div v-if="showSummary" class="simulation-detail-table__summary">
             <div class="simulation-detail-table__total">
                 <span>{{ $t('feeAccount.feeTotal') }}</span>
-                <strong><CurrencyAmountDisplay :amount="totalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" emphasized /></strong>
+                <strong><CurrencyAmountDisplay fee-precision :amount="totalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" emphasized /></strong>
             </div>
             <div v-if="feeTotalFormula || netSettlementFormula" class="simulation-detail-table__formulas">
                 <div v-if="feeTotalFormula"><span>{{ $t('feeAccount.feeTotalFormula') }}</span><code>{{ feeTotalFormula }}</code></div>

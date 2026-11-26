@@ -1,3 +1,4 @@
+import type { TransactionFeeFacts } from '@acquiring/shared';
 /** Merchant 结算接口契约：所有查询和导出由 service-merchant 重新绑定可信 merchantId，浏览器不可上送商户身份。 */
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
@@ -50,6 +51,8 @@ export interface MerchantSettlementRate {
 }
 
 export interface MerchantSettlementSummary {
+    sourceAmountExact?: string;
+    targetAmountExact?: string;
     paymentType?: string;
     paymentMethod?: string;
     transactionType?: string;
@@ -109,6 +112,12 @@ export interface MerchantSettlementTransaction {
 }
 
 export interface MerchantSettlementTransactionItem {
+    sourceAmountExact?: string;
+    directRateExact?: string;
+    unroundedTargetAmountExact?: string;
+    targetAmountExact?: string;
+    resultRole?: string;
+    unroundedTargetAmount?: string | number;
     settlementResultItemNo: string;
     settlementBatchNo: string;
     businessDate: string;
@@ -234,6 +243,7 @@ export interface MerchantClearingReserveLine {
 }
 
 export interface MerchantClearingDetail {
+    feeFacts?: TransactionFeeFacts;
     summary: MerchantClearingSummary;
     transactionDetails?: MerchantClearingTransactionLine[];
     reserveDetails?: MerchantClearingReserveLine[];

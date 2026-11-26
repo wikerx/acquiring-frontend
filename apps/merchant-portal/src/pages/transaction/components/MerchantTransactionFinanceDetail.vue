@@ -55,7 +55,7 @@
                 <span>{{ t('transaction.order.grossAmount') }}</span>
                 <CurrencyAmountDisplay :amount="clearingDetail.summary.grossLabelAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" emphasized />
               </div>
-              <div class="is-money">
+              <div v-if="!clearingDetail.feeFacts" class="is-money">
                 <span>{{ t('transaction.order.platformFee') }}</span>
                 <CurrencyAmountDisplay :amount="clearingDetail.summary.platformFeeAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" emphasized />
               </div>
@@ -78,7 +78,24 @@
               </div>
             </div>
 
-            <section class="transaction-finance-detail__section">
+            <TransactionFeeBreakdown
+              compact
+              v-if="clearingDetail.feeFacts"
+              :facts="clearingDetail.feeFacts"
+              :transaction-id="transactionId"
+              :transaction-type="clearingDetail.summary.transactionType"
+              :clearing-status="clearingDetail.summary.clearingStatus"
+              :settlement-status="clearingDetail.summary.settlementStatus"
+              :back-available="Boolean(feeAction)"
+              :locale="String(locale)"
+              @source="feeAction = $event"
+              @back="feeAction = null"
+            />
+
+            <el-button v-if="clearingDetail.feeFacts" link type="primary" :aria-expanded="rawFeeLinesVisible" @click="rawFeeLinesVisible = !rawFeeLinesVisible">
+                {{ transactionFeeText(String(locale), rawFeeLinesVisible ? 'hideRaw' : 'showRaw') }}
+            </el-button>
+            <section v-show="!clearingDetail.feeFacts || rawFeeLinesVisible" class="transaction-finance-detail__section">
               <div class="transaction-finance-detail__heading">
                 <strong>{{ t('transaction.order.transactionClearingItems') }}</strong>
                 <el-tag size="small" effect="plain">{{ clearingTransactionTotal }}</el-tag>
@@ -398,6 +415,15 @@
             }}</el-button>
           </div>
           <template v-else-if="settlementRows.length">
+            <TransactionFeeBreakdown
+              compact
+              v-if="clearingDetail?.feeFacts?.settlement.length"
+              :facts="{ ...clearingDetail.feeFacts, sourceAction: null }"
+              :transaction-id="transactionId"
+              :transaction-type="clearingDetail.summary.transactionType"
+              :settlement-status="clearingDetail.summary.settlementStatus"
+              :locale="String(locale)"
+            />
             <el-table
               :data="settlementRows"
               row-key="settlementResultItemNo"
@@ -426,10 +452,10 @@
                 </template>
               </el-table-column>
               <el-table-column :label="t('settlement.sourceAmount')" min-width="138" align="right">
-                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmountExact ?? row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template>
               </el-table-column>
               <el-table-column :label="t('settlement.targetAmount')" min-width="148" align="right">
-                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.targetAmountExact ?? row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
               </el-table-column>
               <el-table-column :label="t('settlement.batchNo')" min-width="205" align="left">
                 <template #default="{ row }">
@@ -601,7 +627,7 @@
     Minus,
     Refresh,
   } from '@element-plus/icons-vue';
-  import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
+  import { TransactionFeeBreakdown, transactionFeeText, type FeeSourceAction, TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import {
@@ -638,6 +664,7 @@
   const clearingLoading = ref(false);
   const clearingLoaded = ref(false);
   const clearingError = ref(false);
+  const rawFeeLinesVisible = ref(false);
   const clearingDetail = ref<MerchantClearingDetail | null>(null);
   const clearingTransactionLoading = ref(false);
   const clearingTransactionError = ref(false);
@@ -669,7 +696,11 @@
   const reserveTotal = ref(0);
   const reservePage = ref(1);
   const reservePageSize = ref(10);
-  const identityKey = computed(() => `${props.transactionId}|${props.transactionDateTime}`);
+  const feeAction = ref<FeeSourceAction | null>(null);
+  watch(() => [props.transactionId, props.transactionDateTime], () => { feeAction.value = null; });
+  const transactionId = computed(() => feeAction.value?.transactionId || props.transactionId);
+  const transactionDateTime = computed(() => feeAction.value?.transactionDateTime || props.transactionDateTime);
+  const identityKey = computed(() => `${transactionId.value}|${transactionDateTime.value}`);
   const clearingStatusPresentation = computed(() => {
     const status = String(clearingDetail.value?.summary?.clearingStatus || '').toUpperCase();
     if (status === 'CLEARED') return { tone: 'success', icon: CircleCheck };
@@ -715,6 +746,7 @@
     clearingLoaded.value = false;
     clearingError.value = false;
     clearingDetail.value = null;
+    rawFeeLinesVisible.value = false;
     clearingTransactionLoading.value = false;
     clearingTransactionError.value = false;
     clearingTransactionRows.value = [];
@@ -744,10 +776,13 @@
   }
 
   function ensureActiveTabLoaded() {
-    if (!props.transactionId || !props.transactionDateTime) return;
+    if (!transactionId.value || !transactionDateTime.value) return;
     if (activeTab.value === 'clearing') void loadClearing();
     if (activeTab.value === 'reconciliation') void loadReconciliation();
-    if (activeTab.value === 'settlement') void loadSettlement();
+    if (activeTab.value === 'settlement') {
+      void loadSettlement();
+      if (props.canViewClearing) void loadClearing();
+    }
     if (activeTab.value === 'reserve') void loadReserve();
   }
 
@@ -758,8 +793,8 @@
     clearingError.value = false;
     try {
       const result = await getMerchantClearingDetailByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
       );
       if (requestVersion !== stateVersion) return;
       clearingDetail.value = result;
@@ -785,8 +820,8 @@
     clearingTransactionError.value = false;
     try {
       const result = await searchMerchantClearingTransactionLinesByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
         clearingTransactionPage.value,
         clearingTransactionPageSize.value,
       );
@@ -813,8 +848,8 @@
     clearingReserveError.value = false;
     try {
       const result = await searchMerchantClearingReserveLinesByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
         clearingReservePage.value,
         clearingReservePageSize.value,
       );
@@ -855,8 +890,8 @@
     reconciliationError.value = false;
     try {
       const result = await getMerchantSettlementReconciliationRecordsByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
       );
       if (requestVersion !== stateVersion) return;
       reconciliationRows.value = result || [];
@@ -879,8 +914,8 @@
     settlementError.value = false;
     try {
       const result = await searchMerchantSettlementTransactionsByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
         settlementPage.value,
         settlementPageSize.value,
       );
@@ -906,8 +941,8 @@
     reserveError.value = false;
     try {
       const result = await searchMerchantSettlementReservesByTransaction(
-        props.transactionId,
-        props.transactionDateTime,
+        transactionId.value,
+        transactionDateTime.value,
         reservePage.value,
         reservePageSize.value,
       );

@@ -24,6 +24,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { formatMoneyAmount } from '../amount';
+import { formatFeeAmount } from '../transactionFeeFacts';
 import CurrencyDisplay from './CurrencyDisplay.vue';
 
 const props = withDefaults(defineProps<{
@@ -37,6 +38,7 @@ const props = withDefaults(defineProps<{
     emphasized?: boolean;
     currencyVariant?: 'plain' | 'soft';
     emptyText?: string;
+    feePrecision?: boolean;
 }>(), {
     amount: null,
     currency: '',
@@ -56,6 +58,9 @@ const hasAmount = computed(() => (
 
 const formattedAmount = computed(() => {
     if (!hasAmount.value) return props.emptyText;
+    if (props.feePrecision) {
+        return formatFeeAmount(props.amount, props.locale, props.exponent ?? undefined, undefined, props.emptyText);
+    }
     return formatMoneyAmount(
         props.amount,
         props.locale,
@@ -73,7 +78,7 @@ const isNegative = computed(() => /^-/.test(String(props.amount ?? '').trim())
 const resolvedTone = computed(() => (
     props.tone === 'auto' ? (isNegative.value ? 'danger' : 'default') : props.tone
 ));
-const titleText = computed(() => `${String(props.currency || '').trim().toUpperCase()} ${formattedAmount.value}`.trim());
+const titleText = computed(() => `${String(props.currency || '').trim().toUpperCase()} ${props.feePrecision ? String(props.amount) : formattedAmount.value}`.trim());
 </script>
 
 <style scoped>

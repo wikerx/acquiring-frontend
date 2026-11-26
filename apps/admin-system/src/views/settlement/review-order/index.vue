@@ -217,8 +217,8 @@
                     <el-table-column :label="t('transaction.settlement.resultItemType')" min-width="160" align="center"><template #default="{ row }">{{ enumText('resultItemTypeValue', row.resultItemType) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategoryValue', row.feeCategory) }}</template></el-table-column>
                     <el-table-column :label="t('transaction.clearing.direction')" width="100" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('directionValue', row.direction)" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
-                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+                    <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="190" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
                 </el-table>
                 <el-empty v-else :description="t('transaction.settlement.resultSummaryEmpty')" />
                         </template>
@@ -358,6 +358,7 @@ import {
     DirectionTag,
     downloadSettlementVoucherPdf,
     formatSettlementVoucherAmount,
+    formatSettlementVoucherFeeAmount,
     formatSettlementVoucherRate,
     PaymentMethodDisplay,
     SettlementVoucher,
@@ -979,12 +980,12 @@ function buildReviewVoucher(value: SettlementReviewDetail): SettlementVoucherDoc
                 sourceAmount: {
                     cellType: 'money',
                     currency: row.sourceCurrency,
-                    amount: formatSettlementVoucherAmount(row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.sourceAmountExact ?? row.sourceAmount, voucherLocale, row.sourceCurrencyExponent),
                 },
                 targetAmount: {
                     cellType: 'money',
                     currency: row.targetCurrency,
-                    amount: formatSettlementVoucherAmount(row.targetAmount, voucherLocale, row.targetCurrencyExponent),
+                    amount: formatSettlementVoucherFeeAmount(row.targetAmountExact ?? row.targetAmount, voucherLocale, row.targetCurrencyExponent),
                 },
             })),
         },

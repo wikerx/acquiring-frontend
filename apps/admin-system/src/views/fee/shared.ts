@@ -1,7 +1,7 @@
 import type { FeeRule, FeeRuleInput, FeeVersion, FeeVersionInput } from '@/api/fee';
 import {
     BusinessResultError,
-    formatMoneyAmount,
+    formatFeeAmount,
     formatPercentageValue,
     resolveFriendlyRequestMessage,
 } from '@acquiring/shared';
@@ -492,18 +492,18 @@ export function feeFormula(rule: Pick<FeeRuleInput, 'feeMode' | 'percentageRate'
     const locale = String(i18n.global.locale.value || 'zh-CN');
     const parts = [
         t('feeAccount.labelAmountFormula', {
-            rate: formatPercentageValue(rule.percentageRate || 0, locale),
+            rate: formatPercentageValue(rule.percentageRate || 0, locale, '-', 8),
         }),
-        `USD ${formatMoneyAmount(rule.fixedAmountUsd || 0, locale)}`,
+        `USD ${formatFeeAmount(rule.fixedAmountUsd || 0, locale)}`,
     ];
     if (rule.minimumAmountUsd !== null && rule.minimumAmountUsd !== undefined && rule.minimumAmountUsd !== '') {
         parts.push(t('feeAccount.minimumFormula', {
-            amount: formatMoneyAmount(rule.minimumAmountUsd, locale),
+            amount: formatFeeAmount(rule.minimumAmountUsd, locale),
         }));
     }
     if (rule.maximumAmountUsd !== null && rule.maximumAmountUsd !== undefined && rule.maximumAmountUsd !== '') {
         parts.push(t('feeAccount.maximumFormula', {
-            amount: formatMoneyAmount(rule.maximumAmountUsd, locale),
+            amount: formatFeeAmount(rule.maximumAmountUsd, locale),
         }));
     }
     return parts.join(' + ');

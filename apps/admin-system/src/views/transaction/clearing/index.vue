@@ -96,7 +96,7 @@
                 <template #default="{ row }"><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.platformFee')" min-width="148" align="right">
-                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
+                <template #default="{ row }"><CurrencyAmountDisplay v-if="row.platformFeeAmount != null" :amount="row.platformFeeAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" fee-precision /><span v-else>{{ clearingFeeStateText(String(locale), row.clearingStatus, row.feeEvaluationStatus, row.settlementStatus) }}</span></template>
             </el-table-column>
             <el-table-column :label="t('transaction.clearing.reserveAmount')" min-width="148" align="right">
                 <template #default="{ row }"><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template>
@@ -180,7 +180,7 @@
                         <el-descriptions-item :label="t('transaction.clearing.feePlan')">{{ feePlanText(detail.summary) }}</el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.transactionLabelAmount')"><CurrencyAmountDisplay :amount="detail.summary.labelAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.grossAmount')"><CurrencyAmountDisplay :amount="detail.summary.grossLabelAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
-                        <el-descriptions-item :label="t('transaction.clearing.platformFee')"><CurrencyAmountDisplay :amount="detail.summary.platformFeeAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
+                        <el-descriptions-item v-if="!detail.feeFacts" :label="t('transaction.clearing.platformFee')"><CurrencyAmountDisplay :amount="detail.summary.platformFeeAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.reserveAmount')"><CurrencyAmountDisplay :amount="detail.summary.reserveAmount" :currency="detail.summary.labelCurrency" :locale="String(locale)" size="xs" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.settlementStatus')"><TransactionStageStatusDisplay domain="settlement" :value="detail.summary.settlementStatus" :label="settlementStatusText(detail.summary.settlementStatus)" /></el-descriptions-item>
                         <el-descriptions-item :label="t('transaction.clearing.settlementEligibleDate')">{{ detail.summary.settlementEligibleDate || '-' }}</el-descriptions-item>
@@ -198,7 +198,23 @@
                         :description="detail.summary.lastFailureMessage || '-'"
                     />
 
-                    <section class="clearing-ledger clearing-ledger--transaction">
+                    <TransactionFeeBreakdown
+                        v-if="detail.feeFacts"
+                        :facts="detail.feeFacts"
+                        :transaction-id="detail.summary.transactionId"
+                        :transaction-type="detail.summary.transactionType"
+                        :clearing-status="detail.summary.clearingStatus"
+                        :settlement-status="detail.summary.settlementStatus"
+                        :back-available="Boolean(originalFeeAction)"
+                        :locale="String(locale)"
+                        @source="viewFeeSource"
+                        @back="returnToFeeAction"
+                    />
+
+                    <el-button v-if="detail.feeFacts" link type="primary" :aria-expanded="rawFeeLinesVisible" @click="rawFeeLinesVisible = !rawFeeLinesVisible">
+                        {{ transactionFeeText(String(locale), rawFeeLinesVisible ? 'hideRaw' : 'showRaw') }}
+                    </el-button>
+                    <section v-show="!detail.feeFacts || rawFeeLinesVisible" class="clearing-ledger clearing-ledger--transaction">
                         <div class="clearing-ledger__heading">
                             <div>
                                 <span class="clearing-ledger__marker"></span>
@@ -442,9 +458,9 @@
 
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, formatPercentageRate, TransactionTypeDisplay } from '@acquiring/shared';
+import { TransactionFeeBreakdown, transactionFeeText, clearingFeeStateText, type FeeSourceAction, TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, formatPercentageRate, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
@@ -503,6 +519,22 @@ const dateRange = ref(defaultTransactionTodayRange());
 const timezoneOptions = ensureTransactionTimezoneOptions([]);
 const transactionTypeOptions = ref(fallbackTransactionTypeOptions(t));
 const detailVisible = ref(false);
+const rawFeeLinesVisible = ref(false);
+const originalFeeAction = ref<Pick<ClearingRecordSummary, 'transactionId' | 'transactionDateTime'> | null>(null);
+watch(detailVisible, visible => {
+    if (!visible) originalFeeAction.value = null;
+});
+
+function viewFeeSource(action: FeeSourceAction) {
+    originalFeeAction.value ??= detailIdentity.value;
+    void openDetail(action);
+}
+
+function returnToFeeAction() {
+    const original = originalFeeAction.value;
+    originalFeeAction.value = null;
+    if (original) void openDetail(original);
+}
 const detailLoading = ref(false);
 const detailError = ref(false);
 const detail = ref<ClearingRecordDetail | null>(null);
@@ -641,6 +673,7 @@ async function openDetail(row: Pick<ClearingRecordSummary, 'transactionId' | 'tr
     detailLoading.value = true;
     detailError.value = false;
     detail.value = null;
+    rawFeeLinesVisible.value = false;
     transactionDetailRows.value = [];
     transactionDetailLoading.value = false;
     transactionDetailTotal.value = 0;
@@ -1000,7 +1033,7 @@ function reserveItemName(action?: string, fallback?: string) {
 }
 
 function percentageText(value?: number | string | null) {
-    return formatPercentageRate(value, String(locale.value || 'zh-CN'));
+    return formatPercentageRate(value, String(locale.value || 'zh-CN'), '-', 8);
 }
 
 function versionOptionText(option: ClearingRecalculationVersionOption) {

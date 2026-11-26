@@ -166,7 +166,7 @@
             </el-table-column>
             <el-table-column :label="t('transaction.fields.labelAmount')" min-width="180" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.labelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template></el-table-column>
             <el-table-column v-if="props.kind === 'transaction'" :label="t('transaction.settlement.clearingComposition')" min-width="230" align="center">
-                <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b><CurrencyAmountDisplay :amount="row.platformFeeAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span></div></template>
+                <template #default="{ row }"><div class="candidate-composition"><span>{{ t('transaction.settlement.grossLabelAmount') }} <b><CurrencyAmountDisplay :amount="row.grossLabelAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span><span>{{ t('transaction.settlement.platformFeeAmount') }} <b><CurrencyAmountDisplay v-if="row.platformFeeAmount != null" fee-precision :amount="row.platformFeeAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /><span v-else>{{ clearingFeeStateText(String(locale), 'CLEARED', row.feeEvaluationStatus, row.candidateStatus) }}</span></b></span><span>{{ t('transaction.settlement.reserveAmount') }} <b><CurrencyAmountDisplay :amount="row.reserveAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" size="xs" /></b></span></div></template>
             </el-table-column>
             <el-table-column v-else :label="t('transaction.settlement.reserveActionAmount')" min-width="198" align="right"><template #default="{ row }"><div class="candidate-action"><span class="candidate-action__label">{{ enumText('reserveActionTypeValue', row.reserveActionType) }}</span><CurrencyAmountDisplay :amount="row.reserveActionAmount" :currency="row.labelCurrency" :exponent="row.labelCurrencyExponent" :locale="String(locale)" align="end" emphasized /></div></template></el-table-column>
             <el-table-column v-if="props.kind === 'reserve'" prop="reserveNo" :label="t('transaction.settlement.reserveNo')" min-width="190" align="center" show-overflow-tooltip />
@@ -212,7 +212,7 @@
                 <el-descriptions-item :label="t('transaction.settlement.sourceRevision')">{{ detail.sourceRevision }}</el-descriptions-item>
                 <template v-if="props.kind === 'transaction'">
                     <el-descriptions-item :label="t('transaction.settlement.grossLabelAmount')"><CurrencyAmountDisplay :amount="detail.grossLabelAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
-                    <el-descriptions-item :label="t('transaction.settlement.platformFeeAmount')"><CurrencyAmountDisplay :amount="detail.platformFeeAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
+                    <el-descriptions-item :label="t('transaction.settlement.platformFeeAmount')"><CurrencyAmountDisplay v-if="detail.platformFeeAmount != null" fee-precision :amount="detail.platformFeeAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /><span v-else>{{ clearingFeeStateText(String(locale), 'CLEARED', detail.feeEvaluationStatus, detail.candidateStatus) }}</span><el-button v-if="detail.sourceTransactionId" link type="primary" @click="openTransaction(detail)">{{ transactionFeeText(String(locale), 'parts') }}</el-button></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.reserveAmount')"><CurrencyAmountDisplay :amount="detail.reserveAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.candidateNetAmount')"><CurrencyAmountDisplay :amount="detail.netSettlementAmount" :currency="detail.labelCurrency" :exponent="detail.labelCurrencyExponent" :locale="String(locale)" emphasized /></el-descriptions-item>
                     <el-descriptions-item :label="t('transaction.settlement.feeEvaluationStatus')">{{ feeEvaluationText(detail.feeEvaluationStatus) }}</el-descriptions-item>
@@ -236,6 +236,13 @@
                 <el-descriptions-item :label="t('transaction.fields.transactionDateTime')"><BaseDateTime :value="detail.sourceTransactionDateTime" /></el-descriptions-item>
                 <el-descriptions-item :label="t('common.updateTime')"><BaseDateTime :value="detail.updateTime" /></el-descriptions-item>
             </el-descriptions>
+            <TransactionFeeBreakdown
+                v-if="feeStatement"
+                :facts="feeStatement"
+                :transaction-id="detail?.sourceTransactionId"
+                :transaction-type="detail?.transactionType"
+                :locale="String(locale)"
+            />
         </el-drawer>
 
         <el-dialog v-if="!props.readOnly" v-model="submitVisible" :title="t('transaction.settlement.submitReview')" width="620px" destroy-on-close>
@@ -265,13 +272,19 @@
 </template>
 
 <script setup lang="ts">
+import { getClearingRecordDetail } from '@/api/transaction';
+import { useUserStore } from '@/store/modules/user';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Plus, View } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
+    TransactionFeeBreakdown,
+    useTransactionFeeStatement,
     CurrencyAmountDisplay,
+    clearingFeeStateText,
+    transactionFeeText,
     CurrencyDisplay,
     DirectionTag,
     getPaymentLogo,
@@ -606,6 +619,14 @@ function candidateSelectable(row: SettlementCandidate) {
 function handleSelectionChange(value: SettlementCandidate[]) {
     selection.value = value;
 }
+const feeUser = useUserStore();
+const feeStatement = useTransactionFeeStatement(() => {
+    if (!detailVisible.value || !detail.value || !(feeUser.hasPermission('clearing:record:detail') && props.kind === 'transaction')) return null;
+    return {
+        transactionId: detail.value.sourceTransactionId,
+        transactionDateTime: detail.value.sourceTransactionDateTime,
+    };
+}, getClearingRecordDetail);
 </script>
 
 <style scoped>

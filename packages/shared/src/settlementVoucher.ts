@@ -1,5 +1,6 @@
 import type { VexraSystemKey } from './brand';
 import { formatExchangeRate, formatMoneyAmount } from './amount';
+import { formatFeeAmount } from './transactionFeeFacts';
 
 /** Keep voucher rates at a professional minimum scale without losing source precision. */
 export function formatSettlementVoucherRate(
@@ -16,6 +17,15 @@ export function formatSettlementVoucherAmount(
     exponent?: number | null,
 ): string {
     return formatMoneyAmount(value, locale, exponent);
+}
+
+/** Monetary columns in fee and settlement summaries retain stored significant decimals. */
+export function formatSettlementVoucherFeeAmount(
+    value?: string | number | null,
+    locale = 'zh-CN',
+    exponent?: number | null,
+): string {
+    return formatFeeAmount(value, locale, exponent ?? undefined);
 }
 
 export type SettlementVoucherStatusTone = 'success' | 'warning' | 'danger' | 'info';

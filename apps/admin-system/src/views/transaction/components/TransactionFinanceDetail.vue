@@ -24,7 +24,7 @@
                             <el-descriptions-item :label="t('transaction.clearing.grossAmount')" class-name="transaction-finance-detail__money-cell">
                                 <CurrencyAmountDisplay :amount="clearingDetail.summary.grossLabelAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" emphasized />
                             </el-descriptions-item>
-                            <el-descriptions-item :label="t('transaction.clearing.platformFee')" class-name="transaction-finance-detail__money-cell">
+                            <el-descriptions-item v-if="!clearingDetail.feeFacts" :label="t('transaction.clearing.platformFee')" class-name="transaction-finance-detail__money-cell">
                                 <CurrencyAmountDisplay :amount="clearingDetail.summary.platformFeeAmount" :currency="clearingDetail.summary.labelCurrency" :locale="String(locale)" align="center" />
                             </el-descriptions-item>
                             <el-descriptions-item :label="t('transaction.clearing.reserveAmount')" class-name="transaction-finance-detail__money-cell">
@@ -45,7 +45,23 @@
                             </el-descriptions-item>
                         </el-descriptions>
 
-                        <section class="transaction-finance-detail__section">
+                        <TransactionFeeBreakdown
+                            v-if="clearingDetail.feeFacts"
+                            :facts="clearingDetail.feeFacts"
+                            :transaction-id="transactionId"
+                            :transaction-type="clearingDetail.summary.transactionType"
+                            :clearing-status="clearingDetail.summary.clearingStatus"
+                            :settlement-status="clearingDetail.summary.settlementStatus"
+                            :back-available="Boolean(feeAction)"
+                            :locale="String(locale)"
+                            @source="feeAction = $event"
+                            @back="feeAction = null"
+                        />
+
+                        <el-button v-if="clearingDetail.feeFacts" link type="primary" :aria-expanded="rawFeeLinesVisible" @click="rawFeeLinesVisible = !rawFeeLinesVisible">
+                            {{ transactionFeeText(String(locale), rawFeeLinesVisible ? 'hideRaw' : 'showRaw') }}
+                        </el-button>
+                        <section v-show="!clearingDetail.feeFacts || rawFeeLinesVisible" class="transaction-finance-detail__section">
                             <div class="transaction-finance-detail__heading">
                                 <strong>{{ t('transaction.clearing.transactionLedger') }}</strong>
                                 <el-tag size="small" effect="plain">{{ clearingTransactionLoading ? '…' : clearingTransactionError ? '—' : clearingTransactionTotal }}</el-tag>
@@ -243,6 +259,14 @@
                         <el-button :icon="Refresh" @click="loadSettlement(true)">{{ t('common.refresh') }}</el-button>
                     </div>
                     <template v-else>
+                        <TransactionFeeBreakdown
+                            v-if="clearingDetail?.feeFacts?.settlement.length"
+                            :facts="{ ...clearingDetail.feeFacts, sourceAction: null }"
+                            :transaction-id="transactionId"
+                            :transaction-type="clearingDetail.summary.transactionType"
+                            :settlement-status="clearingDetail.summary.settlementStatus"
+                            :locale="String(locale)"
+                        />
                         <StandardTable
                             table-key="transaction-finance-settlement-items"
                             :data="settlementItems"
@@ -264,13 +288,13 @@
                                 </template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.sourceAmount')" min-width="160" align="right">
-                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmountExact ?? row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.directRate')" min-width="150" align="right">
                                 <template #default="{ row }">{{ rateText(row.directRate, String(locale)) }}</template>
                             </el-table-column>
                             <el-table-column :label="t('transaction.settlement.targetAmount')" min-width="160" align="right">
-                                <template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
+                                <template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.targetAmountExact ?? row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" emphasized /></template>
                             </el-table-column>
                             <el-table-column prop="businessDate" :label="t('transaction.settlement.businessDate')" width="130" align="center" />
                         </StandardTable>
@@ -362,7 +386,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Refresh } from '@element-plus/icons-vue';
-import { TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
+import { TransactionFeeBreakdown, transactionFeeText, type FeeSourceAction, TransactionStageStatusDisplay, CurrencyAmountDisplay, DirectionTag, TransactionTypeDisplay } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import {
     getSettlementReconciliationRecordsByTransaction,
@@ -412,14 +436,19 @@ const focusedOperation = computed<TransactionOperation | undefined>(() => {
     return props.detail.operations?.find((item) => item.transactionId === props.focusTransactionId);
 });
 
-const transactionId = computed(() => focusedOperation.value?.transactionId
+const feeAction = ref<FeeSourceAction | null>(null);
+watch(() => [props.focusTransactionId, props.detail.order?.rootTransactionId], () => {
+    feeAction.value = null;
+});
+const transactionId = computed(() => feeAction.value?.transactionId || focusedOperation.value?.transactionId
     || props.detail.order?.rootTransactionId
     || '');
-const transactionDateTime = computed(() => focusedOperation.value?.transactionDateTime
+const transactionDateTime = computed(() => feeAction.value?.transactionDateTime || focusedOperation.value?.transactionDateTime
     || props.detail.order?.transactionDateTime
     || '');
 const identityKey = computed(() => `${transactionId.value}|${transactionDateTime.value}`);
 
+const rawFeeLinesVisible = ref(false);
 const clearingDetail = ref<ClearingRecordDetail | null>(null);
 const clearingLoading = ref(false);
 const clearingLoaded = ref(false);
@@ -480,6 +509,7 @@ function resetState() {
     clearingReserveRequestId += 1;
     activeSection.value = defaultSection();
     clearingDetail.value = null;
+    rawFeeLinesVisible.value = false;
     clearingLoading.value = false;
     clearingLoaded.value = false;
     clearingError.value = '';
@@ -522,7 +552,10 @@ function ensureActiveSectionLoaded() {
     if (!transactionId.value || !transactionDateTime.value) return;
     if (activeSection.value === 'clearing') loadClearing();
     if (activeSection.value === 'reconciliation') loadReconciliation();
-    if (activeSection.value === 'settlement') loadSettlement();
+    if (activeSection.value === 'settlement') {
+        loadSettlement();
+        if (canViewClearing.value) loadClearing();
+    }
     if (activeSection.value === 'reserve') loadReserve();
 }
 

@@ -1,14 +1,25 @@
 <template>
     <el-drawer v-model="componentVisible" :title="t('settlement.financialComponents')" size="min(1080px, 96vw)" append-to-body destroy-on-close>
         <div class="settlement-component__identity"><div><span>{{ t('settlement.transactionId') }}</span><strong>{{ transaction?.sourceTransactionId || '-' }}</strong></div><div><span>{{ t('settlement.merchantOrderNo') }}</span><strong>{{ transaction?.merchantOrderNo || '-' }}</strong></div></div>
+        <TransactionFeeBreakdown
+            compact
+            v-if="feeStatement"
+            :facts="feeStatement"
+            :transaction-id="props.transaction?.sourceTransactionId"
+            :transaction-type="props.transaction?.transactionType"
+            :locale="String(locale)"
+        />
         <el-table v-loading="componentLoading" :data="componentRows" border size="small">
             <el-table-column prop="settlementResultItemNo" :label="t('settlement.resultItemNo')" min-width="210" fixed="left" align="center" show-overflow-tooltip />
             <el-table-column :label="t('settlement.resultItemType')" min-width="150" align="center"><template #default="{ row }">{{ enumText('resultItemType', row.resultItemType) }}</template></el-table-column>
             <el-table-column :label="t('settlement.feeCategory')" min-width="140" align="center"><template #default="{ row }">{{ enumText('feeCategory', row.feeCategory) }}</template></el-table-column>
             <el-table-column :label="t('settlement.direction')" width="96" align="center"><template #default="{ row }"><DirectionTag :direction="row.direction" :label="enumText('direction', row.direction)" /></template></el-table-column>
-            <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+            <el-table-column :label="t('settlement.sourceAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.sourceAmountExact ?? row.sourceAmount" :currency="row.sourceCurrency" :exponent="row.sourceCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
             <el-table-column :label="t('settlement.directRate')" min-width="150" align="right"><template #default="{ row }">{{ rate(row.directRate) }}</template></el-table-column>
-            <el-table-column :label="t('settlement.targetAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay :amount="row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
+            <el-table-column :label="transactionFeeText(String(locale), 'unrounded')" min-width="190" align="right">
+                <template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.unroundedTargetAmountExact ?? row.unroundedTargetAmount" :currency="row.targetCurrency" :locale="String(locale)" align="end" /></template>
+            </el-table-column>
+            <el-table-column :label="t('settlement.targetAmount')" min-width="175" align="right"><template #default="{ row }"><CurrencyAmountDisplay fee-precision :amount="row.targetAmountExact ?? row.targetAmount" :currency="row.targetCurrency" :exponent="row.targetCurrencyExponent" :locale="String(locale)" align="end" /></template></el-table-column>
             <el-table-column :label="t('settlement.appliedLimit')" min-width="126" align="center"><template #default="{ row }">{{ enumText('appliedLimit', row.appliedLimit) }}</template></el-table-column>
         </el-table>
         <el-empty v-if="!componentLoading && !componentRows.length" :description="t('settlement.componentEmpty')" />
@@ -17,11 +28,13 @@
 </template>
 
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission';
 import { ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { CurrencyAmountDisplay, DirectionTag, formatExchangeRate } from '@acquiring/shared';
+import { TransactionFeeBreakdown, useTransactionFeeStatement, CurrencyAmountDisplay, DirectionTag, formatExchangeRate, transactionFeeText } from '@acquiring/shared';
 import {
+    getMerchantClearingDetailByTransaction,
     searchMerchantSettlementTransactionComponents,
     type MerchantSettlementTransaction,
     type MerchantSettlementTransactionItem,
@@ -81,6 +94,14 @@ function enumText(group: string, value?: string) {
 function rate(value?: string | number) {
     return formatExchangeRate(value, String(locale.value));
 }
+const feeStatement = useTransactionFeeStatement(() => {
+    if (!componentVisible.value || !props.transaction || !(hasPermission('merchant:clearing:record:detail'))) return null;
+    return {
+        transactionId: props.transaction.sourceTransactionId,
+        transactionDateTime: props.transaction.sourceTransactionDateTime,
+        settlementBatchNo: props.transaction.settlementBatchNo,
+    };
+}, getMerchantClearingDetailByTransaction);
 </script>
 
 <style scoped>

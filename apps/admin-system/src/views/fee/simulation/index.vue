@@ -47,7 +47,7 @@
             <template v-else>
                 <div class="result-summary-band">
                     <div class="result-summary-band__metric result-summary-band__primary"><span>{{ $t('feeAccount.estimatedNetSettlement') }}</span><strong><CurrencyAmountDisplay :amount="result.estimatedNetSettlementUsd" currency="USD" :locale="String(locale)" size="md" emphasized /></strong></div>
-                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.estimatedTotalFee') }}</span><strong><CurrencyAmountDisplay :amount="result.finalFeeUsd" currency="USD" :locale="String(locale)" size="md" emphasized /></strong></div>
+                    <div class="result-summary-band__metric"><span>{{ $t('feeAccount.estimatedTotalFee') }}</span><strong><CurrencyAmountDisplay fee-precision :amount="result.finalFeeUsd" currency="USD" :locale="String(locale)" size="md" emphasized /></strong></div>
                     <div class="result-summary-band__metric"><span>{{ $t('feeAccount.reserveAmount') }}</span><strong><CurrencyAmountDisplay :amount="result.reserveAmountLabel" :currency="result.reserveAmountCurrency" :locale="String(locale)" size="md" emphasized /></strong></div>
                     <div class="result-summary-band__context">
                         <div><span>{{ $t('feeAccount.simulationNo') }}</span><strong>{{ result.simulationNo }}</strong></div>
@@ -132,7 +132,7 @@
                     </template>
                 </el-table-column>
                 <el-table-column :label="$t('feeAccount.labelAmount')" min-width="170" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.labelAmount" :currency="scope.row.labelCurrency" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
-                <el-table-column :label="$t('feeAccount.feeTotal')" min-width="165" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
+                <el-table-column :label="$t('feeAccount.feeTotal')" min-width="165" align="right"><template #default="scope"><CurrencyAmountDisplay fee-precision :amount="scope.row.finalFeeUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
                 <el-table-column :label="$t('feeAccount.reserveAmount')" min-width="165" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.reserveAmountLabel" :currency="scope.row.reserveAmountCurrency" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
                 <el-table-column :label="$t('feeAccount.estimatedNetSettlement')" min-width="185" align="right"><template #default="scope"><CurrencyAmountDisplay :amount="scope.row.estimatedNetSettlementUsd" currency="USD" :locale="String(locale)" size="xs" align="end" /></template></el-table-column>
                 <el-table-column prop="operatorName" :label="$t('feeAccount.operator')" width="120" align="center" />
