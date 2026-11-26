@@ -3,6 +3,7 @@ import {
     BusinessResultError,
     formatFeeAmount,
     formatPercentageValue,
+    isDisputeEventFee,
     resolveFriendlyRequestMessage,
 } from '@acquiring/shared';
 import { i18n } from '@/i18n';
@@ -204,6 +205,14 @@ function nullWhenBlank(value?: string | number | null) {
 }
 
 function ruleToInput(rule: FeeRule): FeeRuleInput {
+    if (isDisputeEventFee(rule.feeCategory)) {
+        return {
+            ...createEmptyRule(rule.feeCategory),
+            fixedAmountUsd: rule.fixedAmountUsdExact ?? rule.fixedAmountUsd,
+            sortNo: rule.sortNo,
+            remark: rule.remark,
+        };
+    }
     if (rule.feeCategory === 'SETTLEMENT_FX_FEE') {
         return {
             ...createSettlementFxRule(),
@@ -339,6 +348,17 @@ export function validateFeeVersion(value: FeeVersionInput, options: { changeReas
     const dimensions = new Set<string>();
     let expandedRuleCount = 0;
     for (const [index, rule] of value.rules.entries()) {
+        if (isDisputeEventFee(rule.feeCategory)) {
+            if (dimensions.has(rule.feeCategory)) return t('feeAccount.disputeEvent.duplicate');
+            dimensions.add(rule.feeCategory);
+            const amount = decimalParts(rule.fixedAmountUsd);
+            if (!amount || amount.sign <= 0 || amount.integer.length > 16 || amount.fraction.length > 8) {
+                return t('feeAccount.disputeEvent.invalidAmount');
+            }
+            expandedRuleCount += 1;
+            if (expandedRuleCount > 200) return t('feeAccount.validation.expansionLimit');
+            continue;
+        }
         if (rule.feeCategory === 'SETTLEMENT_FX_FEE') {
             if (rule.feeMode !== 'STANDARD') return t('feeAccount.validation.standardSettlementFxFee');
             const transactionTypes = selectedValues(rule.transactionTypes, rule.transactionType);

@@ -1,4 +1,4 @@
-import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
+import type { CommonResult, DisputeEventFeeCategory, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 
@@ -25,7 +25,8 @@ export interface FeePaymentMethodCoverage {
 export interface FeeRule {
     paymentMethodCoverage?: FeePaymentMethodCoverage[] | null;
     id: number;
-    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE';
+    fixedAmountUsdExact?: string;
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_FX_FEE' | DisputeEventFeeCategory;
     ruleName: string;
     transactionType: string;
     paymentType: string;

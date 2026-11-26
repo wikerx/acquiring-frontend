@@ -33,7 +33,7 @@
         </StandardTable>
         <div v-show="total > 0" class="pagination-container"><el-pagination v-model:current-page="query.pageNo" v-model:page-size="query.pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @current-change="load" @size-change="search" /></div>
 
-        <FeePlanDetailDrawer v-model:visible="detailVisible" :plan="detail" :title="$t('feeAccount.versionHistory', { name: detail?.planName || '' })" :show-merchant="detail?.planType === 'MERCHANT'" />
+        <FeePlanDetailDrawer v-model:visible="detailVisible" :plan="detail" :focus-version-id="detailVersionId" :title="$t('feeAccount.versionHistory', { name: detail?.planName || '' })" :show-merchant="detail?.planType === 'MERCHANT'" />
 
         <FeeReviewDialog
             v-model:visible="reviewVisible"
@@ -73,6 +73,7 @@ const total = ref(0);
 const query = ref<FeePlanQuery>({ pageNo: 1, pageSize: 10, versionStatus: 'PENDING_REVIEW' });
 const detailVisible = ref(false);
 const detail = ref<FeePlanDetail | null>(null);
+const detailVersionId = ref<number>();
 const reviewVisible = ref(false);
 const reviewing = ref<FeeReview | null>(null);
 const reviewAction = ref<'APPROVE' | 'REJECT'>('APPROVE');
@@ -120,6 +121,7 @@ async function openDetail(row: FeeReview) {
     detail.value = row.planType === 'TEMPLATE'
         ? await getFeeTemplate(row.planId)
         : await getMerchantFee(row.merchantId || '');
+    detailVersionId.value = row.versionId;
     detailVisible.value = true;
 }
 

@@ -243,6 +243,13 @@ export default {
     },
     allDimension: 'All',
     billingRule: 'Billing Rule',
+    disputeEvent: {
+      basis: 'Billing Basis',
+      title: 'Alert Event Fees',
+      chargebackTitle: 'Chargeback Fees',
+      RDR_FEE: { name: 'RDR Rapid Dispute Resolution Fee', basis: 'Billable RDR outcome', amount: 'USD {amount} per case' },
+      ETHOCA_ALERT_FEE: { name: 'Ethoca Alert Service Fee', basis: 'Eligible Ethoca alert', amount: 'USD {amount} per alert' },
+    },
     tierWithCount: 'Tiered ({count} tiers)',
     tierCountFormula: 'Match tiers by monthly transaction count',
     tierAmountFormula: 'Match tiers by monthly transaction amount (USD)',

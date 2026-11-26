@@ -75,25 +75,34 @@
                                             </div>
                                         </template>
                                     </el-table-column>
-                                    <el-table-column prop="ruleName" :label="$t('feeAccount.ruleName')" min-width="150" align="center" />
+                                    <el-table-column prop="ruleName" :label="tab.name === 'DISPUTE_FEE' ? $t('feeAccount.disputeEvent.item') : $t('feeAccount.ruleName')" min-width="150" align="center">
+                                        <template #default="{ row }">{{ isDisputeEventFee(row.feeCategory) ? $t('feeAccount.disputeEvent.' + row.feeCategory + '.name') : row.ruleName }}</template>
+                                    </el-table-column>
                                     <el-table-column v-if="tab.name === 'RISK_FEE'" :label="$t('feeAccount.riskServiceType')" min-width="120" align="center">
                                         <template #default="scope"><el-tag effect="plain" size="small" type="success">{{ riskServiceText(scope.row.riskServiceType) }}</el-tag></template>
                                     </el-table-column>
                                     <el-table-column v-if="tab.name === 'RISK_FEE'" :label="$t('feeAccount.chargeTrigger')" min-width="150" align="center">
                                         <template #default="scope">{{ chargeTriggerText(scope.row.chargeTrigger) }}</template>
                                     </el-table-column>
-                                    <el-table-column :label="$t('feeAccount.transactionType')" min-width="300" align="center">
+                                    <el-table-column :label="tab.name === 'DISPUTE_FEE' ? $t('feeAccount.disputeEvent.basis') : $t('feeAccount.transactionType')" min-width="300" align="center">
                                         <template #default="scope">
+                                            <span v-if="isDisputeEventFee(scope.row.feeCategory)">{{ $t('feeAccount.disputeEvent.' + scope.row.feeCategory + '.basis') }}</span>
                                             <ChannelTransactionScopeDisplay
+                                                v-else
                                                 :items="transactionTypeItems(scope.row)"
                                                 :label="$t('feeAccount.transactionType')"
                                             />
                                         </template>
                                     </el-table-column>
-                                    <el-table-column :label="$t('feeAccount.paymentMethod')" min-width="260" align="center">
-                                        <template #default="scope">
+                                    <el-table-column :label="$t(tab.name === 'DISPUTE_FEE' ? 'feeAccount.disputeEvent.scope' : 'feeAccount.paymentMethod')" min-width="260" align="center">
+                                        <template #default="{ row }: { row: FeeRule }">
+                                            <span v-if="isDisputeEventFee(row.feeCategory)" class="fee-product">
+                                                <img :src="disputeEventFeeBrand[row.feeCategory].logo" alt="" width="54" height="24" />
+                                                <span>{{ disputeEventFeeBrand[row.feeCategory].name }}</span>
+                                            </span>
                                             <ChannelPaymentScopeDisplay
-                                                :keys="paymentScopeKeys(scope.row)"
+                                                v-else
+                                                :keys="paymentScopeKeys(row)"
                                                 :label="$t('feeAccount.paymentMethod')"
                                             />
                                         </template>
@@ -153,10 +162,12 @@ import {
     CurrencyAmountDisplay,
     CurrencyDisplay,
     PercentageRateDisplay,
+    disputeEventFeeBrand,
     formatFeeAmount,
     type PaymentLogoKey,
 } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
+import { feeCategoryMatchesTab, isDisputeEventFee } from '@acquiring/shared';
 import type { FeePlanDetail, FeeRule, FeeVersion } from '@/api/fee';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
@@ -175,6 +186,7 @@ const props = withDefaults(defineProps<{
     title: string;
     plan?: FeePlanDetail | null;
     showMerchant?: boolean;
+    focusVersionId?: number;
 }>(), { plan: null, showMerchant: false });
 
 defineEmits<{ 'update:visible': [value: boolean] }>();
@@ -192,8 +204,10 @@ const feeTabs = computed(() => [
     { name: 'DISPUTE_FEE' as const, label: t('feeAccount.category.dispute') },
 ]);
 
-watch(() => props.plan, (plan) => {
-    expandedVersions.value = plan?.currentVersionId ? [plan.currentVersionId] : plan?.versions?.slice(0, 1).map((item) => item.id) || [];
+watch([() => props.plan, () => props.focusVersionId], ([plan, focusVersionId]) => {
+    const versionId = plan?.versions?.find((item) => item.id === focusVersionId)?.id
+        ?? plan?.currentVersionId ?? plan?.versions?.[0]?.id;
+    expandedVersions.value = versionId == null ? [] : [versionId];
     plan?.versions?.forEach((version) => { activeTabs[version.id] = 'TRANSACTION_FEE'; });
 }, { immediate: true });
 
@@ -220,7 +234,7 @@ function settledOptions(result: PromiseSettledResult<SelectOption[]>) {
 }
 
 function rulesFor(version: FeeVersion, category: FeeRule['feeCategory']) {
-    return version.rules.filter((rule) => rule.feeCategory === category);
+    return version.rules.filter((rule) => feeCategoryMatchesTab(rule.feeCategory, category));
 }
 
 function firstRuleFor(version: FeeVersion, category: FeeRule['feeCategory']) {
@@ -304,6 +318,11 @@ function dimensionItems(batchValues: string[] | undefined, compatibleValue: stri
 }
 
 function billingRuleText(rule: FeeRule) {
+    if (isDisputeEventFee(rule.feeCategory)) {
+        return t(`feeAccount.disputeEvent.${rule.feeCategory}.amount`, {
+            amount: formatFeeAmount(rule.fixedAmountUsdExact ?? rule.fixedAmountUsd, String(locale.value)),
+        });
+    }
     if (rule.feeCategory !== 'RISK_FEE') return feeFormula(rule);
     if (rule.chargeTrigger === 'NO_CHARGE') return t('feeAccount.chargeTriggerType.noCharge');
     return t('feeAccount.riskFixedFormula', {
@@ -312,6 +331,7 @@ function billingRuleText(rule: FeeRule) {
 }
 
 function feeModeText(rule: FeeRule) {
+    if (isDisputeEventFee(rule.feeCategory)) return t('feeAccount.disputeEvent.mode');
     return rule.feeMode === 'TIER'
         ? t('feeAccount.tierWithCount', { count: rule.tiers?.length || 0 })
         : t('feeAccount.standard');
@@ -326,6 +346,8 @@ function tierMetricText(rule: FeeRule) {
 </script>
 
 <style scoped>
+.fee-product { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.fee-product img { flex: none; object-fit: contain; }
 .fee-detail { display: grid; gap: 18px; }
 .fee-version-history { border-top: 1px solid #e4e9f0; }
 .fee-version-title { display: grid; grid-template-columns: 46px 78px minmax(160px, 1fr) 160px; align-items: center; gap: 10px; width: 100%; padding-right: 12px; }

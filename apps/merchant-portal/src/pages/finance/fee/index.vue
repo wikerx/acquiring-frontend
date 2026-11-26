@@ -29,7 +29,26 @@
 
                 <el-tabs v-model="activeTab" class="fee-tabs">
                     <el-tab-pane v-for="tab in feeTabs" :key="tab.name" :label="tab.label" :name="tab.name">
+                        <section v-if="tab.name === 'DISPUTE_FEE' && disputeEventRules.length" class="dispute-events">
+                            <h3>{{ $t('finance.disputeEvent.title') }}</h3>
+                            <ul class="dispute-events__grid">
+                                <li v-for="{ rule, category, brand } in disputeEventRules" :key="rule.id" class="dispute-event">
+                                    <div class="dispute-event__brand">
+                                        <img :src="brand.logo" alt="" width="56" height="28" />
+                                    </div>
+                                    <div class="dispute-event__details">
+                                        <h4>{{ $t(`finance.disputeEvent.${category}.name`) }}</h4>
+                                        <p>{{ $t(`finance.disputeEvent.${category}.basis`) }}</p>
+                                    </div>
+                                    <strong class="dispute-event__price">{{ billingRuleText(rule) }}</strong>
+                                </li>
+                            </ul>
+                        </section>
+                        <h3 v-if="tab.name === 'DISPUTE_FEE' && disputeEventRules.length && rulesFor(tab.name).length" class="chargeback-heading">
+                            {{ $t('finance.disputeEvent.chargebackTitle') }}
+                        </h3>
                         <StandardTable
+                            v-if="tab.name !== 'DISPUTE_FEE' || !disputeEventRules.length || rulesFor(tab.name).length"
                             v-loading="loading"
                             :table-key="`merchant-current-fee-${tab.name}`"
                             :data="rulesFor(tab.name)"
@@ -73,7 +92,7 @@
                             <el-table-column v-if="tab.name === 'RISK_FEE'" :label="$t('finance.chargeTrigger')" min-width="150" align="center">
                                 <template #default="{ row }">{{ chargeTriggerText(row.chargeTrigger) }}</template>
                             </el-table-column>
-                            <el-table-column :label="$t('finance.transactionType')" min-width="300" align="center">
+                            <el-table-column :label="tab.name === 'DISPUTE_FEE' ? $t('finance.disputeEvent.basis') : $t('finance.transactionType')" min-width="300" align="center">
                                 <template #default="{ row }">
                                     <FeeTransactionScopeDisplay
                                         :items="transactionTypeItems(row)"
@@ -90,7 +109,9 @@
                                 </template>
                             </el-table-column>
                             <el-table-column :label="$t('paymentMethod.fee.coverage')" min-width="285" align="center">
-                                <template #default="{ row }"><FeeAuthorizationCoverage :assessment-status="fee?.authorizationAssessmentStatus" :coverage="row.paymentMethodCoverage" /></template>
+                                <template #default="{ row }">
+                                    <FeeAuthorizationCoverage :assessment-status="fee?.authorizationAssessmentStatus" :coverage="row.paymentMethodCoverage" />
+                                </template>
                             </el-table-column>
                             <el-table-column :label="$t('finance.billingRule')" min-width="300" align="center">
                                 <template #default="{ row }"><span class="billing-rule-text">{{ billingRuleText(row) }}</span></template>
@@ -153,8 +174,10 @@ import {
     CurrencyAmountDisplay,
     DEFAULT_CARD_BRAND_LOGOS,
     PercentageRateDisplay,
+    disputeEventFeeBrand,
     formatFeeAmount,
     formatPercentageValue,
+    isDisputeEventFee,
     resolvePaymentLogoKeys,
     type PaymentLogoKey,
 } from '@acquiring/shared';
@@ -192,6 +215,10 @@ const feeTabs = computed(() => [
     { name: 'DISPUTE_FEE' as const, label: t('finance.category.dispute') },
 ]);
 const settlementFxRule = computed(() => fee.value?.rules.find((item) => item.feeCategory === 'SETTLEMENT_FX_FEE'));
+const disputeEventRules = computed(() => (fee.value?.rules ?? []).flatMap((rule) => {
+    const category = rule.feeCategory;
+    return isDisputeEventFee(category) ? [{ rule, category, brand: disputeEventFeeBrand[category] }] : [];
+}));
 
 onMounted(load);
 watch(locale, () => void loadDimensionOptions(), { immediate: true });
@@ -322,6 +349,11 @@ function tierMetricText(rule: FeeRule) {
 }
 
 function billingRuleText(rule: FeeRule) {
+    if (isDisputeEventFee(rule.feeCategory)) {
+        return t(`finance.disputeEvent.${rule.feeCategory}.amount`, {
+            amount: formatFeeAmount(rule.fixedAmountUsdExact ?? rule.fixedAmountUsd, String(locale.value)),
+        });
+    }
     if (rule.feeCategory === 'RISK_FEE' && rule.chargeTrigger === 'NO_CHARGE') return t('finance.noCharge');
     if (rule.feeMode === 'TIER') return tierMetricText(rule);
     const formulas: string[] = [];
@@ -394,6 +426,48 @@ function frequency(value?: string, day?: number | null) {
 .fee-version-band .fee-date { font-size: 13px; }
 .fee-tabs { padding: 0 16px 16px; }
 .fee-tabs :deep(.el-tabs__item) { min-width: 108px; text-align: center; }
+.dispute-events h3,
+.chargeback-heading { margin: 4px 0 12px; color: var(--fee-ink); font-size: 15px; font-weight: 650; }
+.dispute-events__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.dispute-event {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 14px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 8px;
+    background: var(--el-fill-color-extra-light);
+}
+.dispute-event__brand {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 68px;
+    height: 42px;
+    border: 1px solid var(--el-border-color-extra-light);
+    border-radius: 6px;
+    background: var(--el-color-white);
+}
+.dispute-event__brand img { object-fit: contain; }
+.dispute-event__details { flex: 1 1 155px; min-width: 0; }
+.dispute-event h4 { margin: 0; color: var(--fee-ink); font-size: 14px; font-weight: 650; }
+.dispute-event p { margin: 4px 0 0; color: var(--fee-muted); font-size: 12px; }
+.dispute-event__price {
+    margin-inline-start: auto;
+    color: var(--fee-ink);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.chargeback-heading { margin-top: 20px; }
 .tier-detail { display: grid; gap: 10px; padding: 14px 48px; background: #f7fafc; }
 .tier-detail__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .tier-detail__heading strong { color: var(--fee-ink); font-size: 13px; }

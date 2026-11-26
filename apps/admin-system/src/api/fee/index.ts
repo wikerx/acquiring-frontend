@@ -1,4 +1,4 @@
-import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
+import type { CommonResult, DisputeEventFeeCategory, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
 import { http } from '@/api/http';
 import type { ExportTaskSummary } from '@/api/operations/exportTask';
@@ -23,7 +23,7 @@ export interface FeeRuleTierInput {
 }
 
 export interface FeeRuleInput {
-    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_PROCESSING_FEE' | 'SETTLEMENT_FX_FEE';
+    feeCategory: 'TRANSACTION_FEE' | 'REFUND_FEE' | 'RISK_FEE' | 'DISPUTE_FEE' | 'SETTLEMENT_PROCESSING_FEE' | 'SETTLEMENT_FX_FEE' | DisputeEventFeeCategory;
     ruleName?: string;
     /** Compatibility scalar fields; batch arrays take precedence in the backend. */
     transactionType?: string;
@@ -89,6 +89,7 @@ export interface FeeRule extends Omit<FeeRuleInput,
     'ruleName' | 'transactionType' | 'paymentType' | 'paymentMethod'
     | 'transactionTypes' | 'paymentTypes' | 'paymentMethods'> {
     id: number;
+    fixedAmountUsdExact?: string;
     ruleName: string;
     transactionType: string;
     paymentType: string;

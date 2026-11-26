@@ -37,6 +37,8 @@ export * from './tableRowActions';
 export * from './transactionAnalytics';
 export * from './settlementVoucher';
 export * from './settlementVoucherPdf';
+export * from './disputeEventFee';
+export * from './disputeAlertBrand';
 export * from './transactionFeeFacts';
 export * from './feeStatementWorkbook';
 export * from './transactionFeeMessages';

@@ -34,32 +34,64 @@
                         </el-button>
                     </div>
 
+                    <p v-if="tab.name === 'DISPUTE_FEE'" class="fee-event-hint">{{ $t('feeAccount.disputeEvent.hint') }}</p>
                     <el-empty
-                        v-if="!(tab.name === 'RISK_FEE' ? rulesForCategory(tab.name) : rulesFor(tab.name, activeModes[tab.name])).length"
+                        v-if="!visibleRules(tab.name).length"
                         :description="$t('feeAccount.noModeRules')"
                         :image-size="72"
                     />
 
                     <div
-                        v-for="(rule, ruleIndex) in tab.name === 'RISK_FEE' ? rulesForCategory(tab.name) : rulesFor(tab.name, activeModes[tab.name])"
+                        v-for="(rule, ruleIndex) in visibleRules(tab.name)"
                         :key="ruleLocalKey(rule)"
                         class="fee-rule-block"
                     >
                         <div class="fee-rule-block__head">
                             <div class="fee-rule-block__identity">
                                 <el-tag size="small" effect="plain" :type="rule.feeCategory === 'RISK_FEE' ? 'success' : rule.feeMode === 'TIER' ? 'warning' : 'primary'">
-                                    {{ rule.feeCategory === 'RISK_FEE' ? riskServiceText(rule.riskServiceType) : rule.feeMode === 'TIER' ? $t('feeAccount.tier') : $t('feeAccount.standard') }}
+                                    {{ isDisputeEventFee(rule.feeCategory) ? $t('feeAccount.disputeEvent.mode') : rule.feeCategory === 'RISK_FEE' ? riskServiceText(rule.riskServiceType) : rule.feeMode === 'TIER' ? $t('feeAccount.tier') : $t('feeAccount.standard') }}
                                 </el-tag>
                                 <strong class="fee-rule-block__name" :title="ruleDisplayName(rule, ruleIndex)">
                                     {{ ruleDisplayName(rule, ruleIndex) }}
                                 </strong>
                             </div>
-                            <el-button :icon="Delete" type="danger" link @click="removeRule(rule)">
-                                {{ $t('common.delete') }}
-                            </el-button>
+                            <div class="fee-rule-actions">
+                                <el-button v-if="canCollapseFormalRule(rule)" link type="primary"
+                                    :aria-expanded="isRuleExpanded(rule)" @click="toggleFormalRule(rule)">
+                                    {{ $t(isRuleExpanded(rule) ? 'feeAccount.disputeEvent.collapse' : 'feeAccount.disputeEvent.view') }}
+                                </el-button>
+                                <el-button :icon="Delete" type="danger" link @click="removeRule(rule)">
+                                    {{ $t('common.delete') }}
+                                </el-button>
+                            </div>
                         </div>
 
-                        <el-row :gutter="14">
+                        <el-row v-if="tab.name === 'DISPUTE_FEE' && isRuleExpanded(rule)" :gutter="14">
+                            <el-col :xs="24" :lg="7">
+                                <el-form-item :label="$t('feeAccount.disputeEvent.item')" required>
+                                    <el-select :model-value="rule.feeCategory" @change="changeDisputeCategory(rule, $event)">
+                                        <el-option v-for="category in disputeCategories" :key="category" :value="category"
+                                            :label="$t('feeAccount.disputeEvent.' + category + '.name')"
+                                            :disabled="category !== rule.feeCategory && isDisputeEventFee(category) && model.rules.some(item => item.feeCategory === category)" />
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <template v-if="isDisputeEventFee(rule.feeCategory)">
+                                <el-col :xs="24" :lg="11">
+                                    <el-form-item :label="$t('feeAccount.disputeEvent.basis')">
+                                        <el-input :model-value="$t('feeAccount.disputeEvent.' + rule.feeCategory + '.basis')" readonly />
+                                        <span class="fee-event-field-hint">{{ $t('feeAccount.disputeEvent.' + rule.feeCategory + '.hint') }}</span>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :xs="24" :lg="6">
+                                    <el-form-item :label="$t('feeAccount.disputeEvent.' + rule.feeCategory + '.fixedFee')" required>
+                                        <el-input v-model="rule.fixedAmountUsd" inputmode="decimal" :placeholder="$t('feeAccount.disputeEvent.amountPlaceholder')"><template #prepend>USD</template></el-input>
+                                    </el-form-item>
+                                </el-col>
+                            </template>
+                        </el-row>
+
+                        <el-row v-if="!isDisputeEventFee(rule.feeCategory) && isRuleExpanded(rule)" :gutter="14">
                             <el-col v-if="rule.feeCategory === 'RISK_FEE'" :xs="24" :sm="12" :lg="6">
                                 <el-form-item :label="$t('feeAccount.riskServiceType')" required>
                                     <el-select v-model="rule.riskServiceType" @change="handleRiskServiceTypeChange(rule)">
@@ -115,7 +147,7 @@
                             <el-col :span="24"><el-form-item :label="$t('common.remark')"><el-input v-model="rule.remark" maxlength="500" /></el-form-item></el-col>
                         </el-row>
 
-                        <div v-if="rule.feeCategory !== 'RISK_FEE' && rule.feeMode === 'TIER'" class="fee-tier-table">
+                        <div v-if="rule.feeCategory !== 'RISK_FEE' && rule.feeMode === 'TIER' && isRuleExpanded(rule)" class="fee-tier-table">
                             <div class="fee-tier-table__head">
                                 <span>{{ $t('feeAccount.tierBillingDesc') }}</span>
                                 <el-button :icon="Plus" size="small" @click="addTier(rule)">{{ $t('feeAccount.addTier') }}</el-button>
@@ -204,17 +236,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { Delete, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import type { FeeRuleInput, FeeVersionInput } from '@/api/fee';
+import { disputeEventFeeCategories, feeCategoryMatchesTab, isDisputeEventFee } from '@acquiring/shared';
 import { compareDecimal, createEmptyRule, createRiskRule, createSettlementFxRule } from '@/views/fee/shared';
 import FeeDictSelect from '@/views/fee/components/FeeDictSelect.vue';
 import FeePaymentMethodSelect from '@/views/fee/components/FeePaymentMethodSelect.vue';
 
-type FeeCategory = FeeRuleInput['feeCategory'];
+type FeeCategory = Exclude<FeeRuleInput['feeCategory'], typeof disputeEventFeeCategories[number]>;
 type FeeMode = FeeRuleInput['feeMode'];
+const disputeCategories = ['DISPUTE_FEE', ...disputeEventFeeCategories] as const;
 
 withDefaults(defineProps<{
     changeReasonRequired?: boolean;
@@ -228,6 +262,7 @@ withDefaults(defineProps<{
 const model = defineModel<FeeVersionInput>({ required: true });
 const { t } = useI18n();
 const activeTab = ref<FeeCategory | 'RESERVE' | 'SETTLEMENT'>('TRANSACTION_FEE');
+const openedFormalRules = reactive(new WeakSet<FeeRuleInput>());
 const activeModes = ref<Record<FeeCategory, FeeMode>>({
     TRANSACTION_FEE: initialMode('TRANSACTION_FEE'),
     REFUND_FEE: initialMode('REFUND_FEE'),
@@ -245,7 +280,12 @@ const feeTabs = computed(() => [
 const settlementFxRule = computed(() => rulesForCategory('SETTLEMENT_FX_FEE')[0]);
 
 function rulesForCategory(category: FeeCategory) {
-    return model.value.rules.filter((item) => item.feeCategory === category);
+    return model.value.rules.filter((item) => feeCategoryMatchesTab(item.feeCategory, category));
+}
+
+function visibleRules(category: FeeCategory) {
+    return rulesForCategory(category).filter((rule) => category === 'RISK_FEE'
+        || isDisputeEventFee(rule.feeCategory) || rule.feeMode === activeModes.value[category]);
 }
 
 function initialMode(category: FeeCategory): FeeMode {
@@ -274,11 +314,11 @@ function modeOptions(category: FeeCategory) {
 }
 
 function configuredModes(category: FeeCategory) {
-    return new Set(rulesForCategory(category).map((rule) => rule.feeMode));
+    return new Set(model.value.rules.filter((rule) => rule.feeCategory === category).map((rule) => rule.feeMode));
 }
 
 function lockedMode(category: FeeCategory): FeeMode | null {
-    const rules = rulesForCategory(category);
+    const rules = model.value.rules.filter((rule) => rule.feeCategory === category);
     if (!rules.length || rules.length === 1 && isBlankRule(rules[0])) return null;
     const modes = configuredModes(category);
     return modes.size === 1 ? [...modes][0] : null;
@@ -293,7 +333,37 @@ function ruleLocalKey(rule: FeeRuleInput) {
 }
 
 function ruleDisplayName(rule: FeeRuleInput, index: number) {
+    if (isDisputeEventFee(rule.feeCategory)) return t(`feeAccount.disputeEvent.${rule.feeCategory}.name`);
     return rule.ruleName?.trim() || t('feeAccount.rule', { index: index + 1 });
+}
+
+function canCollapseFormalRule(rule: FeeRuleInput) {
+    return rule.feeCategory === 'DISPUTE_FEE' && model.value.rules.some((item) => isDisputeEventFee(item.feeCategory));
+}
+
+function isRuleExpanded(rule: FeeRuleInput) {
+    return !canCollapseFormalRule(rule) || openedFormalRules.has(rule);
+}
+
+function toggleFormalRule(rule: FeeRuleInput) {
+    if (openedFormalRules.has(rule)) openedFormalRules.delete(rule);
+    else openedFormalRules.add(rule);
+}
+
+function changeDisputeCategory(rule: FeeRuleInput, category: typeof disputeCategories[number]) {
+    if (rule.feeCategory === category) return;
+    const index = model.value.rules.indexOf(rule);
+    if (index < 0) return;
+    const replacement = createEmptyRule(category);
+    if (category === 'DISPUTE_FEE') {
+        openedFormalRules.add(replacement);
+        replacement.feeMode = lockedMode(category) || activeModes.value[category];
+        if (replacement.feeMode === 'TIER') {
+            replacement.tierMetric = 'COUNT';
+            addTier(replacement);
+        }
+    }
+    model.value.rules.splice(index, 1, replacement);
 }
 
 function addRule(category: FeeCategory) {
@@ -309,6 +379,7 @@ function addRule(category: FeeCategory) {
         rule.tierMetric = 'COUNT';
         addTier(rule);
     }
+    if (category === 'DISPUTE_FEE') openedFormalRules.add(rule);
     model.value.rules.push(rule);
 }
 
@@ -359,6 +430,7 @@ function removeRule(rule: FeeRuleInput) {
     if (index >= 0) {
         model.value.rules.splice(index, 1);
     }
+    if (isDisputeEventFee(category)) return;
     const modes = configuredModes(category);
     if (modes.size === 1) activeModes.value[category] = [...modes][0];
 }
@@ -370,7 +442,7 @@ function handleModeChange(category: FeeCategory, mode: FeeMode) {
         ElMessage.warning(t('feeAccount.modeLockedHint'));
         return;
     }
-    const categoryRules = rulesForCategory(category);
+    const categoryRules = model.value.rules.filter((rule) => rule.feeCategory === category);
     if (categoryRules.length !== 1 || !isBlankRule(categoryRules[0])) return;
     const rule = categoryRules[0];
     rule.feeMode = mode;
@@ -466,6 +538,27 @@ function synchronizeSettlementUnit() {
 </script>
 
 <style scoped>
+.fee-event-hint,
+.fee-event-field-hint {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.fee-event-field-hint {
+    margin-top: 5px;
+}
+
+.fee-rule-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fee-rule-actions :deep(.el-button + .el-button) {
+    margin-left: 0;
+}
+
 .fee-version-editor { display: grid; min-width: 0; gap: 18px; }
 .fee-config-tabs, .fee-editor-section { min-width: 0; }
 .fee-config-tabs :deep(.el-tabs__header) { margin: 0 0 16px; }

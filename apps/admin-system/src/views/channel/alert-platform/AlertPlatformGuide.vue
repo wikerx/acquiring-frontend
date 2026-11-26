@@ -47,12 +47,12 @@
 <script setup lang="ts">
 import { ArrowDown, Connection, Key, Link } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { disputeAlertLogos } from '@acquiring/shared';
 import amexInquiry from '../dispute-alert/assets/amex-inquiry.png';
-import ethoca from '../dispute-alert/assets/ethoca.png';
-import verifi from '../dispute-alert/assets/verifi.png';
 import ProductAlertFlow from './ProductAlertFlow.vue';
 
 const { t } = useI18n();
+const { ETHOCA: ethoca, RDR: verifi } = disputeAlertLogos;
 const guideProducts = [
     {
         key: 'ethoca',

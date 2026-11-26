@@ -241,6 +241,13 @@ export default {
     },
     allDimension: '全部',
     billingRule: '计费规则',
+    disputeEvent: {
+      basis: '计费依据',
+      title: '预警事件费用',
+      chargebackTitle: '正式拒付费用',
+      RDR_FEE: { name: 'RDR 快速争议处理费', basis: 'RDR 可计费处理结果', amount: 'USD {amount} / 笔' },
+      ETHOCA_ALERT_FEE: { name: 'Ethoca 预警服务费', basis: '有效 Ethoca 预警', amount: 'USD {amount} / 条' },
+    },
     tierWithCount: '阶梯（{count}档）',
     tierCountFormula: '按月累计交易笔数匹配档位',
     tierAmountFormula: '按月累计交易金额（USD）匹配档位',

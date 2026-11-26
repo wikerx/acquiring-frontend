@@ -11,16 +11,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { disputeAlertLogos } from '@acquiring/shared';
 import amexInquiry from './assets/amex-inquiry.png';
-import ethoca from './assets/ethoca.png';
-import verifi from './assets/verifi.png';
 import type { AlertProduct } from '@/api/channel/disputeAlert';
 
 const props = defineProps<{ product: AlertProduct; compact?: boolean }>();
 const { t } = useI18n();
 const productLabel = computed(() => t('alertConfig.productLabel.' + props.product));
 const compactLabel = computed(() => (props.product === 'RDR' || props.product === 'CDRN') ? productLabel.value : '');
-const logos: Record<AlertProduct, string> = { ETHOCA: ethoca, RDR: verifi, CDRN: verifi, AMEX_INQUIRY: amexInquiry };
+const logos: Record<AlertProduct, string> = { ...disputeAlertLogos, CDRN: disputeAlertLogos.RDR, AMEX_INQUIRY: amexInquiry };
 </script>
 
 <style scoped>
