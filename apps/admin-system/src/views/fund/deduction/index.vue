@@ -91,7 +91,12 @@
                 </el-form-item>
                 <el-form-item :label="$t('feeAccount.deductionReason')" prop="reason"><el-input v-model.trim="createForm.reason" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('feeAccount.deductionReasonPlaceholder')" /></el-form-item>
             </el-form>
-            <template #footer><el-button type="danger" :loading="submitting" @click="submitDeduction">{{ $t('common.submit') }}</el-button><el-button @click="createVisible = false">{{ $t('common.cancel') }}</el-button></template>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button type="danger" :loading="submitting" @click="submitDeduction">{{ $t('common.submit') }}</el-button>
+                    <el-button @click="createVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
+            </template>
         </el-dialog>
 
         <el-dialog v-model="actionVisible" :title="actionTitle" width="520px" append-to-body destroy-on-close>
@@ -101,7 +106,12 @@
                 <el-form-item :label="$t('feeAccount.deductionAmount')"><CurrencyAmountDisplay v-if="actionTarget" :amount="actionTarget.amount" :currency="actionTarget.currency" :locale="String(locale)" emphasized /></el-form-item>
                 <el-form-item :label="$t('feeAccount.reviewComment')" prop="comment"><el-input v-model.trim="actionForm.comment" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('feeAccount.reviewCommentPlaceholder')" /></el-form-item>
             </el-form>
-            <template #footer><el-button :type="actionMode === 'reject' ? 'danger' : 'primary'" :loading="submitting" @click="submitAction">{{ actionConfirmText }}</el-button><el-button @click="actionVisible = false">{{ $t('common.cancel') }}</el-button></template>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button :type="actionMode === 'reject' ? 'danger' : 'primary'" :loading="submitting" @click="submitAction">{{ actionConfirmText }}</el-button>
+                    <el-button @click="actionVisible = false">{{ $t('common.cancel') }}</el-button>
+                </div>
+            </template>
         </el-dialog>
 
         <CommonDetailDrawer v-model:visible="detailVisible" :title="$t('feeAccount.deductionDetailTitle')" size="lg">
