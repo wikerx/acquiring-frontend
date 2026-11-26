@@ -167,7 +167,7 @@ function tableRoot(table: ElementTableExpose) {
     return table.$el || table.context?.vnode?.el;
 }
 
-function applyColumns(table: ElementTableExpose, states: StandardTableColumnState[]) {
+function applyColumns(table: ElementTableExpose, states: StandardTableColumnState[], nonStretchKeys: ReadonlySet<string>) {
     const stateByKey = new Map(states.map((column, index) => [column.key, { column, index }]));
     const columns = readColumns(table);
     const layoutItems = columns.map((column, index) => {
@@ -187,7 +187,7 @@ function applyColumns(table: ElementTableExpose, states: StandardTableColumnStat
         };
     });
     const fitContainer = isFitContainer(table, layoutItems);
-    const stretchableKeys = stretchableColumnKeys(layoutItems, fitContainer);
+    const stretchableKeys = stretchableColumnKeys(layoutItems, fitContainer, nonStretchKeys);
     layoutItems.forEach((item) => {
         const { column, state } = item;
         column.visible = item.visible;
@@ -224,15 +224,12 @@ function isFitContainer(table: ElementTableExpose, layoutItems: ColumnLayoutItem
     return !containerWidth || preferredWidth <= containerWidth;
 }
 
-function stretchableColumnKeys(layoutItems: ColumnLayoutItem[], fitContainer: boolean) {
+function stretchableColumnKeys(layoutItems: ColumnLayoutItem[], fitContainer: boolean, nonStretchKeys: ReadonlySet<string>) {
+    const candidates = layoutItems.filter((item) => item.business && !item.fixed && !item.customWidth && !nonStretchKeys.has(item.key));
     if (!fitContainer) {
-        return new Set(
-            layoutItems
-                .filter((item) => item.business && !item.fixed && !item.customWidth && item.state?.defaultWidth === undefined)
-                .map((item) => item.key),
-        );
+        return new Set(candidates.filter((item) => item.state?.defaultWidth === undefined).map((item) => item.key));
     }
-    const stretchableItems = layoutItems.filter((item) => item.visible && item.business && !item.fixed && !item.customWidth);
+    const stretchableItems = candidates.filter((item) => item.visible);
     const preferredItems = stretchableItems.filter((item) => {
         const minWidth = toNumber(item.column.minWidth, undefined);
         const defaultWidth = item.state?.defaultWidth || toNumber(item.column.width, 0) || 0;
@@ -261,7 +258,13 @@ function applyVisibilityStyle(table: ElementTableExpose, columns: ElementTableCo
         .join('\n');
 }
 
-export function registerStandardTable(tableKey: string, table: ElementTableExpose, userKey?: string | number | null): StandardTableRegistration {
+export function registerStandardTable(
+    tableKey: string,
+    table: ElementTableExpose,
+    userKey?: string | number | null,
+    nonStretchColumns: readonly string[] = [],
+): StandardTableRegistration {
+    const nonStretchKeys = new Set(nonStretchColumns);
     const columnDefaults = new Map<string, StandardTableColumnDefaults>();
 
     function readStandardColumns() {
@@ -299,10 +302,10 @@ export function registerStandardTable(tableKey: string, table: ElementTableExpos
     };
 
     contexts[tableKey] = context;
-    applyColumns(table, preference.columns.value);
+    applyColumns(table, preference.columns.value, nonStretchKeys);
 
     const stop = preference.watchColumns((columns) => {
-        applyColumns(table, columns);
+        applyColumns(table, columns, nonStretchKeys);
     });
 
     function handleHeaderDragend(newWidth: number, oldWidth: number, column: { property?: string; id?: string }) {
@@ -312,7 +315,7 @@ export function registerStandardTable(tableKey: string, table: ElementTableExpos
     }
 
     function refreshLayout() {
-        applyColumns(table, preference.columns.value);
+        applyColumns(table, preference.columns.value, nonStretchKeys);
     }
 
     function reloadColumns() {
@@ -322,7 +325,7 @@ export function registerStandardTable(tableKey: string, table: ElementTableExpos
         }
         defaultColumns.value = nextColumns;
         preference.reload();
-        applyColumns(table, preference.columns.value);
+        applyColumns(table, preference.columns.value, nonStretchKeys);
     }
 
     function hasColumns() {

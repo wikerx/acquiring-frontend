@@ -15,15 +15,21 @@
                 <span class="scope-panel__count">{{ items.length }}</span>
             </div>
             <div class="scope-panel__grid">
-                <div v-for="item in items" :key="item.key" class="scope-panel__item">
-                    <PaymentLogoMark :logo="item" fallback="text" size="sm" />
+                <div v-for="item in items" :key="item.value" class="scope-panel__item">
+                    <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" fallback="text" size="sm" :wrap="false" />
                     <span>{{ item.label }}</span>
                 </div>
             </div>
         </div>
         <template #reference>
-            <div class="scope-trigger" tabindex="0" :aria-label="accessibleText">
-                <PaymentLogoGroup :keys="previewKeys" fallback="text" size="sm" align="center" :wrap="false" />
+            <div class="scope-trigger" :class="{ 'scope-trigger--entries': entries }" tabindex="0" :aria-label="accessibleText">
+                <template v-if="entries">
+                    <template v-for="item in previewItems" :key="item.value">
+                        <PaymentLogoGroup v-if="item.logoKeys.length" :keys="item.logoKeys" fallback="text" size="sm" :wrap="false" />
+                        <span v-else class="scope-label" :title="item.label">{{ item.label }}</span>
+                    </template>
+                </template>
+                <PaymentLogoGroup v-else :keys="previewItems.flatMap((item) => item.logoKeys)" fallback="text" size="sm" align="center" :wrap="false" />
                 <span v-if="remaining" class="scope-more">+{{ remaining }}</span>
             </div>
         </template>
@@ -33,10 +39,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getPaymentLogos, PaymentLogoGroup, PaymentLogoMark, type PaymentLogoKey } from '@acquiring/shared';
+import { getPaymentLogos, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 
 const props = withDefaults(defineProps<{
     keys?: PaymentLogoKey[];
+    entries?: { value: string; label: string; logoKeys: PaymentLogoKey[] }[];
     label: string;
     previewLimit?: number;
     emptyText?: string;
@@ -46,9 +53,11 @@ const props = withDefaults(defineProps<{
     emptyText: '-',
 });
 
-const items = computed(() => getPaymentLogos(props.keys));
-const previewKeys = computed(() => items.value.slice(0, props.previewLimit).map((item) => item.key));
-const remaining = computed(() => Math.max(items.value.length - previewKeys.value.length, 0));
+const items = computed(() => props.entries ?? getPaymentLogos(props.keys).map((item) => ({
+    value: item.key, label: item.label, logoKeys: [item.key],
+})));
+const previewItems = computed(() => items.value.slice(0, props.previewLimit));
+const remaining = computed(() => items.value.length - previewItems.value.length);
 const accessibleText = computed(() => `${props.label}: ${items.value.map((item) => item.label).join(', ')}`);
 </script>
 
@@ -80,6 +89,23 @@ const accessibleText = computed(() => `${props.label}: ${items.value.map((item) 
 
 .scope-trigger :deep(.payment-logo-mark) {
     pointer-events: none;
+}
+
+.scope-trigger--entries {
+    gap: 3px;
+    padding: 2px;
+}
+.scope-trigger--entries :deep(.payment-logo-mark--sm) {
+    --payment-logo-height: 19px;
+}
+
+.scope-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .scope-more {

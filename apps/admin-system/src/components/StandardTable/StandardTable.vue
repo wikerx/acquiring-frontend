@@ -30,6 +30,7 @@ defineOptions({
 const props = defineProps<{
     tableKey: string;
     userKey?: string | number | null;
+    nonStretchColumns?: readonly string[];
 }>();
 
 type HeaderColumn = { property?: string; id?: string };
@@ -111,7 +112,9 @@ function register() {
             return;
         }
         const user = useUserStore();
-        registration = registerStandardTable(props.tableKey, table as never, props.userKey ?? user.userInfo?.userId ?? user.account?.userId);
+        registration = registerStandardTable(
+            props.tableKey, table as never, props.userKey ?? user.userInfo?.userId ?? user.account?.userId, props.nonStretchColumns,
+        );
         const root = rootRef.value || table.$el || table.context?.vnode?.el;
         toolbarId = root ? findToolbarId(root) : '';
         if (toolbarId) {
@@ -138,7 +141,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize);
     cleanup();
 });
-watch(() => [props.tableKey, props.userKey], register);
+watch([() => props.tableKey, () => props.userKey, () => props.nonStretchColumns?.join(',')], register);
 </script>
 
 <style scoped>

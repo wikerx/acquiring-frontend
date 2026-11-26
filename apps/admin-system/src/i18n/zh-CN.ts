@@ -3,7 +3,10 @@ import paymentMethodMessages from './payment-methods.zh-CN';
 import { paymentLinkMessagesZh } from '@acquiring/shared';
 import { refundMessagesZh } from '@acquiring/shared';
 
+import { alertConfigurationZh } from './alert-configuration';
+
 export default {
+    alertConfig: alertConfigurationZh,
     transactionAction: transactionActionMessagesZh,
     paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: '支付链接',
@@ -5525,6 +5528,8 @@ export default {
     admin_channel_capability_v1: '渠道支付能力管理',
     admin_channel_limit_v1: '渠道限额管理',
     admin_channel_mid_v1: '渠道 MID 管理',
+    admin_channel_alert_platform_v1: '预警平台管理',
+    admin_channel_dispute_alert_v1: '拒付预警配置',
     admin_merchant_channel_mid_binding_v1: '商户 MID 绑定',
     admin_payment_route_v1: '支付路由',
     admin_payment_route_list_v1: '支付路由查询',
@@ -5660,6 +5665,7 @@ export default {
     exchange_rate_alert_rule_import: '导入汇率预警规则',
     exchange_rate_alert_rule_export: '导出汇率预警规则',
     risk_center: '收单风控',
+    risk_dispute_alert_catalog: '拒付预警管理',
     risk_dashboard_catalog: '风险工作台',
     risk_dashboard_overview: '风控总览',
     risk_dashboard_today_events: '今日风险事件',

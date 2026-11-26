@@ -138,7 +138,7 @@
                     </template>
                 </el-tree>
             </div>
-            <template #footer><div class="dialog-footer"><el-button type="primary" :loading="authSaving" @click="submitRoleAuth">{{ $t('common.confirm') }}</el-button><el-button @click="roleAuthVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
+            <template #footer><div class="dialog-footer"><el-button type="primary" :loading="authSaving" :disabled="authLoading" @click="submitRoleAuth">{{ $t('common.confirm') }}</el-button><el-button @click="roleAuthVisible = false">{{ $t('common.cancel') }}</el-button></div></template>
         </el-dialog>
     </div>
 </template>
@@ -148,7 +148,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Search, Refresh, Plus, Edit, Delete, View, Key, Sort } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { createRole, deleteRole, getRoleGrantTree, getRoleGrantTreeTemplate, getRoleMenus, grantRoleTree, searchRoles, updateRole, updateRoleStatus, type SysPermission, type SysRole } from '@/api/system/role';
+import { createRole, deleteRole, getRoleGrantTree, getRoleGrantTreeTemplate, getRoleMenus, grantRoleMenus, grantRoleTree, searchRoles, updateRole, updateRoleStatus, type SysPermission, type SysRole } from '@/api/system/role';
 import type { SysMenu } from '@/api/system/menu';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
@@ -156,6 +156,7 @@ import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { CommonStatus } from '@/enums/status';
 import { useUserStore } from '@/store/modules/user';
+import { alertPlatformPermissions, disputeAlertPermissions } from '@/views/channel/dispute-alert/menu';
 
 const { t, te } = useI18n();
 interface RoleRow extends SysRole { statusTag: CommonStatus; }
@@ -177,6 +178,9 @@ const roleFormRef = ref<FormInstance>();
 const authTreeRef = ref<{ getCheckedKeys: (leafOnly?: boolean) => Array<string|number>; getHalfCheckedKeys: () => Array<string|number>; setCheckedKeys: (keys: Array<string|number>) => void; filter: (keyword: string) => void }>();
 const authTreeData = ref<AuthTreeNode[]>([]);
 const authCheckedKeys = ref<string[]>([]);
+const authUnlistedKeys = ref<string[]>([]);
+const authOriginalMenuIds = ref<number[]>([]);
+const authOriginalPermissionIds = ref<number[]>([]);
 const detailTreeData = ref<AuthTreeNode[]>([]); const detailCheckedKeys = ref<string[]>([]);
 const authCheckStrictly = ref(true);
 const authSelectAllChecked = ref(false);
@@ -208,11 +212,16 @@ async function handleDelete(rp?: RoleRow[]) { const ts = rp ?? selectedRows.valu
 async function removeRole(row: RoleRow) { try { await ElMessageBox.confirm(t('system.role.deleteConfirm', { name: row.roleName }), t('common.delete'), { type: 'warning' }); await deleteRole({ roleId: row.roleId }); ElMessage.success(t('common.deleteSuccess')); loadData(); } catch (e) { if (e instanceof Error) ElMessage.error(e.message); } }
 
 async function openRoleAuth(row: RoleRow) {
-    activeRow.value = row; roleAuthVisible.value = true; authLoading.value = true; authCheckStrictly.value = true; authSelectAllChecked.value = false; authAllExpanded.value = true;
+    activeRow.value = row; roleAuthVisible.value = true; authLoading.value = true; authCheckStrictly.value = false; authSelectAllChecked.value = false; authAllExpanded.value = true;
     try {
         const grant = await getRoleGrantTree({ roleId: row.roleId });
+        if (!roleAuthVisible.value || activeRow.value?.roleId !== row.roleId) return;
         authTreeData.value = buildAuthTree(grant.menus || [], grant.permissions || []);
         authCheckedKeys.value = toGrantCheckedKeys(grant.checkedMenuIds, grant.checkedPermissionIds);
+        authOriginalMenuIds.value = ni(grant.checkedMenuIds || []);
+        authOriginalPermissionIds.value = ni(grant.checkedPermissionIds || []);
+        const visibleKeys = new Set(authTreeData.value.flatMap(collectKeys));
+        authUnlistedKeys.value = authCheckedKeys.value.filter(key => !visibleKeys.has(key));
         await nextTick(); syncAuthSelectAll();
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.loadFailed')); roleAuthVisible.value = false; }
     finally { authLoading.value = false; }
@@ -225,9 +234,19 @@ const analyticsPermissionLabels: Record<string, string> = {
     'transaction:analytics:channels': 'route.admin_transaction_analytics_channels_v1',
     'transaction:analytics:three-ds': 'route.admin_transaction_analytics_three_ds_v1',
 };
+const alertPermissionLabels: Record<string, string> = {
+    [alertPlatformPermissions.add]: 'alertConfig.addPlatform',
+    [alertPlatformPermissions.edit]: 'alertConfig.editPlatform',
+    [alertPlatformPermissions.account]: 'alertConfig.manageAccounts',
+    [alertPlatformPermissions.credential]: 'alertConfig.manageCredentials',
+    [disputeAlertPermissions.add]: 'alertConfig.addConfiguration',
+    [disputeAlertPermissions.edit]: 'alertConfig.editConfiguration',
+    [disputeAlertPermissions.status]: 'alertConfig.toggleConfiguration',
+};
 
 function buildAuthTree(menus: SysMenu[], permissions: SysPermission[] = []): AuthTreeNode[] {
     const hiddenGrantMenuCodes = new Set(['admin_settlement_batch_v1']);
+    const resourcePermissionCodes = new Set(permissions.map(permission => permission.permissionCode));
     const menuMap = new Map<number, SysMenu>();
     const flatten = (items: SysMenu[]) => items.forEach((menu) => { menuMap.set(menu.menuId, menu); flatten(menu.children || []); });
     flatten(menus);
@@ -240,46 +259,62 @@ function buildAuthTree(menus: SysMenu[], permissions: SysPermission[] = []): Aut
         if (!menu) return;
         permissionMap.set(menu.menuId, [...(permissionMap.get(menu.menuId) || []), permission]);
     });
+    const showMenu = (menu: SysMenu) => {
+        if (hiddenGrantMenuCodes.has(menu.menuCode || '')) return false;
+        const code = menu.permissionCode || '';
+        return menu.menuType !== 'BUTTON' || (Boolean(alertPermissionLabels[code]) && !resourcePermissionCodes.has(code));
+    };
     const build = (items: SysMenu[]): AuthTreeNode[] => items
-        .filter((menu) => menu.menuType !== 'BUTTON' && !hiddenGrantMenuCodes.has(menu.menuCode || ''))
+        .filter(showMenu)
         .map((menu) => {
             const children = build(menu.children || []);
             const permissionChildren = (permissionMap.get(menu.menuId) || []).map((permission) => ({
                 id: 'p_' + permission.permissionId,
                 label: permission.permissionName || permission.permissionCode,
-                labelKey: analyticsPermissionLabels[permission.permissionCode],
+                labelKey: alertPermissionLabels[permission.permissionCode] || analyticsPermissionLabels[permission.permissionCode],
                 code: '(' + permission.permissionCode + ')',
                 type: 'BTN' as const,
                 permissionId: permission.permissionId,
             }));
             const allChildren = [...children, ...permissionChildren];
-            const labelKey = `route.${menu.menuCode}`;
+            const labelKey = alertPermissionLabels[menu.permissionCode || ''] || `route.${menu.menuCode}`;
             return {
                 id: 'm_' + menu.menuId,
                 labelKey: te(labelKey) ? labelKey : undefined,
                 label: menu.menuName || '',
                 code: menu.permissionCode ? '(' + menu.permissionCode + ')' : undefined,
-                type: (menu.menuType === 'CATALOG' ? 'DIR' : 'MENU') as 'DIR' | 'MENU',
+                type: menu.menuType === 'CATALOG' ? 'DIR' : menu.menuType === 'BUTTON' ? 'BTN' : 'MENU',
                 menuId: menu.menuId,
                 children: allChildren.length ? allChildren : undefined,
             };
         });
     return build(menus);
 }
-function getSelectedGrantIds() {
+function getSelectedGrantIds(unlistedKeys: string[] = []) {
     const checked = authTreeRef.value?.getCheckedKeys() || [];
     const halfChecked = authTreeRef.value?.getHalfCheckedKeys() || [];
-    const allKeys = [...checked, ...halfChecked].map(String);
+    const allKeys = [...checked, ...halfChecked, ...unlistedKeys].map(String);
     return {
         menuIds: ni(allKeys.filter(key => key.startsWith('m_')).map(key => Number(key.slice(2)))),
         permissionIds: ni(allKeys.filter(key => key.startsWith('p_')).map(key => Number(key.slice(2)))),
     };
 }
 async function submitRoleAuth() {
-    if (!activeRow.value || authSaving.value) return; authSaving.value = true;
+    if (!activeRow.value || !authTreeRef.value || authLoading.value || authSaving.value) return;
+    const { roleId } = activeRow.value;
+    authSaving.value = true;
     try {
-        const selected = getSelectedGrantIds();
-        await grantRoleTree({ roleId: activeRow.value.roleId, ...selected });
+        const selected = getSelectedGrantIds(authUnlistedKeys.value);
+        const originalPermissions = new Set(authOriginalPermissionIds.value);
+        const resourcePermissionsUnchanged = selected.permissionIds.length === originalPermissions.size
+            && selected.permissionIds.every(id => originalPermissions.has(id));
+        const selectedMenus = new Set(selected.menuIds);
+        const retainsExistingMenus = authOriginalMenuIds.value.every(id => selectedMenus.has(id));
+        if (retainsExistingMenus && resourcePermissionsUnchanged && userStore.hasPermission('system:role:assign-menu')) {
+            await grantRoleMenus({ roleId, menuIds: selected.menuIds });
+        } else {
+            await grantRoleTree({ roleId, ...selected });
+        }
         ElMessage.success(t('common.saveSuccess')); roleAuthVisible.value = false; loadData();
     } catch (e) { ElMessage.error(e instanceof Error ? e.message : t('common.saveFailed')); }
     finally { authSaving.value = false; }

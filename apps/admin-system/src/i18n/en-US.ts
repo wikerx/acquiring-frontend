@@ -3,7 +3,10 @@ import paymentMethodMessages from './payment-methods.en-US';
 import { paymentLinkMessagesEn } from '@acquiring/shared';
 import { refundMessagesEn } from '@acquiring/shared';
 
+import { alertConfigurationEn } from './alert-configuration';
+
 export default {
+    alertConfig: alertConfigurationEn,
     transactionAction: transactionActionMessagesEn,
     paymentMethod: paymentMethodMessages,
     admin_payment_link_v1: 'Pay by Link',
@@ -5789,6 +5792,8 @@ export default {
     admin_channel_capability_v1: 'Channel Payment Capability',
     admin_channel_limit_v1: 'Channel Limit Management',
     admin_channel_mid_v1: 'Channel MID Management',
+    admin_channel_alert_platform_v1: 'Alert Platform Management',
+    admin_channel_dispute_alert_v1: 'Dispute Alert Configuration',
     admin_merchant_channel_mid_binding_v1: 'Merchant MID Binding',
     admin_payment_route_v1: 'Payment Routing',
     admin_payment_route_list_v1: 'View Payment Routing',
@@ -5924,6 +5929,7 @@ export default {
     exchange_rate_alert_rule_import: 'Import Rate Alert Rules',
     exchange_rate_alert_rule_export: 'Export Rate Alert Rules',
     risk_center: 'Acquiring Risk',
+    risk_dispute_alert_catalog: 'Dispute Alert Management',
     risk_dashboard_catalog: 'Risk Workspace',
     risk_dashboard_overview: 'Risk Overview',
     risk_dashboard_today_events: 'Today Risk Events',
