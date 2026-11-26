@@ -1,8 +1,11 @@
 <template>
     <section class="alert-guide" aria-labelledby="alert-platform-guide-title">
         <header class="guide-intro">
-            <h2 id="alert-platform-guide-title">{{ t('alertConfig.guide.title') }}</h2>
-            <p>{{ t('alertConfig.guide.intro') }}</p>
+            <img class="guide-intro__brand" :src="shieldBrand.horizontal" :alt="shieldBrand.name" />
+            <div class="guide-intro__copy">
+                <h2 id="alert-platform-guide-title">{{ t('alertConfig.guide.title') }}</h2>
+                <p>{{ t('alertConfig.guide.intro') }}</p>
+            </div>
         </header>
 
         <div class="guide-products">
@@ -47,11 +50,12 @@
 <script setup lang="ts">
 import { ArrowDown, Connection, Key, Link } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { disputeAlertLogos } from '@acquiring/shared';
+import { disputeAlertLogos, VEXRA_PRODUCT_BRANDS } from '@acquiring/shared';
 import amexInquiry from '../dispute-alert/assets/amex-inquiry.png';
 import ProductAlertFlow from './ProductAlertFlow.vue';
 
 const { t } = useI18n();
+const shieldBrand = VEXRA_PRODUCT_BRANDS.shield;
 const { ETHOCA: ethoca, RDR: verifi } = disputeAlertLogos;
 const guideProducts = [
     {
@@ -92,8 +96,22 @@ const guideSteps = [
     background: var(--el-bg-color);
 }
 .guide-intro {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 18px;
     padding-inline-start: 14px;
     border-inline-start: 3px solid var(--el-color-primary);
+}
+.guide-intro__brand {
+    display: block;
+    width: 156px;
+    max-width: 100%;
+    height: auto;
+}
+.guide-intro__copy {
+    flex: 1 1 18rem;
+    min-width: 0;
 }
 .guide-intro h2 {
     margin: 0 0 4px;

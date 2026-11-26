@@ -1,5 +1,9 @@
 <template>
     <div v-if="user.hasPermission(permissions.list)" class="app-container">
+        <header class="dispute-alert-heading">
+            <img :src="shieldBrand.icon" :alt="shieldBrand.name" width="32" height="32" />
+            <h1>{{ t('route.admin_channel_dispute_alert_v1') }}</h1>
+        </header>
         <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" show-icon class="mb8">
             <el-button text type="primary" @click="applySearch">{{ t('alertConfig.retry') }}</el-button>
         </el-alert>
@@ -221,7 +225,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { userFacingErrorMessage } from '@acquiring/shared';
+import { userFacingErrorMessage, VEXRA_PRODUCT_BRANDS } from '@acquiring/shared';
 import {
     enrollments, getAlertBinding, listAlertBindings, listAlertMidChannels, listAlertMids, listAlertSources,
     midProducts, products, saveAlertBinding, statuses, updateAlertBindingStatus,
@@ -235,6 +239,7 @@ import AlertProductDisplay from './AlertProductDisplay.vue';
 import { disputeAlertPermissions as permissions } from './menu';
 
 const { t } = useI18n();
+const shieldBrand = VEXRA_PRODUCT_BRANDS.shield;
 const user = useUserStore();
 const showSearch = ref(true);
 const emptyQuery = () => ({ keyword: '', product: '' as MidProduct | '', status: '' as AlertStatus | '' });
@@ -574,6 +579,22 @@ async function toggleStatus(item: BindingSummary) {
 </script>
 
 <style scoped>
+.dispute-alert-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-block-end: 16px;
+}
+.dispute-alert-heading img {
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+.dispute-alert-heading h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.35;
+}
 .mid-label {
     overflow-wrap: anywhere;
 }

@@ -43,27 +43,25 @@ body {
     border: 1px solid #e5eaf6;
     background: rgb(255 255 255 / 90%);
     box-shadow: 0 20px 50px rgb(15 23 42 / 7%);
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 20px;
 }
 
 .checkout-topbar__brand {
     display: flex;
     align-items: center;
-    gap: 16px;
+    min-width: 0;
+    position: relative;
+    width: min(100%, 282px);
 }
 
 .checkout-topbar__logo {
-    width: 230px;
+    display: block;
+    width: 100%;
     height: auto;
-}
-
-.checkout-topbar__brand span {
-    color: #64748b;
-    font-size: 13px;
-    font-weight: 600;
+    object-fit: contain;
 }
 
 .checkout-topbar__meta {
@@ -121,6 +119,59 @@ body {
     object-fit: cover;
     pointer-events: none;
     box-shadow: 0 0 0 1px rgb(15 23 42 / 10%);
+}
+
+.checkout-topbar__subtitle {
+    /* The original Checkout and Link artworks have different wordmark positions. */
+    position: absolute;
+    inset-inline-start: 34.2%;
+    top: 76%;
+    color: #52637d;
+    font-size: 12px;
+    font-weight: 550;
+    line-height: 1;
+    letter-spacing: 0.065em;
+    white-space: nowrap;
+}
+
+.checkout-topbar--link .checkout-topbar__subtitle {
+    inset-inline-start: 31.7%;
+    top: 78%;
+}
+
+.checkout-topbar__security {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.checkout-topbar__security svg {
+    flex: none;
+    color: #16834c;
+}
+
+@media (min-width: 901px) {
+    .checkout-topbar--secure {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .checkout-topbar__security {
+        display: flex;
+    }
+
+    .checkout-topbar--secure .checkout-topbar__meta {
+        justify-self: end;
+    }
+
+    .checkout-topbar--secure ~ .checkout-trust-footer .secure-text,
+    .checkout-topbar--secure ~ .checkout-trust-footer .divider {
+        display: none;
+    }
 }
 
 .checkout-layout {
@@ -1600,24 +1651,33 @@ body {
     }
 
     .checkout-topbar {
-        align-items: flex-start;
-        flex-direction: column;
+        column-gap: 8px;
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 18px;
     }
 
     .checkout-topbar__brand {
-        flex-direction: column;
-        align-items: flex-start;
+        width: min(100%, 218px);
     }
 
-    .checkout-topbar__logo {
-        width: 200px;
+    .checkout-topbar__meta {
+        gap: 8px;
     }
 
-    .checkout-topbar__meta,
+    .checkout-topbar__locale select {
+        min-width: 108px;
+        height: 36px;
+        padding-inline-start: 36px;
+    }
+
+    .checkout-topbar__locale-flag {
+        left: 9px;
+        width: 20px;
+    }
+
     .checkout-field-grid {
         grid-template-columns: 1fr;
-        flex-direction: column;
-        width: 100%;
     }
 
     .checkout-section-card__header {
@@ -1639,12 +1699,6 @@ body {
     .checkout-payment-option__summary .payment-logo-mark {
         --payment-logo-height: 16px;
         --payment-logo-width: 25px;
-    }
-
-    .checkout-topbar__locale,
-    .checkout-topbar__locale-control,
-    .checkout-topbar__locale select {
-        width: 100%;
     }
 
     .checkout-sidebar__merchant h1,
@@ -1719,5 +1773,38 @@ body {
     .checkout-footer {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+    .checkout-topbar__subtitle {
+        display: none;
+    }
+
+    .checkout-topbar__status {
+        padding-inline: 7px;
+        font-size: 11px;
+    }
+
+    .checkout-topbar__locale select {
+        appearance: none;
+        width: 48px;
+        min-width: 0;
+        padding: 0;
+        /* Keep the native picker and its labels available on narrow screens. */
+        text-indent: -999px;
+    }
+
+    .checkout-topbar__locale-control::after {
+        content: '';
+        position: absolute;
+        right: 8px;
+        width: 5px;
+        height: 5px;
+        margin-top: -2px;
+        border: solid #52637d;
+        border-width: 0 1.5px 1.5px 0;
+        transform: rotate(45deg);
+        pointer-events: none;
     }
 }

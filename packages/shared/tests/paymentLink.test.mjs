@@ -143,8 +143,10 @@ test('V3 presence keeps an empty method range authoritative over legacy cards', 
   assert.deepEqual(paymentLinkCurrentMethodKeys(options, 'EUR'), []);
 });
 
-test('legacy options retain the existing card protocol only when V3 is absent', () => {
-  assert.equal(paymentLinkUsesMethodKeys({ cardBrandsByCurrency: { USD: ['VISA'] } }), false);
+test('legacy options retain the card protocol when the V3 map is absent or null', () => {
+  const legacyOptions = { cardBrandsByCurrency: { USD: ['VISA'] } };
+  assert.equal(paymentLinkUsesMethodKeys(legacyOptions), false);
+  assert.equal(paymentLinkUsesMethodKeys({ ...legacyOptions, paymentMethodKeysByCurrency: null }), false);
   assert.equal(paymentLinkUsesMethodKeys({ paymentMethodKeysByCurrency: {} }), true);
 });
 

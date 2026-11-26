@@ -72,7 +72,7 @@ export interface PaymentLinkOptions {
   currencies: string[];
   cardBrands: string[];
   paymentMethodsByCurrency?: Record<string, string[]>;
-  paymentMethodKeysByCurrency?: Record<string, string[]>;
+  paymentMethodKeysByCurrency?: Record<string, string[]> | null;
   cardBrandsByCurrency: Record<string, string[]>;
   locales: string[];
   minExpireMinutes: number;
@@ -200,9 +200,10 @@ export function newPaymentLinkRequestId(): string {
   return globalThis.crypto.randomUUID();
 }
 
-/** 新范围字段存在时以其为准；空范围不回退为历史全卡或仅卡能力。 */
+/** 旧版选项可省略新版范围或返回 null；新版显式返回的空对象和空列表仍为有效范围。 */
 export function paymentLinkUsesMethodKeys(options?: PaymentLinkOptions): boolean {
-  return options?.paymentMethodKeysByCurrency !== undefined;
+  const methodKeysByCurrency = options?.paymentMethodKeysByCurrency;
+  return methodKeysByCurrency !== undefined && methodKeysByCurrency !== null;
 }
 
 export function paymentLinkCurrentMethodKeys(

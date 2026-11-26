@@ -1,5 +1,5 @@
 <template>
-    <main class="checkout-shell">
+    <main ref="receiptPage" class="checkout-shell">
         <CheckoutTopbar
             :locale="language"
             :status="session?.checkoutSessionId ? statusChipText : undefined"
@@ -47,7 +47,7 @@
             />
 
             <section class="checkout-form-panel">
-                <article class="checkout-section-card">
+                <article ref="payerDetails" class="checkout-section-card">
                     <div class="checkout-section-card__header">
                         <div>
                             <p>{{ t('checkout.contactInfo') }}</p>
@@ -185,7 +185,8 @@
                         <div v-for="method in visiblePaymentMethods" :key="method.id" class="checkout-payment-item">
                             <div :class="['checkout-payment-option', { 'is-active': selectedPaymentMethod === method.id }]">
                                 <button class="checkout-payment-option__select" type="button" :aria-pressed="selectedPaymentMethod === method.id"
-                                    :disabled="submitting" @click="selectPaymentMethod(method.id)">
+                                    :disabled="submitting"
+                                    @click="selectPaymentMethod(method.id)">
                                     <span class="checkout-payment-option__radio" aria-hidden="true"></span>
                                     <span class="checkout-payment-option__logo" aria-hidden="true">
                                         <PaymentLogoMark v-if="method.paymentMethod === 'BANK_CARD' || method.logoKeys[0]"
@@ -383,7 +384,10 @@
         </section>
 
         <section v-else :class="['checkout-status-shell', `checkout-status-shell--${statusViewState}`]">
-            <article :class="['checkout-status-card', `checkout-status-card--${statusViewState}`]">
+            <article
+                :class="['checkout-status-card', `checkout-status-card--${statusViewState}`]"
+                :data-checkout-receipt-result="statusViewState"
+            >
                 <div v-if="statusViewState === 'blocked'" class="checkout-security-visual" aria-hidden="true">
                     <span class="checkout-security-visual__ring checkout-security-visual__ring--outer"></span>
                     <span class="checkout-security-visual__ring checkout-security-visual__ring--inner"></span>
@@ -431,7 +435,7 @@
                     {{ localizedStatusConfig.message }}
                 </div>
 
-                <p v-if="redirectCountdown !== null" class="checkout-redirect-countdown" role="status">
+                <p v-if="redirectCountdown !== null" class="checkout-redirect-countdown" role="status" data-html2canvas-ignore>
                     {{ t('status.redirectCountdown', { seconds: redirectCountdown }) }}
                 </p>
 
@@ -459,7 +463,7 @@
                     <p>{{ t('status.processingHint') }}</p>
                 </div>
 
-                <div class="checkout-status-actions">
+                <div class="checkout-status-actions" data-html2canvas-ignore>
                     <button
                         v-if="statusViewState === 'failed' && retryAvailable"
                         class="checkout-status-button checkout-status-button--primary"
@@ -502,7 +506,7 @@
                         {{ t('status.returnToMerchant') }}
                     </button>
                 </div>
-                <p v-if="receiptError" class="checkout-receipt-error" role="alert">
+                <p v-if="receiptError" class="checkout-receipt-error" role="alert" data-html2canvas-ignore>
                     {{ receiptError }}
                 </p>
             </article>
@@ -536,10 +540,10 @@ import {
 } from './api/hostedCheckout';
 import CheckoutTrustFooter from './components/CheckoutTrustFooter.vue';
 import CheckoutTopbar from './components/CheckoutTopbar.vue';
-import { downloadReceiptPdf, type ReceiptRow, type ReceiptStatus } from './utils/receiptPdf';
+import { downloadReceiptPdf } from './utils/receiptPdf';
 import { resolveMerchantPostUrl, resolveWalletAuthorizationUrl } from './utils/urlSecurity';
 import PaymentMethodCarousel from './components/PaymentMethodCarousel.vue';
-import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutReceiptIdentity, checkoutResultLogoKeys } from './utils/checkoutPresentation';
+import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutResultLogoKeys } from './utils/checkoutPresentation';
 import { cardEncryptionSupported, encryptCheckoutCardData } from './utils/cardEncryption';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
@@ -722,6 +726,7 @@ const initErrorText = computed(() => initErrorKey.value ? t(initErrorKey.value) 
 const threeDsReturnHandling = ref(false);
 const threeDsContinuation = ref<ThreeDsContinuationContext | null>(null);
 const threeDsMethodTimer = ref<number | null>(null);
+const receiptPage = ref<HTMLElement>();
 const receiptDownloading = ref(false);
 const receiptError = ref('');
 const attemptRequestId = ref(createAttemptRequestId());
@@ -1012,13 +1017,13 @@ const localizedStatusConfig = computed(() => {
 const selectedMethod = computed(() => (
     supportedPaymentMethods.value.find((method) => method.id === selectedPaymentMethod.value)
 ));
-const selectedMethodLabel = computed(() => selectedMethod.value?.label || '');
 const walletAuthorizationSelected = computed(() => selectedMethod.value?.componentState === 'REDIRECT_AVAILABLE');
 const walletAuthorizationState = ref<WalletAuthorizationState | null>(null);
 const walletAuthorizationLoading = ref(false);
 const walletAuthorizationError = ref('');
 // 此引用位于选中支付方式的循环行中，Vue 将其收集为数组。
 const walletActionButton = ref<HTMLButtonElement[]>([]);
+const payerDetails = ref<HTMLElement | null>(null);
 let walletAuthorizationSequence = 0;
 
 watch(selectedPaymentMethod, () => {
@@ -1230,6 +1235,17 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
         || walletAuthorizationLoading.value || paymentSubmissionExpired(checkout.checkout)) return;
     if (action === 'PREPARE' && walletAuthorizationState.value) return;
     if (action === 'OPEN' && walletAuthorizationState.value !== 'READY') return;
+    let billingCardHolderInfo;
+    if (checkout.paymentLink && action !== 'STATUS') {
+        clearFieldErrors();
+        validatePayerDetails();
+        if (Object.keys(fieldErrors).length) {
+            await nextTick();
+            payerDetails.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+            return;
+        }
+        billingCardHolderInfo = checkoutBillingInfo();
+    }
     const sequence = ++walletAuthorizationSequence;
     walletAuthorizationError.value = '';
     const failureMessage = 'checkout.walletAuthorization.openFailed';
@@ -1238,7 +1254,7 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
     try {
         let { state, redirectUrl } = await authorizeCheckoutWallet({
             opaqueToken: routeToken.value, checkoutSessionId: checkout.checkoutSessionId,
-            paymentMethod: selected.paymentMethod, action,
+            paymentMethod: selected.paymentMethod, action, billingCardHolderInfo,
         });
         if (sequence !== walletAuthorizationSequence || session.value !== checkout
             || paymentSubmissionExpired(checkout.checkout)) return;
@@ -1250,6 +1266,7 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
                 checkoutSessionId: checkout.checkoutSessionId,
                 paymentMethod: selected.paymentMethod,
                 action: 'OPEN',
+                billingCardHolderInfo,
             }));
             if (sequence !== walletAuthorizationSequence || session.value !== checkout
                 || paymentSubmissionExpired(checkout.checkout)) return;
@@ -1337,17 +1354,7 @@ async function handleSubmitPayment() {
             securityCode: digitsOnly(cardForm.cvc),
             cardholderName: cardForm.cardholderName,
         };
-        const billingCardHolderInfo = {
-            firstName: billingForm.firstName,
-            lastName: billingForm.lastName,
-            email: billingForm.email,
-            phone: billingForm.phone,
-            country: selectedCountryCode.value,
-            state: billingForm.state,
-            city: billingForm.city,
-            street: billingForm.street,
-            postal: billingForm.postal,
-        };
+        const billingCardHolderInfo = checkoutBillingInfo();
         if (isDevToken(token)) {
             if (token === 'dev-3ds') {
                 threeDsContinuation.value = { cardData, billingCardHolderInfo };
@@ -1927,8 +1934,11 @@ function localizedFailureReason(reasonCode?: string): string {
     return t(key);
 }
 
-function validateForm(): boolean {
-    clearFieldErrors();
+function checkoutBillingInfo() {
+    return { ...billingForm, country: selectedCountryCode.value };
+}
+
+function validatePayerDetails() {
     if (!isValidEmail(billingForm.email)) {
         fieldErrors.email = validationError('email');
     }
@@ -1941,6 +1951,11 @@ function validateForm(): boolean {
     if (!selectedCountryCode.value) {
         fieldErrors.country = validationError('required');
     }
+}
+
+function validateForm(): boolean {
+    clearFieldErrors();
+    validatePayerDetails();
     if (!cardForm.cardholderName) {
         fieldErrors.cardholderName = validationError('required');
     }
@@ -2302,7 +2317,7 @@ function readablePageState(value?: string): string {
     return t(`pageState.${state}`, state);
 }
 
-/** 刷新当前结果后，仅使用页面已允许展示的脱敏字段生成交易回执。 */
+/** 刷新结果后，以当前结果页的可见内容生成回执。 */
 async function downloadCurrentReceipt() {
     if (receiptDownloading.value || statusViewState.value === 'blocked') {
         return;
@@ -2311,70 +2326,21 @@ async function downloadCurrentReceipt() {
     receiptError.value = '';
     try {
         await refreshPaymentStatus();
-        const refreshedViewState = String(statusViewState.value);
-        if (refreshedViewState === 'blocked') {
-            throw new Error('Blocked checkout does not provide a receipt');
+        await nextTick();
+        if (!receiptPage.value) {
+            throw new Error('Checkout result is unavailable');
         }
-
-        const receiptStatus = refreshedViewState as ReceiptStatus;
-        const result = paymentResult.value?.result;
-        const receiptIdentity = checkoutReceiptIdentity(result?.transactionId, paymentResult.value?.checkoutAttemptId);
-        const paymentDetails = [
-            result?.paymentMethod || selectedMethodLabel.value || t('checkout.bankCardLabel'),
-            result?.cardBrand,
-            result?.cardNumberMasked,
-        ]
-            .filter(Boolean)
-            .join(' / ');
-        const rows: ReceiptRow[] = [
-            { label: t('status.receiptMerchant'), value: merchantName.value || '-' },
-            {
-                label: t('status.merchantOrder'),
-                value: result?.merchantOrderNo || order.value?.orderNo || '-',
-            },
-            { label: t('status.paymentMethod'), value: paymentDetails || '-' },
-            {
-                label: t(receiptIdentity.kind === 'systemOrder' ? 'status.paymentId' : 'status.paymentAttemptId'),
-                value: receiptIdentity.value,
-            },
-        ];
-        if (result?.transactionDateTime) {
-            rows.push({
-                label: t('status.time'),
-                value: formatDateTime(result.transactionDateTime),
-            });
-        }
-        if (receiptStatus === 'success') {
-            rows.push({ label: t('status.authorizationCode'), value: result?.authCode || '-' });
-        } else if (receiptStatus === 'failed') {
-            rows.push({ label: t('status.failureReason'), value: failureReasonText.value });
-        } else {
-            rows.push({
-                label: t('status.receiptCheckoutSession'),
-                value: session.value?.checkoutSessionId || '-',
-            });
-        }
-
-        const orderReference = result?.merchantOrderNo || order.value?.orderNo || 'transaction';
-        const safeOrderReference = orderReference.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 48);
-        const generatedAt = formatDateTime(new Date().toISOString());
-        await downloadReceiptPdf({
-            locale: language.value,
-            status: receiptStatus,
-            brandName: checkoutBrand.name,
-            brandSubtitle: checkoutBrand.subtitleEn,
-            logoUrl: checkoutBrand.logos.horizontal,
+        const orderReference = paymentResult.value?.result?.merchantOrderNo || order.value?.orderNo || 'transaction';
+        await downloadReceiptPdf(receiptPage.value, {
             title: t('status.receiptTitle'),
-            statusLabel: localizedStatusConfig.value.title,
-            amountLabel: t('status.amount'),
-            amount: formattedResultAmount.value,
-            rows,
+            brandName: checkoutBrand.name,
+            orderReference: orderReference.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 48),
             noticeTitle: t('status.receiptNoticeTitle'),
-            notice: t(`status.receiptNotice${receiptStatus[0].toUpperCase()}${receiptStatus.slice(1)}`),
-            generatedAtLabel: t('status.receiptGeneratedAt'),
-            generatedAt,
-            footer: t('status.receiptFooter'),
-            fileName: `Vexra-Receipt-${safeOrderReference}-${receiptStatus}.pdf`,
+            notices: {
+                success: t('status.receiptNoticeSuccess'),
+                failed: t('status.receiptNoticeFailed'),
+                processing: t('status.receiptNoticeProcessing'),
+            },
         });
     } catch {
         receiptError.value = t('status.receiptDownloadFailed');

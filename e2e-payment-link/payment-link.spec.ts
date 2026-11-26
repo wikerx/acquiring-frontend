@@ -35,6 +35,7 @@ async function workspace(
   width: number,
   readOnly = false,
   readFailure?: 'search' | 'summary' | 'filters',
+  verifyFrozenSelection = false,
 ) {
   const page = await browser.newPage({ viewport: { width, height: width > 2000 ? 1800 : 1000 } });
   const errors: string[] = [];
@@ -138,6 +139,9 @@ async function workspace(
         currencyExponents: { USD: 2, JPY: 0 },
         cardBrands: ['VISA', 'MASTERCARD'],
         cardBrandsByCurrency: { USD: ['VISA', 'MASTERCARD'], JPY: ['VISA'] },
+        paymentMethodKeysByCurrency: verifyFrozenSelection
+          ? { USD: ['CARD_BRAND:VISA', 'METHOD:APPLE_PAY', 'METHOD:PAYPAL', 'METHOD:PYUSD'] }
+          : null,
         locales: ['AUTO', 'zh-CN', 'en-US'],
         minExpireMinutes: 15,
         maxExpireMinutes: 43200,
@@ -145,7 +149,10 @@ async function workspace(
     if (path.endsWith('/payment-links') && route.request().method() === 'POST') {
       creates++;
       assert.equal(input.amount, '99.00');
-      if (scope === 'merchant' && width === 1440) {
+      if (verifyFrozenSelection) {
+        assert.deepEqual(input.paymentMethodKeys, ['CARD_BRAND:VISA', 'METHOD:PAYPAL']);
+        assert.equal(input.cardBrands, undefined);
+      } else if (scope === 'merchant' && width === 1440) {
         assert.equal(input.linkName, '');
         assert.equal(input.expireMinutes, undefined);
         assert.match(input.expireTime, /T12:34:56$/);
@@ -261,6 +268,28 @@ async function workspace(
     return;
   }
   await page.getByRole('button', { name: '详情', exact: true }).first().waitFor();
+  if (verifyFrozenSelection) {
+    await page.getByRole('button', { name: '创建支付链接', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '创建支付链接' });
+    if (scope === 'admin') {
+      await dialog.locator('.el-form-item').filter({ hasText: '商户' }).first().locator('.el-select').click();
+      await page.getByRole('option', { name: /QA Merchant/ }).click();
+    }
+    await expect(dialog.getByRole('checkbox', { name: 'PayPal', exact: true })).toBeChecked();
+    for (const name of ['Apple Pay', 'PayPal USD (PYUSD)']) {
+      const option = dialog.getByRole('checkbox', { name, exact: true });
+      await expect(option).toBeChecked();
+      await dialog.getByText(name, { exact: true }).click();
+      await expect(option).not.toBeChecked();
+    }
+    await expect(dialog.getByRole('group', { name: '其他支付方式' })).toHaveCount(0);
+    await dialog.getByRole('textbox', { name: '*金额', exact: true }).fill('99.00');
+    await dialog.getByRole('button', { name: '创建支付链接', exact: true }).click();
+    await page.getByRole('dialog', { name: '详情' }).waitFor();
+    assert.equal(creates, 1);
+    await page.close();
+    return;
+  }
   assert.equal(
     await page
       .locator('.payment-link-status')
@@ -589,3 +618,9 @@ test('旧数字及 UUID 链接继续兼容只读查询', async ({ browser }) => 
   for (const id of ['2026111810000000000001', 'a'.repeat(32)])
     await payer(browser, 390, 'EXPIRED', false, false, id);
 });
+
+for (const scope of ['merchant', 'admin'] as const) {
+  test(`${scope} saves only selected methods, including configured non-card methods`, async ({ browser }) => {
+    await workspace(browser, scope, 1440, false, undefined, true);
+  });
+}

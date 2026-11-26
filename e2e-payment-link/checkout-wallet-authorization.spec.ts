@@ -5,10 +5,11 @@ const origin = process.env.REQ001_CHECKOUT_DEV_ORIGIN ?? 'http://127.0.0.1:5196'
 const authorizationUrl = 'http://127.0.0.1:58090/simulate/hosted-payins/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const remoteAuthorizationUrl = 'https://wallet-simulator.example.test:8443/channel/simulate/hosted-payins/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
-function walletSession(pageState = 'PAYABLE', includeCard = true) {
+function walletSession(pageState = 'PAYABLE', includeCard = true, paymentLink = false) {
   return {
     checkoutSessionId: 'synthetic-wallet-session',
     pageState,
+    ...(paymentLink ? { paymentLink: true } : {}),
     merchant: { displayName: '200046' },
     order: { orderNo: 'QA-WALLET', amount: '7.00', currency: 'USD', currencyExponent: 2 },
     paymentOptions: [
@@ -98,6 +99,57 @@ for (const [wallet, code, width, channelUrl] of [
     await walletButton.click();
     await expect.poll(() => actions).toEqual(['PREPARE', 'OPEN']);
     await expect.poll(() => approvalRequested).toBe(true);
+  });
+}
+
+for (const [wallet, code, width] of [
+  ['Apple Pay', 'APPLE_PAY', 1440],
+  ['Google Pay', 'GOOGLE_PAY', 390],
+] as const) {
+  test(`PayByLink requires customer details before ${wallet} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const actions: string[] = [];
+    await openCheckout(page, async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body.paymentMethod).toBe(code);
+      expect(body.billingCardHolderInfo).toMatchObject({
+        email: 'payer@example.test', firstName: 'QA', lastName: 'Payer', country: 'USA',
+      });
+      actions.push(body.action);
+      await reply(route, 'READY');
+    }, '200045', () => {
+      const checkout = walletSession('PAYABLE', true, true);
+      checkout.paymentOptions.push({
+        paymentMethod: 'PAYPAL', brands: [], serverSubmitAllowed: false, executionStatus: 'COMPONENT_UNAVAILABLE',
+      });
+      return checkout;
+    });
+
+    const paypal = page.getByRole('button', { name: 'PayPal Unavailable' });
+    await expect(paypal).toBeEnabled();
+    await paypal.click();
+    await expect(paypal).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText('This payment method is temporarily unavailable.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pay USD 7', exact: true })).toBeDisabled();
+    expect(actions).toEqual([]);
+    await page.getByRole('button', { name: wallet, exact: true }).click();
+    const walletButton = page.getByRole('button', { name: `Pay with ${wallet}`, exact: true });
+    await walletButton.click();
+    const email = page.locator('input[autocomplete="email"]');
+    await expect(email).toBeFocused();
+    await expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(actions).toEqual([]);
+
+    await email.fill('not-an-email');
+    await page.locator('input[autocomplete="given-name"]').fill('QA');
+    await page.locator('input[autocomplete="family-name"]').fill('Payer');
+    await walletButton.click();
+    await expect(email).toBeFocused();
+    expect(actions).toEqual([]);
+
+    await email.fill('payer@example.test');
+    await walletButton.click();
+    await expect.poll(() => actions).toEqual(['PREPARE', 'OPEN']);
   });
 }
 

@@ -1,6 +1,6 @@
 <template>
   <main class="checkout-shell">
-    <CheckoutTopbar :locale="locale" :status="statusLabel" @change="changeLanguage" />
+    <CheckoutTopbar product="link" :locale="locale" :status="statusLabel" @change="changeLanguage" />
     <section
       v-if="link"
       class="checkout-layout"

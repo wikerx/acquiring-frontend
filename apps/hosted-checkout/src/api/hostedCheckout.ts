@@ -29,6 +29,7 @@ export interface HostedCheckoutClientContext {
 export interface HostedCheckoutSession {
     checkoutSessionId: string;
     pageState: CheckoutPageState | string;
+    paymentLink?: boolean;
     merchant?: {
         displayName?: string;
         supportedPaymentMethods?: string[];
@@ -206,6 +207,7 @@ export async function authorizeCheckoutWallet(payload: {
     checkoutSessionId: string;
     paymentMethod: string;
     action: WalletAuthorizationAction;
+    billingCardHolderInfo?: HostedCheckoutPrefillInfo;
 }): Promise<{ state: WalletAuthorizationState; redirectUrl?: string }> {
     return postCheckout('/checkout/api/v1/wallet/authorization', payload, 18000);
 }

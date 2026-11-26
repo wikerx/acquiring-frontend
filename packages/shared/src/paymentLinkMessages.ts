@@ -67,8 +67,6 @@ export const paymentLinkMessagesZh = {
     'zh-CN': '简体中文',
   },
   brands: '支付方式',
-  otherMethods: '其他支付方式',
-  methodUnavailable: '暂不可用',
   noMethods: '该商户在所选币种下没有可用的收单支付方式，请检查商户和渠道配置。',
   notifyUrl: 'Webhook 地址',
   redirectUrl: '支付返回地址',
@@ -78,7 +76,7 @@ export const paymentLinkMessagesZh = {
   createdUnavailable: '支付链接已创建，当前尚不可付款。',
   currentlyUnavailable: '此链接当前尚不可付款，请联系平台完成支付接入后再通知客户付款。',
   scopeHint:
-    '默认全选。所选方式来自商户当前授权和配置范围；创建链接不代表支付组件已接通，实际付款时重新校验。',
+    '默认全选。收银台只展示本链接勾选的支付方式，并在付款时校验可用状态。',
   chooseMethod: '请选择至少一种支付方式',
   disabled: '支付链接已停用',
   exported: '导出任务已创建，请前往下载中心领取。',
@@ -258,8 +256,6 @@ export const paymentLinkMessagesEn = {
     'zh-CN': '简体中文',
   },
   brands: 'Payment methods',
-  otherMethods: 'Other payment methods',
-  methodUnavailable: 'Currently unavailable',
   noMethods:
     'This merchant has no available acquiring payment methods for this currency. Check merchant and channel configuration.',
   notifyUrl: 'Webhook URL',
@@ -272,7 +268,7 @@ export const paymentLinkMessagesEn = {
   currentlyUnavailable:
     'Payment is not currently available for this link. Contact the platform to complete payment integration before inviting your customer to pay.',
   scopeHint:
-    'All options are selected by default from current merchant authorization and configuration. Creating a link does not mean its payment components are connected. Eligibility is checked again at payment.',
+    'All options are selected by default. Checkout shows the methods selected for this link and rechecks availability at payment.',
   chooseMethod: 'Select at least one payment method',
   disabled: 'Payment link disabled',
   exported: 'Export queued. Collect the file in the download center.',

@@ -475,23 +475,6 @@
                 >
                 <p class="pl-hint">{{ t('paymentLink.allBrands') }}</p></el-form-item
               >
-              <el-form-item
-                v-if="!usesMethodKeys && otherPaymentMethods.length"
-                :label="t('paymentLink.otherMethods')"
-              >
-                <div class="pl-other-methods">
-                  <div
-                    v-for="method in otherPaymentMethods"
-                    :key="method"
-                    class="pl-other-method"
-                    aria-disabled="true"
-                  >
-                    <PaymentLogoGroup :keys="resolvePaymentLogoKeys(method)" size="sm" />
-                    <span>{{ methodName(method) }}</span>
-                    <small>{{ t('paymentLink.methodUnavailable') }}</small>
-                  </div>
-                </div>
-              </el-form-item>
               <el-alert
                 v-if="
                   options &&
@@ -798,7 +781,7 @@
       @closed="clearShare"
       ><div v-loading="shareLoading" class="pl-share">
         <div v-if="selected" class="pl-share-heading">
-          <span>{{ t('paymentLink.sharePayment') }}</span>
+          <img class="pl-share-brand" :src="linkBrand.horizontal" :alt="linkBrand.name" />
           <h3>{{ selected.linkName || selected.merchantOrderNo }}</h3>
           <CurrencyAmountDisplay
             :currency="selected.currency"
@@ -919,6 +902,7 @@
   import { useI18n } from 'vue-i18n';
   import type { FormInstance, FormRules } from 'element-plus';
   import { Plus, Download, FolderOpened } from '@element-plus/icons-vue';
+  import { VEXRA_PRODUCT_BRANDS } from '../brand';
   import { userFacingErrorMessage } from '../index';
   import {
     newPaymentLinkRequestId,
@@ -977,6 +961,7 @@
     downloadCenter: [];
   }>();
   const { t, te, locale } = useI18n();
+  const linkBrand = VEXRA_PRODUCT_BRANDS.link;
   const actorSource = (appCode?: string) => paymentLinkActorSource(appCode, t);
   const operatorName = (appCode?: string, id?: string, name?: string) =>
     paymentLinkOperatorName(appCode, id, name, t);
@@ -1068,11 +1053,6 @@
   const expiryDurations = computed(() =>
     [60, 120, 1440, 4320, 10080, 43200].filter(
       (minutes) => minutes <= (options.value?.maxExpireMinutes ?? 43200),
-    ),
-  );
-  const otherPaymentMethods = computed(() =>
-    (options.value?.paymentMethodsByCurrency?.[form.currency] || []).filter(
-      (method) => method !== 'BANK_CARD',
     ),
   );
   function methodName(method: string) {
@@ -1819,38 +1799,21 @@
     color: var(--el-text-color-secondary);
     line-height: 1.6;
   }
-  .pl-other-methods {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .pl-other-method {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--el-border-color-light);
-    border-radius: 6px;
-    color: var(--el-text-color-regular);
-    background: var(--el-fill-color-light);
-  }
-  .pl-other-method small {
-    color: var(--el-text-color-secondary);
-    font-size: 11px;
-  }
   .pl-preview-methods {
     display: grid;
     gap: 12px;
-    padding: 18px 0;
+    padding-block-start: 16px;
     font-size: 12px;
   }
   .pl-preview-pay {
-    padding: 14px;
+    margin-block-start: 16px;
+    padding: 12px 14px;
     border-radius: 12px;
     text-align: center;
     background: linear-gradient(110deg, #7c3aed, #1e3aff);
     color: #fff;
     font-weight: 600;
+    line-height: 20px;
   }
   .pl-expiry-controls {
     display: flex;
@@ -1915,7 +1878,13 @@
     text-align: center;
     width: 100%;
   }
-  .pl-share-heading > span,
+  .pl-share-brand {
+    display: block;
+    width: auto;
+    height: 28px;
+    max-width: 100%;
+    object-fit: contain;
+  }
   .pl-share-caption {
     color: var(--el-text-color-secondary);
     font-size: 12px;

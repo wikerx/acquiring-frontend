@@ -86,7 +86,7 @@ for (const width of [1440, 390, 320]) {
     await expect(card.locator('.checkout-payment-option__summary img')).toHaveCount(3);
     await expect(card.locator('.checkout-payment-option__summary small')).toHaveText('+5');
     await expect(submit).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
+    await expect(section.getByRole('button', { name: 'Pay with Apple Pay', exact: true })).toBeEnabled();
     await section.screenshot({ path: testInfo.outputPath('wallet-selected.png') });
     await card.click();
     await expect(cardholder).toHaveValue('Casey Example');

@@ -37,6 +37,20 @@ export interface VexraBrandConfig {
 
 const commonIcon = new URL('./assets/brand/vexra/common/logo-icon.svg', import.meta.url).href;
 const commonFavicon = new URL('./assets/brand/vexra/common/favicon.svg', import.meta.url).href;
+const checkoutIcon = new URL('./assets/brand/vexra/checkout/logo-icon.svg', import.meta.url).href;
+
+export const VEXRA_PRODUCT_BRANDS = {
+    link: {
+        name: 'Vexra Link',
+        horizontal: new URL('./assets/brand/vexra/link/logo-horizontal.png', import.meta.url).href,
+        favicon: new URL('./assets/brand/vexra/link/favicon.png', import.meta.url).href,
+    },
+    shield: {
+        name: 'Vexra Shield',
+        horizontal: new URL('./assets/brand/vexra/shield/logo-horizontal.png', import.meta.url).href,
+        icon: new URL('./assets/brand/vexra/shield/logo-icon.png', import.meta.url).href,
+    },
+} as const;
 
 export const VEXRA_BRAND: VexraBrandConfig = {
     brandName: 'Vexra',
@@ -100,8 +114,8 @@ export const VEXRA_BRAND: VexraBrandConfig = {
                     './assets/brand/vexra/checkout/logo-horizontal.svg',
                     import.meta.url,
                 ).href,
-                icon: commonIcon,
-                favicon: commonFavicon,
+                icon: checkoutIcon,
+                favicon: checkoutIcon,
             },
         },
         gateway: {
