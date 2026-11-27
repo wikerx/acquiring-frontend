@@ -52,6 +52,7 @@ export default {
   authorization: 'Authorization',
   applicationStatus: 'Application status',
   configuration: 'Configuration',
+  configurationTooltip: 'Configuration reflects channel, merchant MID and fee readiness. Each payment is checked against its own order details.',
   unassessed: 'Not evaluated',
   noGrant: 'No authorization recorded',
   apply: 'Apply',

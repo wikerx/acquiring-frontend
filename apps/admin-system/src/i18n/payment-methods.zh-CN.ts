@@ -68,6 +68,7 @@ export default {
   authorization: '授权状态',
   applicationStatus: '申请状态',
   configuration: '配置情况',
+  configurationTooltip: '配置情况反映该方式是否有就绪的渠道、商户 MID 和费率。实际付款还要按订单条件校验。',
   unassessed: '未评估',
   noGrant: '未登记授权',
   apply: '申请开通',

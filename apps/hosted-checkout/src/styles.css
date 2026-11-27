@@ -1545,6 +1545,51 @@ body {
     color: #334155;
 }
 
+.checkout-status-card.checkout-amount-limit-dialog {
+    width: min(420px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: clamp(24px, 6vw, 32px);
+    overflow: auto;
+    background: radial-gradient(ellipse at top, #f5f3ff, transparent 64%), #fff;
+    box-shadow: 0 22px 56px rgb(15 23 42 / 24%);
+}
+
+.checkout-amount-limit-dialog::backdrop {
+    background: rgb(15 23 42 / 46%);
+    backdrop-filter: blur(3px);
+}
+
+.checkout-amount-limit-dialog__icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #fed7d7;
+    border-radius: 18px;
+    background: #fef2f2;
+}
+
+.checkout-amount-limit-dialog__title {
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(20px, 5vw, 24px);
+    font-weight: 750;
+    line-height: 1.25;
+    text-wrap: balance;
+}
+
+.checkout-amount-limit-dialog .checkout-status-description {
+    margin-top: 10px;
+    text-wrap: balance;
+}
+
+.checkout-amount-limit-dialog .checkout-status-button:focus-visible {
+    outline: 2px solid #4338ca;
+    outline-offset: 3px;
+}
+
 .checkout-receipt-error {
     margin: 12px 0 0;
     color: #b91c1c;

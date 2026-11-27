@@ -7,31 +7,18 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.businessType')">
-                <el-select v-model="query.businessType" :placeholder="t('channel.common.pleaseSelect')" clearable>
+                <el-select v-model="query.businessType" :placeholder="t('channel.common.pleaseSelect')" clearable @change="queryPaymentOption = ''">
                     <el-option v-for="item in businessOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.paymentMethod')">
-                <el-select v-model="query.paymentMethod" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
+                <el-select v-model="queryPaymentOption" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
                     <template v-if="selectedQueryPaymentLogoKeys.length" #prefix>
                         <PaymentLogoGroup :keys="selectedQueryPaymentLogoKeys" size="sm" :wrap="false" />
                     </template>
-                    <el-option v-for="item in currentPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                    <el-option v-for="item in queryPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
                         <div class="channel-option-display">
-                            <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
-                            <span>{{ item.label }}</span>
-                        </div>
-                    </el-option>
-                </el-select>
-            </el-form-item>
-            <el-form-item :label="t('channel.common.cardBrand')">
-                <el-select v-model="query.cardBrand" :placeholder="t('channel.common.pleaseSelect')" clearable filterable>
-                    <template v-if="selectedQueryCardBrandLogoKeys.length" #prefix>
-                        <PaymentLogoGroup :keys="selectedQueryCardBrandLogoKeys" size="sm" :wrap="false" />
-                    </template>
-                    <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
-                        <div class="channel-option-display">
-                            <PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                            <PaymentLogoGroup :keys="item.logos" fallback="text" size="sm" :wrap="false" />
                             <span>{{ item.label }}</span>
                         </div>
                     </el-option>
@@ -67,7 +54,7 @@
                     <ChannelPaymentScopeDisplay
                         :keys="paymentScopeLogo(row)"
                         :label="t('channel.capability.paymentScope')"
-                        :empty-text="optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod)"
+                        :empty-text="capabilityPaymentName(row)"
                     />
                 </template>
             </el-table-column>
@@ -88,6 +75,12 @@
                         :label="t('channel.capability.allowedAndDefaultCurrencies')"
                         :locale="String(locale)"
                     />
+                </template>
+            </el-table-column>
+            <el-table-column prop="allowedCountryScope" :label="t('channel.capability.allowedCountryScope')" min-width="125" align="center">
+                <template #default="{ row }">
+                    <ChannelCountryScopeDisplay :scope="capabilityCountryScope(row)" :options="countryOptions"
+                        :unrestricted-label="t('channel.capability.unrestrictedCountries')" />
                 </template>
             </el-table-column>
             <el-table-column label="3DS" width="90" align="center">
@@ -130,7 +123,7 @@
                 <el-descriptions-item :label="t('channel.common.businessType')">{{ optionLabel(businessOptions, detailRow.businessType) }}</el-descriptions-item>
                 <el-descriptions-item :label="t('channel.capability.paymentScope')">
                     <PaymentLogoGroup v-if="paymentScopeLogo(detailRow).length" :keys="paymentScopeLogo(detailRow)" fallback="text" size="sm" />
-                    <span v-else>{{ optionLabel(paymentOptionsFor(detailRow.businessType), detailRow.paymentMethod) }}</span>
+                    <span v-else>{{ capabilityPaymentName(detailRow) }}</span>
                 </el-descriptions-item>
                 <el-descriptions-item :label="t('channel.common.transactionType')">
                     <div v-if="transactionTypeItems(detailRow).length" class="tag-list tag-list-left">
@@ -159,6 +152,10 @@
                     <CurrencyDisplay v-if="detailRow.defaultTransactionCurrency" :currency="detailRow.defaultTransactionCurrency" :locale="String(locale)" size="sm" variant="soft" />
                     <span v-else>-</span>
                 </el-descriptions-item>
+                <el-descriptions-item v-if="detailRow.businessType === 'ACQUIRING'" :label="t('channel.capability.allowedCountryScope')">
+                    <ChannelCountryScopeDisplay :scope="capabilityCountryScope(detailRow)" :options="countryOptions"
+                        :unrestricted-label="t('channel.capability.unrestrictedCountries')" />
+                </el-descriptions-item>
                 <el-descriptions-item label="3DS">
                     <el-tag size="small" effect="plain" :type="detailRow.support3ds === 1 ? 'success' : 'info'">{{ yesNoText(detailRow.support3ds, t('channel.common.yes'), t('channel.common.no')) }}</el-tag>
                 </el-descriptions-item>
@@ -186,10 +183,10 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethods">
-                    <el-select v-model="form.paymentMethods" multiple collapse-tags filterable style="width:100%" :disabled="isEditMode" @change="handlePaymentChange">
-                        <el-option v-for="item in paymentOptionsFor(form.businessType)" :key="item.value" :label="item.label" :value="item.value">
+                    <el-select v-model="formPaymentSelection" multiple collapse-tags collapse-tags-tooltip filterable style="width:100%" :disabled="isEditMode">
+                        <el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
                             <div class="channel-option-display">
-                                <PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" />
+                                <PaymentLogoGroup :keys="item.logos" fallback="text" size="sm" :wrap="false" />
                                 <span>{{ item.label }}</span>
                             </div>
                         </el-option>
@@ -219,7 +216,7 @@
                         </el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item v-if="isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
+                <el-form-item v-if="form.businessType === 'PAYOUT' && isBankCardPayment" :label="t('channel.common.cardBrand')" prop="cardBrands">
                     <el-select v-model="form.cardBrands" multiple filterable style="width:100%">
                         <el-option v-for="item in cardBrandOptions" :key="item.value" :label="item.label" :value="item.value">
                             <div class="channel-option-display">
@@ -228,6 +225,15 @@
                             </div>
                         </el-option>
                     </el-select>
+                </el-form-item>
+                <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.capability.allowedCountryScope')">
+                    <el-select v-if="canConfigureCountry" v-model="form.countryCodes" multiple collapse-tags collapse-tags-tooltip
+                        filterable clearable style="width:100%" :disabled="!countryOptions.length"
+                        :placeholder="t('channel.capability.unrestrictedCountries')">
+                        <el-option v-for="country in countryOptions" :key="country.alpha3Code"
+                            :label="countryLabel(country)" :value="country.alpha3Code" />
+                    </el-select>
+                    <span v-else>{{ t('channel.capability.unrestrictedCountries') }}</span>
                 </el-form-item>
                 <el-form-item v-if="canConfigure3ds" :label="t('channel.info.support3ds')"><el-switch v-model="form.support3ds" :active-value="1" :inactive-value="0" /></el-form-item>
                 <el-form-item v-if="canConfigureIncrementalAuthorization" :label="t('channel.capability.incrementalAuthorization')"><el-switch v-model="form.supportIncrementalAuthorization" :active-value="1" :inactive-value="0" /></el-form-item>
@@ -256,11 +262,13 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelCountryScopeDisplay from '@/views/channel/components/ChannelCountryScopeDisplay.vue';
 import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
 import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
 import ChannelTransactionScopeDisplay from '@/views/channel/components/ChannelTransactionScopeDisplay.vue';
 import {
     createChannelCapability,
+    listChannelCapabilityCountries,
     deleteChannelCapability,
     getChannelCapability,
     searchChannelCapabilities,
@@ -272,6 +280,7 @@ import {
 } from '@/api/channel';
 import {
     cardLogoKeys,
+    channelPaymentOptions,
     channelDisplayText,
     channelOptionLabel,
     currencyOptionLabel,
@@ -287,6 +296,7 @@ import {
     type SelectOption,
 } from '../shared';
 import type { IsoCurrency } from '@/api/base/currency';
+import type { IsoCountry } from '@/api/base/country';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -310,6 +320,7 @@ const transactionOptions = ref<SelectOption[]>([]);
 const payoutTransactionOptions = ref<SelectOption[]>([]);
 const cardBrandOptions = ref<SelectOption[]>([]);
 const currencyOptions = ref<IsoCurrency[]>([]);
+const countryOptions = ref<IsoCountry[]>([]);
 const INCREMENTAL_AUTH_TRANSACTION_TYPES = new Set(['AUTHORIZATION', 'PRE_AUTHORIZATION']);
 
 const query = reactive({
@@ -326,13 +337,14 @@ const emptyForm = () => ({
     id: 0,
     channelId: undefined as number | undefined,
     businessType: 'ACQUIRING',
-    paymentMethod: 'BANK_CARD',
-    paymentMethods: ['BANK_CARD'] as string[],
+    paymentMethod: '',
+    paymentMethods: [] as string[],
     transactionType: 'PAYMENT',
     transactionTypes: ['PAYMENT'] as string[],
     currencyCodes: ['USD'] as string[],
     defaultTransactionCurrency: 'USD',
     cardBrands: [] as string[],
+    countryCodes: [] as string[],
     support3ds: 1,
     supportIncrementalAuthorization: 0,
     capabilityStatus: 1,
@@ -351,15 +363,37 @@ const rules: FormRules = {
     capabilityStatus: [{ required: true, message: t('channel.capability.requiredStatus'), trigger: 'change' }],
 };
 
-const currentPaymentOptions = computed(() => paymentOptionsFor(query.businessType || 'ACQUIRING'));
-const selectedQueryPaymentLogoKeys = computed(() => {
-    const option = currentPaymentOptions.value.find((item) => item.value === query.paymentMethod);
-    return option ? paymentLogoKeys(option.value, option) : [];
+const queryPaymentOptions = computed(() => channelPaymentOptions(
+    paymentOptionsFor(query.businessType), query.businessType === 'PAYOUT' ? [] : cardBrandOptions.value, true));
+const queryPaymentOption = computed({
+    get: () => query.cardBrand ? `CARD:${query.cardBrand}` : query.paymentMethod,
+    set: (value: string) => {
+        const option = queryPaymentOptions.value.find((item) => item.value === value);
+        query.paymentMethod = option?.paymentMethod || '';
+        query.cardBrand = option?.cardBrand || '';
+    },
 });
-const selectedQueryCardBrandLogoKeys = computed(() => {
-    const option = cardBrandOptions.value.find((item) => item.value === query.cardBrand);
-    return option ? cardLogoKeys(option.value, option) : [];
+const selectedQueryPaymentLogoKeys = computed(() =>
+    queryPaymentOptions.value.find((item) => item.value === queryPaymentOption.value)?.logos || []);
+const formPaymentOptions = computed(() => channelPaymentOptions(
+    paymentOptionsFor(form.businessType), form.businessType === 'PAYOUT' ? [] : cardBrandOptions.value,
+    form.businessType === 'PAYOUT'));
+const formPaymentSelection = computed({
+    get: () => form.paymentMethods.flatMap((method) =>
+        method === 'BANK_CARD' && form.businessType === 'ACQUIRING'
+            ? form.cardBrands.map((brand) => `CARD:${brand}`) : [method]),
+    set: (values: string[]) => {
+        const selected = formPaymentOptions.value.filter((item) => values.includes(item.value));
+        form.paymentMethods = [...new Set(selected.map((item) => item.paymentMethod))];
+        if (form.businessType === 'ACQUIRING') {
+            form.cardBrands = selected.map((item) => item.cardBrand).filter(Boolean);
+        }
+        form.paymentMethod = form.paymentMethods[0] || '';
+        syncConditionalFields();
+    },
 });
+const canConfigureCountry = computed(() => form.businessType === 'ACQUIRING'
+    && form.paymentMethods.length === 1 && form.paymentMethods[0] === 'BANK_CARD');
 const isEditMode = computed(() => formMode.value === 'edit');
 const selectedChannel = computed(() => channelOptions.value.find((item) => item.id === form.channelId));
 const formBusinessOptions = computed(() => businessOptions.value.filter((item) => isBusinessSupportedByChannel(item.value, selectedChannel.value)));
@@ -418,6 +452,12 @@ async function loadData() {
         const result = await searchChannelCapabilities({ pageNo: page.value, pageSize: pageSize.value, ...query });
         rows.value = result.records;
         total.value = result.total;
+        if (!countryOptions.value.length && rows.value.some((row) => {
+            const scope = capabilityCountryScope(row);
+            return scope && scope !== 'ALL';
+        })) {
+            await loadCapabilityCountries().catch(() => undefined);
+        }
     } finally {
         loading.value = false;
     }
@@ -458,16 +498,35 @@ function resetQuery() {
 
 async function openDetail(row: ChannelCapability) {
     detailRow.value = await getChannelCapability(row.id);
+    const scope = capabilityCountryScope(detailRow.value);
+    if (scope && scope !== 'ALL') {
+        await loadCapabilityCountries().catch(() => undefined);
+    }
     detailVisible.value = true;
 }
 
-function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
+let countryRequest: Promise<void> | undefined;
+function loadCapabilityCountries() {
+    if (countryOptions.value.length) return Promise.resolve();
+    countryRequest ??= listChannelCapabilityCountries().then((countries) => {
+        countryOptions.value = countries;
+    }).finally(() => { countryRequest = undefined; });
+    return countryRequest;
+}
+
+async function openForm(mode: 'create' | 'edit', row?: ChannelCapability) {
+    try {
+        await loadCapabilityCountries();
+    } catch (error) {
+        ElMessage.error(error instanceof Error ? error.message : t('common.loadFailed'));
+    }
     formMode.value = mode;
     Object.assign(form, emptyForm(), row || {});
     form.paymentMethods = row?.paymentMethods?.length
         ? [...row.paymentMethods]
         : (row?.paymentMethod ? [row.paymentMethod] : [...form.paymentMethods]);
     form.paymentMethod = form.paymentMethods[0] || '';
+    form.countryCodes = (row?.allowedCountryScope || '').split(',').filter((code) => code && code !== 'ALL');
     syncBusinessTypeWithChannel();
     form.transactionTypes = normalizeTransactionTypes(form.businessType, form.transactionTypes, form.transactionType);
     form.transactionType = form.transactionTypes.join(',');
@@ -492,7 +551,7 @@ function handleBusinessChange() {
         syncConditionalFields();
         return;
     }
-    form.paymentMethods = [form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : 'BANK_CARD'].filter(Boolean);
+    form.paymentMethods = [form.businessType === 'PAYOUT' ? (payoutPaymentOptions.value[0]?.value || '') : ''].filter(Boolean);
     form.paymentMethod = form.paymentMethods[0] || '';
     form.transactionTypes = form.businessType === 'PAYOUT'
         ? payoutTransactionOptions.value.map((item) => item.value)
@@ -574,9 +633,18 @@ async function submitForm() {
     }
     const transactionTypes = Array.from(new Set(form.transactionTypes));
     const payload = {
-        ...form,
+        id: form.id,
+        channelId: form.channelId,
+        businessType: form.businessType,
+        currencyCodes: form.currencyCodes,
+        defaultTransactionCurrency: form.defaultTransactionCurrency,
+        cardBrands: form.cardBrands,
+        capabilityStatus: form.capabilityStatus,
+        sortOrder: form.sortOrder,
+        remark: form.remark,
         paymentMethods: Array.from(new Set(form.paymentMethods)),
         paymentMethod: form.paymentMethods[0] || '',
+        allowedCountryScope: canConfigureCountry.value ? (form.countryCodes.join(',') || 'ALL') : undefined,
         transactionTypes,
         transactionType: transactionTypes.join(','),
         support3ds: canConfigure3ds.value ? form.support3ds : 0,
@@ -675,6 +743,15 @@ function cardLogo(values?: string[]): PaymentLogoKey[] {
     return (values || []).flatMap((value) => cardLogoKeys(value, cardBrandOptions.value.find((item) => item.value === value)));
 }
 
+function capabilityCountryScope(row: ChannelCapability) {
+    return row.businessType === 'ACQUIRING' ? row.allowedCountryScope || 'ALL' : undefined;
+}
+
+function countryLabel(country: IsoCountry) {
+    const name = locale.value === 'en-US' ? country.englishName : country.chineseName;
+    return [country.flagEmoji, name, country.alpha3Code].filter(Boolean).join(' ');
+}
+
 function paymentScopeLogo(row: Pick<ChannelCapability, 'businessType' | 'paymentMethod' | 'cardBrands'>): PaymentLogoKey[] {
     if (row.paymentMethod === 'BANK_CARD') {
         return cardLogo(row.cardBrands);
@@ -699,8 +776,14 @@ function transactionTypeText(row: Pick<ChannelCapability, 'businessType' | 'tran
     return values.map((value) => optionLabel(transactionOptionsFor(row.businessType), value)).join(', ');
 }
 
+function capabilityPaymentName(row: ChannelCapability) {
+    return row.paymentMethod === 'BANK_CARD' && row.cardBrands?.length
+        ? row.cardBrands.map((code) => optionLabel(cardBrandOptions.value, code)).join(', ')
+        : optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod);
+}
+
 function capabilityStatusTargetName(row: ChannelCapability) {
-    return `${channelDisplayText(row)} ${optionLabel(paymentOptionsFor(row.businessType), row.paymentMethod)} ${transactionTypeText(row)}`.trim();
+    return `${channelDisplayText(row)} ${capabilityPaymentName(row)} ${transactionTypeText(row)}`.trim();
 }
 
 function capabilitySupportTargetName(row: ChannelCapability, field: 'support3ds' | 'supportIncrementalAuthorization') {

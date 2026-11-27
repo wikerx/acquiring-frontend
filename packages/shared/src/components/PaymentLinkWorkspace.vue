@@ -476,6 +476,14 @@
                 <p class="pl-hint">{{ t('paymentLink.allBrands') }}</p></el-form-item
               >
               <el-alert
+                v-if="amountUnavailableKeys.length"
+                class="pl-amount-warning"
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="t('paymentLink.amountUnavailable', { methods: amountUnavailableKeys.map(methodKeyName).join(t('paymentLink.methodSeparator')) })"
+              />
+              <el-alert
                 v-if="
                   options &&
                   form.currency &&
@@ -1080,6 +1088,34 @@
   }
   const currentBrands = computed(() => options.value?.cardBrandsByCurrency[form.currency] || []);
   const amountExponent = computed(() => options.value?.currencyExponents?.[form.currency] ?? 2);
+  const amountUnavailableKeys = ref<string[]>([]);
+  const amountCheckInput = computed(() => ({
+    currency: form.currency,
+    amount: form.amount,
+    paymentMethodKeys: usesMethodKeys.value
+      ? [...(form.paymentMethodKeys ?? [])]
+      : (form.cardBrands ?? []).map((brand) => `CARD_BRAND:${brand}`),
+  }));
+  watch([createOpen, amountCheckInput], ([open, input], _, onCleanup) => {
+    amountUnavailableKeys.value = [];
+    const check = props.api.amountCheck;
+    if (!open || !check || !input.currency || !input.paymentMethodKeys.length
+        || !isPaymentLinkAmountValid(input.amount, amountExponent.value)) return;
+
+    let current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const unavailable = await check(input);
+        if (current) amountUnavailableKeys.value = unavailable;
+      } catch {
+        // 创建提示是辅助信息。接口不可用时允许用户继续创建。
+      }
+    }, 350);
+    onCleanup(() => {
+      current = false;
+      window.clearTimeout(timer);
+    });
+  });
   const receiptLabels = computed(() => ({
     merchant: t('paymentLink.receiptMerchant'),
     summary: t('paymentLink.receiptSummary'),

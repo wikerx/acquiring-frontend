@@ -75,6 +75,8 @@ export const paymentLinkMessagesZh = {
   created: '支付链接已创建',
   createdUnavailable: '支付链接已创建，当前尚不可付款。',
   currentlyUnavailable: '此链接当前尚不可付款，请联系平台完成支付接入后再通知客户付款。',
+  amountUnavailable: '这些支付方式不支持当前金额：{methods}',
+  methodSeparator: '、',
   scopeHint:
     '默认全选。收银台只展示本链接勾选的支付方式，并在付款时校验可用状态。',
   chooseMethod: '请选择至少一种支付方式',
@@ -267,6 +269,8 @@ export const paymentLinkMessagesEn = {
   createdUnavailable: 'Payment link created. Payment is not currently available.',
   currentlyUnavailable:
     'Payment is not currently available for this link. Contact the platform to complete payment integration before inviting your customer to pay.',
+  amountUnavailable: 'These payment methods do not support the current amount: {methods}',
+  methodSeparator: ', ',
   scopeHint:
     'All options are selected by default. Checkout shows the methods selected for this link and rechecks availability at payment.',
   chooseMethod: 'Select at least one payment method',

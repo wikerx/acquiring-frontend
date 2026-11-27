@@ -131,6 +131,19 @@
                                 <el-option v-for="item in formBusinessOptions" :key="item.value" :label="item.label" :value="item.value" />
                             </el-select>
                         </el-form-item>
+                        <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.common.paymentMethod')" prop="paymentMethod">
+                            <el-select v-model="combinedPaymentSelection" multiple collapse-tags collapse-tags-tooltip filterable style="width:100%"
+                                :disabled="formMode === 'edit' && form.paymentMethod !== 'BANK_CARD'">
+                                <el-option v-if="formMode !== 'edit' || form.paymentMethod === 'ALL'" :label="t('channel.common.all')" value="ALL" />
+                                <el-option v-for="item in combinedPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="item.logos" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <template v-else>
                         <el-form-item :label="t('channel.common.paymentMethod')" prop="paymentMethod">
                             <el-select v-model="form.paymentMethod" filterable style="width:100%" :disabled="formMode === 'edit' || !form.businessType" @change="handlePaymentChange">
                                 <template v-if="selectedFormPaymentLogoKeys.length" #prefix>
@@ -156,6 +169,7 @@
                                 </el-option>
                             </el-select>
                         </el-form-item>
+                        </template>
                         <el-form-item :label="t('channel.alert.ruleType')" prop="ruleTypes">
                             <el-select v-model="form.ruleTypes" multiple collapse-tags collapse-tags-tooltip style="width:100%" @change="handleRuleTypesChange">
                                 <el-option v-for="item in ruleTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -276,7 +290,7 @@ import ChannelIdentity from '@/views/channel/components/ChannelIdentity.vue';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Cpu, Delete, Edit, Histogram, Lightning, Plus, Refresh, Search, Timer, View } from '@element-plus/icons-vue';
-import { PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
+import { getPaymentLogo, PaymentLogoGroup, type PaymentLogoKey } from '@acquiring/shared';
 import { useI18n } from 'vue-i18n';
 import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import AdminLinearTabs from '@/components/AdminLinearTabs/index.vue';
@@ -302,6 +316,7 @@ import {
 } from '@/api/channel-alert';
 import {
     cardLogoKeys,
+    channelPaymentOptions,
     channelDisplayText,
     channelOptionLabel,
     loadChannelOptions,
@@ -417,16 +432,20 @@ const formBusinessOptions = computed(() => {
     return businessOptions.value.filter((item) => supported.includes(item.value) || isBusinessSupportedByChannel(item.value, selectedChannel.value));
 });
 const formPaymentOptions = computed(() => {
-    const values = optionPaymentMethods.value
+    const values = new Set(optionPaymentMethods.value
         .filter((item) => item.businessType === form.businessType)
-        .map((item) => item.paymentMethod);
-    const source = form.businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
-    const options = source.filter((item) => values.includes(item.value));
-    if (formMode.value !== 'edit' || !form.paymentMethod || form.paymentMethod === 'ALL') {
-        return options;
+        .map((item) => item.paymentMethod));
+    if (formMode.value === 'edit' && form.paymentMethod && form.paymentMethod !== 'ALL') {
+        values.add(form.paymentMethod);
     }
-    const currentOption = source.find((item) => item.value === form.paymentMethod);
-    return dedupeSelectOptions(currentOption ? [currentOption, ...options] : options);
+    const source = form.businessType === 'PAYOUT' ? payoutPaymentOptions.value : acquiringPaymentOptions.value;
+    const options = source.filter((item) => values.delete(item.value));
+    for (const value of values) {
+        const logos = paymentLogoKeys(value);
+        const label = logos.length === 1 ? getPaymentLogo(logos[0]).textFallback : value.replaceAll('_', ' ');
+        options.push({ value, label });
+    }
+    return options;
 });
 const formCardBrandOptions = computed(() => {
     const options = cardBrandOptions.value.filter((item) => optionCardBrands.value.includes(item.value));
@@ -435,6 +454,24 @@ const formCardBrandOptions = computed(() => {
     }
     const currentOptions = cardBrandOptions.value.filter((item) => form.cardBrands.includes(item.value));
     return dedupeSelectOptions([...currentOptions, ...options]);
+});
+const combinedPaymentOptions = computed(() => channelPaymentOptions(
+    formPaymentOptions.value.filter((item) => formMode.value !== 'edit' || item.value === form.paymentMethod),
+    formCardBrandOptions.value, true));
+const combinedPaymentSelection = computed({
+    get: () => form.paymentMethod === 'BANK_CARD' && !form.cardBrands.includes('ALL') && form.cardBrands.length
+        ? form.cardBrands.map((brand) => `CARD:${brand}`) : [form.paymentMethod].filter(Boolean),
+    set: (values: string[]) => {
+        const last = combinedPaymentOptions.value.find((item) => item.value === values.at(-1));
+        if (formMode.value === 'edit' && last?.paymentMethod !== form.paymentMethod) {
+            if (!values.length && form.paymentMethod === 'BANK_CARD') form.cardBrands = ['ALL'];
+            return;
+        }
+        form.paymentMethod = last?.paymentMethod || 'ALL';
+        form.cardBrands = last?.cardBrand
+            ? combinedPaymentOptions.value.filter((item) => item.cardBrand && values.includes(item.value)).map((item) => item.cardBrand)
+            : ['ALL'];
+    },
 });
 const isBankCardPayment = computed(() => form.paymentMethod === 'BANK_CARD');
 const selectedFormPaymentLogoKeys = computed(() => {
@@ -473,12 +510,6 @@ onMounted(async () => {
 
 watch(locale, () => loadOptions());
 
-watch(() => form.channelId, async (value) => {
-    if (value) {
-        await loadRuleOptions();
-    }
-});
-
 async function loadOptions() {
     const lang = String(locale.value || 'zh-CN');
     const [channels, business, acquiringPayments, payoutPayments, cardBrands, ruleTypes, alertLevels] = await Promise.all([
@@ -500,7 +531,9 @@ async function loadOptions() {
 }
 
 async function loadRuleOptions(keyword = '') {
-    const result = await getChannelAlertRuleOptions({ channelId: form.channelId, businessType: form.businessType || undefined, keyword: keyword || undefined });
+    const { channelId, businessType } = form;
+    const result = await getChannelAlertRuleOptions({ channelId, businessType: businessType || undefined, keyword: keyword || undefined });
+    if (form.channelId !== channelId || form.businessType !== businessType) return;
     optionPaymentMethods.value = result.paymentMethods || [];
     optionCardBrands.value = result.cardBrands || [];
     userEmailOptions.value = mergeUserEmailOptions(userEmailOptions.value, result.userEmails || []);
@@ -611,15 +644,15 @@ function dedupeSelectOptions(options: SelectOption[]) {
 
 async function handleChannelChange() {
     syncBusinessTypeWithChannel();
-    await loadRuleOptions();
-    form.paymentMethod = 'ALL';
-    handlePaymentChange();
+    await handleBusinessTypeChange();
 }
 
 async function handleBusinessTypeChange() {
-    await loadRuleOptions();
+    optionPaymentMethods.value = [];
+    optionCardBrands.value = [];
     form.paymentMethod = 'ALL';
     handlePaymentChange();
+    await loadRuleOptions();
 }
 
 function handlePaymentChange() {

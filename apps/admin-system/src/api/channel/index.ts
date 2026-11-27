@@ -1,3 +1,5 @@
+import type { IsoCountry } from '@/api/base/country';
+import type { MccOption } from '@/api/base/mcc';
 import { loadPrivateImageBlob } from '@/utils/download';
 import type { CommonResult, PageQuery, PageResult } from '@acquiring/shared';
 import { unwrapResult } from '@acquiring/shared';
@@ -62,6 +64,7 @@ export interface ChannelCapability {
     transactionTypes?: string[];
     currencyCodes: string[];
     defaultTransactionCurrency: string;
+    allowedCountryScope?: string;
     cardBrands: string[];
     support3ds: number;
     supportIncrementalAuthorization: number;
@@ -91,6 +94,17 @@ export interface ChannelLimitRule {
     updateTime?: string;
 }
 
+export interface MidPaymentCapability {
+    paymentMethod: string;
+    cardBrands: string[];
+    transactionTypes: string[];
+    currencyCodes: string[];
+    defaultTransactionCurrency?: string;
+    allowedCountryScope: string;
+    legacyAllowedCountryScope?: string;
+    enabled: boolean;
+}
+
 export interface ChannelMidConfig {
     id: number;
     channelId: number;
@@ -105,6 +119,10 @@ export interface ChannelMidConfig {
     transactionTypeScope: string;
     currencyScope: string;
     allowedCountryScope: string;
+    inheritTransactionCurrency?: boolean;
+    paymentCapabilities?: MidPaymentCapability[];
+    effectiveCurrencyCodes?: string[];
+    effectiveDefaultTransactionCurrencies?: string[];
     defaultTransactionCurrency: string;
     defaultSettlementCurrency: string;
     settlementCycle: string;
@@ -231,6 +249,11 @@ export async function getChannelCapability(id: number) {
     return unwrapResult(result.data);
 }
 
+export async function listChannelCapabilityCountries() {
+    const result = await http.get<CommonResult<IsoCountry[]>>('/admin/channel/capabilities/country-options');
+    return unwrapResult(result.data);
+}
+
 export async function createChannelCapability(data: Partial<ChannelCapability>) {
     const result = await http.post<CommonResult<ChannelCapability>>('/admin/channel/capabilities', data);
     return unwrapResult(result.data);
@@ -303,6 +326,11 @@ export async function searchChannelMids(data: ChannelMidConfigQuery) {
 
 export async function getChannelMid(id: number) {
     const result = await http.get<CommonResult<ChannelMidConfig>>(`/admin/channel/mids/${id}`);
+    return unwrapResult(result.data);
+}
+
+export async function listChannelMidMccOptions() {
+    const result = await http.get<CommonResult<MccOption[]>>('/admin/channel/mids/mcc-options');
     return unwrapResult(result.data);
 }
 

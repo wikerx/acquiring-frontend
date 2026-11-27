@@ -103,8 +103,9 @@
                                         class="checkout-country-select__button"
                                         type="button"
                                         :aria-expanded="countryDropdownOpen"
-                                        :disabled="countryOptions.length === 0"
+                                        :disabled="countryOptions.length === 0 || submitting || walletAuthorizationLoading"
                                         :aria-label="t('checkout.country')"
+                                        :aria-invalid="Boolean(fieldErrors.country)"
                                         @keydown.esc="countryDropdownOpen = false"
                                         @click="countryDropdownOpen = !countryDropdownOpen"
                                     >
@@ -512,6 +513,28 @@
             </article>
         </section>
 
+        <dialog
+            ref="amountLimitDialog"
+            class="checkout-status-card checkout-amount-limit-dialog"
+            aria-labelledby="checkout-amount-limit-title"
+            aria-describedby="checkout-amount-limit-message"
+            @close="resumeAfterAmountLimit"
+        >
+            <div class="checkout-amount-limit-dialog__icon" aria-hidden="true">
+                <img :src="failedStatusIcon" alt="" width="36" height="36" />
+            </div>
+            <h2 id="checkout-amount-limit-title" class="checkout-amount-limit-dialog__title">
+                {{ t('checkout.amountLimitTitle') }}
+            </h2>
+            <p id="checkout-amount-limit-message" class="checkout-status-description">
+                {{ t('checkout.amountLimitMessage') }}
+            </p>
+            <form method="dialog" class="checkout-status-actions">
+                <button class="checkout-status-button checkout-status-button--primary" type="submit" autofocus>
+                    {{ t('checkout.amountLimitAction') }}
+                </button>
+            </form>
+        </dialog>
         <CheckoutTrustFooter />
     </main>
 </template>
@@ -543,7 +566,7 @@ import CheckoutTopbar from './components/CheckoutTopbar.vue';
 import { downloadReceiptPdf } from './utils/receiptPdf';
 import { resolveMerchantPostUrl, resolveWalletAuthorizationUrl } from './utils/urlSecurity';
 import PaymentMethodCarousel from './components/PaymentMethodCarousel.vue';
-import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutResultLogoKeys } from './utils/checkoutPresentation';
+import { checkoutCountryCode, checkoutMerchantLogoKeys, checkoutPaymentLogoKeys, checkoutResultLogoKeys, filterCheckoutPaymentMethods } from './utils/checkoutPresentation';
 import { cardEncryptionSupported, encryptCheckoutCardData } from './utils/cardEncryption';
 
 type CheckoutRuntimeState = 'loading' | 'checkout' | 'threeDs' | 'success' | 'failed' | 'pending' | 'processing' | 'blocked';
@@ -680,9 +703,10 @@ const statusViewState = computed<CheckoutStatusViewState>(() => {
 });
 
 const processingStatusIcon = resolveTransactionStatusIcon('PROCESSING');
+const failedStatusIcon = resolveTransactionStatusIcon('FAILED');
 const resultStatusIcon = computed(() => {
     if (statusViewState.value === 'failed') {
-        return resolveTransactionStatusIcon('FAILED');
+        return failedStatusIcon;
     }
     if (statusViewState.value === 'pending') {
         return resolveTransactionStatusIcon('PENDING');
@@ -693,7 +717,7 @@ const session = ref<HostedCheckoutSession | null>(null);
 const paymentResult = ref<HostedCheckoutPaymentResult | null>(null);
 const selectedPaymentMethod = ref('');
 const countryOptions = ref<CheckoutCountryConfig[]>([]);
-const selectedCountryCode = ref('USA');
+const selectedCountryCode = ref('');
 const countryManuallySelected = ref(false);
 const countrySearch = ref('');
 const filteredCountries = computed(() => {
@@ -730,6 +754,8 @@ const receiptPage = ref<HTMLElement>();
 const receiptDownloading = ref(false);
 const receiptError = ref('');
 const attemptRequestId = ref(createAttemptRequestId());
+const amountLimitDialog = ref<HTMLDialogElement | null>(null);
+const SINGLE_AMOUNT_LIMIT = 'T4001';
 const resolvedCardBin = ref('');
 const resolvedCardBrand = ref('');
 const resolvedCardSupported = ref<boolean | null>(null);
@@ -840,7 +866,11 @@ const selectedCountryLabel = computed(() => (
 const supportedPaymentMethods = computed<PaymentOption[]>(() => {
     const sessionMethods = session.value?.paymentOptions;
     const defaults = session.value?.paymentMethods || [];
-    const methods = sessionMethods ?? defaults.filter((method) => normalizeCode(method.paymentMethod) === 'BANK_CARD');
+    const methods = filterCheckoutPaymentMethods(
+        sessionMethods ?? defaults.filter((method) => normalizeCode(method.paymentMethod) === 'BANK_CARD'),
+        session.value?.paymentCountryScopes,
+        selectedCountryCode.value,
+    );
     const grouped = new Map<string, HostedCheckoutPaymentMethod>();
     for (const method of methods) {
         const code = normalizeCode(method.paymentMethod);
@@ -861,11 +891,9 @@ const supportedPaymentMethods = computed<PaymentOption[]>(() => {
         ...options.filter((method) => method.paymentMethod !== 'BANK_CARD'),
     ];
 });
-const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => checkoutMerchantLogoKeys(
-    session.value?.merchant,
-    session.value?.paymentMethods || [],
-    resolvePaymentLogoKeys,
-));
+const trustbarLogoKeys = computed<PaymentLogoKey[]>(() => session.value?.paymentCountryScopes != null
+    ? checkoutPaymentLogoKeys(supportedPaymentMethods.value, resolvePaymentLogoKeys)
+    : checkoutMerchantLogoKeys(session.value?.merchant, session.value?.paymentMethods || [], resolvePaymentLogoKeys));
 
 const refreshingCardSetup = ref(false);
 const cardSetupFailed = ref(false);
@@ -1031,6 +1059,9 @@ watch(selectedPaymentMethod, () => {
     walletAuthorizationState.value = null;
     walletAuthorizationLoading.value = false;
     walletAuthorizationError.value = '';
+    if (selectedPaymentMethod.value === 'BANK_CARD' && resolvedCardBrand.value) {
+        applyCardBrandValidation();
+    }
 }, { flush: 'sync' });
 const statusPaymentLogoKeys = computed<PaymentLogoKey[]>(() => checkoutResultLogoKeys(
     paymentResult.value?.result?.paymentMethod,
@@ -1045,14 +1076,19 @@ const pollingIntervalSeconds = computed(() => (
 ));
 
 let initialPaymentChoiceMade = false;
-watch(supportedPaymentMethods, (methods) => {
+watch(supportedPaymentMethods, (methods, previous) => {
+    if (previous?.some((method) => method.paymentMethod === 'BANK_CARD')
+        && !methods.some((method) => method.paymentMethod === 'BANK_CARD')) {
+        clearSensitiveCardData();
+    }
     if (!initialPaymentChoiceMade && methods.length > 0) {
         initialPaymentChoiceMade = true;
         selectedPaymentMethod.value = methods.find((method) => method.paymentMethod === 'BANK_CARD'
             && ['READY', 'LOAD_FAILED', 'LOADING'].includes(method.componentState))?.id
             || methods.find((method) => method.componentState === 'REDIRECT_AVAILABLE')?.id
             || methods[0]?.id || '';
-    } else if (selectedPaymentMethod.value && !methods.some((method) => method.id === selectedPaymentMethod.value)) {
+    } else if (selectedPaymentMethod.value
+        && !methods.some((method) => method.id === selectedPaymentMethod.value)) {
         selectedPaymentMethod.value = '';
         formMessageKey.value = methods.length ? 'checkout.paymentMethodChanged' : '';
     }
@@ -1067,10 +1103,15 @@ function closeCountryOutside(event: PointerEvent) {
 }
 
 function handleCountryChange(countryCode: string) {
+    if (submitting.value || walletAuthorizationLoading.value) return;
     selectedCountryCode.value = countryCode;
     countryDropdownOpen.value = false;
     countryManuallySelected.value = true;
     countrySearch.value = '';
+    delete fieldErrors.country;
+    if (resolvedCardBrand.value && selectedMethod.value?.paymentMethod === 'BANK_CARD') {
+        applyCardBrandValidation();
+    }
 }
 
 function applyLocale(value: CheckoutLocale, manual: boolean) {
@@ -1133,11 +1174,14 @@ async function loadCountries() {
     } catch {
         countryLoadFailed.value = true;
         countryOptions.value = [];
-        selectedCountryCode.value = '';
     } finally {
         countryLoading.value = false;
     }
-    selectedCountryCode.value = checkoutCountryCode(countryOptions.value, selectedCountryCode.value);
+    if (countryOptions.value.length) {
+        selectedCountryCode.value = checkoutCountryCode(
+            countryOptions.value, selectedCountryCode.value, session.value?.paymentCountryScopes == null,
+        );
+    }
 }
 
 async function initializeCheckout() {
@@ -1202,8 +1246,10 @@ function hydrateSession(response: HostedCheckoutSession) {
 function hydratePrefill(response: HostedCheckoutSession) {
     const prefill = response.billingInfo || response.payerInfo;
     if (!countryManuallySelected.value) {
-        const country = response.billingInfo?.country || response.payerInfo?.country || 'USA';
-        selectedCountryCode.value = countryOptions.value.length ? checkoutCountryCode(countryOptions.value, country) : normalizeCode(country);
+        const country = response.billingInfo?.country || response.payerInfo?.country;
+        selectedCountryCode.value = countryOptions.value.length
+            ? checkoutCountryCode(countryOptions.value, country, response.paymentCountryScopes == null)
+            : normalizeCode(country);
     }
     if (!prefill) {
         return;
@@ -1236,6 +1282,7 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
     if (action === 'PREPARE' && walletAuthorizationState.value) return;
     if (action === 'OPEN' && walletAuthorizationState.value !== 'READY') return;
     let billingCardHolderInfo;
+    let payerCountry;
     if (checkout.paymentLink && action !== 'STATUS') {
         clearFieldErrors();
         validatePayerDetails();
@@ -1245,6 +1292,13 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
             return;
         }
         billingCardHolderInfo = checkoutBillingInfo();
+    } else if (checkout.paymentCountryScopes != null && action !== 'STATUS') {
+        if (!selectedCountryCode.value) {
+            fieldErrors.country = validationError('required');
+            countrySelectRoot.value?.querySelector('button')?.focus();
+            return;
+        }
+        payerCountry = selectedCountryCode.value;
     }
     const sequence = ++walletAuthorizationSequence;
     walletAuthorizationError.value = '';
@@ -1252,24 +1306,30 @@ async function runWalletAuthorization(action: WalletAuthorizationAction) {
     walletAuthorizationLoading.value = action === 'PREPARE';
     submitting.value = action !== 'PREPARE';
     try {
-        let { state, redirectUrl } = await authorizeCheckoutWallet({
+        let { state, redirectUrl, reasonCode } = await authorizeCheckoutWallet({
             opaqueToken: routeToken.value, checkoutSessionId: checkout.checkoutSessionId,
-            paymentMethod: selected.paymentMethod, action, billingCardHolderInfo,
+            paymentMethod: selected.paymentMethod, action, billingCardHolderInfo, payerCountry,
+            attemptRequestId: action === 'PREPARE' ? attemptRequestId.value : undefined,
         });
         if (sequence !== walletAuthorizationSequence || session.value !== checkout
             || paymentSubmissionExpired(checkout.checkout)) return;
         if (action === 'PREPARE' && state === 'READY') {
             walletAuthorizationLoading.value = false;
             submitting.value = true;
-            ({ state, redirectUrl } = await authorizeCheckoutWallet({
+            ({ state, redirectUrl, reasonCode } = await authorizeCheckoutWallet({
                 opaqueToken: routeToken.value,
                 checkoutSessionId: checkout.checkoutSessionId,
                 paymentMethod: selected.paymentMethod,
                 action: 'OPEN',
                 billingCardHolderInfo,
+                payerCountry,
             }));
             if (sequence !== walletAuthorizationSequence || session.value !== checkout
                 || paymentSubmissionExpired(checkout.checkout)) return;
+        }
+        if (state === 'FAILED' && reasonCode === SINGLE_AMOUNT_LIMIT) {
+            showAmountLimit();
+            return;
         }
         if (state === 'READY') {
             const approvalUrl = resolveWalletAuthorizationUrl(redirectUrl);
@@ -1387,6 +1447,7 @@ async function handleSubmitPayment() {
             clientContext: buildClientContext(),
         });
         handlePaymentResult(response);
+        if (response.failure?.reasonCode === SINGLE_AMOUNT_LIMIT) showAmountLimit();
     } catch {
         clearThreeDsContinuation();
         if (isDevToken(routeToken.value)) {
@@ -1607,6 +1668,9 @@ function clearSensitiveCardData() {
     cardForm.cardNumber = '';
     cardForm.expiry = '';
     cardForm.cvc = '';
+    delete fieldErrors.cardNumber;
+    delete fieldErrors.expiry;
+    delete fieldErrors.cvc;
     resetCardBinResolution();
 }
 
@@ -1806,6 +1870,18 @@ function clearPaymentDeadline() {
     }
 }
 
+function showAmountLimit() {
+    clearSensitiveCardData();
+    const dialog = amountLimitDialog.value;
+    if (dialog && !dialog.open) dialog.showModal();
+}
+
+async function resumeAfterAmountLimit() {
+    await retryPayment();
+    await nextTick();
+    paymentList.value?.querySelector<HTMLButtonElement>('.checkout-payment-option__select')?.focus();
+}
+
 async function retryPayment() {
     clearPolling();
     formMessageKey.value = '';
@@ -1875,6 +1951,7 @@ async function refreshSessionEncryption() {
             merchant: response.merchant ?? session.value.merchant,
             paymentOptions: response.paymentOptions,
             paymentMethods: response.paymentMethods,
+            paymentCountryScopes: response.paymentCountryScopes,
             cardEncryption: response.cardEncryption,
         };
         cardSetupFailed.value = !response.cardEncryption;
@@ -2016,8 +2093,7 @@ async function ensureCardBrandSupported(): Promise<boolean> {
     }
     const cardBin = cardBinPrefix(cardNumber);
     if (resolvedCardBin.value === cardBin && resolvedCardSupported.value !== null) {
-        applyCardBrandValidation();
-        return resolvedCardSupported.value;
+        return applyCardBrandValidation();
     }
     const requestSequence = ++cardBinRequestSequence;
     try {
@@ -2040,8 +2116,7 @@ async function ensureCardBrandSupported(): Promise<boolean> {
             resolvedCardBrand.value = result.recognized && cardBrand ? cardBrand : 'UNKNOWN';
             resolvedCardSupported.value = resolvedCardBrand.value !== 'UNKNOWN' && result.supported;
         }
-        applyCardBrandValidation();
-        return resolvedCardSupported.value === true;
+        return applyCardBrandValidation();
     } catch {
         if (requestSequence === cardBinRequestSequence) {
             fieldErrors.cardNumber = validationError('cardBrandUnavailable');
@@ -2051,19 +2126,21 @@ async function ensureCardBrandSupported(): Promise<boolean> {
 }
 
 function applyCardBrandValidation() {
-    if (resolvedCardSupported.value === true) {
-        delete fieldErrors.cardNumber;
-        return;
-    }
     const brand = resolvedCardBrand.value;
+    if (resolvedCardSupported.value === true && (session.value?.paymentCountryScopes == null
+        || selectedMethod.value?.brands.includes(brand))) {
+        delete fieldErrors.cardNumber;
+        return true;
+    }
     if (brand === 'UNKNOWN') {
         fieldErrors.cardNumber = validationError('cardBrandUnrecognized');
-        return;
+        return false;
     }
     const logoKey = CARD_BRAND_LOGOS[brand];
     fieldErrors.cardNumber = validationError('cardBrandUnsupported', {
         brand: logoKey ? getPaymentLogo(logoKey).textFallback : brand,
     });
+    return false;
 }
 
 function resetCardBinResolution() {
@@ -2226,6 +2303,7 @@ function toPaymentOption(method: HostedCheckoutPaymentMethod): PaymentOption {
         componentState,
     };
 }
+
 
 function resolvePaymentComponentState(method: HostedCheckoutPaymentMethod, isCard: boolean): PaymentComponentState {
     if (!isCard && method.executionStatus === 'REDIRECT_AVAILABLE') return 'REDIRECT_AVAILABLE';

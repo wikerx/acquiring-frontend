@@ -55,16 +55,43 @@ export function checkoutReceiptIdentity(
     : { kind: 'attempt' as const, value: attemptId || '—' };
 }
 
-/** 默认美国；同时接受字典的两位代码和付款契约的三位代码，不依赖字典排序。 */
+/** 将接口预填的两位或三位代码转换为付款契约所用格式。旧会话可保留美国默认值。 */
 export function checkoutCountryCode(
   countries: Array<{ countryCode: string; countryCodeAlpha3: string }>,
   supplied?: string,
+  useLegacyDefault = true,
 ): string {
   const code = supplied?.trim().toUpperCase();
   return (
     countries.find((country) => country.countryCode === code || country.countryCodeAlpha3 === code)
       ?.countryCodeAlpha3 ||
-    countries.find((country) => country.countryCodeAlpha3 === 'USA')?.countryCodeAlpha3 ||
+    (useLegacyDefault ? countries.find((country) => country.countryCodeAlpha3 === 'USA')?.countryCodeAlpha3 : '') ||
     ''
   );
+}
+
+/** 每次从完整会话候选筛选。缺少范围的旧数据仍按原方式展示。 */
+export function filterCheckoutPaymentMethods<T extends { paymentMethod: string; brands?: string[] }>(
+  methods: T[],
+  scopes: Record<string, Record<string, boolean>> | null | undefined,
+  country: string,
+): T[] {
+  if (!scopes || !country) {
+    return methods;
+  }
+  const allows = (key: string) => {
+    const scope = scopes[key];
+    return (scope?.[country] ?? scope?.ALL) !== false;
+  };
+  return methods.flatMap((method) => {
+    const code = method.paymentMethod.trim().toUpperCase();
+    if (code !== 'BANK_CARD') {
+      return allows(`METHOD:${code}`) ? [method] : [];
+    }
+    if (!method.brands?.length) {
+      return [method];
+    }
+    const brands = method.brands.filter((brand) => allows(`CARD_BRAND:${brand.trim().toUpperCase()}`));
+    return brands.length ? [{ ...method, brands }] : [];
+  });
 }

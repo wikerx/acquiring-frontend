@@ -7,8 +7,23 @@
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.mid.channelMid')">
-                <el-select v-model="query.channelMid" :placeholder="t('channel.mid.channelMidPlaceholder')" clearable filterable>
-                    <el-option v-for="item in midQueryOptions" :key="item.id" :label="midQueryOptionLabel(item)" :value="item.channelMid" />
+                <el-select :key="query.channelId ?? 'all'" v-model="selectedMidQueryId" :placeholder="t('channel.mid.channelMidPlaceholder')" clearable filterable remote
+                    :remote-method="loadMidQueryOptions" :loading="midQueryLoading"
+                    :popper-style="{ width: 'min(360px, calc(100vw - 24px))' }">
+                    <template #label="{ label }">
+                        <span class="mid-query-option" :title="String(label)">
+                            <ChannelIdentity v-if="selectedMidQuery" class="mid-query-option__logo" :record="selectedMidQuery"
+                                :fallback="channelDisplayText(selectedMidQuery)" scope="MID" inert />
+                            <span class="mid-query-option__code">{{ label }}</span>
+                        </span>
+                    </template>
+                    <el-option v-for="item in midQueryOptions" :key="item.id" :label="item.channelMid" :value="item.id"
+                        :aria-label="`${item.channelMid} · ${channelDisplayText(item)}`">
+                        <span class="mid-query-option" :title="item.channelMid">
+                            <ChannelIdentity class="mid-query-option__logo" :record="item" :fallback="channelDisplayText(item)" scope="MID" inert />
+                            <span class="mid-query-option__code">{{ item.channelMid }}</span>
+                        </span>
+                    </el-option>
                 </el-select>
             </el-form-item>
             <el-form-item :label="t('channel.common.businessType')">
@@ -52,22 +67,23 @@
             <el-table-column prop="currencyScope" :label="t('channel.mid.currencyScope')" min-width="250" align="center">
                 <template #default="{ row }">
                     <ChannelCurrencyScopeDisplay
-                        :currencies="currencyScopeTooltipCodes(row.currencyScope)"
+                        :currencies="row.effectiveCurrencyCodes ?? currencyScopeTooltipCodes(row.currencyScope)"
                         :label="t('channel.mid.currencyScope')"
                         :locale="String(locale)"
-                        :summary-label="isAllCurrencyScope(row.currencyScope) ? t('channel.mid.allScope') : ''"
+                        :summary-label="!row.effectiveCurrencyCodes && isAllCurrencyScope(row.currencyScope) ? t('channel.mid.allScope') : ''"
                     />
                 </template>
             </el-table-column>
             <el-table-column prop="defaultTransactionCurrency" :label="t('channel.mid.defaultTransactionCurrency')" min-width="190" align="center">
                 <template #default="{ row }">
-                    <span class="default-currency-display">
-                        <CurrencyDisplay :currency="row.defaultTransactionCurrency" :locale="String(locale)" size="xs" variant="soft" />
+                    <span v-for="currency in row.effectiveDefaultTransactionCurrencies ?? [row.defaultTransactionCurrency]" :key="currency" class="default-currency-display">
+                        <CurrencyDisplay :currency="currency" :locale="String(locale)" size="xs" variant="soft" />
                         <span class="default-currency-display__badge">
                             <el-icon><Check /></el-icon>
                             {{ t('channel.capability.defaultBadge') }}
                         </span>
                     </span>
+                    <span v-if="row.effectiveDefaultTransactionCurrencies?.length === 0">—</span>
                 </template>
             </el-table-column>
             <el-table-column prop="defaultSettlementCurrency" :label="t('channel.mid.defaultSettlementCurrency')" min-width="190" align="center">
@@ -75,6 +91,9 @@
             </el-table-column>
             <el-table-column prop="settlementCycle" :label="t('channel.mid.settlementCycle')" width="100" align="center" />
             <el-table-column prop="mcc" label="MCC" width="90" align="center" />
+            <el-table-column prop="statementDescriptor" :label="t('channel.mid.statementDescriptor')" min-width="176" show-overflow-tooltip>
+                <template #default="{ row }">{{ row.statementDescriptor?.trim() || '—' }}</template>
+            </el-table-column>
             <el-table-column :label="t('channel.common.status')" width="90" align="center">
                 <template #default="{ row }"><el-switch :model-value="row.midStatus" :active-value="1" :inactive-value="0" @change="toggleStatus(row)" v-hasPermi="'channel:mid:status'" /></template>
             </el-table-column>
@@ -92,7 +111,7 @@
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background @size-change="loadData" @current-change="loadData" />
         </div>
 
-        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.mid.detailTitle')" size="lg">
+        <CommonDetailDrawer v-model:visible="detailVisible" :title="t('channel.mid.detailTitle')" size="xl" class="channel-mid-detail-drawer">
             <div v-if="detailRow" class="mid-detail">
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.common.channel') }}</span><div class="mid-detail__value"><ChannelIdentity :record="detailRow" :fallback="channelDisplayText(detailRow)" scope="MID" size="detail" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.channelMid') }}</span><div class="mid-detail__value">{{ detailRow.channelMid }}</div></div>
@@ -121,6 +140,45 @@
                         <span v-else>-</span>
                     </div>
                 </div>
+                <section v-if="detailRow.businessType === 'ACQUIRING'" class="mid-detail__capabilities">
+                    <h3>{{ t('channel.mid.inheritedPaymentCapabilities') }}</h3>
+                    <el-table :data="detailRow.paymentCapabilities || []" size="small" stripe
+                        :row-key="(row: MidPaymentCapability) => [row.paymentMethod, ...row.cardBrands].join(':')">
+                        <el-table-column :label="t('channel.mid.paymentMethodScope')" min-width="154" align="center">
+                            <template #default="{ row }">
+                                <div class="payment-scope-cell">
+                                    <ChannelPaymentScopeDisplay :entries="inheritedPaymentEntries(row)" :label="t('channel.mid.paymentMethodScope')" />
+                                    <el-tag v-if="!row.enabled" size="small" effect="plain">{{ t('channel.mid.capabilityUnavailable') }}</el-tag>
+                                </div>
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('channel.mid.transactionTypeScope')" min-width="250" align="center">
+                            <template #default="{ row }">
+                                <ChannelTransactionScopeDisplay :items="transactionScopeItems('ACQUIRING', row.transactionTypes.join(','))"
+                                    :label="t('channel.mid.transactionTypeScope')" />
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('channel.mid.currencyScope')" min-width="225" align="center">
+                            <template #default="{ row }">
+                                <ChannelCurrencyScopeDisplay :currencies="row.currencyCodes" :label="t('channel.mid.currencyScope')" :locale="String(locale)" />
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('channel.mid.defaultTransactionCurrency')" min-width="128" align="center">
+                            <template #default="{ row }">
+                                <CurrencyDisplay v-if="row.defaultTransactionCurrency" :currency="row.defaultTransactionCurrency"
+                                    :locale="String(locale)" size="xs" variant="soft" />
+                                <span v-else>—</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('channel.mid.allowedCountryScope')" min-width="156" align="center">
+                            <template #default="{ row }">
+                                <ChannelCountryScopeDisplay :scope="effectiveCountryScope(row.allowedCountryScope, row.legacyAllowedCountryScope)"
+                                    :options="countryOptions" :unrestricted-label="t('channel.mid.allCountries')" />
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </section>
+                <template v-else>
                 <div class="mid-detail__item">
                     <span class="mid-detail__label">{{ t('channel.mid.currencyScope') }}</span>
                     <div class="mid-detail__value">
@@ -131,8 +189,9 @@
                         <span v-else>-</span>
                     </div>
                 </div>
-                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.allowedCountryScope') }}</span><div class="mid-detail__value">{{ countryScopeText(detailRow.allowedCountryScope) }}</div></div>
+                <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.allowedCountryScope') }}</span><div class="mid-detail__value"><ChannelCountryScopeDisplay :scope="detailRow.allowedCountryScope" :options="countryOptions" :unrestricted-label="t('channel.mid.allCountries')" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultTransactionCurrency') }}</span><div class="mid-detail__value"><CurrencyDisplay :currency="detailRow.defaultTransactionCurrency" :locale="String(locale)" show-name size="sm" variant="soft" /></div></div>
+                </template>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.defaultSettlementCurrency') }}</span><div class="mid-detail__value"><CurrencyDisplay :currency="detailRow.defaultSettlementCurrency" :locale="String(locale)" show-name size="sm" variant="soft" /></div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCycle') }}</span><div class="mid-detail__value">{{ detailRow.settlementCycle }}</div></div>
                 <div class="mid-detail__item"><span class="mid-detail__label">{{ t('channel.mid.settlementCutoffTime') }}</span><div class="mid-detail__value">{{ detailRow.settlementCutoffTime || '-' }}</div></div>
@@ -177,7 +236,7 @@
                             </el-select>
                         </el-form-item>
                         <el-form-item :label="t('channel.common.businessType')" prop="businessType">
-                            <el-select v-model="form.businessType" style="width:100%" @change="handleBusinessTypeChange">
+                            <el-select v-model="form.businessType" style="width:100%" :disabled="formMode === 'edit' && form.businessType === 'ACQUIRING'" @change="handleBusinessTypeChange">
                                 <el-option v-for="item in availableBusinessOptions" :key="item.value" :label="item.label" :value="item.value" />
                             </el-select>
                         </el-form-item>
@@ -185,7 +244,7 @@
                             <el-input v-model.trim="form.channelMid" :placeholder="t('channel.mid.channelMidPlaceholder')" maxlength="128" show-word-limit />
                         </el-form-item>
                         <el-form-item :label="t('channel.mid.terminalId')"><el-input v-model.trim="form.terminalId" maxlength="128" /></el-form-item>
-                        <el-form-item label="MCC">
+                        <el-form-item label="MCC" prop="mcc">
                             <el-select v-model="form.mcc" :placeholder="t('channel.mid.mccPlaceholder')" clearable filterable style="width:100%">
                                 <el-option v-for="item in mccOptions" :key="item.code" :label="mccOptionLabel(item)" :value="item.code" />
                             </el-select>
@@ -196,8 +255,19 @@
                 <div class="form-section">
                     <div class="form-section__title">{{ t('channel.mid.capabilitySection') }}</div>
                     <div class="form-grid">
-                        <el-form-item :label="t('channel.mid.paymentMethodScope')" prop="paymentScopes">
+                        <el-form-item :label="form.businessType === 'ACQUIRING' ? t('channel.common.paymentMethod') : t('channel.mid.paymentMethodScope')" prop="paymentScopes">
+                            <el-select v-if="form.businessType === 'ACQUIRING'" v-model="form.paymentScopes"
+                                multiple collapse-tags collapse-tags-tooltip filterable style="width:100%"
+                                :placeholder="t('channel.mid.paymentMethodPlaceholder')" @change="handlePaymentScopeChange">
+                                <el-option v-for="item in acquiringScopeOptions" :key="item.value" :label="item.label" :value="item.value">
+                                    <div class="channel-option-display">
+                                        <PaymentLogoGroup :keys="item.logos" fallback="text" size="sm" :wrap="false" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </el-option>
+                            </el-select>
                             <el-tree-select
+                                v-else
                                 v-model="form.paymentScopes"
                                 :data="paymentScopeTree"
                                 multiple
@@ -212,6 +282,10 @@
                                 @change="handlePaymentScopeChange"
                             />
                         </el-form-item>
+                        <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.mid.inheritedPaymentCapabilities')">
+                            <span class="inline-hint">{{ t('channel.mid.inheritedPaymentScopeHint') }}</span>
+                        </el-form-item>
+                        <template v-else>
                         <el-form-item :label="t('channel.mid.currencyScope')" prop="currencyCodes">
                             <el-select v-model="form.currencyCodes" multiple filterable collapse-tags collapse-tags-tooltip :placeholder="t('channel.mid.currencySelectPlaceholder')" style="width:100%" @change="handleCurrencyScopeChange">
                                 <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
@@ -232,6 +306,7 @@
                                 <el-option v-for="item in countryOptions" :key="item.alpha3Code" :label="countryOptionLabel(item)" :value="item.alpha3Code" />
                             </el-select>
                         </el-form-item>
+                        </template>
                         <el-form-item :label="t('channel.mid.defaultSettlementCurrency')" prop="defaultSettlementCurrency">
                             <el-select v-model="form.defaultSettlementCurrency" filterable :placeholder="t('channel.mid.defaultSettlementCurrencyPlaceholder')" style="width:100%">
                                 <el-option v-for="item in currencyOptions" :key="item.alpha3Code" :label="currencyOptionLabel(item)" :value="item.alpha3Code">
@@ -313,15 +388,18 @@ import BaseDateTime from '@/components/BaseDateTime/index.vue';
 import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
+import ChannelCountryScopeDisplay from '@/views/channel/components/ChannelCountryScopeDisplay.vue';
+import ChannelTransactionScopeDisplay from '@/views/channel/components/ChannelTransactionScopeDisplay.vue';
 import ChannelCurrencyScopeDisplay from '@/views/channel/components/ChannelCurrencyScopeDisplay.vue';
 import ChannelPaymentScopeDisplay from '@/views/channel/components/ChannelPaymentScopeDisplay.vue';
 import { searchCountries, type IsoCountry } from '@/api/base/country';
-import { getMccOptions, type MccOption } from '@/api/base/mcc';
+import type { MccOption } from '@/api/base/mcc';
 import {
     createChannelMid,
     deleteChannelMid,
     getChannel,
     getChannelMid,
+    listChannelMidMccOptions,
     searchChannelCapabilities,
     searchChannelMids,
     updateChannelMid,
@@ -329,6 +407,7 @@ import {
     type ChannelCapability,
     type ChannelMetadataSchema,
     type ChannelMidConfig,
+    type MidPaymentCapability,
     type ChannelOption,
 } from '@/api/channel';
 import {
@@ -406,13 +485,22 @@ const mccOptions = ref<MccOption[]>([]);
 const capabilityOptions = ref<ChannelCapability[]>([]);
 const metadataSchemas = ref<ChannelMetadataSchema[]>([]);
 const midQueryOptions = ref<ChannelMidConfig[]>([]);
+const selectedMidQueryId = ref<number>();
+const selectedMidQuery = computed(() => midQueryOptions.value.find((row) => row.id === selectedMidQueryId.value));
+const midQueryLoading = ref(false);
+let midQueryRequest = 0;
 
 const query = reactive({
     channelId: undefined as number | undefined,
-    channelMid: '',
     businessType: '',
     midStatus: undefined as number | undefined,
 });
+
+watch(() => query.channelId, () => {
+    selectedMidQueryId.value = undefined;
+    midQueryOptions.value = [];
+    void loadMidQueryOptions();
+}, { immediate: true });
 
 const emptyForm = (): MidFormState => ({
     id: 0,
@@ -461,28 +549,50 @@ const defaultTransactionCurrencyOptions = computed(() => {
     return currencyOptions.value.filter((item) => allowed.has(normalizeCode(item.alpha3Code)));
 });
 
-const paymentScopeTree = computed<PaymentScopeNode[]>(() => capabilityOptions.value.map((item) => {
-    const paymentLabel = optionLabel(paymentMethodOptions.value, item.paymentMethod);
-    if (item.paymentMethod !== 'BANK_CARD') {
+const savedPaymentScopes = ref<string[]>([]);
+const paymentScopeTree = computed<PaymentScopeNode[]>(() => {
+    const available = capabilityOptions.value.map((item) => {
+        const paymentLabel = optionLabel(paymentMethodOptions.value, item.paymentMethod);
+        if (item.paymentMethod !== 'BANK_CARD') {
+            return {
+                label: paymentLabel,
+                value: paymentMethodScopeValue(item.paymentMethod),
+            };
+        }
         return {
             label: paymentLabel,
             value: paymentMethodScopeValue(item.paymentMethod),
+            disabled: true,
+            children: (item.cardBrands || []).map((brand) => ({
+                label: optionLabel(cardBrandOptions.value, brand),
+                value: cardBrandScopeValue(brand),
+            })),
         };
-    }
-    return {
-        label: paymentLabel,
-        value: paymentMethodScopeValue(item.paymentMethod),
-        disabled: true,
-        children: (item.cardBrands || []).map((brand) => ({
-            label: optionLabel(cardBrandOptions.value, brand),
-            value: cardBrandScopeValue(brand),
-        })),
-    };
-}));
+    });
+    return available;
+});
+
+const acquiringScopeOptions = computed(() => {
+    const configured = defaultPaymentScopeKeys();
+    const keys = [...new Set([...configured, ...savedPaymentScopes.value])];
+    return keys.map((value) => {
+        const scope = parsePaymentScopeValue(value);
+        const brand = scope.type === 'CARD_BRAND';
+        const option = (brand ? cardBrandOptions.value : acquiringPaymentOptions.value)
+            .find((item) => item.value === scope.value);
+        const label = option?.label || scope.value;
+        return {
+            value,
+            label: configured.includes(value) ? label : `${label} · ${t('channel.mid.capabilityUnavailable')}`,
+            logos: brand ? cardLogoKeys(scope.value, option) : paymentLogoKeys(scope.value, option),
+        };
+    });
+});
 
 const rules = computed<FormRules>(() => ({
     channelId: [{ required: true, message: t('channel.mid.requiredChannel'), trigger: 'change' }],
     channelMid: [{ required: true, message: t('channel.mid.requiredChannelMid'), trigger: 'blur' }],
+    mcc: [{ required: true, pattern: /^[0-9]{4}$/, message: t('channel.mid.requiredMcc'), trigger: 'change' }],
     businessType: [{ required: true, message: t('channel.capability.requiredBusinessType'), trigger: 'change' }],
     paymentScopes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredPaymentMethodScope'), trigger: 'change' }],
     currencyCodes: [{ type: 'array', required: true, min: 1, message: t('channel.mid.requiredCurrencyScope'), trigger: 'change' }],
@@ -507,7 +617,7 @@ watch(locale, () => {
 });
 
 async function loadOptions() {
-    const [channels, business, acquiringMethods, payoutMethods, cardBrands, transactionTypes, payoutTransactionTypes, timezones, currencies, countries, mcc, mids] = await Promise.all([
+    const [channels, business, acquiringMethods, payoutMethods, cardBrands, transactionTypes, payoutTransactionTypes, timezones, currencies, countries, mcc] = await Promise.all([
         loadChannelOptions(),
         loadDictOptions('channel_business_type', String(locale.value)),
         loadDictOptions('acquiring_payment_method', String(locale.value)),
@@ -518,8 +628,7 @@ async function loadOptions() {
         loadDictOptions('sys_timezone', String(locale.value)),
         loadCurrencyOptions(),
         loadCountryOptions(),
-        getMccOptions(),
-        searchChannelMids({ pageNo: 1, pageSize: 500 }),
+        listChannelMidMccOptions(),
     ]);
     channelOptions.value = channels;
     businessOptions.value = business;
@@ -531,19 +640,42 @@ async function loadOptions() {
     timezoneOptions.value = timezones;
     currencyOptions.value = currencies;
     countryOptions.value = countries;
-    mccOptions.value = mcc.mccCodes;
-    midQueryOptions.value = mids.records;
+    mccOptions.value = mcc;
+}
+
+async function loadMidQueryOptions(keyword = '') {
+    const request = ++midQueryRequest;
+    const channelId = query.channelId;
+    midQueryLoading.value = true;
+    try {
+        const result = await searchChannelMids({ pageNo: 1, pageSize: 50, channelId, keyword: keyword.trim() || undefined });
+        if (request !== midQueryRequest) return;
+        const selected = selectedMidQuery.value;
+        midQueryOptions.value = selected && !result.records.some((row) => row.id === selected.id)
+            ? [selected, ...result.records] : result.records;
+    } catch {
+        if (request === midQueryRequest) midQueryOptions.value = selectedMidQuery.value ? [selectedMidQuery.value] : [];
+    } finally {
+        if (request === midQueryRequest) midQueryLoading.value = false;
+    }
 }
 
 async function loadCountryOptions() {
-    const result = await searchCountries({ pageNo: 1, pageSize: 1000, status: 1 });
+    const result = await searchCountries({ pageNo: 1, pageSize: 1000, status: 1 }).catch(() => ({ records: [] as IsoCountry[] }));
     return result.records.map((item) => ({ ...item, alpha3Code: normalizeCode(item.alpha3Code), alpha2Code: normalizeCode(item.alpha2Code) }));
 }
 
 async function loadData() {
     loading.value = true;
     try {
-        const result = await searchChannelMids({ pageNo: page.value, pageSize: pageSize.value, ...query });
+        const mid = selectedMidQuery.value;
+        const result = await searchChannelMids({
+            pageNo: page.value,
+            pageSize: pageSize.value,
+            ...query,
+            channelId: query.channelId ?? mid?.channelId,
+            channelMid: mid?.channelMid,
+        });
         rows.value = result.records;
         total.value = result.total;
     } finally {
@@ -558,7 +690,7 @@ function handleSearch() {
 
 function resetQuery() {
     query.channelId = undefined;
-    query.channelMid = '';
+    selectedMidQueryId.value = undefined;
     query.businessType = '';
     query.midStatus = undefined;
     handleSearch();
@@ -573,6 +705,7 @@ async function openDetail(row: ChannelMidConfig) {
 async function openForm(mode: 'create' | 'edit', row?: ChannelMidConfig) {
     formMode.value = mode;
     Object.assign(form, emptyForm());
+    savedPaymentScopes.value = [];
     if (row) {
         await applyRowToForm(await getChannelMid(row.id));
     }
@@ -608,8 +741,11 @@ async function applyRowToForm(row: ChannelMidConfig) {
     form.remark = row.remark || '';
     await loadChannelDependentOptions(false);
     form.paymentScopes = paymentScopesFromRow(row);
-    syncPaymentScopesWithCapabilities();
-    syncDefaultTransactionCurrency();
+    savedPaymentScopes.value = form.paymentScopes.slice();
+    if (row.businessType === 'PAYOUT') {
+        syncPaymentScopesWithCapabilities();
+        syncDefaultTransactionCurrency();
+    }
 }
 
 async function handleChannelChange() {
@@ -679,7 +815,9 @@ async function loadChannelDependentOptions(resetPaymentMethods: boolean) {
 }
 
 function syncPaymentScopesWithCapabilities() {
-    const enabled = new Set(paymentScopeTree.value.flatMap((item) => [item.value, ...(item.children || []).map((child) => child.value)]));
+    const options = form.businessType === 'ACQUIRING' ? acquiringScopeOptions.value.map((item) => item.value)
+        : paymentScopeTree.value.flatMap((item) => [item.value, ...(item.children || []).map((child) => child.value)]);
+    const enabled = new Set(options);
     form.paymentScopes = form.paymentScopes.filter((item) => enabled.has(item));
 }
 
@@ -710,7 +848,7 @@ function handleCountryAllChange(value: string | number | boolean) {
 
 function handlePaymentScopeChange() {
     form.paymentScopes = normalizePaymentScopes(form.paymentScopes);
-    syncDefaultTransactionCurrency();
+    if (form.businessType === 'PAYOUT') syncDefaultTransactionCurrency();
 }
 
 function handleCurrencyScopeChange() {
@@ -751,9 +889,11 @@ function buildPayload(): Partial<ChannelMidConfig> {
         paymentMethodScope: joinScope(selectedPaymentMethods()),
         cardBrandScope: joinScope(selectedCardBrands()),
         transactionTypeScope: deriveTransactionTypeScope(),
-        currencyScope: joinScope(form.currencyCodes),
-        allowedCountryScope: form.countryAll ? 'ALL' : joinScope(form.countryCodes),
-        defaultTransactionCurrency: normalizeCode(form.defaultTransactionCurrency),
+        ...(form.businessType === 'PAYOUT' ? {
+            currencyScope: joinScope(form.currencyCodes),
+            allowedCountryScope: form.countryAll ? 'ALL' : joinScope(form.countryCodes),
+            defaultTransactionCurrency: normalizeCode(form.defaultTransactionCurrency),
+        } : {}),
         defaultSettlementCurrency: normalizeCode(form.defaultSettlementCurrency),
         settlementCycle: `T+${form.settlementDays || 0}`,
         settlementCutoffTime: blankToUndefined(form.settlementCutoffTime),
@@ -879,36 +1019,46 @@ function joinScope(values: string[]) {
 
 function deriveTransactionTypeScope() {
     const selected = new Set(selectedPaymentMethods());
+    const selectedBrands = selectedCardBrands();
     const transactionTypes = capabilityOptions.value
-        .filter((item) => selected.has(item.paymentMethod))
+        .filter((item) => selected.has(item.paymentMethod)
+            && (item.paymentMethod !== 'BANK_CARD' || item.cardBrands?.some((brand) => selectedBrands.includes(brand))))
         .flatMap(capabilityTransactionTypes)
         .map(normalizeCode)
         .filter(Boolean);
     return Array.from(new Set(transactionTypes)).join(',') || 'NONE';
 }
 
+function defaultPaymentScopeKeys() {
+    return capabilityOptions.value.flatMap((item) => item.paymentMethod === 'BANK_CARD'
+        ? (item.cardBrands || []).map(cardBrandScopeValue) : [paymentMethodScopeValue(item.paymentMethod)]);
+}
+
 function defaultPaymentScopes() {
-    return normalizePaymentScopes(capabilityOptions.value.flatMap((item) => item.paymentMethod === 'BANK_CARD'
-        ? (item.cardBrands || []).map(cardBrandScopeValue)
-        : [paymentMethodScopeValue(item.paymentMethod)]));
+    return normalizePaymentScopes(defaultPaymentScopeKeys());
 }
 
 function paymentScopesFromRow(row: ChannelMidConfig) {
+    if (row.businessType === 'ACQUIRING' && row.paymentMethodScope === 'ALL') return defaultPaymentScopes();
     const paymentMethods = splitScope(row.paymentMethodScope);
     const cardBrands = splitScope(row.cardBrandScope);
     const values = paymentMethods.flatMap((method) => {
         if (method === 'BANK_CARD') {
+            if (row.businessType === 'ACQUIRING' && cardBrands.includes('NONE')) return [];
             return cardBrands.length && !cardBrands.includes('ALL') && !cardBrands.includes('NONE')
                 ? cardBrands.map(cardBrandScopeValue)
                 : supportedCardBrands().map(cardBrandScopeValue);
         }
         return [paymentMethodScopeValue(method)];
     });
-    return normalizePaymentScopes(values);
+    return row.businessType === 'ACQUIRING' ? Array.from(new Set(values)) : normalizePaymentScopes(values);
 }
 
 function normalizePaymentScopes(values: string[]) {
     const selected = new Set(values);
+    if (form.businessType === 'ACQUIRING') {
+        return acquiringScopeOptions.value.filter((item) => selected.has(item.value)).map((item) => item.value);
+    }
     const normalized: string[] = [];
     paymentScopeTree.value.forEach((node) => {
         const children = node.children || [];
@@ -980,7 +1130,8 @@ function selectedCardBrands() {
 }
 
 function supportedCardBrands() {
-    return capabilityOptions.value.find((item) => item.paymentMethod === 'BANK_CARD')?.cardBrands || [];
+    return [...new Set(capabilityOptions.value.filter((item) => item.paymentMethod === 'BANK_CARD')
+        .flatMap((item) => item.cardBrands || []))];
 }
 
 function paymentMethodScopeValue(value: string) {
@@ -1021,10 +1172,6 @@ function transactionScopeItems(businessType: string | undefined, scope?: string)
     }));
 }
 
-function midQueryOptionLabel(item: ChannelMidConfig) {
-    return `${item.channelMid} / ${item.channelCode}`;
-}
-
 function paymentScopeLogo(row: Pick<ChannelMidConfig, 'businessType' | 'paymentMethodScope' | 'cardBrandScope'>): PaymentLogoKey[] {
     return splitScope(row.paymentMethodScope).flatMap((method) => {
         if (method === 'BANK_CARD') {
@@ -1056,19 +1203,23 @@ function currencyScopeTooltipCodes(value?: string) {
     return currencyScopeCodes(value);
 }
 
-function countryScopeText(value?: string) {
-    if (value === 'ALL') {
-        return t('channel.mid.allCountries');
+function inheritedPaymentEntries(row: MidPaymentCapability) {
+    if (row.cardBrands.length) {
+        return row.cardBrands.map((value) => {
+            const option = cardBrandOptions.value.find((item) => item.value === value);
+            return { value, label: option?.label || value, logoKeys: cardLogoKeys(value, option) };
+        });
     }
-    return splitScope(value).map(countryLabel).join(', ') || '-';
+    const value = row.paymentMethod;
+    const option = acquiringPaymentOptions.value.find((item) => item.value === value);
+    return [{ value, label: option?.label || value, logoKeys: paymentLogoKeys(value, option) }];
 }
 
-function countryLabel(value?: string) {
-    if (!value) {
-        return '-';
-    }
-    const option = countryOptions.value.find((item) => item.alpha3Code === value);
-    return option ? countryOptionLabel(option) : value;
+function effectiveCountryScope(capabilityScope?: string, midScope?: string) {
+    if (!capabilityScope || capabilityScope === 'ALL') return midScope || 'ALL';
+    if (!midScope || midScope === 'ALL') return capabilityScope;
+    const midCountries = new Set(splitScope(midScope));
+    return joinScope(splitScope(capabilityScope).filter((country) => midCountries.has(country)));
 }
 
 function countryOptionLabel(option: IsoCountry) {
@@ -1144,6 +1295,35 @@ function midTargetName(row: ChannelMidConfig) {
 </script>
 
 <style scoped>
+.mid-query-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.mid-query-option__logo {
+    flex: 0 0 60px;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.mid-query-option__logo :deep(.channel-display__frame) {
+    flex-basis: 60px;
+    width: 60px;
+    height: 22px;
+}
+
+.mid-query-option__logo :deep(.channel-display__fallback),
+.mid-query-option__code {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .mid-form {
     max-width: 1080px;
 }
@@ -1281,6 +1461,25 @@ function midTargetName(row: ChannelMidConfig) {
     justify-content: flex-start;
 }
 
+:global(.channel-mid-detail-drawer.el-drawer) {
+    max-width: 100vw;
+}
+
+.mid-detail__capabilities {
+    min-width: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.mid-detail__capabilities h3 {
+    margin: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background: var(--el-fill-color-lighter);
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .mid-detail {
     display: grid;
     overflow: hidden;
@@ -1377,4 +1576,10 @@ function midTargetName(row: ChannelMidConfig) {
         grid-template-columns: 1fr;
     }
 }
+.channel-option-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 </style>

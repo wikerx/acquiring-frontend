@@ -131,6 +131,21 @@ export function cardLogoKeys(value?: string, option?: SelectOption): PaymentLogo
     return parseLogoKeys(option).length ? parseLogoKeys(option) : CARD_LOGO_MAP[value || ''] || [];
 }
 
+export function channelPaymentOptions(methods: SelectOption[], brands: SelectOption[], includeBankCard: boolean) {
+    return methods.flatMap((method) => {
+        const option = { ...method, paymentMethod: method.value, cardBrand: '', logos: paymentLogoKeys(method.value, method) };
+        if (method.value !== 'BANK_CARD') return [option];
+        const brandOptions = brands.map((brand) => ({
+            ...brand,
+            value: `CARD:${brand.value}`,
+            paymentMethod: method.value,
+            cardBrand: brand.value,
+            logos: cardLogoKeys(brand.value, brand),
+        }));
+        return includeBankCard ? [option, ...brandOptions] : brandOptions;
+    });
+}
+
 export function arrayText(values?: string[], options: SelectOption[] = []) {
     if (!values?.length) {
         return '-';

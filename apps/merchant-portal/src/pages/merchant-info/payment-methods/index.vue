@@ -154,6 +154,11 @@
                 min-width="190"
                 align="center"
               >
+                <template #header>
+                  <el-tooltip :content="t('paymentMethod.configurationTooltip')" placement="top">
+                    <span tabindex="0">{{ t('paymentMethod.configuration') }}</span>
+                  </el-tooltip>
+                </template>
                 <template #default="{ row }">
                   <div class="configuration-facts">
                     <el-tag :type="statusTone(row.businessReadiness)" effect="plain">{{

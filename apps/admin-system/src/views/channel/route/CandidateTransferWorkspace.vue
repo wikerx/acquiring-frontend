@@ -104,7 +104,7 @@
                                 <template #default="{ row }"><div class="mid-identity"><strong>{{ row.midName || row.channelMid }}</strong><span>{{ row.channelMid }}</span></div></template>
                             </el-table-column>
                             <el-table-column :label="t('channel.route.defaultTransactionCurrency')" width="108" align="center">
-                                <template #default="{ row }"><CurrencyDisplay :currency="row.defaultTransactionCurrency" :locale="String(locale)" size="xs" variant="soft" /></template>
+                                <template #default="{ row }"><CurrencyDisplay :currency="row.effectiveDefaultTransactionCurrencies?.[0] || ''" :locale="String(locale)" size="xs" variant="soft" /></template>
                             </el-table-column>
                         </el-table>
                         <div class="transfer-panel__pagination">
@@ -337,10 +337,14 @@ function addSelected() {
 function toCandidate(mid: ChannelMidConfig, priority: number, weight?: string): PaymentRouteCandidate {
     const scope = activeScope();
     if (!scope) throw new Error('Payment scope is required');
+    const capability = mid.paymentCapabilities?.find((item) => item.paymentMethod === scope.paymentMethod
+        && (scope.paymentMethod !== 'BANK_CARD' || item.cardBrands.includes(scope.cardBrand)));
     return {
         paymentMethod: scope.paymentMethod, cardBrand: scope.cardBrand, channelId: mid.channelId, channelCode: mid.channelCode, channelName: mid.channelName,
         midConfigId: mid.id, channelMid: mid.channelMid, midName: mid.midName, paymentMethodScope: mid.paymentMethodScope,
-        currencyScope: mid.currencyScope, defaultTransactionCurrency: mid.defaultTransactionCurrency, midStatus: mid.midStatus, candidatePriority: priority, candidateWeight: weight, candidateStatus: 1,
+        currencyScope: capability?.currencyCodes.join(',') ?? mid.currencyScope,
+        defaultTransactionCurrency: capability ? capability.defaultTransactionCurrency : mid.defaultTransactionCurrency,
+        midStatus: mid.midStatus, candidatePriority: priority, candidateWeight: weight, candidateStatus: 1,
     };
 }
 

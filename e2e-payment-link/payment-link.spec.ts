@@ -146,6 +146,8 @@ async function workspace(
         minExpireMinutes: 15,
         maxExpireMinutes: 43200,
       });
+    if (path.endsWith('/payment-links/amount-check'))
+      return reply(verifyFrozenSelection && input.amount === '99.00' ? ['METHOD:PAYPAL'] : []);
     if (path.endsWith('/payment-links') && route.request().method() === 'POST') {
       creates++;
       assert.equal(input.amount, '99.00');
@@ -283,7 +285,16 @@ async function workspace(
       await expect(option).not.toBeChecked();
     }
     await expect(dialog.getByRole('group', { name: '其他支付方式' })).toHaveCount(0);
-    await dialog.getByRole('textbox', { name: '*金额', exact: true }).fill('99.00');
+    const amount = dialog.getByRole('textbox', { name: '*金额', exact: true });
+    await amount.fill('99.00');
+    if (scope === 'merchant') {
+      const advisory = dialog.locator('.pl-amount-warning');
+      await expect(advisory).toHaveText('这些支付方式不支持当前金额：PayPal');
+      await amount.fill('10.00');
+      await expect(advisory).toHaveCount(0);
+      await amount.fill('99.00');
+      await expect(advisory).toBeVisible();
+    }
     await dialog.getByRole('button', { name: '创建支付链接', exact: true }).click();
     await page.getByRole('dialog', { name: '详情' }).waitFor();
     assert.equal(creates, 1);

@@ -93,6 +93,9 @@ export default {
     showMoreMethods: 'More payment methods',
     showFewerMethods: 'Show fewer payment methods',
     temporarilyUnavailable: 'Unavailable',
+    amountLimitTitle: 'Payment could not be completed',
+    amountLimitMessage: 'Please choose another payment method or contact the merchant.',
+    amountLimitAction: 'Back to checkout',
     walletAuthorization: {
       instructions: 'Use the wallet button below to continue in the secure channel checkout.',
       loading: 'Opening secure wallet payment…',

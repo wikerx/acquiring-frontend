@@ -47,6 +47,7 @@ export interface HostedCheckoutSession {
     };
     paymentMethods?: HostedCheckoutPaymentMethod[];
     paymentOptions?: HostedCheckoutPaymentMethod[] | null;
+    paymentCountryScopes?: Record<string, Record<string, boolean>> | null;
     checkout?: {
         expireTime?: string;
         serverTime?: string;
@@ -208,7 +209,9 @@ export async function authorizeCheckoutWallet(payload: {
     paymentMethod: string;
     action: WalletAuthorizationAction;
     billingCardHolderInfo?: HostedCheckoutPrefillInfo;
-}): Promise<{ state: WalletAuthorizationState; redirectUrl?: string }> {
+    payerCountry?: string;
+    attemptRequestId?: string;
+}): Promise<{ state: WalletAuthorizationState; redirectUrl?: string; reasonCode?: string }> {
     return postCheckout('/checkout/api/v1/wallet/authorization', payload, 18000);
 }
 

@@ -85,6 +85,9 @@ export default {
     showMoreMethods: '更多支付方式',
     showFewerMethods: '收起更多支付方式',
     temporarilyUnavailable: '暂不可用',
+    amountLimitTitle: '本次付款未完成',
+    amountLimitMessage: '请更换支付方式，或联系商户处理。',
+    amountLimitAction: '返回收银台',
     walletAuthorization: {
       instructions: '请使用下方钱包品牌按钮进入渠道安全支付。',
       loading: '正在打开钱包安全支付…',

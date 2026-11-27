@@ -133,6 +133,7 @@ export interface PaymentLinkApi {
   search(query: PaymentLinkQuery): Promise<PageResult<PaymentLinkView>>;
   summary(query: PaymentLinkQuery): Promise<PaymentLinkSummary>;
   options(merchantId?: string): Promise<PaymentLinkOptions>;
+  amountCheck?(input: { currency: string; amount: string; paymentMethodKeys: string[] }): Promise<string[]>;
   create(input: PaymentLinkCreate, merchantId?: string): Promise<PaymentLinkView>;
   detail(linkId: string): Promise<PaymentLinkView>;
   share(linkId: string): Promise<{ url: string }>;
@@ -180,6 +181,7 @@ export function createPaymentLinkApi(
     search: (query) => read('/search', query),
     summary: (query) => read('/summary', query),
     options: (merchantId) => read('/options', {}, merchantId),
+    ...(scope === 'merchant' ? { amountCheck: (input) => read<string[]>('/amount-check', input) } : {}),
     create: (input, merchantId) => post('', input, scope === 'admin' ? merchantId : undefined),
     detail: async (id) =>
       unwrapResult(

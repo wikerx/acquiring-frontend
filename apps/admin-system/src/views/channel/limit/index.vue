@@ -90,6 +90,27 @@
             <el-form ref="formRef" :model="form" :rules="rules" label-width="118px" size="small">
                 <el-form-item :label="t('channel.common.channel')" prop="channelId"><el-select v-model="form.channelId" filterable style="width:100%" :disabled="isDimensionMode" @change="handleChannelChange"><el-option v-for="item in channelOptions" :key="item.id" :label="channelOptionLabel(item)" :value="item.id" /></el-select></el-form-item>
                 <el-form-item :label="t('channel.common.businessType')" prop="businessType"><el-select v-model="form.businessType" style="width:100%" :disabled="isDimensionMode || !form.channelId" @change="handleBusinessTypeChange"><el-option v-for="item in formBusinessOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+                <el-form-item v-if="form.businessType === 'ACQUIRING'" :label="t('channel.common.paymentMethod')" :prop="isCreateMode ? 'paymentMethods' : undefined">
+                    <el-select v-if="isCreateMode" v-model="createPaymentSelection" multiple collapse-tags collapse-tags-tooltip filterable style="width:100%">
+                        <el-option :label="t('channel.common.all')" value="ALL" />
+                        <el-option v-for="item in combinedPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="channel-option-display">
+                                <PaymentLogoGroup :keys="item.logos" fallback="text" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
+                    </el-select>
+                    <el-select v-else v-model="editPaymentSelection" filterable style="width:100%" :disabled="isDimensionMode">
+                        <el-option :label="t('channel.common.all')" value="ALL" />
+                        <el-option v-for="item in combinedPaymentOptions" :key="item.value" :label="item.label" :value="item.value">
+                            <div class="channel-option-display">
+                                <PaymentLogoGroup :keys="item.logos" fallback="text" size="sm" :wrap="false" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <template v-else>
                 <el-form-item v-if="isCreateMode" :label="t('channel.common.paymentMethod')" prop="paymentMethods"><el-select v-model="form.paymentMethods" multiple filterable style="width:100%" @change="handlePaymentMethodChange"><el-option :label="t('channel.common.all')" value="ALL" /><el-option v-for="item in formPaymentOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="paymentLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option></el-select></el-form-item>
                 <el-form-item v-else :label="t('channel.common.paymentMethod')">
                     <el-select v-model="form.paymentMethod" clearable filterable style="width:100%" :disabled="isDimensionMode" @change="handlePaymentMethodChange">
@@ -108,6 +129,7 @@
                         <el-option v-for="item in formCardBrandOptions" :key="item.value" :label="item.label" :value="item.value"><div class="channel-option-display"><PaymentLogoGroup :keys="cardLogoKeys(item.value, item)" fallback="text" size="sm" :wrap="false" /><span>{{ item.label }}</span></div></el-option>
                     </el-select>
                 </el-form-item>
+                </template>
                 <el-form-item v-if="isBatchAmountMode" :label="t('channel.limit.limitType')" prop="limitTypes"><el-select v-model="form.limitTypes" multiple filterable style="width:100%" :disabled="isDimensionMode" @change="syncLimitAmountMap"><el-option v-for="item in formLimitTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
                 <template v-if="isBatchAmountMode">
                     <el-alert v-if="isCreateMode && form.channelId && form.businessType && !formLimitTypeOptions.length" class="limit-empty-alert" type="info" :closable="false" :title="t('channel.limit.noAvailableLimitType')" />
@@ -150,7 +172,7 @@ import CommonDetailDrawer from '@/components/CommonDetailDrawer.vue';
 import RightToolbar from '@/components/RightToolbar/index.vue';
 import StandardTable from '@/components/StandardTable/StandardTable.vue';
 import { createChannelLimits, deleteChannelLimit, getChannelLimit, saveChannelLimitDimension, searchChannelCapabilities, searchChannelLimits, updateChannelLimit, updateChannelLimitStatus, type ChannelCapability, type ChannelLimitRule, type ChannelOption } from '@/api/channel';
-import { cardLogoKeys, channelDisplayText, channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, type SelectOption } from '../shared';
+import { cardLogoKeys, channelPaymentOptions, channelDisplayText, channelOptionLabel, loadChannelOptions, loadDictOptions, optionLabel, paymentLogoKeys, showChannelError, statusText, statusType, type SelectOption } from '../shared';
 
 const { locale, t } = useI18n();
 const showSearch = ref(true);
@@ -252,7 +274,7 @@ const formCardBrandOptions = computed(() => {
         .filter((item) => item.paymentMethod === 'BANK_CARD')
         .flatMap((item) => item.cardBrands || []);
     const enabledBrands = new Set(brands);
-    const options = brands.length
+    const options = (form.channelId && form.businessType === 'ACQUIRING') || brands.length
         ? cardBrandOptions.value.filter((item) => enabledBrands.has(item.value))
         : cardBrandOptions.value;
     if (isCreateMode.value || !form.cardBrand || form.cardBrand === 'ALL') {
@@ -260,6 +282,28 @@ const formCardBrandOptions = computed(() => {
     }
     const currentOption = cardBrandOptions.value.find((item) => item.value === form.cardBrand);
     return dedupeOptions(currentOption ? [currentOption, ...options] : options);
+});
+const combinedPaymentOptions = computed(() => channelPaymentOptions(
+    formPaymentOptions.value, formCardBrandOptions.value, true));
+const createPaymentSelection = computed({
+    get: () => form.paymentMethods.flatMap((method) => method === 'BANK_CARD' && !form.cardBrands.includes('ALL')
+        ? form.cardBrands.map((brand) => `CARD:${brand}`) : [method]),
+    set: (values: string[]) => {
+        const selected = combinedPaymentOptions.value.filter((item) => values.includes(item.value));
+        form.paymentMethods = [...new Set(selected.map((item) => item.paymentMethod))];
+        form.cardBrands = selected.some((item) => item.value === 'BANK_CARD')
+            ? ['ALL'] : selected.map((item) => item.cardBrand).filter(Boolean);
+        syncConditionalFields();
+    },
+});
+const editPaymentSelection = computed({
+    get: () => form.paymentMethod === 'BANK_CARD' && form.cardBrand && form.cardBrand !== 'ALL'
+        ? `CARD:${form.cardBrand}` : form.paymentMethod,
+    set: (value: string) => {
+        const option = combinedPaymentOptions.value.find((item) => item.value === value);
+        form.paymentMethod = option?.paymentMethod || 'ALL';
+        form.cardBrand = option?.cardBrand || 'ALL';
+    },
 });
 const selectedFormPaymentLogoKeys = computed(() => {
     if (!form.paymentMethod || form.paymentMethod === 'ALL') {
@@ -402,7 +446,7 @@ async function handleScopeChange() {
     await refreshExistingLimits();
     if (isCreateMode.value) {
         form.paymentMethods = normalizeScopeSelection(form.paymentMethods, formPaymentOptions.value.map((item) => item.value));
-    } else if (!formPaymentOptions.value.some((item) => item.value === form.paymentMethod)) {
+    } else if (form.paymentMethod !== 'ALL' && !formPaymentOptions.value.some((item) => item.value === form.paymentMethod)) {
         form.paymentMethod = formPaymentOptions.value[0]?.value || '';
     }
     syncConditionalFields();
@@ -439,7 +483,7 @@ function syncConditionalFields() {
     if (!isBankCardPayment.value) {
         form.cardBrand = 'ALL';
     }
-    if (isBankCardPayment.value && form.cardBrand === 'ALL') {
+    if (form.businessType !== 'ACQUIRING' && isBankCardPayment.value && form.cardBrand === 'ALL') {
         form.cardBrand = formCardBrandOptions.value[0]?.value || '';
     }
 }
